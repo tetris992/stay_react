@@ -503,6 +503,7 @@ function RoomGrid({
               const initialData = {
                 reservationNo: reservation.reservationNo || reservation._id,
                 customerName: reservation.customerName || '',
+                phoneNumber: reservation.phoneNumber || '',
                 checkInDate,
                 checkOutDate,
                 reservationDate,
@@ -628,6 +629,21 @@ function RoomGrid({
                   )
                 }
                 required
+              />
+            </label>
+
+            <label>
+              전화번호:
+              <input
+                type="text"
+                value={editedValues[selectedReservation._id].phoneNumber}
+                onChange={(e) =>
+                  handleFieldChange(
+                    selectedReservation._id,
+                    'phoneNumber',
+                    e.target.value
+                  )
+                }
               />
             </label>
 
