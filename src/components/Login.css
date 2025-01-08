@@ -1,0 +1,146 @@
+/* src/components/Login.css */
+
+.login-container {
+  display: flex;
+  width: 500px;
+  min-width: 300px;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #3c3c3c;
+}
+
+.login-form {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(147, 147, 147, 0.1);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  margin: 10px;
+}
+
+.login-form h2 {
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.register-link {
+  display: block;
+  text-align: right;
+  margin-bottom: 1rem;
+  color: #3498db;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.register-link:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #e74c3c;
+  background-color: #fdecea;
+  border: 1px solid #e74c3c;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.password-error {
+  color: #f39c12;
+  background-color: #fdf2e9;
+  border: 1px solid #f39c12;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='email'] {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.password-toggle-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #7f8c8d;
+}
+
+.password-toggle-icon:hover {
+  color: #2c3e50;
+}
+
+button[type='submit'],
+.forgot-password-button {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 4px;
+  background: #2ecc71;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button[type='submit']:hover,
+.forgot-password-button:hover {
+  background: #27ae60;
+}
+
+.forgot-password-button {
+  margin-top: 0.5rem;
+  background: #8886866b;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.forgot-password-button:hover {
+  background: #c0392b;
+}
+
+.forgot-password-button.highlight {
+  animation: shake 0.5s;
+  background: #e74c3c;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0) scale(1.05);
+  }
+  25% {
+    transform: translateX(-5px) scale(1.05);
+  }
+  50% {
+    transform: translateX(5px) scale(1.05);
+  }
+  75% {
+    transform: translateX(-5px) scale(1.05);
+  }
+  100% {
+    transform: translateX(0) scale(1.05);
+  }
+}

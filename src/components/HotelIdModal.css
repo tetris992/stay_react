@@ -1,0 +1,70 @@
+/* HotelIdModal.css */
+
+.hotel-id-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7); /* Darker semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.hotel-id-modal-content {
+  background-color: #fff;
+  padding: 25px; /* Increased padding for better spacing */
+  border-radius: 10px; /* Smooth corners */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); /* More pronounced shadow */
+  text-align: center;
+  width: 90%; /* Responsive design */
+  max-width: 400px; /* Maximum width for modal */
+}
+
+.hotel-id-modal-content h2 {
+  margin-bottom: 20px;
+  font-size: 24px; /* Larger heading size */
+  color: #333; /* Darker text for better visibility */
+}
+
+.hotel-id-modal-content .error {
+  color: red;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.hotel-id-modal-content input {
+  width: 100%; /* Full width for input field */
+  padding: 12px; /* Added padding */
+  margin-bottom: 20px;
+  font-size: 16px;
+  border: 1px solid #ccc; /* Subtle border */
+  border-radius: 5px; /* Rounded corners */
+  transition: border-color 0.3s ease; /* Smooth border color change */
+}
+
+.hotel-id-modal-content input:focus {
+  border-color: #007bff; /* Blue border on focus */
+  outline: none; /* Remove default outline */
+}
+
+.hotel-id-modal-content button {
+  padding: 12px 20px; /* Adjusted padding */
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #007bff; /* Primary blue button */
+  color: #fff; /* White text */
+  border: none; /* Remove border */
+  border-radius: 5px; /* Rounded corners */
+  transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.hotel-id-modal-content button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+.hotel-id-modal-content button:focus {
+  outline: none; /* Remove default outline */
+}

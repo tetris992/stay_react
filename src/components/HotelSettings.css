@@ -1,0 +1,144 @@
+/* src/components/HotelSettings.css */
+
+.hotel-settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9000;
+}
+
+.hotel-settings-content {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.error {
+  color: red;
+  margin-bottom: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  box-sizing: border-box;
+}
+
+.room-type {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.room-type input {
+  flex: 1;
+  margin-right: 5px;
+}
+
+.delete-roomType {
+  background-color: rgba(187, 185, 185, 0.583);
+  color: rgb(242, 127, 127);
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.delete-roomType:hover {
+  background-color: rgba(187, 185, 185, 0.808);
+  color: rgb(208, 129, 129);
+}
+
+.buttons_container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.save-button {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.save-button:hover {
+  background-color: #45a049;
+}
+
+.cancel-button {
+  padding: 10px 20px;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background-color: #da190b;
+}
+
+.add_button {
+  background-color: rgba(145, 143, 143, 0.393);
+  cursor: pointer;
+  padding: 8px;
+}
+
+.add_button:hover {
+  background-color: rgba(145, 143, 143, 0.524);
+  cursor: pointer;
+}
+/* 
+.ota-settings {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.ota-item {
+  display: flex;
+  align-items: center;
+}
+
+.ota-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ota-checkbox {
+  margin: 0;
+  padding: 0;
+}
+
+.ota-name {
+  font-size: 16px;
+} */

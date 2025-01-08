@@ -1,0 +1,25 @@
+/* src/components/DetailPanel.css */
+.detail-panel {
+    padding: 20px;
+    box-sizing: border-box;
+    background: #ffffff;
+    border-left: 1px solid #ccc;
+    height: 100%;
+    overflow:auto;
+  }
+  
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .edit-form, .detail-content {
+    margin-top: 20px;
+  }
+  
+  .edit-form input, .edit-form select {
+    margin-bottom: 10px;
+    display: block;
+  }
+  

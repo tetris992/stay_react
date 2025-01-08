@@ -1,0 +1,36 @@
+/* src/components/LanguageSwitcher.css */
+
+.language-switcher {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.lang-button {
+    padding: 5px 10px;
+    border: none;
+    background-color: #f2f2f2;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s, border-bottom 0.3s;
+    position: relative;
+    font-size: 1rem;
+}
+
+.lang-button:hover {
+    background-color: #e0e0e0;
+}
+
+.lang-button.active {
+    background-color: #ffffff;
+}
+
+.lang-button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: red;
+}

@@ -1,0 +1,118 @@
+/* VoiceSearch 컴포넌트 스타일 조정 */
+.voice-search-container {
+  display: flex;
+  align-items: center;
+  margin: 3px 0px; /* 기존 10px에서 버튼 간격과 일치하도록 12px로 조정 */
+}
+
+.voice-search-button {
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 50%;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.voice-search-button.active {
+  background-color: #d1ffd6;
+  animation: pulse 1s infinite;
+}
+
+.voice-search-button:hover {
+  background-color: #e0e0e0;
+  color: steelblue;
+}
+
+.voice-search-message {
+  margin-left: 10px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.voice-search-error {
+  color: #e74c3c;
+  margin-left: 10px;
+  font-size: 0.9rem;
+}
+
+.retry-button {
+  margin-left: 10px;
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.retry-button:hover {
+  background-color: #c0392b;
+}
+
+/* Pulse 애니메이션 */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(209, 255, 214, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(209, 255, 214, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(209, 255, 214, 0);
+  }
+}
+
+/* 추가: 음성 인식 시 주파수 효과 막대 */
+.voice-search-frequency {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  height: 20px;
+}
+
+.voice-search-frequency div {
+  width: 3px;
+  height: 100%;
+  background-color: #555;
+  margin: 0 1px;
+  animation: frequency 1s infinite;
+}
+
+.voice-search-frequency div:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.voice-search-frequency div:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.voice-search-frequency div:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.voice-search-frequency div:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.voice-search-frequency div:nth-child(5) {
+  animation-delay: 0.8s;
+}
+
+@keyframes frequency {
+  0% {
+    height: 20%;
+    background-color: #555;
+  }
+  50% {
+    height: 100%;
+    background-color: #3498db;
+  }
+  100% {
+    height: 20%;
+    background-color: #555;
+  }
+}

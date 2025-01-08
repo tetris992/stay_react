@@ -1,0 +1,109 @@
+/* src/components/CanceledReservationsModal.css */
+
+.canceled-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .canceled-modal {
+    position: relative;
+    background: #fff;
+    padding: 20px;
+    width: 80%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+  }
+  
+  .modal-close-button {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: rgb(135, 133, 133);
+    margin-right: auto;
+  }
+  
+  .modal-close-button:hover {
+    color: rgb(165, 92, 92);
+  }
+  
+  .modal-action-button {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+  }
+  
+  /* 템플릿 테이블 스타일 */
+  .canceled-reservations-template {
+    font-family: Arial, sans-serif;
+  }
+  
+  .canceled-reservations-template h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .canceled-reservations-template table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  
+  .canceled-reservations-template th,
+  .canceled-reservations-template td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  
+  .canceled-reservations-template th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  .canceled-reservations-template tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  
+  .no-data {
+    text-align: center;
+    color: #999;
+    margin: 20px 0;
+  }
+  
+  /* 인쇄 전용 스타일 */
+  @media print {
+    .canceled-modal-overlay,
+    .canceled-modal {
+      display: none !important;
+    }
+    #canceled-reservations-content {
+      display: block;
+    }
+  }
+  

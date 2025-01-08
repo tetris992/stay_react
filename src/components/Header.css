@@ -1,0 +1,247 @@
+/* src/components/Header.css */
+
+/* 헤더 전체 레이아웃 */
+.header {
+  box-sizing: border-box;
+  position: fixed; /* 고정 위치 설정 */
+  top: 0;
+  left: 280px; /* 사이드바 너비만큼 왼쪽에서 시작 */
+  width: calc(100% - 280px); /* 전체 너비에서 사이드바 너비 제외 */
+  height: 140px; /* 헤더 높이 */
+  z-index: 10; /* 다른 요소보다 앞에 위치 */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+  gap: 10px;
+  padding: 30px 20px;
+  background-color: transparent;
+  border-bottom: 1px solid #a7a5a53d;
+}
+
+/* 첫 번째 줄: 제목, 날짜 네비게이션, 퀵버튼 */
+/* .header-left,
+.header-center,
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+} */
+
+/* 헤더 왼쪽 제목 */
+.header-left h1 {
+  position: relative;
+  z-index: 1;
+  font-family: 'Roboto Slab', serif;
+  font-size: 24px;
+  margin: 0;
+  color: #46485298;
+  overflow: hidden;
+}
+
+.header-left {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  margin-left: 10%;
+}
+
+.header-right {
+  margin-left: 33%;
+  align-items: center;
+}
+
+/* 중앙 섹션 */
+.header-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 날짜 네비게이션 */
+.date-navigation {
+  display: flex;
+  align-items: center;
+}
+
+/* 날짜 선택 텍스트 */
+.selected-date {
+  font-size: 1.5rem;
+  padding: 0 10px;
+  font-weight: 700;
+  color: #050505;
+}
+
+/* 요일 텍스트 */
+.weekday {
+  font-size: 1.2rem;
+  padding-left: 5px;
+  color: #555555;
+}
+
+/* 주말 요일 텍스트 */
+.weekend {
+  color: #ff00008e;
+}
+
+/* 화살표 버튼 스타일링 */
+.arrow-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: #3f3f3f78;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.arrow-button:hover {
+  color: #194fcdaa;
+  transform: scale(1.1);
+}
+
+/* 오른쪽 섹션 */
+.header-right {
+  justify-content: center;
+  align-items: center;
+}
+
+/* 간편 입력 버튼 그룹 스타일링 */
+.quick-create-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 간편 입력 버튼 기본 스타일 */
+.quick-button {
+  padding: 6px 12px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #6287ace1;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.quick-button:hover {
+  background-color: #007cb576;
+}
+
+/* "대실" 버튼만 별도의 색상으로 스타일링 */
+.quick-button-green {
+  background-color: #4caf4fe9;
+  color: #ffffff;
+}
+
+.quick-button-green:hover {
+  background-color: #45a04979;
+}
+/* OTA 상태 표시 */
+.header-ota-status {
+  grid-column: 1 / 4; /* 두 번째 줄 전체를 차지하도록 변경 */
+  grid-row: 3 / 4; /* 세 번째 줄로 이동 */
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* 두 번째 줄: OTA 토글창 */
+.header-ota-toggles {
+  grid-column: span 3; /* 두 번째 줄에서 첫 번째 줄의 3칸을 모두 차지하도록 설정 */
+  display: flex;
+  justify-content: flex-start; /* 왼쪽 정렬 */
+  width: 100%; /* 전체 너비 차지 */
+  margin-top: 10px;
+  overflow: hidden; /* 가려지는 텍스트 숨기기 */
+  white-space: nowrap; /* 텍스트 한 줄로 표시 */
+  text-overflow: ellipsis; /* 넘치는 텍스트에 '...' 표시 */
+}
+
+/* OTA 토글창 스타일 */
+.ota-toggles {
+  display: flex;
+  gap: 15px;
+}
+
+.ota-toggles label {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.ota-toggles input {
+  margin-right: 5px;
+}
+
+/* OTA 상태 표시 */
+.header-ota-status {
+  grid-column: span 3;
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.ota-status-item {
+  margin-right: 20px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.status-lamp {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+.status-lamp.green {
+  background-color: rgb(131, 239, 131);
+}
+
+.status-lamp.gray {
+  background-color: gray;
+}
+
+/* 미디어 쿼리 (반응형) */
+@media (max-width: 1600px) {
+  .header {
+    grid-template-columns: repeat(1, 1fr); /* 첫 번째 줄 3칸 설정 */
+  }
+  .header-left {
+    display: none;
+  }
+
+  .header-center {
+    flex: 1.5;
+  }
+
+  .header-right {
+    display: none;
+    overflow: hidden;
+  }
+
+  .selected-date {
+    font-size: 1.3rem;
+    overflow: hidden;
+  }
+
+  .weekday {
+    font-size: 1.1rem;
+    overflow: hidden;
+  }
+
+  .quick-button {
+    padding: 6px 12px;
+    font-size: 1rem;
+    overflow: hidden;
+  }
+
+  .ota-status-item {
+    /* display: none; */
+    overflow: hidden;
+    font-size: 14px;
+  }
+}

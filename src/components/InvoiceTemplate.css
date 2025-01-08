@@ -1,0 +1,65 @@
+/* src/components/InvoiceTemplate.css */
+
+.invoice-template {
+  font-family: 'Arial', sans-serif;
+  padding: 20px;
+  border: 1px solid #ccc;
+}
+
+.invoice-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.invoice-header h1 {
+  margin-bottom: 50px;
+  font-size: 2rem;
+}
+
+.invoice-header h3 {
+  margin: 5px 0 0 0;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.invoice-details p {
+  margin: 5px 0;
+  font-size: 1rem;
+}
+
+.invoice-details strong {
+  width: 120px;
+  display: inline-block;
+}
+
+.invoice-nightly-rates table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+/* invoice-nightly-rates */
+.invoice-nightly-rates th,
+.invoice-nightly-rates td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.invoice-nightly-rates th {
+  background-color: #f2f2f2;
+}
+
+.invoice-single-rate h4 {
+  margin-bottom: 10px;
+}
+
+.invoice-single-rate p {
+  font-size: 1rem;
+}
+
+.invoice-footer {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 1rem;
+  color: #777;
+}

@@ -1,0 +1,33 @@
+/* src/components/ScrapeNowButton.css */
+
+/* 기존 버튼과 유사한 스타일 적용 */
+.scrape-now-button {
+  padding: 12px;
+  width: 100%;
+  color: rgb(57, 77, 209);
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scrape-now-button:hover:not(:disabled) {
+  background-color: #c7c6c67d;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scrape-now-button:disabled {
+  background-color: transparent;
+  cursor: not-allowed;
+}
+
+.scrape-now-button .onsite-icon {
+  font-size: 16px;
+}

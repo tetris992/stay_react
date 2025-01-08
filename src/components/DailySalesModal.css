@@ -1,0 +1,70 @@
+/* src/components/DailySalesModal.css */
+
+.sales-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sales-modal {
+  position: relative;
+  background: #fff;
+  padding: 20px;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: rgb(135, 133, 133);
+}
+
+.modal-close-button:hover {
+  color: rgb(165, 92, 92);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-action-button {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
+/* 인쇄 전용 스타일 */
+@media print {
+  .sales-modal-overlay,
+  .sales-modal {
+    display: none !important;
+  }
+
+  #daily-sales-content {
+    display: block;
+  }
+}

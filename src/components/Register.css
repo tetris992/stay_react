@@ -1,0 +1,72 @@
+/* src/components/Register.css */
+
+.register-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* 전체 화면 높이 사용 */
+  width: 500px;
+  background: #f5f5f5;
+}
+
+.register-form {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px; /* 폼의 최대 너비 설정 */
+  box-sizing: border-box;
+  position: relative;
+}
+
+.register-form h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.error {
+  color: red;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.register-form input {
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.register-form button {
+  width: 100%;
+  padding: 0.75rem;
+  background: #2ecc71;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.register-form button:hover {
+  background: #27ae60;
+}
+
+.register-footer {
+  margin-top: 1rem;
+  text-align: center;
+  color: rgb(241, 33, 33);
+}
+
+.login-link {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}

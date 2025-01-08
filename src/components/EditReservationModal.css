@@ -1,0 +1,80 @@
+/* src/components/EditReservationModal.css */
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+  }
+  
+  .modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    background: var(--color-background-light);
+    padding: 20px 30px;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+  
+  .edit-reservation-form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .edit-reservation-form label {
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+  
+  .edit-reservation-form input,
+  .edit-reservation-form select,
+  .edit-reservation-form textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .save-button {
+    background-color: var(--color-primary-soft-green);
+    color: var(--color-text-white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .save-button:hover {
+    background-color: #1e8449;
+  }
+  
+  .cancel-button {
+    background-color: var(--color-accent-coral);
+    color: var(--color-text-white);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .cancel-button:hover {
+    background-color: #c0392b;
+  }
+  

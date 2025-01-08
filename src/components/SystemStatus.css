@@ -1,0 +1,41 @@
+/* src/components/SystemStatus.css */
+
+.system-status {
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    margin-top: 1rem;
+  }
+  
+  .debugger-status h5,
+  .ota-status h5 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .ota-status-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .status-lamp {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 8px;
+  }
+  
+  .status-lamp.green {
+    background-color: green;
+  }
+  
+  .status-lamp.gray {
+    background-color: gray;
+  }
+  
+  .status-lamp.red {
+    background-color: red;
+  }
+  

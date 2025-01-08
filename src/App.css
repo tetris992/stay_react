@@ -1,0 +1,104 @@
+/* 배경 이미지 추가
+* {
+  box-sizing: border-box;
+} */
+
+/* src/App.css */
+
+body,
+.app-layout {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  background-size: cover;
+  overflow: hidden;
+}
+
+body::before,
+.app-layout::before {
+  content: '';
+  position: fixed;
+  background-color: rgba(139, 167, 188, 0.419);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  filter: blur(1px);
+  z-index: -1;
+}
+
+.logged-out {
+  background-color: transparent;
+  color: #ffffff;
+}
+
+.logged-out::before {
+  content: '';
+  position: fixed;
+  background: url('./assets/b87.jpg') no-repeat center center fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  filter: blur(1px) brightness(0.5);
+  z-index: -1;
+}
+
+.main-content {
+  margin-top: 140px;
+  margin-left: 280px;
+  padding: 1px;
+  overflow-y: auto;
+  height: calc(100vh - 140px);
+  background-color: transparent;
+  min-width: 320px;
+  flex: 1;
+}
+
+.App {
+  text-align: center;
+  background-color: rgb(219, 221, 223);
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body {
+  scrollbar-width: thin;
+  scrollbar-color: #888 transparent;
+}

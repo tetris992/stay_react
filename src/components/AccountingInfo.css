@@ -1,0 +1,22 @@
+.accounting-info {
+  width: 240px;
+  height: 300px;
+  margin-top: 20px;
+  font-size: 1rem;
+  border: none;
+  border-bottom: 1px solid rgb(212, 17, 17);
+  padding: 10px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.accounting-title {
+  font-size: 16px;
+}
+
+.accounting-detail {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}

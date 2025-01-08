@@ -1,0 +1,607 @@
+/* src/components/RoomGrid.css */
+
+/* CSS 변수 정의 */
+:root {
+  --color-primary-deep-blue: #677ed9;
+  --color-primary-soft-green: #27ae60;
+  --color-primary-elegant-gray: #95a5a6;
+  --color-accent-gold: #f1c40f;
+  --color-accent-coral: #939596;
+  --color-background-light: #f3f6f8;
+  --color-text-dark: #0a0a0a;
+  --color-text-white: #ffffff;
+  --color-border-default: #3c3c3c85;
+  --color-border-hover-green: #1e8449;
+  --color-border-hover-blue: #1a5276;
+  --color-border-hover-coral: #c0392b;
+  --color-bright-yellow: #ffd700;
+
+  --room-card-background-color: var(--color-background-light);
+  --room-card-text-color: var(--color-text-dark);
+}
+
+/* 전체 컨테이너를 flex로, 왼쪽은 edit-panel-left(30%), 오른쪽은 grid-wrapper(나머지) */
+body,
+html {
+  margin: 0;
+  padding: 0;
+}
+
+.edit-panel-left {
+  width: 30%;
+  background-color: transparent;
+  border-right: 1px solid rgb(186, 187, 188);
+  box-sizing: border-box;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.edit-panel-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.edit-panel-left label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: var(--color-text-dark);
+}
+
+.edit-panel-left input,
+.edit-panel-left select {
+  margin-top: 5px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: lightgrey;
+}
+
+.edit-panel-left .panel-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.edit-panel-left .panel-actions button {
+  font-size: 0.9rem;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* Grid wrapper */
+.grid-wrapper {
+  width: 100%;
+  padding: 10px 20px;
+  box-sizing: border-box;
+  background-color: transparent;
+  position: relative;
+}
+
+/* Grid container */
+.grid-container {
+  background-color: transparent;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.grid-container.halo-effect {
+  animation: haloAnimation 10s ease-out;
+}
+
+@keyframes haloAnimation {
+  0% {
+    box-shadow: 0 0 10px rgba(234, 199, 86, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 193, 7, 0);
+  }
+}
+
+/* evening-mode 스타일링 추가 */
+.grid-container.evening-mode {
+  --room-card-background-color: #000000;
+  --room-card-text-color: var(--color-text-white);
+}
+
+/* Room card */
+.room-card {
+  padding: 15px;
+  border: 3px solid var(--color-border-default);
+  border-radius: 12px;
+  margin: 1px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--room-card-background-color);
+  color: var(--room-card-text-color);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 5.4s ease, box-shadow 0.4s ease, opacity 0.4s ease;
+  min-height: 330px;
+}
+
+.room-card h3 {
+  font-size: 1.3rem;
+  margin-top: 2px;
+  margin-bottom: 8px;
+  font-family: 'Poppins', sans-serif;
+  color: var(--room-card-text-color);
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.room-card p {
+  margin: 2px 0;
+  font-size: 0.95rem;
+  color: var(--room-card-text-color);
+  font-weight: 500;
+}
+
+/* '현장예약' 텍스트 색상 */
+.site-info.onsite-reservation {
+  color: black;
+}
+
+.grid-container.evening-mode .site-info.onsite-reservation {
+  color: var(--color-bright-yellow);
+}
+
+.grid-container.evening-mode .room-card,
+.grid-container.evening-mode .room-card h3,
+.grid-container.evening-mode .room-card p,
+.grid-container.evening-mode .room-card p.site-info {
+  color: var(--color-text-white) !important;
+  font-weight: bold;
+}
+
+.room-card.border-primary-soft-green {
+  border: 3px solid var(--color-primary-soft-green);
+}
+.room-card.border-primary-deep-blue {
+  border: 3px solid var(--color-primary-deep-blue);
+}
+.room-card.border-accent-coral {
+  border: 3px solid var(--color-accent-coral);
+}
+
+.flip-container.auto-flip .room-card-inner {
+  animation: autoFlip 2s ease-in-out;
+}
+
+@keyframes autoFlip {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(-30deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+/* Hover 효과 */
+.room-card:hover {
+  transform: rotateX(1deg) translateX(-1px);
+  z-index: 10;
+}
+
+/* Hover 시 테두리 변경 */
+.room-card.border-primary-soft-green:hover {
+  border: 1px solid var(--color-border-hover-green);
+}
+.room-card.border-primary-deep-blue:hover {
+  border: 1px solid var(--color-border-hover-blue);
+}
+.room-card.border-accent-coral:hover {
+  border: 1px solid var(--color-border-hover-coral);
+}
+
+/* Hover 시 배경 효과 */
+.room-card::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: calc(100% + 1px);
+  height: calc(100% + 1px);
+  background: radial-gradient(
+    circle,
+    transparent,
+    rgba(131, 153, 184, 0.596) 100%
+  );
+  transition: opacity 0.4s ease, box-shadow 0.4s ease;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 5%;
+  cursor: pointer;
+  z-index: -1;
+}
+
+.room-card:hover::before {
+  opacity: 1;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.8);
+}
+
+/* Fade-out/Fade-in 효과는 기존 코드 그대로 유지 */
+
+/* 버튼 그룹 */
+.button-group {
+  display: inline-flex;
+  gap: 5px;
+  margin-left: 10px;
+  align-items: center;
+}
+
+/* 액션 버튼 스타일 */
+.action-button {
+  font-size: 0.8rem;
+  padding: 3px 6px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* 삭제 버튼 */
+.delete-button {
+  background-color: var(--color-accent-coral);
+  color: var(--color-text-white);
+}
+.delete-button:hover {
+  background-color: #c0392b;
+  transform: scale(1.05);
+}
+
+/* 확정 버튼 */
+.confirm-button {
+  background-color: var(--color-primary-deep-blue);
+  color: var(--color-text-white);
+}
+.confirm-button:hover {
+  background-color: var(--color-border-hover-blue);
+  transform: scale(1.05);
+}
+
+/* 수정 버튼 */
+.edit-button {
+  background-color: var(--color-primary-soft-green);
+  color: var(--color-text-white);
+}
+.edit-button:hover {
+  background-color: var(--color-border-hover-green);
+  transform: scale(1.05);
+}
+
+/* 작은 버튼 */
+.small-button {
+  opacity: 0.5;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+}
+.small-button:hover {
+  opacity: 1;
+}
+
+/* 플립 컨테이너 */
+.flip-container {
+  perspective: 1000px;
+  height: 100%;
+}
+.room-card-inner {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  height: 100%;
+}
+.flipped .room-card-inner {
+  transform: rotateY(180deg);
+}
+
+.room-card-front,
+.room-card-back {
+  position: absolute;
+  width: 100%;
+  backface-visibility: hidden;
+  height: 100%;
+  border-radius: 12px;
+}
+
+.room-card-back {
+  transform: rotateY(180deg);
+  background-color: var(--room-card-background-color);
+  color: var(--room-card-text-color);
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+/* 확정 라벨 */
+.confirmed-label {
+  background-color: var(--color-primary-soft-green);
+  color: var(--color-text-white);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+/* Highlighted overlay */
+.highlighted-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 2px solid var(--color-accent-gold);
+  box-shadow: 0 0 10px var(--color-accent-gold);
+  pointer-events: none;
+  z-index: 5;
+  animation: overlayPulse 2s infinite;
+}
+
+@keyframes overlayPulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* site-info-wrapper */
+.site-info-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #666;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.site-info {
+  font-weight: bold;
+  color: var(--room-card-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-icon-button-back {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #666e76;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+.invoice-icon-button-back:hover {
+  color: var(--color-accent-gold);
+  transform: scale(1.2);
+}
+
+.room-card-front {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.card-content {
+  flex: 1;
+}
+
+.payment-method {
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.payment-icon {
+  vertical-align: middle;
+}
+
+.room-card {
+  transition: background-color 0.3s ease, box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+.room-card.highlighted {
+  background-color: rgba(70, 103, 148, 0.596);
+  border-color: var(--color-accent-gold);
+  box-shadow: 0 0 10px var(--color-accent-gold);
+  animation: highlightPulse 2s;
+}
+@keyframes highlightPulse {
+  0% {
+    background-color: rgba(70, 103, 148, 0.596);
+  }
+  50% {
+    background-color: rgba(255, 215, 0, 0.5);
+  }
+  100% {
+    background-color: rgba(70, 103, 148, 0.596);
+  }
+}
+
+/* 편집 모드 시 다른 카드 비활성화 */
+.grid-container.editing-active .room-card:not(.edit-mode) {
+  opacity: 0.2;
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+/* 수정모드일 때 카드 30도 고정 */
+.room-card.edit-mode .room-card-inner {
+  transform: rotateY(-30deg) !important;
+  animation: highlightPulse 12s;
+}
+
+/* 현장예약 텍스트 색상 변경 */
+.onsite-reservation {
+  color: rgba(136, 169, 186, 0.956);
+  font-weight: 800;
+}
+.edit-panel-left {
+  width: 25%;
+  max-width: 400px;
+  min-width: 300px;
+  height: 750px;
+  background-color: transparent;
+  border: transparent;
+  box-sizing: border-box;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  border-radius: 20px;
+  transform: translateX(-120%); /* 기본적으로 화면 밖으로 */
+  transition: transform 0.3s ease-in-out; /* 슬라이드 애니메이션 */
+  background: rgb(199, 199, 198);
+  z-index: 999;
+}
+
+.edit-panel-left.open {
+  transform: translateX(0); /* open 클래스가 추가되면 화면 안으로 슬라이드 */
+}
+
+/* 패널 액션 컨테이너에 Flexbox 적용하여 버튼을 오른쪽으로 정렬 */
+.edit-panel-left .panel-actions {
+  display: flex;
+  justify-content: space-around; /* 오른쪽 정렬 */
+  align-items: center;
+  margin-top: 10px; /* 위쪽 여백 추가 */
+}
+
+/* 모든 액션 버튼에 공통 스타일 적용 */
+.edit-panel-left .panel-actions button {
+  font-size: 1em; /* 기본 폰트 크기 */
+  padding: 10px 10px; /* 패딩 추가 */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  margin-left: 10px; /* 버튼 간 간격 */
+  flex: 1; /* 버튼을 동일한 크기로 만듦 */
+  max-width: 150px; /* 최대 너비 설정 (필요 시 조절) */
+}
+
+/* 저장 버튼 스타일 */
+.edit-panel-left .panel-actions .save-button {
+  background-color: var(--color-primary-soft-green);
+  color: var(--color-text-white);
+}
+
+.edit-panel-left .panel-actions .save-button:hover {
+  background-color: #239b56;
+  transform: scale(1.05); /* 약간 확대 효과 */
+}
+
+/* 취소 버튼 스타일 */
+.edit-panel-left .panel-actions .cancel-button {
+  background-color: var(--color-accent-coral);
+  color: var(--color-text-white);
+}
+
+.edit-panel-left .panel-actions .cancel-button:hover {
+  background-color: #a05252;
+  transform: scale(1.05);
+}
+
+/* 버튼 비활성화 상태 스타일 */
+.edit-panel-left .panel-actions button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 메모 영역 스타일 추가 */
+
+/* 메모 헤더 */
+.memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #919191;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  box-sizing: border-box;
+}
+
+.memo-edit-button,
+.memo-edit-actions button {
+  background: transparent;
+  color: #b4b3b3;
+  border: none;
+  padding: 5px 10px;
+  font-size: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.memo-edit-button:hover,
+.memo-edit-actions button:hover {
+  background: transparent;
+  color: rgb(248, 3, 3);
+  scale: 1.2;
+}
+
+/* 메모 본문 영역 */
+.memo-body {
+  background-color: transparent;
+  color: #000;
+  padding: 5px;
+  box-sizing: border-box;
+  height: 85%; /* 고정된 높이 (필요에 따라 조절) */
+  overflow: hidden;
+  margin-top: 10px;
+  border-radius: 5px;
+}
+
+.memo-text-display {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+/* 메모 textarea */
+.memo-textarea {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: #000;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 4px;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  padding: 5px;
+}
