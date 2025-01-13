@@ -11,7 +11,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
     customerName: '',
-    phoneNumber: '',         // << 연락처(전화번호) 필드 추가
+    phoneNumber: '', // << 연락처(전화번호) 필드 추가
     checkInDate: '',
     checkInTime: '',
     checkOutDate: '',
@@ -128,7 +128,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     const selectedDate = e.target.value;
     const formattedCheckInTime = '16:00'; // 오후 4시
 
-    const checkInDateObj = new Date(`${selectedDate}T${formattedCheckInTime}:00`);
+    const checkInDateObj = new Date(
+      `${selectedDate}T${formattedCheckInTime}:00`
+    );
     const checkOutDateObj = addDays(checkInDateObj, 1);
     checkOutDateObj.setHours(11, 0, 0, 0); // 오전 11시
 
@@ -159,7 +161,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
     );
 
-    const selectedRoom = roomTypes.find((room) => room.type === formData.roomInfo);
+    const selectedRoom = roomTypes.find(
+      (room) => room.type === formData.roomInfo
+    );
     const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
     const totalPrice = nightlyPrice * nightsStayed;
 
@@ -196,14 +200,13 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
       return;
     }
-
-    // ★ (8) 최종 데이터 구성
+    // 최종 데이터 구성
     const finalData = {
       ...formData,
-      price: numericPrice, // 숫자로 변환
-      checkIn: format(checkInDateTime, 'yyyy-MM-dd HH:mm'),
-      checkOut: format(checkOutDateTime, 'yyyy-MM-dd HH:mm'),
-      // siteName: '현장예약' (필요 시)
+      price: numericPrice, // 숫자로 저장
+      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm"),
+      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm"),
+      // siteName: '현장예약',
     };
 
     // 수정 모드 vs 생성 모드
