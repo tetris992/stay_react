@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://tetris992.github.io/stay_front",
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
@@ -19,8 +20,9 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.1.1",
     "react-icons": "^5.3.0",
+    "react-modal": "^3.16.3",
     "react-router-dom": "^6.27.0",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^3.0.1",
     "react-to-print": "^3.0.2",
     "react-toastify": "^10.0.6",
     "web-vitals": "^2.1.4"
