@@ -49,8 +49,9 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
    */
   const scrapeOneExtensionOTA = (otaName) => {
     return new Promise((resolve, reject) => {
-      const EXTENSION_ID = 'ohekbjnbdpnkbahggohidddlgdbbggph'; // 실제 크롬 확장 ID
-      const action = ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
+      const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl'; // 실제 크롬 확장 ID
+      const action =
+        ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
 
       // 메시지 전송
       chrome.runtime.sendMessage(
@@ -153,7 +154,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
       ) : cooldown ? (
         <>
           <FaClipboardCheck style={{ color: 'green' }} />
-          스크래핑 처리중...
+          예약 가져오는중...
         </>
       ) : (
         <>

@@ -95,6 +95,7 @@ const App = () => {
   const remainingRooms = totalRooms - roomsSold;
   const roomTypes = hotelSettings?.roomTypes || [];
   const [dailyBreakdown, setDailyBreakdown] = useState([]);
+  const [newlyCreatedId, setNewlyCreatedId] = useState(null);
 
   // **수정된 상태: 검색된 예약 ID 저장**
   const [highlightedReservationIds, setHighlightedReservationIds] = useState(
@@ -177,7 +178,7 @@ const App = () => {
     try {
       // (1) Chrome Extension에 토큰 전달 (기존)
       if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-        const EXTENSION_ID = 'ohekbjnbdpnkbahggohidddlgdbbggph'; // 실제 확장 ID
+        const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl'; // 실제 확장 ID
 
         // 1-1) 토큰 전달
         chrome.runtime.sendMessage(
@@ -590,6 +591,37 @@ const App = () => {
     });
   }, [filterReservationsByDate, allReservations]);
 
+  // ※ 키보드 이벤트 등록 (useEffect)
+  useEffect(() => {
+    let lastKeyTime = 0; // 마지막으로 키를 처리한 시점 (timestamp)
+
+    function handleKeyDown(e) {
+      // ArrowLeft, ArrowRight 키만 처리
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+
+      // input, textarea 등의 포커스 시 무시 (선택사항)
+      const ignoreTags = ['INPUT', 'TEXTAREA', 'SELECT'];
+      if (ignoreTags.includes(e.target.tagName)) return;
+
+      // 연타 방지: 최소 300ms 간격
+      const now = Date.now();
+      if (now - lastKeyTime < 300) {
+        // 300ms 안에 다시 눌렸다면 무시
+        return;
+      }
+      // 처리: 여기서 날짜 이동 수행
+      if (e.key === 'ArrowLeft') handlePrevDay();
+      else handleNextDay();
+
+      lastKeyTime = now;
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handlePrevDay, handleNextDay]);
+
   // App.js 내 loadHotelSettings 함수 수정
   const loadHotelSettings = useCallback(async (inputHotelId) => {
     try {
@@ -728,7 +760,7 @@ const App = () => {
   const handleFormSave = useCallback(
     async (reservationId, data) => {
       if (reservationId) {
-        // 수정 모드
+        // (수정 모드)
         try {
           await handleEdit(reservationId, data, hotelId);
           console.log('예약이 성공적으로 수정되었습니다.');
@@ -736,17 +768,27 @@ const App = () => {
           console.error('예약 수정 실패:', error);
         }
       } else {
-        // 생성 모드
+        // (생성 모드)
         try {
           const reservationData = {
             siteName: '현장예약',
             reservations: [data],
             hotelId,
           };
-          await saveOnSiteReservation(reservationData);
+          console.log('handleFormSave:', reservationId, data);
+          const newReservation = await saveOnSiteReservation(reservationData);
+          console.log('Guest Form Saveddddddddddddddddd:', newReservation);
+
+          /* 수정부분 시작: 새 예약의 _id를 newlyCreatedId에 세팅 */
+          if (newReservation && newReservation._id) {
+            setNewlyCreatedId(newReservation._id);
+          }
+          /* 수정부분 끝 */
+
+          // 나머지 로직(모달닫기, 재로딩 등)
           setShowGuestForm(false);
           await loadReservations();
-          console.log('Guest Form Saved:', data);
+          console.log('예약 목록 다시 로드됨');
         } catch (error) {
           console.error('Error saving 현장예약:', error);
         }
@@ -1278,6 +1320,7 @@ const App = () => {
                               highlightedReservationIds
                             }
                             headerHeight={140}
+                            newlyCreatedId={newlyCreatedId}
                           />
                         </div>
                         <div className="right-pane">

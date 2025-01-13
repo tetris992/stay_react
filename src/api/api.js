@@ -4,7 +4,7 @@ import axios from 'axios';
 import ApiError from '../utils/ApiError.js';
 
 // 환경 변수에서 백엔드 서버 URL 가져오기
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003';
+const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 // Axios 인스턴스 생성
 const api = axios.create({

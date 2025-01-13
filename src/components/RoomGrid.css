@@ -425,12 +425,14 @@ html {
   transition: background-color 0.3s ease, box-shadow 0.3s ease,
     border-color 0.3s ease;
 }
+
 .room-card.highlighted {
   background-color: rgba(70, 103, 148, 0.596);
   border-color: var(--color-accent-gold);
   box-shadow: 0 0 10px var(--color-accent-gold);
-  animation: highlightPulse 2s;
+  animation: highlightPulse 2s infinite;
 }
+
 @keyframes highlightPulse {
   0% {
     background-color: rgba(70, 103, 148, 0.596);
@@ -604,4 +606,9 @@ html {
   outline: none;
   box-sizing: border-box;
   padding: 5px;
+}
+
+
+.room-card.onsite-created { /* 추가: 현장예약 생성 시 highlightPulse 적용 */
+  animation: highlightPulse 10s; /* 추가: 10초간 highlightPulse 애니메이션 */
 }

@@ -35,6 +35,7 @@ function RoomGrid({
   isSearching,
   memos,
   setMemos,
+  newlyCreatedId,
 }) {
   const [isEvening, setIsEvening] = useState(false);
   const [flippedIndexes, setFlippedIndexes] = useState(new Set());
@@ -50,6 +51,20 @@ function RoomGrid({
 
   // 인라인 수정 모드 제거 -> editModes 관련 코드 삭제
   const [editedValues, setEditedValues] = useState({});
+  /* 수정부분 시작: newlyCreatedId로 카드 강조 */
+  useEffect(() => {
+    if (!newlyCreatedId) return; // 새로 생성된 예약ID가 없으면 중단
+    const card = document.querySelector(
+      `.room-card[data-id="${newlyCreatedId}"]`
+    );
+    if (card) {
+      card.classList.add('onsite-created');
+      setTimeout(() => {
+        card.classList.remove('onsite-created');
+      }, 10000);
+    }
+  }, [reservations, newlyCreatedId]);
+  /* 수정부분 끝 */
 
   useEffect(() => {
     if (reservations.length > 0 && highlightFirstCard) {
@@ -716,21 +731,58 @@ function RoomGrid({
 
             <label>
               결제방법/상태:
-              <select
-                value={editedValues[selectedReservation._id].paymentMethod}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'paymentMethod',
-                    e.target.value
-                  )
-                }
-              >
-                <option value="Card">Card</option>
-                <option value="Cash">Cash</option>
-                <option value="Account Transfer">Account Transfer</option>
-                <option value="Pending">Pending</option>
-              </select>
+              {availableOTAs.includes(selectedReservation.siteName) ? (
+                // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
+                <input
+                  type="text"
+                  value={
+                    editedValues[selectedReservation._id].paymentMethod || 'OTA'
+                  }
+                  disabled // or readOnly
+                  style={{ backgroundColor: '#eee' }}
+                  onChange={() => {
+                    /* OTA는 수정 불가 → 막기 */
+                  }}
+                />
+              ) : selectedReservation.siteName === '현장예약' ? (
+                // 2) 현장예약 → 기존 <select> 유지
+                <select
+                  value={
+                    editedValues[selectedReservation._id].paymentMethod ||
+                    'Pending'
+                  }
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'paymentMethod',
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="Card">Card</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Account Transfer">Account Transfer</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              ) : (
+                // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
+                <select
+                  value={
+                    editedValues[selectedReservation._id].paymentMethod ||
+                    'Pending'
+                  }
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'paymentMethod',
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="Pending">Pending</option>
+                  {/* 필요하면 Card/Cash/Transfer 등 추가 */}
+                </select>
+              )}
             </label>
 
             <label>
@@ -1050,6 +1102,7 @@ RoomGrid.propTypes = {
   roomTypes: PropTypes.array.isRequired,
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,
+  newlyCreatedId: PropTypes.string,
 };
 
 // Border 색상 결정 함수
@@ -1059,6 +1112,7 @@ function getBorderColor(reservation) {
   try {
     checkInDate = reservation.parsedCheckInDate;
     checkOutDate = reservation.parsedCheckOutDate;
+    
 
     if (
       !checkInDate ||
