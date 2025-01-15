@@ -15,6 +15,7 @@ import { enqueueScrapeTasks } from '../api/api';
 
 // 확장 환경에서 사용할 액션 매핑
 const ACTION_MAP = {
+  Yanolja: 'TRIGGER_YANOLJA_SCRAPE',
   GoodMotel: 'TRIGGER_GOODMOTEL_SCRAPE',
   GoodHotel: 'TRIGGER_GOODHOTEL_SCRAPE',
   Agoda: 'TRIGGER_AGODA_SCRAPE',
@@ -24,8 +25,9 @@ const ACTION_MAP = {
   // 필요 OTAs 추가
 };
 
-// (가정) 확장으로 처리해야 할 OTA 목록
+// 확장으로 처리해야 할 OTA 목록
 const EXTENSION_OTAS = [
+  'Yanolja',
   'GoodMotel',
   'GoodHotel',
   'Agoda',
@@ -35,7 +37,7 @@ const EXTENSION_OTAS = [
   // ...
 ];
 
-// (가정) 서버쪽 Puppeteer로 처리해야 할 OTA 목록 (예: Yanolja, ...)
+// 서버쪽 Puppeteer로 처리해야 할 OTA 목록
 const SERVER_OTAS = ['Yanolja'];
 
 function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
