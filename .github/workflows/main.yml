@@ -3,14 +3,13 @@ name: Deploy React App to GitHub Pages
 on:
   push:
     branches:
-      - main # main 브랜치에 push될 때만 실행 (원하시는 브랜치로 조정)
+      - main  # main 브랜치에 push될 때만 동작
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out the repository
+      - name: Check out
         uses: actions/checkout@v3
 
       - name: Use Node.js 18
@@ -28,6 +27,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build # CRA 빌드 결과물 경로!
-          publish_branch: gh-pages # gh-pages 브랜치로 배포!
-
+          publish_dir: ./build
+          publish_branch: gh-pages  # 여기로 최종 산출물이 올라감
