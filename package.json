@@ -2,7 +2,7 @@
   "name": "staysync_frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://tetris992.github.io/stay_front",
+  "homepage": "https://tetris992.github.io/stay_react",
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
