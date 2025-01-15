@@ -3,7 +3,7 @@ name: Deploy React App to GitHub Pages
 on:
   push:
     branches:
-      - main # main 브랜치에 push될 때만 실행 (원하는 브랜치로 설정)
+      - main  # main 브랜치에 push될 때 실행
 
 jobs:
   build-and-deploy:
@@ -28,5 +28,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build # CRA 빌드 결과물 디렉토리
-          # publish_branch: gh-pages # gh-pages 브랜치로 배포
+          publish_dir: ./build  # CRA 빌드 결과물
+          publish_branch: gh-pages  # gh-pages 브랜치로 배포
+          # keep_history: false    # 배포할 때 기록 없이 덮어쓰려면
