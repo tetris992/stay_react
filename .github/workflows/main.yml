@@ -30,3 +30,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build # CRA 빌드 결과물 경로
           publish_branch: gh-pages # gh-pages 브랜치로 배포
+
