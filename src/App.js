@@ -1075,6 +1075,54 @@ const App = () => {
   const occupancyRate =
     totalRooms > 0 ? Math.round((roomsSold / totalRooms) * 100) : 0;
 
+    ///////////////////////////////////////////////
+// 1) 새 함수: 현장예약 버튼 전용
+///////////////////////////////////////////////
+const openOnSiteReservationForm = () => {
+  // 1) 현재 App의 selectedDate를 기준으로 checkIn/checkOut 시각 세팅
+  //    여기서는 예: 체크인=선택날짜+16:00, 체크아웃=다음날+11:00
+  const checkInObj = new Date(selectedDate);
+  checkInObj.setHours(16, 0, 0, 0); // 16:00
+  const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
+  // ↑ 19시간 후면 다음날 11:00 (16:00~다음날 11:00 = 19시간 차이)
+  //  또는 아래처럼 정확히 다음날로 계산:
+  // const checkOutObj = new Date(checkInObj);
+  // checkOutObj.setDate(checkOutObj.getDate() + 1);
+  // checkOutObj.setHours(11, 0, 0, 0);
+
+  // 2) 문자열로 변환
+  const checkInDate = format(checkInObj, 'yyyy-MM-dd');
+  const checkInTime = format(checkInObj, 'HH:mm');
+  const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
+  const checkOutTime = format(checkOutObj, 'HH:mm');
+
+  // 3) 예시 고객명: "현장숙박1234"
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const customerName = `현장숙박${rand}`;
+
+  // 4) 게스트 폼에 사용할 state 세팅
+  setGuestFormData({
+    reservationNo: `${Date.now()}`,
+    customerName,
+    phoneNumber: '',
+    checkInDate,
+    checkInTime,
+    checkOutDate,
+    checkOutTime,
+    reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+    roomInfo: roomTypes[0]?.type || 'Standard', // 기본값
+    price: roomTypes[0]?.price?.toString() || '0', // 기본값
+    paymentMethod: 'Pending',
+    specialRequests: '',
+    // ISO full string
+    checkIn: `${checkInDate}T${checkInTime}:00`,
+    checkOut: `${checkOutDate}T${checkOutTime}:00`,
+  });
+
+  // 5) 모달 열기
+  setShowGuestForm(true);
+};
+
   // 간편 입력 버튼 클릭 시 호출되는 함수
   const onQuickCreate = (type) => {
     const now = new Date();
@@ -1293,6 +1341,7 @@ const App = () => {
                       onShowCanceledModal={() => setShowCanceledModal(true)}
                       memos={memos} // 추가
                       setMemos={setMemos} // 추가
+                      onOnsiteReservationClick={openOnSiteReservationForm}
                     />
 
                     {/* 메인 콘텐츠 영역 */}

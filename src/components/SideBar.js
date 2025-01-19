@@ -54,6 +54,7 @@ function SideBar({
   onShowCanceledModal,
   memos,
   setMemos,
+  onOnsiteReservationClick,
 }) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isRoomTypesOpen, setIsRoomTypesOpen] = useState(false);
@@ -147,7 +148,7 @@ function SideBar({
         {/* 즉시 스크랩 버튼 추가 */}
         <ScrapeNowButton hotelId={hotelId} activeOTAs={activeOTAs} />
         {/* 현장예약 */}
-        <button className="onsite-button" onClick={onFormToggle}>
+        <button className="onsite-button" onClick={onOnsiteReservationClick}>
           <FaClipboardCheck className="onsite-icon" /> 현장예약
         </button>
         <button className="cancelSearch-button" onClick={onShowCanceledModal}>
