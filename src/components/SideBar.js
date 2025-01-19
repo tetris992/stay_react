@@ -33,7 +33,6 @@ function SideBar({
   occupancyRate,
   selectedDate,
   onDateChange,
-  onFormToggle,
   handleSaveSettings,
   totalRooms,
   remainingRooms,

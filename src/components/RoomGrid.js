@@ -51,20 +51,22 @@ function RoomGrid({
 
   // 인라인 수정 모드 제거 -> editModes 관련 코드 삭제
   const [editedValues, setEditedValues] = useState({});
-  /* 수정부분 시작: newlyCreatedId로 카드 강조 */
   useEffect(() => {
-    if (!newlyCreatedId) return; // 새로 생성된 예약ID가 없으면 중단
+    if (!newlyCreatedId) return;
     const card = document.querySelector(
       `.room-card[data-id="${newlyCreatedId}"]`
     );
     if (card) {
+      // (1) 카드 하이라이트
       card.classList.add('onsite-created');
       setTimeout(() => {
         card.classList.remove('onsite-created');
       }, 10000);
+
+      // (2) 카드가 보이도록 스크롤 (smooth)
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [reservations, newlyCreatedId]);
-  /* 수정부분 끝 */
 
   useEffect(() => {
     if (reservations.length > 0 && highlightFirstCard) {
@@ -417,11 +419,24 @@ function RoomGrid({
     }
 
     let isAutoConfirmed = false;
+    const isDaesil =
+      reservation.customerName && reservation.customerName.includes('대실');
+
     if (!isCancelled && !isConfirmed) {
       if (isOTA && after7PMOnCheckInDate) {
         isAutoConfirmed = true;
       } else if (stayDuration <= 1 && checkInPassed) {
         isAutoConfirmed = true;
+      } else if (isDaesil) {
+        // 대실이면: checkIn + 3시간 지난 경우 => auto confirm
+        const checkInPlus3h = new Date(
+          checkInDate.getTime() + 3 * 60 * 60 * 1000
+        );
+        if (now >= checkInPlus3h) {
+          isAutoConfirmed = true;
+
+          onConfirm(reservation._id, hotelId); // 자동 확정이 되었을때 바로 서버로 전송
+        }
       }
     }
 
@@ -1112,7 +1127,6 @@ function getBorderColor(reservation) {
   try {
     checkInDate = reservation.parsedCheckInDate;
     checkOutDate = reservation.parsedCheckOutDate;
-    
 
     if (
       !checkInDate ||

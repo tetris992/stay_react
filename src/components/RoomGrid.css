@@ -608,7 +608,16 @@ html {
   padding: 5px;
 }
 
-
-.room-card.onsite-created { /* 추가: 현장예약 생성 시 highlightPulse 적용 */
+.room-card.onsite-created {
+  /* 추가: 현장예약 생성 시 highlightPulse 적용 */
   animation: highlightPulse 10s; /* 추가: 10초간 highlightPulse 애니메이션 */
+}
+
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 10px #ffe600;
+  }
+  100% {
+    box-shadow: 0 0 0 #ffe600;
+  }
 }

@@ -89,8 +89,6 @@ const App = () => {
   const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
   const [email, setEmail] = useState('이메일 정보 없음');
 
-  const toggleGuestForm = () => setShowGuestForm(!showGuestForm);
-
   const totalRooms = hotelSettings?.totalRooms || 0;
   const remainingRooms = totalRooms - roomsSold;
   const roomTypes = hotelSettings?.roomTypes || [];
@@ -775,20 +773,36 @@ const App = () => {
             reservations: [data],
             hotelId,
           };
+
           console.log('handleFormSave:', reservationId, data);
           const newReservation = await saveOnSiteReservation(reservationData);
-          console.log('Guest Form Saveddddddddddddddddd:', newReservation);
+          console.log('Guest Form saved =>', newReservation);
 
-          /* 수정부분 시작: 새 예약의 _id를 newlyCreatedId에 세팅 */
+          // (1) 새 예약이 정상적으로 생성되었다면:
           if (newReservation && newReservation._id) {
+            // 1-A) 먼저 “체크인 날짜”로 이동
+            if (newReservation.checkIn) {
+              const parsedDate = parseDate(newReservation.checkIn);
+              // parseDate가 없다면, date-fns parseISO를 써도 됩니다:
+              // const parsedDate = parseISO(newReservation.checkIn);
+
+              // selectedDate 변경
+              setSelectedDate(parsedDate);
+
+              // 혹시 즉시 filterReservationsByDate를 호출하고 싶다면:
+              // filterReservationsByDate(allReservations, parsedDate);
+              // 다만 loadReservations() 후에 최신 데이터가 반영되므로
+              // 보통은 loadReservations()가 끝난 다음 렌더링 과정에서
+              // filterReservationsByDate가 자동 실행될 것입니다.
+            }
+
+            // 1-B) 하이라이트 위한 newlyCreatedId 세팅
             setNewlyCreatedId(newReservation._id);
           }
-          /* 수정부분 끝 */
 
-          // 나머지 로직(모달닫기, 재로딩 등)
+          // (2) 모달 닫고 예약 목록 재로드
           setShowGuestForm(false);
-          await loadReservations();
-          console.log('예약 목록 다시 로드됨');
+          await loadReservations(); // 새 예약 반영
         } catch (error) {
           console.error('Error saving 현장예약:', error);
         }
@@ -1075,78 +1089,78 @@ const App = () => {
   const occupancyRate =
     totalRooms > 0 ? Math.round((roomsSold / totalRooms) * 100) : 0;
 
-    ///////////////////////////////////////////////
-// 1) 새 함수: 현장예약 버튼 전용
-///////////////////////////////////////////////
-const openOnSiteReservationForm = () => {
-  // 1) 현재 App의 selectedDate를 기준으로 checkIn/checkOut 시각 세팅
-  //    여기서는 예: 체크인=선택날짜+16:00, 체크아웃=다음날+11:00
-  const checkInObj = new Date(selectedDate);
-  checkInObj.setHours(16, 0, 0, 0); // 16:00
-  const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
-  // ↑ 19시간 후면 다음날 11:00 (16:00~다음날 11:00 = 19시간 차이)
-  //  또는 아래처럼 정확히 다음날로 계산:
-  // const checkOutObj = new Date(checkInObj);
-  // checkOutObj.setDate(checkOutObj.getDate() + 1);
-  // checkOutObj.setHours(11, 0, 0, 0);
+  ///////////////////////////////////////////////
+  // 1) 새 함수: 현장예약 버튼 전용
+  ///////////////////////////////////////////////
+  const openOnSiteReservationForm = () => {
+    // 1) 현재 App의 selectedDate를 기준으로 checkIn/checkOut 시각 세팅
+    //    여기서는 예: 체크인=선택날짜+16:00, 체크아웃=다음날+11:00
+    const checkInObj = new Date(selectedDate);
+    checkInObj.setHours(16, 0, 0, 0); // 16:00
+    const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
+    // ↑ 19시간 후면 다음날 11:00 (16:00~다음날 11:00 = 19시간 차이)
+    //  또는 아래처럼 정확히 다음날로 계산:
+    // const checkOutObj = new Date(checkInObj);
+    // checkOutObj.setDate(checkOutObj.getDate() + 1);
+    // checkOutObj.setHours(11, 0, 0, 0);
 
-  // 2) 문자열로 변환
-  const checkInDate = format(checkInObj, 'yyyy-MM-dd');
-  const checkInTime = format(checkInObj, 'HH:mm');
-  const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
-  const checkOutTime = format(checkOutObj, 'HH:mm');
+    // 2) 문자열로 변환
+    const checkInDate = format(checkInObj, 'yyyy-MM-dd');
+    const checkInTime = format(checkInObj, 'HH:mm');
+    const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
+    const checkOutTime = format(checkOutObj, 'HH:mm');
 
-  // 3) 예시 고객명: "현장숙박1234"
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  const customerName = `현장숙박${rand}`;
+    // 3) 예시 고객명: "현장숙박1234"
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const customerName = `현장숙박${rand}`;
 
-  // 4) 게스트 폼에 사용할 state 세팅
-  setGuestFormData({
-    reservationNo: `${Date.now()}`,
-    customerName,
-    phoneNumber: '',
-    checkInDate,
-    checkInTime,
-    checkOutDate,
-    checkOutTime,
-    reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-    roomInfo: roomTypes[0]?.type || 'Standard', // 기본값
-    price: roomTypes[0]?.price?.toString() || '0', // 기본값
-    paymentMethod: 'Pending',
-    specialRequests: '',
-    // ISO full string
-    checkIn: `${checkInDate}T${checkInTime}:00`,
-    checkOut: `${checkOutDate}T${checkOutTime}:00`,
-  });
+    // 4) 게스트 폼에 사용할 state 세팅
+    setGuestFormData({
+      reservationNo: `${Date.now()}`,
+      customerName,
+      phoneNumber: '',
+      checkInDate,
+      checkInTime,
+      checkOutDate,
+      checkOutTime,
+      reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+      roomInfo: roomTypes[0]?.type || 'Standard', // 기본값
+      price: roomTypes[0]?.price?.toString() || '0', // 기본값
+      paymentMethod: 'Pending',
+      specialRequests: '',
+      // ISO full string
+      checkIn: `${checkInDate}T${checkInTime}:00`,
+      checkOut: `${checkOutDate}T${checkOutTime}:00`,
+    });
 
-  // 5) 모달 열기
-  setShowGuestForm(true);
-};
+    // 5) 모달 열기
+    setShowGuestForm(true);
+  };
 
-  // 간편 입력 버튼 클릭 시 호출되는 함수
+  // 간편 입력 버튼 (onQuickCreate) 함수
   const onQuickCreate = (type) => {
-    const now = new Date();
-    let checkInDate = format(now, 'yyyy-MM-dd');
-    let checkInTime = '16:00';
-    let checkOutDate;
-    let checkOutTime = '11:00';
+    let checkInDate, checkInTime, checkOutDate, checkOutTime;
     let customerName;
     const rand = Math.floor(1000 + Math.random() * 9000);
 
     if (type === '대실') {
+      // 대실 로직: "지금(this moment)부터 4시간 후"
+      const now = new Date(); // 현재 시각
+      checkInDate = format(now, 'yyyy-MM-dd');
       checkInTime = format(now, 'HH:mm');
+
       const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
       customerName = `현장대실${rand}`;
 
-      // 대실 가격 계산
+      // 대실 가격 계산 (예: 기본 요금 * 0.5)
       const basePrice = roomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
 
-      // 여기서 날짜와 시간을 합쳐 ISO 형식 문자열 생성
-      const checkIn = `${checkInDate}T${checkInTime}:00`;
-      const checkOut = `${checkOutDate}T${checkOutTime}:00`;
+      // ISO 문자열로
+      const checkInISO = `${checkInDate}T${checkInTime}:00`;
+      const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
 
       setGuestFormData({
         reservationNo: `${Date.now()}`,
@@ -1155,32 +1169,44 @@ const openOnSiteReservationForm = () => {
         checkInTime,
         checkOutDate,
         checkOutTime,
-        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'), // 생성 시점 기록
         roomInfo: roomTypes[0].type,
         price: price.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
-        checkIn,
-        checkOut,
+        checkIn: checkInISO,
+        checkOut: checkOutISO,
       });
     } else {
+      // 숙박 로직: “선택된 날짜의 오후 16시" 기준
+      const baseDate = new Date(selectedDate);
+      baseDate.setHours(16, 0, 0, 0); // 오후 4시로 세팅
+
+      checkInDate = format(baseDate, 'yyyy-MM-dd');
+      checkInTime = '16:00';
+      checkOutTime = '11:00';
+
+      // 며칠 숙박인지
       let nights = 1;
       if (type === '2박') nights = 2;
       else if (type === '3박') nights = 3;
       else if (type === '4박') nights = 4;
 
-      const checkInObj = new Date(`${checkInDate}T16:00:00`);
+      // 체크아웃 시점 계산
+      const checkInObj = new Date(baseDate);
       const checkOutObj = new Date(
         checkInObj.getTime() + nights * 24 * 60 * 60 * 1000
       );
       checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
+
       customerName = `현장숙박${rand}`;
 
+      // 숙박 가격 계산
       const basePrice = roomTypes[0].price * nights;
 
-      // ISO 형식 문자열 생성
-      const checkIn = `${checkInDate}T${checkInTime}:00`;
-      const checkOut = `${checkOutDate}T${checkOutTime}:00`;
+      // ISO 문자열
+      const checkInISO = `${checkInDate}T${checkInTime}:00`;
+      const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
 
       setGuestFormData({
         reservationNo: `${Date.now()}`,
@@ -1189,16 +1215,17 @@ const openOnSiteReservationForm = () => {
         checkInTime,
         checkOutDate,
         checkOutTime,
-        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'), // 생성 시점
         roomInfo: roomTypes[0].type,
         price: basePrice.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
-        checkIn,
-        checkOut,
+        checkIn: checkInISO,
+        checkOut: checkOutISO,
       });
     }
 
+    // 현장예약 폼 모달 열기
     setShowGuestForm(true);
   };
 
@@ -1315,7 +1342,7 @@ const openOnSiteReservationForm = () => {
                       occupancyRate={occupancyRate}
                       selectedDate={selectedDate}
                       onDateChange={handleDateChange}
-                      onFormToggle={toggleGuestForm}
+                      // onFormToggle={toggleGuestForm}
                       hotelId={hotelId}
                       hotelSettings={hotelSettings}
                       handleSaveSettings={handleSaveSettings}
@@ -1392,7 +1419,7 @@ const openOnSiteReservationForm = () => {
                           roomTypes={
                             hotelSettings?.roomTypes || defaultRoomTypes
                           }
-                          onClose={toggleGuestForm}
+                          onClose={() => setShowGuestForm(false)}
                           onSave={handleFormSave}
                         />
                       )}
