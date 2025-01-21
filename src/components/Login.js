@@ -93,7 +93,7 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-container">
-      <form onSubmit={handleSubmit} className="login-form">
+      <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
         <h2>HOTEL CHECKIN</h2>
         <Link to="/register" className="register-link">
           회원가입
@@ -103,6 +103,8 @@ const Login = ({ onLogin }) => {
 
         <input
           type="text"
+          name="username"
+          autoComplete="username"
           placeholder="호텔 ID"
           value={hotelId}
           onChange={(e) => setHotelId(e.target.value)}
@@ -114,6 +116,8 @@ const Login = ({ onLogin }) => {
         <div className="password-input-container">
           <input
             type={showPassword ? 'text' : 'password'}
+            name="current-password"
+            autoComplete="current-password"
             placeholder="비밀번호"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

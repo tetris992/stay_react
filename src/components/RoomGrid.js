@@ -463,15 +463,15 @@ function RoomGrid({
       }
     }
 
-    if (
-      !isCancelled &&
-      finalIsConfirmed &&
-      stayDuration <= 1 &&
-      checkInPassed
-    ) {
-      canDelete = false;
-      canEdit = false;
-    }
+    // if (
+    //   !isCancelled &&
+    //   finalIsConfirmed &&
+    //   stayDuration <= 1 &&
+    //   checkInPassed
+    // ) {
+    //   canDelete = false;
+    //   canEdit = false;
+    // }
 
     return (
       <span className="button-group">

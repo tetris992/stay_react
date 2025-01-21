@@ -778,31 +778,21 @@ const App = () => {
           const newReservation = await saveOnSiteReservation(reservationData);
           console.log('Guest Form saved =>', newReservation);
 
-          // (1) 새 예약이 정상적으로 생성되었다면:
-          if (newReservation && newReservation._id) {
-            // 1-A) 먼저 “체크인 날짜”로 이동
-            if (newReservation.checkIn) {
-              const parsedDate = parseDate(newReservation.checkIn);
-              // parseDate가 없다면, date-fns parseISO를 써도 됩니다:
-              // const parsedDate = parseISO(newReservation.checkIn);
-
-              // selectedDate 변경
-              setSelectedDate(parsedDate);
-
-              // 혹시 즉시 filterReservationsByDate를 호출하고 싶다면:
-              // filterReservationsByDate(allReservations, parsedDate);
-              // 다만 loadReservations() 후에 최신 데이터가 반영되므로
-              // 보통은 loadReservations()가 끝난 다음 렌더링 과정에서
-              // filterReservationsByDate가 자동 실행될 것입니다.
-            }
-
-            // 1-B) 하이라이트 위한 newlyCreatedId 세팅
-            setNewlyCreatedId(newReservation._id);
-          }
-
-          // (2) 모달 닫고 예약 목록 재로드
+          // (1) 모달 닫고 예약 목록 재로드
           setShowGuestForm(false);
           await loadReservations(); // 새 예약 반영
+
+          // (2) 새 예약이 정상적으로 생성되었다면:
+          if (newReservation && newReservation._id) {
+            // 2-A) 먼저 “체크인 날짜”로 이동
+            if (newReservation.checkIn) {
+              const parsedDate = parseDate(newReservation.checkIn);
+              setSelectedDate(parsedDate);
+            }
+
+            // 2-B) 하이라이트를 위한 newlyCreatedId 설정
+            setNewlyCreatedId(newReservation._id);
+          }
         } catch (error) {
           console.error('Error saving 현장예약:', error);
         }
