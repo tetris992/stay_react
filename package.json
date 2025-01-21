@@ -2,7 +2,7 @@
   "name": "staysync_frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://tetris992.github.io/stay_react",
+  "homepage": "https://staysync.me/",
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
@@ -19,7 +19,7 @@
     "react": "^18.3.1",
     "react-datepicker": "^7.5.0",
     "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",       
+    "react-scripts": "5.0.1",
     "react-i18next": "^15.1.1",
     "react-icons": "^5.3.0",
     "react-modal": "^3.16.3",
@@ -32,7 +32,9 @@
     "start": "react-scripts --openssl-legacy-provider start",
     "build": "react-scripts --openssl-legacy-provider build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "deploy": "gh-pages -d build",
+    "predeploy": "npm run build"
   },
   "eslintConfig": {
     "extends": [
