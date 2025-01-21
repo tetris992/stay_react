@@ -1,18 +1,23 @@
-name: Deploy React App to GitHub Pages
+name: Deploy React App to GitHub Pages (New)
 
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때만 동작
+      - main  # main 브랜치에 push될 때 실행
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Use Node.js 18
+      - name: Use Node 18
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -23,9 +28,16 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
-          publish_branch: gh-pages  # 여기로 최종 산출물이 올라감
+          path: ./build   # CRA에서 생성되는 build 폴더
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
