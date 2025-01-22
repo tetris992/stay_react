@@ -776,21 +776,39 @@ const App = () => {
 
           console.log('handleFormSave:', reservationId, data);
           const newReservation = await saveOnSiteReservation(reservationData);
+          // ★★★ [추가된 부분] ★★★
+          if (
+            newReservation &&
+            Array.isArray(newReservation.createdReservationIds) &&
+            newReservation.createdReservationIds.length > 0
+          ) {
+            // (1) createdReservationIds[0] 에 새 예약 ID가 들어있다
+            const newlyCreatedIdFromServer =
+              newReservation.createdReservationIds[0];
+            console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
+
+            // (2) "체크인 날짜"로 이동
+            if (data.checkIn) {
+              const parsedDate = parseDate(data.checkIn);
+              setSelectedDate(parsedDate);
+            }
+
+            // (3) RoomGrid 하이라이트
+            setNewlyCreatedId(newlyCreatedIdFromServer);
+          }
+
           console.log('Guest Form saved =>', newReservation);
 
-          // (1) 모달 닫고 예약 목록 재로드
+          // 모달 닫고 전체 예약 다시 로드
           setShowGuestForm(false);
-          await loadReservations(); // 새 예약 반영
+          await loadReservations();
 
-          // (2) 새 예약이 정상적으로 생성되었다면:
+          // (기존 로직) newReservation._id 참고
           if (newReservation && newReservation._id) {
-            // 2-A) 먼저 “체크인 날짜”로 이동
             if (newReservation.checkIn) {
               const parsedDate = parseDate(newReservation.checkIn);
               setSelectedDate(parsedDate);
             }
-
-            // 2-B) 하이라이트를 위한 newlyCreatedId 설정
             setNewlyCreatedId(newReservation._id);
           }
         } catch (error) {

@@ -609,15 +609,15 @@ html {
 }
 
 .room-card.onsite-created {
-  /* 추가: 현장예약 생성 시 highlightPulse 적용 */
-  animation: highlightPulse 10s; /* 추가: 10초간 highlightPulse 애니메이션 */
+  animation: highlightPulse 10s;
+  background-color: transparent;
 }
 
 @keyframes highlightPulse {
   0% {
-    box-shadow: 0 0 10px #ffe600;
+    box-shadow: 0 0 50px #8bf387;
   }
   100% {
-    box-shadow: 0 0 0 #ffe600;
+    box-shadow: 0 0 0 #c4f4c3;
   }
 }

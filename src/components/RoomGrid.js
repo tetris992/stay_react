@@ -57,13 +57,11 @@ function RoomGrid({
       `.room-card[data-id="${newlyCreatedId}"]`
     );
     if (card) {
-      // (1) 카드 하이라이트
       card.classList.add('onsite-created');
       setTimeout(() => {
         card.classList.remove('onsite-created');
       }, 10000);
 
-      // (2) 카드가 보이도록 스크롤 (smooth)
       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [reservations, newlyCreatedId]);
