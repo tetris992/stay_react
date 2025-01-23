@@ -3,7 +3,7 @@ name: Deploy React App to GitHub Pages (New)
 on:
   push:
     branches:
-      - main # main 브랜치에 push될 때 실행
+      - main
 
 permissions:
   contents: write
@@ -28,10 +28,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # (수정) Composite Action 사용
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1 # v4로 변경해야함. 곧..
+        uses: ./.github/actions/upload-pages-artifact
         with:
-          path: ./build # CRA에서 생성되는 build 폴더
+          path: ./build    # CRA 빌드 폴더
+          name: github-pages
+          retention-days: 1
 
   deploy:
     needs: build
