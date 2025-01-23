@@ -128,7 +128,7 @@ export const registerUser = async (userData) => {
     return response.data;
   } catch (error) {
     console.error('유저 등록 실패:', error);
-    throw error.response?.data || error;
+    throw error; 
   }
 };
 
