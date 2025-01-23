@@ -14,6 +14,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [address, setAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -90,8 +91,9 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           required
           aria-label="전화번호"
         />
-
-        <button type="submit">회원가입</button>
+        <button type="submit" disabled={isProcessing}>
+          {isProcessing ? '회원가입 중...' : '회원가입'}
+        </button>
       </form>
       <div className="register-footer">
         이미 계정이 있으신가요?{' '}
@@ -105,7 +107,8 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   );
 };
 
-Register.propTypes = { //배포에서는 삭제하는게 좋음.(개발단계에서 정확한 타입을 정의하기 위해 사용)
+Register.propTypes = {
+  //배포에서는 삭제하는게 좋음.(개발단계에서 정확한 타입을 정의하기 위해 사용)
   onRegisterSuccess: PropTypes.func.isRequired,
   onSwitchToLogin: PropTypes.func,
 };
