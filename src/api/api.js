@@ -128,7 +128,22 @@ export const registerUser = async (userData) => {
     return response.data;
   } catch (error) {
     console.error('유저 등록 실패:', error);
-    throw error; 
+
+    // 구체적인 오류 메시지 추출
+    let errorMessage = '회원가입 중 오류가 발생했습니다.';
+    let statusCode = 500;
+
+    if (error.response && error.response.data && error.response.data.message) {
+      // 서버에서 전달한 구체적인 메시지
+      errorMessage = error.response.data.message;
+      statusCode = error.response.status;
+    } else if (error.message) {
+      // 기타 네트워크 또는 클라이언트 오류
+      errorMessage = error.message;
+    }
+
+    // ApiError 인스턴스로 변환하여 throw
+    throw new ApiError(statusCode, errorMessage);
   }
 };
 

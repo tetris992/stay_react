@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
 import { Link } from 'react-router-dom'; // Link 컴포넌트 추가
+// import ApiError from '../utils/ApiError.js';
 
 const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [hotelId, setHotelId] = useState('');
@@ -29,21 +30,10 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       onRegisterSuccess();
     } catch (error) {
       console.error('회원가입 실패:', error);
-      // (수정) 에러의 구체 메시지를 우선순위대로 확인하여 setError
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
-        // 서버에서 준 구체적 메시지 (ex: "이미 존재하는 호텔 ID입니다.")
-        setError(error.response.data.message);
-      } else if (error.message) {
-        // JS Error 객체에 있는 message (ex: 네트워크 오류 등)
-        setError(error.message);
-      } else {
-        // 그 외 경우 (fallback)
-        setError('회원가입 중 오류가 발생했습니다.');
-      }
+
+      // ApiError 인스턴스 여부에 관계없이 메시지 설정
+      const message = error?.message || '회원가입 중 오류가 발생했습니다.';
+      setError(message);
     }
   };
 
@@ -60,6 +50,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           onChange={(e) => setHotelId(e.target.value)}
           required
           aria-label="호텔 ID"
+          // autoComplete="off"
         />
         <input
           type="password"
@@ -106,6 +97,11 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       </div>
     </div>
   );
+};
+
+Register.propTypes = {
+  onRegisterSuccess: PropTypes.func.isRequired,
+  onSwitchToLogin: PropTypes.func,
 };
 
 export default Register;
