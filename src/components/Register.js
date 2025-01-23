@@ -48,8 +48,8 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   return (
     <div className="register-container">
       <form onSubmit={handleRegister} className="register-form">
-        <h2 style={{ color: 'blue' }}>회원가입</h2>
-        {error && <p className="error">{error.message}</p>}
+        <h2>회원가입</h2>
+        {error && <p className="error">{error}</p>}
 
         <input
           type="text"
