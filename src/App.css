@@ -19,7 +19,7 @@ body::before,
 .app-layout::before {
   content: '';
   position: fixed;
-  background-color: rgba(139, 167, 188, 0.419);
+  background-color: #dbdfe9;
   top: 0;
   left: 0;
   width: 100%;
