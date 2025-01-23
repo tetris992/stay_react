@@ -5,6 +5,7 @@ import { registerUser } from '../api/api';
 import './Register.css';
 import { Link } from 'react-router-dom'; // Link 컴포넌트 추가
 // import ApiError from '../utils/ApiError.js';
+// import PropTypes from 'prop-types';
 
 const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [hotelId, setHotelId] = useState('');
@@ -16,6 +17,9 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setIsProcessing(true); // 처리 시작
+    setError(''); // 오류 초기화
+
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
       const userData = {
@@ -31,9 +35,11 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
     } catch (error) {
       console.error('회원가입 실패:', error);
 
-      // ApiError 인스턴스 여부에 관계없이 메시지 설정
+      // 오류 메시지 추출
       const message = error?.message || '회원가입 중 오류가 발생했습니다.';
       setError(message);
+    } finally {
+      setIsProcessing(false); // 처리 종료
     }
   };
 
@@ -98,5 +104,10 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
     </div>
   );
 };
+
+// Register.propTypes = { 배포에서는 삭제하는게 좋음.(개발단계에서 정확한 타입을 정의하기 위해 사용)
+//   onRegisterSuccess: PropTypes.func.isRequired,
+//   onSwitchToLogin: PropTypes.func,
+// };
 
 export default Register;
