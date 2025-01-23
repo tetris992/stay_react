@@ -29,8 +29,8 @@ jobs:
         run: npm run build
 
       # (중요) build 폴더를 'github-pages'라는 이름으로 업로드
-      - name: Upload artifact (v4)
-        uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
           name: github-pages   # actions/deploy-pages@v3가 기본으로 찾는 이름
           path: build         # CRA로 생성된 빌드 폴더 (상대 경로)
