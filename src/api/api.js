@@ -142,8 +142,10 @@ export const registerUser = async (userData) => {
       errorMessage = error.message;
     }
 
-    // ApiError 인스턴스로 변환하여 throw
-    throw new ApiError(statusCode, errorMessage);
+    // 표준 Error 인스턴스로 변환하여 throw
+    const standardError = new Error(errorMessage);
+    standardError.status = statusCode;
+    throw standardError;
   }
 };
 
