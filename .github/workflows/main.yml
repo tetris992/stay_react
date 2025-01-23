@@ -1,9 +1,9 @@
-name: Deploy React App to GitHub Pages (New)
+name: Deploy React App to GitHub Pages (Manual)
 
 on:
   push:
     branches:
-      - main # main 브랜치에 push될 때 실행
+      - main
 
 permissions:
   contents: write
@@ -28,10 +28,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3 # v4로 변경해야함. 곧..
+      # (중요) build 폴더를 'github-pages' 이름으로 업로드
+      - name: Upload artifact (v4)
+        uses: actions/upload-artifact@v4
         with:
-          path: ./build # CRA에서 생성되는 build 폴더
+          name: github-pages
+          path: build
 
   deploy:
     needs: build
