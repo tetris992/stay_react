@@ -99,9 +99,4 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   );
 };
 
-Register.propTypes = {
-  onRegisterSuccess: PropTypes.func.isRequired,
-  onSwitchToLogin: PropTypes.func,
-};
-
 export default Register;
