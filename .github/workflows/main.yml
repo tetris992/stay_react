@@ -28,12 +28,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      # 빌드 결과물을 아티팩트로 업로드
       - name: Upload artifact
-        # 기존 actions/upload-pages-artifact@v1 -> main (혹은 최신 릴리스 태그)
+        # uses: actions/upload-pages-artifact@v1
         uses: actions/upload-pages-artifact@main
         with:
-          path: ./build
-
+          path: build  # build 폴더를 업로드(상대경로)
+          # name: github-pages # (기본값이 github-pages)
+      
   deploy:
     needs: build
     runs-on: ubuntu-latest
