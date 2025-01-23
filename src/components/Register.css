@@ -24,13 +24,15 @@
 .register-form h2 {
   text-align: center;
   margin-bottom: 1.5rem;
-  color: #2ecc71;
+  /* color: #2ecc71; */
 }
 
 .error {
   color: red;
   text-align: center;
   margin-bottom: 1rem;
+  font-weight: bold; /* 텍스트 굵기 추가 */
+  font-size: 1rem; /* 폰트 크기 조절 */
 }
 
 .register-form input {
@@ -42,6 +44,12 @@
   box-sizing: border-box;
 }
 
+.register-form input:focus {
+  border-color: #3498db; /* 포커스 시 테두리 색상 변경 */
+  outline: none;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); /* 포커스 시 그림자 추가 */
+}
+
 .register-form button {
   width: 100%;
   padding: 0.75rem;
@@ -51,6 +59,7 @@
   border-radius: 4px;
   cursor: pointer;
   margin-top: 0.5rem;
+  transition: background 0.3s ease; /* 트랜지션 추가 */
 }
 
 .register-form button:hover {
@@ -66,6 +75,7 @@
 .login-link {
   color: #3498db;
   text-decoration: none;
+  transition: text-decoration 0.3s ease; /* 트랜지션 추가 */
 }
 
 .login-link:hover {
