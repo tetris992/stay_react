@@ -36,8 +36,8 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
     } catch (error) {
       console.error('회원가입 실패:', error);
 
-      // 임시로 고정된 메시지 설정
-      const message = '임시 오류 메시지입니다.';
+      // 오류 메시지 추출
+      const message = error?.message || '회원가입 중 오류가 발생했습니다.';
       console.log('설정된 오류 메시지:', message); // 추가된 로그
       setError(message);
     } finally {

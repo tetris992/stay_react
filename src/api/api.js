@@ -1,7 +1,7 @@
 // src/api/api.js
 
 import axios from 'axios';
-import ApiError from '../utils/ApiError.js';
+// import ApiError from '../utils/ApiError.js';
 
 // 환경 변수에서 백엔드 서버 URL 가져오기
 const BASE_URL = process.env.REACT_APP_API_BASE_URL;
@@ -142,8 +142,10 @@ export const registerUser = async (userData) => {
       errorMessage = error.message;
     }
 
-    // ApiError 인스턴스로 변환하여 throw
-    throw new ApiError(statusCode, errorMessage);
+    // 표준 Error 인스턴스로 변환하여 throw
+    const standardError = new Error(errorMessage);
+    standardError.status = statusCode;
+    throw standardError;
   }
 };
 
