@@ -23,7 +23,7 @@ function Header({
   return (
     <div className="header">
       <div className="header-left">
-        <h1 className={isShining ? 'shining' : ''}>HOTEL MANAGEMENT SYSTEM</h1>
+        <h1 className={isShining ? 'shining' : ''}>STAYSYNC.ME</h1>
       </div>
 
       <div className="header-center">
