@@ -23,7 +23,9 @@ function Header({
   return (
     <div className="header">
       <div className="header-left">
-        <h1 className={isShining ? 'shining' : ''}>STAYSYNC.ME</h1>
+        <h1 className={isShining ? 'shining' : ''}>
+          STAYSYNC.<span className="red">ME</span>
+        </h1>
       </div>
 
       <div className="header-center">
@@ -77,7 +79,7 @@ function Header({
       </div>
       {/* 투명도 효과를 위한 영역 추가 */}
       <div className="header-fade"></div>
-      
+
       {/* OTA 상태 표시 */}
       <div className="header-ota-status">
         {Object.keys(otaToggles).map((ota) => (

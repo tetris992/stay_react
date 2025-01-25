@@ -18,14 +18,9 @@
   border-bottom: 1px solid #a7a5a53d;
 }
 
-/* 첫 번째 줄: 제목, 날짜 네비게이션, 퀵버튼 */
-/* .header-left,
-.header-center,
-.header-right {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-} */
+.red {
+  color: red; /* 원하는 색상으로 변경 가능합니다 */
+}
 
 /* 헤더 왼쪽 제목 */
 .header-left h1 {
