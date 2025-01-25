@@ -1373,8 +1373,8 @@ const App = () => {
                       phoneNumber={phoneNumber}
                       email={email}
                       openSalesModal={openSalesModal}
-                      // onToggleOTA={handleToggleOTA}
-                      // otaToggles={otaToggles}
+                      onToggleOTA={handleToggleOTA}
+                      otaToggles={otaToggles}
                       searchCriteria={searchCriteria}
                       setSearchCriteria={setSearchCriteria}
                       handleVoiceResult={handleVoiceResult}
