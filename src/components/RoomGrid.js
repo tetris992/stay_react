@@ -10,6 +10,7 @@ import React, {
 import './RoomGrid.css';
 import PropTypes from 'prop-types';
 import InvoiceModal from './InvoiceModal';
+import './EditReservationModal.js'; // EditReservationModal 컴포넌트 추가
 import { format, parseISO, addDays } from 'date-fns';
 import {
   FaFileInvoice,
@@ -613,194 +614,201 @@ function RoomGrid({
         position: 'relative',
       }}
     >
-      <div className={`edit-panel-left ${selectedReservation ? 'open' : ''}`}>
-        {selectedReservation && editedValues[selectedReservation._id] && (
-          <form onSubmit={handleSubmit}>
-            <h2>예약 수정</h2>
-            {/* 예약 정보 수정 필드들 */}
-            <label>
-              예약자:
-              <input
-                type="text"
-                value={editedValues[selectedReservation._id].customerName}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'customerName',
-                    e.target.value
-                  )
-                }
-                required
-              />
-            </label>
-
-            <label>
-              전화번호:
-              <input
-                type="text"
-                value={editedValues[selectedReservation._id].phoneNumber}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'phoneNumber',
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-
-            <label>
-              체크인 날짜:
-              <input
-                type="date"
-                value={editedValues[selectedReservation._id].checkInDate}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'checkInDate',
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-
-            <label>
-              체크아웃 날짜:
-              <input
-                type="date"
-                value={editedValues[selectedReservation._id].checkOutDate}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'checkOutDate',
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-
-            <label>
-              객실타입:
-              <select
-                value={editedValues[selectedReservation._id].roomInfo}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'roomInfo',
-                    e.target.value
-                  )
-                }
-              >
-                {roomTypes.map((room, i) => (
-                  <option key={i} value={room.type}>
-                    {room.type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              가격 (KRW):
-              <input
-                type="number"
-                value={editedValues[selectedReservation._id].price}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'price',
-                    e.target.value
-                  )
-                }
-                min="0"
-                step="1"
-              />
-            </label>
-
-            <label>
-              결제방법/상태:
-              {availableOTAs.includes(selectedReservation.siteName) ? (
-                // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
+      <div
+        className={`edit-panel-left ${
+          selectedReservation && !isModalOpen ? 'open' : ''
+        }`}
+      >
+        {selectedReservation &&
+          !isModalOpen &&
+          editedValues[selectedReservation._id] && (
+            <form onSubmit={handleSubmit}>
+              <h2>예약 수정</h2>
+              {/* 예약 정보 수정 필드들 */}
+              <label>
+                예약자:
                 <input
                   type="text"
-                  value={
-                    editedValues[selectedReservation._id].paymentMethod || 'OTA'
+                  value={editedValues[selectedReservation._id].customerName}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'customerName',
+                      e.target.value
+                    )
                   }
-                  disabled // or readOnly
-                  style={{ backgroundColor: '#eee' }}
-                  onChange={() => {
-                    /* OTA는 수정 불가 → 막기 */
-                  }}
+                  required
                 />
-              ) : selectedReservation.siteName === '현장예약' ? (
-                // 2) 현장예약 → 기존 <select> 유지
-                <select
-                  value={
-                    editedValues[selectedReservation._id].paymentMethod ||
-                    'Pending'
-                  }
+              </label>
+
+              <label>
+                전화번호:
+                <input
+                  type="text"
+                  value={editedValues[selectedReservation._id].phoneNumber}
                   onChange={(e) =>
                     handleFieldChange(
                       selectedReservation._id,
-                      'paymentMethod',
+                      'phoneNumber',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                체크인 날짜:
+                <input
+                  type="date"
+                  value={editedValues[selectedReservation._id].checkInDate}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'checkInDate',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                체크아웃 날짜:
+                <input
+                  type="date"
+                  value={editedValues[selectedReservation._id].checkOutDate}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'checkOutDate',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                객실타입:
+                <select
+                  value={editedValues[selectedReservation._id].roomInfo}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'roomInfo',
                       e.target.value
                     )
                   }
                 >
-                  <option value="Card">Card</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Account Transfer">Account Transfer</option>
-                  <option value="Pending">Pending</option>
+                  {roomTypes.map((room, i) => (
+                    <option key={i} value={room.type}>
+                      {room.type}
+                    </option>
+                  ))}
                 </select>
-              ) : (
-                // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
-                <select
-                  value={
-                    editedValues[selectedReservation._id].paymentMethod ||
-                    'Pending'
-                  }
+              </label>
+
+              <label>
+                가격 (KRW):
+                <input
+                  type="number"
+                  value={editedValues[selectedReservation._id].price}
                   onChange={(e) =>
                     handleFieldChange(
                       selectedReservation._id,
-                      'paymentMethod',
+                      'price',
                       e.target.value
                     )
                   }
+                  min="0"
+                  step="1"
+                />
+              </label>
+
+              <label>
+                결제방법/상태:
+                {availableOTAs.includes(selectedReservation.siteName) ? (
+                  // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
+                  <input
+                    type="text"
+                    value={
+                      editedValues[selectedReservation._id].paymentMethod ||
+                      'OTA'
+                    }
+                    disabled // or readOnly
+                    style={{ backgroundColor: '#eee' }}
+                    onChange={() => {
+                      /* OTA는 수정 불가 → 막기 */
+                    }}
+                  />
+                ) : selectedReservation.siteName === '현장예약' ? (
+                  // 2) 현장예약 → 기존 <select> 유지
+                  <select
+                    value={
+                      editedValues[selectedReservation._id].paymentMethod ||
+                      'Pending'
+                    }
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'paymentMethod',
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="Card">Card</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Account Transfer">Account Transfer</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                ) : (
+                  // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
+                  <select
+                    value={
+                      editedValues[selectedReservation._id].paymentMethod ||
+                      'Pending'
+                    }
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'paymentMethod',
+                        e.target.value
+                      )
+                    }
+                  >
+                    <option value="Pending">Pending</option>
+                    {/* 필요하면 Card/Cash/Transfer 등 추가 */}
+                  </select>
+                )}
+              </label>
+
+              <label>
+                고객요청:
+                <input
+                  type="text"
+                  value={editedValues[selectedReservation._id].specialRequests}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      selectedReservation._id,
+                      'specialRequests',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <div className="panel-actions">
+                <button type="submit" className="save-button">
+                  저장
+                </button>
+                <button
+                  type="button"
+                  className="cancel-button"
+                  onClick={() => setSelectedReservation(null)}
                 >
-                  <option value="Pending">Pending</option>
-                  {/* 필요하면 Card/Cash/Transfer 등 추가 */}
-                </select>
-              )}
-            </label>
-
-            <label>
-              고객요청:
-              <input
-                type="text"
-                value={editedValues[selectedReservation._id].specialRequests}
-                onChange={(e) =>
-                  handleFieldChange(
-                    selectedReservation._id,
-                    'specialRequests',
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-
-            <div className="panel-actions">
-              <button type="submit" className="save-button">
-                저장
-              </button>
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={() => setSelectedReservation(null)}
-              >
-                취소
-              </button>
-            </div>
-          </form>
-        )}
+                  취소
+                </button>
+              </div>
+            </form>
+          )}
       </div>
 
       <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
