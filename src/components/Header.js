@@ -3,8 +3,13 @@
 import React from 'react';
 import './Header.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCaretLeft, faCaretRight } from '@fortawesome/free-solid-svg-icons';
-import PropTypes from 'prop-types'; // PropTypes 추가
+import {
+  faCaretLeft,
+  faCaretRight,
+  faSort,
+  faStickyNote,
+} from '@fortawesome/free-solid-svg-icons';
+import PropTypes from 'prop-types';
 
 function Header({
   selectedDate,
@@ -12,8 +17,11 @@ function Header({
   onPrevDay,
   onNextDay,
   onQuickCreate,
-  isShining,
   otaToggles,
+  onSort, // 정렬 버튼 핸들러
+  onMemo, // 메모 버튼 핸들러
+  flipAllMemos,
+  sortOrder, // 추가된 sortOrder Prop
 }) {
   const dayOfWeek = selectedDate.getDay();
   const weekdayName = selectedDate.toLocaleDateString('ko-KR', {
@@ -22,15 +30,14 @@ function Header({
 
   return (
     <div className="header">
-      <div className="header-left">
-        <h1 className={isShining ? 'shining' : ''}>
-          STAYSYNC.<span className="red">ME</span>
-        </h1>
-      </div>
-
+      {/* 첫 번째 줄: 날짜 네비게이션 */}
       <div className="header-center">
         <div className="date-navigation">
-          <button className="arrow-button" onClick={onPrevDay}>
+          <button
+            className="arrow-button"
+            onClick={onPrevDay}
+            aria-label="이전 날짜로 이동"
+          >
             <FontAwesomeIcon icon={faCaretLeft} />
           </button>
 
@@ -49,58 +56,99 @@ function Header({
             </span>
           </span>
 
-          <button className="arrow-button" onClick={onNextDay}>
+          <button
+            className="arrow-button"
+            onClick={onNextDay}
+            aria-label="다음 날짜로 이동"
+          >
             <FontAwesomeIcon icon={faCaretRight} />
           </button>
         </div>
       </div>
 
-      <div className="header-right">
-        <div className="quick-create-buttons">
-          <button className="quick-button" onClick={() => onQuickCreate('1박')}>
-            1박
-          </button>
-          <button className="quick-button" onClick={() => onQuickCreate('2박')}>
-            2박
-          </button>
-          <button className="quick-button" onClick={() => onQuickCreate('3박')}>
-            3박
-          </button>
-          <button className="quick-button" onClick={() => onQuickCreate('4박')}>
-            4박
-          </button>
-          <button
-            className="quick-button quick-button-green"
-            onClick={() => onQuickCreate('대실')}
-          >
-            대실
-          </button>
+      {/* 두 번째 줄: Sort/Memo 버튼, OTA 상태, Quick-create 버튼 */}
+      <div className="header-bottom">
+        {/* 왼쪽: Sort 및 Memo 버튼 */}
+        <div className="header-left">
+          <div className="additional-buttons">
+            <button
+              className="sort-button"
+              onClick={onSort}
+              aria-label="정렬 버튼"
+            >
+              <FontAwesomeIcon icon={faSort} /> {sortOrder === 'newest' ? '최신순' : '과거순'}
+            </button>
+            <button
+              className={`memo-button ${flipAllMemos ? 'active' : ''}`}
+              onClick={onMemo}
+              aria-label="모든 방 카드 메모 플립"
+            >
+              <FontAwesomeIcon icon={faStickyNote} /> 메모
+            </button>
+          </div>
+        </div>
+
+        {/* 중앙: OTA 상태 표시 */}
+        <div className="header-ota-status">
+          {Object.keys(otaToggles).map((ota) => (
+            <div
+              key={ota}
+              className={`ota-status-item ${
+                otaToggles[ota] ? 'active' : 'inactive'
+              }`}
+            >
+              <span>{ota}</span>
+              <span
+                className={`status-lamp ${otaToggles[ota] ? 'green' : 'gray'}`}
+              ></span>
+            </div>
+          ))}
+        </div>
+
+        {/* 오른쪽: Quick-create 버튼 */}
+        <div className="header-right">
+          <div className="quick-create-buttons">
+            <button
+              className="quick-button"
+              onClick={() => onQuickCreate('1박')}
+            >
+              1박
+            </button>
+            <button
+              className="quick-button"
+              onClick={() => onQuickCreate('2박')}
+            >
+              2박
+            </button>
+            <button
+              className="quick-button"
+              onClick={() => onQuickCreate('3박')}
+            >
+              3박
+            </button>
+            <button
+              className="quick-button"
+              onClick={() => onQuickCreate('4박')}
+            >
+              4박
+            </button>
+            <button
+              className="quick-button quick-button-green"
+              onClick={() => onQuickCreate('대실')}
+            >
+              대실
+            </button>
+          </div>
         </div>
       </div>
-      {/* 투명도 효과를 위한 영역 추가 */}
-      <div className="header-fade"></div>
 
-      {/* OTA 상태 표시 */}
-      <div className="header-ota-status">
-        {Object.keys(otaToggles).map((ota) => (
-          <div
-            key={ota}
-            className={`ota-status-item ${
-              otaToggles[ota] ? 'active' : 'inactive'
-            }`}
-          >
-            <span>{ota}</span>
-            <span
-              className={`status-lamp ${otaToggles[ota] ? 'green' : 'gray'}`}
-            ></span>
-          </div>
-        ))}
-      </div>
+      {/* 투명도 효과를 위한 영역 */}
+      <div className="header-fade"></div>
     </div>
   );
 }
 
-// PropTypes 정의 (추가)
+// PropTypes 정의
 Header.propTypes = {
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   onDateChange: PropTypes.func.isRequired,
@@ -109,6 +157,9 @@ Header.propTypes = {
   onQuickCreate: PropTypes.func.isRequired,
   isShining: PropTypes.bool.isRequired,
   otaToggles: PropTypes.object.isRequired,
+  onSort: PropTypes.func.isRequired, // 정렬 버튼 핸들러 Prop 추가
+  onMemo: PropTypes.func.isRequired, // 메모 버튼 핸들러 Prop 추가
+  sortOrder: PropTypes.string.isRequired, // 추가
 };
 
 export default Header;

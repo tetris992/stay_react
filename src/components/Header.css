@@ -10,55 +10,26 @@
   height: 140px; /* 헤더 높이 */
   z-index: 10; /* 다른 요소보다 앞에 위치 */
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto;
+  grid-template-columns: 1fr; /* 전체를 하나의 컬럼으로 설정 */
+  grid-template-rows: auto auto; /* 두 개의 행 */
   gap: 10px;
-  padding: 30px 20px;
+  padding: 20px;
   background-color: transparent;
   border-bottom: 1px solid #a7a5a53d;
 }
 
-.red {
-  color: red; /* 원하는 색상으로 변경 가능합니다 */
-}
-
-/* 헤더 왼쪽 제목 */
-.header-left h1 {
-  position: relative;
-  z-index: 1;
-  font-family: 'Roboto Slab', serif;
-  font-size: 24px;
-  margin: 0;
-  color: #46485298;
-  overflow: hidden;
-}
-
-.header-left {
-  display: flex;
-  justify-content: start;
-  align-items: center;
-  margin-left: 10%;
-}
-
-.header-right {
-  margin-left: 33%;
-  align-items: center;
-}
-
-/* 중앙 섹션 */
+/* 헤더 중앙: 날짜 네비게이션 */
 .header-center {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* 날짜 네비게이션 */
 .date-navigation {
   display: flex;
   align-items: center;
 }
 
-/* 날짜 선택 텍스트 */
 .selected-date {
   font-size: 1.5rem;
   padding: 0 10px;
@@ -66,14 +37,12 @@
   color: #050505;
 }
 
-/* 요일 텍스트 */
 .weekday {
   font-size: 1.2rem;
   padding-left: 5px;
   color: #555555;
 }
 
-/* 주말 요일 텍스트 */
 .weekend {
   color: #ff00008e;
 }
@@ -93,92 +62,60 @@
   transform: scale(1.1);
 }
 
-/* 오른쪽 섹션 */
-.header-right {
-  justify-content: center;
+
+/* 두 번째 줄: Sort/Memo, OTA 상태, Quick-create */
+.header-bottom {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr; /* 왼쪽, 중앙, 오른쪽 컬럼 비율 */
   align-items: center;
 }
 
-/* 간편 입력 버튼 그룹 스타일링 */
-.quick-create-buttons {
+/* 헤더 왼쪽: 정렬 버튼과 메모 버튼 */
+.header-left {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   align-items: center;
+  justify-content: flex-start;
 }
 
-/* 간편 입력 버튼 기본 스타일 */
-.quick-button {
+.additional-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.sort-button,
+.memo-button {
   padding: 6px 12px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  background-color: #6287ace1;
-  color: #ffffff;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.quick-button:hover {
-  background-color: #007cb576;
-}
-
-/* "대실" 버튼만 별도의 색상으로 스타일링 */
-.quick-button-green {
-  background-color: #4caf4fe9;
-  color: #ffffff;
-}
-
-.quick-button-green:hover {
-  background-color: #45a04979;
-}
-/* OTA 상태 표시 */
-.header-ota-status {
-  grid-column: 1 / 4; /* 두 번째 줄 전체를 차지하도록 변경 */
-  grid-row: 3 / 4; /* 세 번째 줄로 이동 */
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-}
-
-/* 두 번째 줄: OTA 토글창 */
-.header-ota-toggles {
-  grid-column: span 3; /* 두 번째 줄에서 첫 번째 줄의 3칸을 모두 차지하도록 설정 */
-  display: flex;
-  justify-content: flex-start; /* 왼쪽 정렬 */
-  width: 100%; /* 전체 너비 차지 */
-  margin-top: 10px;
-  overflow: hidden; /* 가려지는 텍스트 숨기기 */
-  white-space: nowrap; /* 텍스트 한 줄로 표시 */
-  text-overflow: ellipsis; /* 넘치는 텍스트에 '...' 표시 */
-}
-
-/* OTA 토글창 스타일 */
-.ota-toggles {
-  display: flex;
-  gap: 15px;
-}
-
-.ota-toggles label {
-  font-size: 14px;
+  background-color: #f0f0f0;
+  color: #333333;
   display: flex;
   align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.ota-toggles input {
-  margin-right: 5px;
+.sort-button:hover,
+.memo-button:hover {
+  background-color: #e0e0e0;
+  transform: scale(1.05);
 }
 
-/* OTA 상태 표시 */
+.sort-button.active,
+.memo-button.active {
+  background-color: #d0d0d0;
+}
+
+/* 헤더 중앙: OTA 상태 표시 */
 .header-ota-status {
-  grid-column: span 3;
   display: flex;
   justify-content: center;
-  margin-top: 10px;
 }
 
 .ota-status-item {
-  margin-right: 20px;
+  margin: 0 10px;
   font-size: 16px;
   display: flex;
   align-items: center;
@@ -200,43 +137,109 @@
   background-color: gray;
 }
 
-/* 미디어 쿼리 (반응형) */
+/* 헤더 오른쪽: Quick-create 버튼 */
+.header-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.quick-create-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.quick-button {
+  padding: 6px 12px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #6287ace1;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.quick-button:hover {
+  background-color: #007cb576;
+}
+
+.quick-button-green {
+  background-color: #4caf4fe9;
+  color: #ffffff;
+}
+
+.quick-button-green:hover {
+  background-color: #45a04979;
+}
+
+/* 투명도 효과를 위한 영역 */
+.header-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: linear-gradient(to bottom, rgba(244, 244, 244, 0), rgba(244, 244, 244, 1));
+}
+
+/* 반응형 디자인 */
 @media (max-width: 1600px) {
   .header {
-    grid-template-columns: repeat(1, 1fr); /* 첫 번째 줄 3칸 설정 */
-  }
-  .header-left {
-    display: none;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
   }
 
   .header-center {
-    flex: 1.5;
+    flex: 1;
   }
 
-  .header-right {
-    display: none;
-    overflow: hidden;
+  .header-bottom {
+    grid-template-columns: 1fr 2fr 1fr;
   }
 
-  .selected-date {
-    font-size: 1.3rem;
-    overflow: hidden;
+  .header-left {
+    justify-content: flex-start;
   }
 
-  .weekday {
-    font-size: 1.1rem;
-    overflow: hidden;
+  .additional-buttons {
+    flex-direction: row;
+    gap: 10px;
   }
 
-  .quick-button {
-    padding: 6px 12px;
-    font-size: 1rem;
-    overflow: hidden;
+  .sort-button,
+  .memo-button {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+  }
+
+  .header-ota-status {
+    justify-content: center;
   }
 
   .ota-status-item {
-    /* display: none; */
-    overflow: hidden;
+    margin: 0 5px;
     font-size: 14px;
+  }
+
+  .header-right {
+    justify-content: flex-end;
+  }
+
+  .quick-create-buttons {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .quick-button {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+  }
+
+  .quick-button-green {
+    padding: 5px 10px;
+    font-size: 0.9rem;
   }
 }

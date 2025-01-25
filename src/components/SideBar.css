@@ -5,7 +5,7 @@
   width: 290px;
   height: 100vh;
   background-color: #f4f4f4;
-  padding: 20px;
+  padding: 10px;
   box-sizing: border-box;
   overflow-y: auto;
   font-size: 16px;
@@ -185,6 +185,16 @@ h4 {
   align-items: start;
   justify-content: space-between;
 }
+.ota-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.ota-toggles input[type="checkbox"]:checked {
+  accent-color: #007bff; /* 원하는 색상으로 변경 */
+  display: inline-block;
+}
 
 .highlight-blink {
   animation: blinkAnimation 1s infinite;
@@ -245,4 +255,112 @@ h4 {
   justify-content: flex-start;
   margin-bottom: 12px;
   gap: 10px;
+}
+
+/* 기본적으로 스크롤바 너비를 0으로 설정하여 숨김 */
+.sidebar {
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 0;
+  background: transparent; 
+}
+
+/* 마우스 호버 시, 얇은 스크롤바 표시하기 */
+.sidebar:hover {
+  scrollbar-width: thin; /* Firefox용: 얇게 표시 */
+}
+
+.sidebar:hover::-webkit-scrollbar {
+  width: 6px; 
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+  background-color: #ebe9e9; /* 스크롤바 thumb 색상 */
+  border-radius: 3px;
+}
+
+.sidebar:hover::-webkit-scrollbar-track {
+  background: #d9d8d8; /* 스크롤바 트랙 색상 */
+}
+
+/* 헤더 섹션 스타일 */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  margin-bottom: 0px; /* 필요에 따라 조절 */
+}
+
+.sidebar-logo {
+  width: 24px; /* 아이콘의 너비 */
+  height: 24px; /* 아이콘의 높이 */
+  margin-left: 10px; /* 아이콘과 텍스트 간의 간격 */
+  margin-right: 10px;
+}
+
+.sidebar-title {
+  font-size: 18px; /* 필요에 따라 폰트 크기 조절 */
+  display: flex;
+  align-items: center;
+  color: rgb(147, 147, 147);
+  margin-top: 20px;
+}
+
+.sidebar-title .red {
+  color: rgb(158, 156, 156); /* 기존 클래스 유지 */
+}
+
+/* OTA 설정 섹션 */
+.ota-settings-section {
+  margin-top: 24px;
+}
+
+.ota-settings-section h4 {
+  padding: 12px;
+  background-color: #9a9a9a6a;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ota-toggles {
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ota-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ota-toggles input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 체크박스 호버 효과 */
+.ota-toggles label:hover {
+  background-color: #eaeaea;
+  border-radius: 4px;
+}
+
+/* 체크박스 색상 변경 */
+.ota-toggles input[type="checkbox"]:checked {
+  accent-color: #007bff; /* 원하는 색상으로 변경 */
 }

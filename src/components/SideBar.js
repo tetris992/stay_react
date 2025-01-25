@@ -6,6 +6,7 @@ import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css';
+import logo from '../assets/icon48.png';
 
 import VoiceSearch from './VoiceSearch';
 import Search from './Search';
@@ -111,7 +112,7 @@ function SideBar({
   };
 
   // 활성화된 OTA 목록 가져오기
-  const activeOTAs = availableOTAs.filter((ota) => otaToggles[ota]);
+  const activeOTAs = availableOTAs.filter((ota) => otaToggles?.[ota]);
 
   return (
     <div
@@ -119,6 +120,13 @@ function SideBar({
         highlightEffect === 'blink' ? 'highlight-blink' : ''
       }`}
     >
+      {/* 헤더 섹션 추가 */}
+      <div className="sidebar-header">
+        <img src={logo} alt="Logo" className="sidebar-logo" />
+        <h3 className="sidebar-title">
+          STAYSYNC.<span className="red">ME</span>
+        </h3>
+      </div>
       <Search
         searchCriteria={searchCriteria}
         setSearchCriteria={setSearchCriteria}
@@ -238,7 +246,7 @@ function SideBar({
             <label key={ota}>
               <input
                 type="checkbox"
-                checked={otaToggles[ota] || false}
+                checked={otaToggles?.[ota] || false}
                 onChange={() => onToggleOTA(ota)}
               />
               {ota}

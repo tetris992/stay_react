@@ -589,8 +589,9 @@ html {
 .memo-text-display {
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   line-height: 1.3;
+  color: rgb(58, 77, 91);
 }
 
 /* 메모 textarea */
@@ -610,12 +611,12 @@ html {
 
 .room-card.onsite-created {
   animation: highlightPulse 10s;
-  background-color: transparent;
+  background-color: rgb(220, 249, 220);
 }
 
 @keyframes highlightPulse {
   0% {
-    box-shadow: 0 0 50px #8bf387;
+    box-shadow: 0 0 50px #1b1b1b;
   }
   100% {
     box-shadow: 0 0 0 #c4f4c3;

@@ -1,6 +1,12 @@
 // src/components/RoomGrid.js
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import './RoomGrid.css';
 import PropTypes from 'prop-types';
 import InvoiceModal from './InvoiceModal';
@@ -36,6 +42,8 @@ function RoomGrid({
   memos,
   setMemos,
   newlyCreatedId,
+  flipAllMemos, // [추가] flipAllMemos Prop 추가
+  sortOrder,
 }) {
   const [isEvening, setIsEvening] = useState(false);
   const [flippedIndexes, setFlippedIndexes] = useState(new Set());
@@ -48,6 +56,19 @@ function RoomGrid({
   const invoiceRef = useRef();
   const gridRef = useRef();
   const memoRefs = useRef({});
+
+  // 전체 방 카드 플립 상태 관리
+  useEffect(() => {
+    if (flipAllMemos) {
+      // 모든 카드 플립: 모든 인덱스를 flippedIndexes에 추가
+      const allIndexes = new Set();
+      reservations.forEach((_, idx) => allIndexes.add(idx));
+      setFlippedIndexes(allIndexes);
+    } else {
+      // 모든 카드 언플립: flippedIndexes 비우기
+      setFlippedIndexes(new Set());
+    }
+  }, [flipAllMemos, reservations]);
 
   // 인라인 수정 모드 제거 -> editModes 관련 코드 삭제
   const [editedValues, setEditedValues] = useState({});
@@ -568,66 +589,19 @@ function RoomGrid({
 
   const isAnyEditing = false; // 인라인 수정 모드 사용 안하므로 false
 
-  // 1. dayDifference 계산 함수
-  function calcDayDifference(res) {
-    const checkInDateOnly = new Date(
-      res.parsedCheckInDate.getFullYear(),
-      res.parsedCheckInDate.getMonth(),
-      res.parsedCheckInDate.getDate()
-    );
-    const checkOutDateOnly = new Date(
-      res.parsedCheckOutDate.getFullYear(),
-      res.parsedCheckOutDate.getMonth(),
-      res.parsedCheckOutDate.getDate()
-    );
-    return (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24);
-  }
-
-  // 2. 현장예약 내 카테고리 분류 함수
-  function get현장예약Category(res) {
-    const dayDiff = calcDayDifference(res);
-    const nameIncludesDaesil =
-      (res.customerName && res.customerName.includes('대실')) ||
-      (res.roomInfo && res.roomInfo.includes('대실'));
-
-    // 대실현장: dayDifference === 0
-    if (dayDiff === 0) return 1;
-
-    // 대실숙박: dayDifference === 1 && '대실' 포함
-    if (dayDiff === 1 && nameIncludesDaesil) return 2;
-
-    // 나머지
-    return 3;
-  }
-
-  // 3. 사이트별로 그룹핑
-  const reservationsBySite = reservations.reduce((acc, cur) => {
-    const site = cur.siteName || '정보 없음';
-    if (!acc[site]) acc[site] = [];
-    acc[site].push(cur);
-    return acc;
-  }, {});
-
-  // 4. 현장예약 사이트 내부 정렬
-  Object.keys(reservationsBySite).forEach((site) => {
-    if (site === '현장예약') {
-      reservationsBySite[site].sort((a, b) => {
-        return get현장예약Category(a) - get현장예약Category(b);
-      });
-    }
-    // 다른 사이트는 내부 정렬 로직이 명확히 정의되지 않았으므로 그대로 둠
-  });
-
-  // 5. 사이트별 예약 수로 사이트 정렬 (예약 수가 적은 사이트가 앞에)
-  const sitesSorted = Object.entries(reservationsBySite).sort(
-    (a, b) => a[1].length - b[1].length
-  );
-
-  // 6. 정렬된 사이트 순서대로 예약 배열 병합
-  let sortedReservations = sitesSorted.flatMap(([site, arr]) => arr);
-
-  // 7. 전체 순번 역순으로(즉, 뒤집기)
-  sortedReservations.reverse();
+  // 소트 로직 수정
+  const sortedReservations = useMemo(() => {
+    return [...reservations].sort((a, b) => {
+      const dateA = new Date(a.checkIn);
+      const dateB = new Date(b.checkIn);
+      if (sortOrder === 'newest') {
+        return dateB - dateA; // 최신순
+      } else {
+        // 'oldest'
+        return dateA - dateB; // 과거순
+      }
+    });
+  }, [reservations, sortOrder]);
 
   // JSX 반환
   return (
@@ -1053,7 +1027,7 @@ function RoomGrid({
                       <div className="memo-body">
                         {!memo.isEditing ? (
                           <div className="memo-text-display">
-                            {memo.text || '메모가 없습니다.'}
+                            {memo.text || ''}
                           </div>
                         ) : (
                           <textarea
@@ -1116,6 +1090,8 @@ RoomGrid.propTypes = {
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
+  flipAllMemos: PropTypes.bool.isRequired, // [추가]
+  otaSortOrders: PropTypes.array.isRequired, // [추가]
 };
 
 // Border 색상 결정 함수

@@ -1,7 +1,13 @@
 // src/App.js
 /* global chrome */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import Header from './components/Header.js';
 import SideBar from './components/SideBar.js';
 import RoomGrid from './components/RoomGrid.js';
@@ -112,6 +118,11 @@ const App = () => {
   );
 
   const [selectedReservation, setSelectedReservation] = useState(null);
+  const [sortOrder, setSortOrder] = useState('newest');
+
+  const handleSort = useCallback(() => {
+    setSortOrder((prev) => (prev === 'newest' ? 'oldest' : 'newest'));
+  }, []);
 
   // RoomGrid에 전달할 핸들러
   const handleReservationSelect = (res) => {
@@ -152,6 +163,13 @@ const App = () => {
   const closeSettingsModal = () => {
     setShowSettingsModal(false);
   };
+
+  const [flipAllMemos, setFlipAllMemos] = useState(false); // [추가]
+
+  // 메모 버튼 클릭 핸들러
+  const handleMemoButtonClick = useCallback(() => {
+    setFlipAllMemos((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     if (hotelSettings && hotelSettings.address) {
@@ -692,63 +710,43 @@ const App = () => {
     }
   }, []);
 
-  // OTA 활성화 상태 변경 함수 // 확장은 야놀자를 제외한 나머지만 토글에 영향을 받아야함.
+  // OTA 활성화 상태 변경 함수 (수정된 버전)
   const handleToggleOTA = useCallback(
-    (ota) => {
+    async (ota) => {
       if (!availableOTAs.includes(ota)) {
         console.warn(`Unsupported OTA: ${ota}`);
         return;
       }
 
-      setOtaToggles((prev) => {
-        const newToggles = { ...prev, [ota]: !prev[ota] };
+      // 함수형 업데이트를 사용하여 최신 상태 기반으로 OTA 토글
+      setOtaToggles((prevOtaToggles) => {
+        const updatedOtaToggles = {
+          ...prevOtaToggles,
+          [ota]: !prevOtaToggles[ota],
+        };
 
-        // OTA 상태를 서버에 업데이트
+        // 업데이트된 OTA 토글 상태를 서버에 전송
         updateHotelSettings(hotelId, {
-          otas: Object.entries(newToggles).map(([name, isActive]) => ({
+          otas: availableOTAs.map((name) => ({
             name,
-            isActive,
+            isActive: updatedOtaToggles[name],
           })),
         })
-          .then((updatedSettings) => {
-            // 1) HotelSettings를 set
-            setHotelSettings(updatedSettings);
-
-            // 2) updatedSettings.otas로부터 최신 상태의 otaToggles 계산
-            const newTogglesFromServer = updatedSettings.otas.reduce(
-              (acc, otaObj) => {
-                acc[otaObj.name] = otaObj.isActive;
-                return acc;
-              },
-              {}
-            );
-
-            // 3) 만약 availableOTAs 중 누락된 게 있다면 false로 채우는 로직
-            availableOTAs.forEach((otaName) => {
-              if (!(otaName in newTogglesFromServer)) {
-                newTogglesFromServer[otaName] = false;
-              }
-            });
-
-            // 4) 최종적으로 setOtaToggles
-            setOtaToggles(newTogglesFromServer);
-
-            console.log(
-              `OTA ${ota} 상태가 ${
-                newToggles[ota] ? '활성화' : '비활성화'
-              }되었습니다.`
-            );
-            sendOtaTogglesToExtension(newTogglesFromServer);
+          .then(() => {
+            // 크롬 확장에 OTA 토글 상태 전송
+            sendOtaTogglesToExtension(updatedOtaToggles);
+            console.log(`OTA ${ota} 상태가 변경되었습니다.`);
           })
           .catch((error) => {
             console.error(`OTA ${ota} 상태 업데이트 실패:`, error);
-            // 롤백
-            setOtaToggles((prevToggle) => ({
-              ...prevToggle,
-              [ota]: !newToggles[ota],
+            // 롤백: OTA 상태를 원래대로 복구
+            setOtaToggles((prev) => ({
+              ...prev,
+              [ota]: !prev[ota],
             }));
           });
-        return newToggles;
+
+        return updatedOtaToggles;
       });
     },
     [hotelId]
@@ -1253,38 +1251,42 @@ const App = () => {
   };
 
   // `dailySales` 데이터 구성
-  const dailySales = activeReservations.map((reservation, index) => {
-    let pricePerNight;
-    // nightlyRates가 있으면 첫 번째 nights의 rate가 1박 가격
-    if (reservation.nightlyRates && reservation.nightlyRates.length > 0) {
-      pricePerNight = reservation.nightlyRates[0].rate;
-    } else {
-      pricePerNight = reservation.totalPrice || 0;
-    }
+  const dailySales = useMemo(() => {
+    return activeReservations.map((reservation, index) => {
+      let pricePerNight;
+      // nightlyRates가 있으면 첫 번째 nights의 rate가 1박 가격
+      if (reservation.nightlyRates && reservation.nightlyRates.length > 0) {
+        pricePerNight = reservation.nightlyRates[0].rate;
+      } else {
+        pricePerNight = reservation.totalPrice || 0;
+      }
 
-    return {
-      reservationId: reservation._id || reservation.reservationNo,
-      roomNumber: `No.${index + 1}`,
-      customerName: reservation.customerName || '정보 없음',
-      roomInfo: reservation.roomInfo || '정보 없음',
-      checkInCheckOut: `${reservation.checkIn || '정보 없음'} ~ ${
-        reservation.checkOut || '정보 없음'
-      }`,
-      price: pricePerNight,
-      siteInfo: reservation.siteName
-        ? reservation.siteName === '현장예약'
-          ? '현장예약'
-          : 'OTA'
-        : '정보 없음',
-      paymentMethod:
-        reservation.siteName && reservation.siteName !== '현장예약'
-          ? 'OTA'
-          : reservation.paymentMethod || '정보 없음',
-    };
-  });
+      return {
+        reservationId: reservation._id || reservation.reservationNo,
+        roomNumber: `No.${index + 1}`,
+        customerName: reservation.customerName || '정보 없음',
+        roomInfo: reservation.roomInfo || '정보 없음',
+        checkInCheckOut: `${reservation.checkIn || '정보 없음'} ~ ${
+          reservation.checkOut || '정보 없음'
+        }`,
+        price: pricePerNight,
+        siteInfo: reservation.siteName
+          ? reservation.siteName === '현장예약'
+            ? '현장예약'
+            : 'OTA'
+          : '정보 없음',
+        paymentMethod:
+          reservation.siteName && reservation.siteName !== '현장예약'
+            ? 'OTA'
+            : reservation.paymentMethod || '정보 없음',
+      };
+    });
+  }, [activeReservations]);
 
   // `monthlySales` 계산
-  const monthlySales = monthlyTotal > 0 ? Math.floor(monthlyTotal * 0.9) : 0;
+  const monthlySales = useMemo(() => {
+    return monthlyTotal > 0 ? Math.floor(monthlyTotal * 0.9) : 0;
+  }, [monthlyTotal]);
 
   // 렌더링
   return (
@@ -1337,7 +1339,11 @@ const App = () => {
                       isShining={isShining}
                       otaToggles={otaToggles}
                       onToggleOTA={handleToggleOTA}
+                      onSort={handleSort} // [추가] 정렬 핸들러 전달
                       onDateChange={handleDateChange}
+                      onMemo={handleMemoButtonClick} // [추가] 메모 버튼 핸들러 전달
+                      flipAllMemos={flipAllMemos}
+                      sortOrder={sortOrder} // 추가
                     />
 
                     <SideBar
@@ -1367,8 +1373,8 @@ const App = () => {
                       phoneNumber={phoneNumber}
                       email={email}
                       openSalesModal={openSalesModal}
-                      onToggleOTA={handleToggleOTA}
-                      otaToggles={otaToggles}
+                      // onToggleOTA={handleToggleOTA}
+                      // otaToggles={otaToggles}
                       searchCriteria={searchCriteria}
                       setSearchCriteria={setSearchCriteria}
                       handleVoiceResult={handleVoiceResult}
@@ -1405,6 +1411,8 @@ const App = () => {
                             }
                             headerHeight={140}
                             newlyCreatedId={newlyCreatedId}
+                            flipAllMemos={flipAllMemos} // [추가]
+                            sortOrder={sortOrder} // 추가
                           />
                         </div>
                         <div className="right-pane">
