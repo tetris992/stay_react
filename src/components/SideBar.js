@@ -122,10 +122,13 @@ function SideBar({
     >
       {/* 헤더 섹션 추가 */}
       <div className="sidebar-header">
-        <img src={logo} alt="Logo" className="sidebar-logo" />
-        {/* <h3 className="sidebar-title">
-          STAYSYNC.<span className="red">ME</span>
-        </h3> */}
+        <a
+          href="https://staysync.framer.ai/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img src={logo} alt="Logo" className="sidebar-logo" />
+        </a>
       </div>
       <Search
         searchCriteria={searchCriteria}
