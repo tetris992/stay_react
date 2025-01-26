@@ -6,7 +6,7 @@ import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css';
-import logo from '../assets/icon48.png';
+import logo from '../assets/StaySync.svg';
 
 import VoiceSearch from './VoiceSearch';
 import Search from './Search';
@@ -123,9 +123,9 @@ function SideBar({
       {/* 헤더 섹션 추가 */}
       <div className="sidebar-header">
         <img src={logo} alt="Logo" className="sidebar-logo" />
-        <h3 className="sidebar-title">
+        {/* <h3 className="sidebar-title">
           STAYSYNC.<span className="red">ME</span>
-        </h3>
+        </h3> */}
       </div>
       <Search
         searchCriteria={searchCriteria}
@@ -287,7 +287,5 @@ function SideBar({
     </div>
   );
 }
-
-
 
 export default SideBar;

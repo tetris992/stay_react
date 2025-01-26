@@ -191,7 +191,7 @@ h4 {
   gap: 10px;
   cursor: pointer;
 }
-.ota-toggles input[type="checkbox"]:checked {
+.ota-toggles input[type='checkbox']:checked {
   accent-color: #007bff; /* 원하는 색상으로 변경 */
   display: inline-block;
 }
@@ -266,7 +266,7 @@ h4 {
 
 .sidebar::-webkit-scrollbar {
   width: 0;
-  background: transparent; 
+  background: transparent;
 }
 
 /* 마우스 호버 시, 얇은 스크롤바 표시하기 */
@@ -275,7 +275,7 @@ h4 {
 }
 
 .sidebar:hover::-webkit-scrollbar {
-  width: 6px; 
+  width: 6px;
 }
 
 .sidebar:hover::-webkit-scrollbar-thumb {
@@ -348,7 +348,7 @@ h4 {
   cursor: pointer;
 }
 
-.ota-toggles input[type="checkbox"] {
+.ota-toggles input[type='checkbox'] {
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -361,6 +361,13 @@ h4 {
 }
 
 /* 체크박스 색상 변경 */
-.ota-toggles input[type="checkbox"]:checked {
+.ota-toggles input[type='checkbox']:checked {
   accent-color: #007bff; /* 원하는 색상으로 변경 */
+}
+
+.sidebar-logo {
+  align-items: center;
+  width: auto;
+  height: 42px;
+  margin: 27px 30px;
 }
