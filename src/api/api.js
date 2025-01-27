@@ -27,10 +27,17 @@ api.interceptors.request.use(
 // CSRF 토큰을 Axios 요청 헤더에 자동으로 포함시키는 인터셉터
 api.interceptors.request.use(
   (config) => {
-    const csrfToken = localStorage.getItem('csrfToken');
-    if (csrfToken) {
-      config.headers['CSRF-Token'] = csrfToken;
+    // Refresh Token 요청인지 확인
+    const isRefreshTokenRequest = config.url === '/auth/refresh-token';
+
+    if (!isRefreshTokenRequest) {
+      // Refresh Token 요청이 아닐 때만 CSRF 토큰 추가
+      const csrfToken = localStorage.getItem('csrfToken');
+      if (csrfToken) {
+        config.headers['CSRF-Token'] = csrfToken;
+      }
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -90,6 +97,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
+        // Refresh Token 갱신 실패 시, 로그인 페이지로 리다이렉트
+        window.location.href = '/login';
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
@@ -395,11 +404,7 @@ export const resetPassword = async (token, newPassword) => {
   }
 };
 
-/**
- * 개인정보 동의 요청
- * @param {string} hotelId - 현재 호텔 ID
- * @returns {Promise<void>}
- */
+// 개인정보요청 동의
 export const consentUser = async (hotelId) => {
   try {
     // baseURL + "/auth/consent?hotelId=" + hotelId
