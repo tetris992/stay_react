@@ -1023,7 +1023,7 @@ const App = () => {
   useEffect(() => {
     async function fetchCsrf() {
       try {
-        const { data } = await api.get('/csrf-token'); // baseURL=localhost:3003
+        const { data } = await api.get('/csrf-token');
         // data: { csrfToken: '...' }
         localStorage.setItem('csrfToken', data.csrfToken);
       } catch (e) {
