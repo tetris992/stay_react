@@ -290,7 +290,7 @@ function HotelSettings({
           <div className="consent-button-container">
             {consentChecked ? (
               <span className="consent-checked-label">
-                "User has consented to the Privacy Policy."
+                "User({hotelId}) has consented to the Privacy Policy."
               </span>
             ) : (
               <button
