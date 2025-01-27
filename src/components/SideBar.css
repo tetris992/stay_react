@@ -136,10 +136,10 @@ h4 {
 }
 
 .date-picker-row {
-  margin-top: 12px;
-  font-size: 14px;
+  display: flex;
+  justify-content: center; /* 수평 가운데 정렬 */
+  /* align-items: center;  */ /* 수직 정렬 필요 시 주석 해제 */
 }
-
 .spinning {
   animation: spin 2s linear infinite;
 }
@@ -278,6 +278,7 @@ h4 {
   width: 6px;
 }
 
+
 .sidebar:hover::-webkit-scrollbar-thumb {
   background-color: #ebe9e9; /* 스크롤바 thumb 색상 */
   border-radius: 3px;
@@ -371,3 +372,37 @@ h4 {
   height: 42px;
   margin: 27px 30px;
 }
+
+/* 호텔 설정 버튼 깜빡임 애니메이션 */
+@keyframes blinkAnimation {
+  0% {
+    background-color: #f0f0f0;
+  }
+  50% {
+    background-color: #ffd700; /* 노란색으로 변경 */
+  }
+  100% {
+    background-color: #f0f0f0;
+  }
+}
+
+.blink-button {
+  animation: blinkAnimation 1s infinite;
+  border: 2px solid #ffd700; /* 노란색 테두리 추가 */
+  border-radius: 5px;
+}
+
+/* 기존 'highlight-blink' 클래스 유지 */
+.highlight-blink {
+  animation: highlightPulse 2s infinite;
+}
+
+@keyframes highlightPulse {
+  0% {
+    box-shadow: 0 0 50px #1b1b1b;
+  }
+  100% {
+    box-shadow: 0 0 0 #c4f4c3;
+  }
+}
+

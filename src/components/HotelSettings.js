@@ -11,6 +11,9 @@ import {
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import PropTypes from 'prop-types';
 
+// (추가) 개인정보처리방침 모달 컴포넌트
+import PrivacyConsentModal from './PrivacyConsentModal';
+
 function HotelSettings({
   onClose,
   onSave,
@@ -23,6 +26,7 @@ function HotelSettings({
     phoneNumber: '',
   },
 }) {
+  // [원본 상태들]
   const [hotelId, setHotelId] = useState(
     existingSettings?.hotelId || localStorage.getItem('hotelId') || ''
   );
@@ -40,9 +44,14 @@ function HotelSettings({
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
-  // ==== (추가) 야놀자 로그인 정보 상태 ====
+  // [원본] 야놀자 로그인 정보
   const [yanoljaId, setYanoljaId] = useState('');
   const [yanoljaPw, setYanoljaPw] = useState('');
+
+  // (추가) 개인정보 동의 상태
+  const [consentChecked, setConsentChecked] = useState(false);
+  // (추가) 모달 표시 여부
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   useEffect(() => {
     console.log('Existing Settings:', existingSettings);
@@ -64,12 +73,11 @@ function HotelSettings({
         let currentUserData = localUserInfo;
 
         if (existingSettings && existingSettings.hotelId) {
-          // 기존 설정이 있는 경우
+          // (기존) 기존 호텔 설정
           setRoomTypes(existingSettings.roomTypes);
           setTotalRooms(existingSettings.totalRooms);
           setIsExisting(true);
 
-          // 사용자 정보
           if (!currentUserData) {
             currentUserData = await fetchUserInfo(existingSettings.hotelId);
           }
@@ -77,13 +85,20 @@ function HotelSettings({
           setPhoneNumber(currentUserData?.phoneNumber || '');
           setEmail(currentUserData?.email || '');
 
-          // ==== (추가) 기존에 저장된 야놀자 로그인 정보가 있다면 불러오기 ====
+          // (추가) 동의 여부 반영
+          if (currentUserData?.consentChecked) {
+            setConsentChecked(true);
+          } else {
+            setConsentChecked(false);
+          }
+
+          // (기존) 야놀자 로그인 정보
           if (existingSettings.otaCredentials?.yanolja) {
             setYanoljaId(existingSettings.otaCredentials.yanolja.loginId || '');
             setYanoljaPw(existingSettings.otaCredentials.yanolja.loginPw || '');
           }
         } else {
-          // 새 호텔 설정
+          // (기존) 새 호텔
           const hotelIdToUse = localStorage.getItem('hotelId') || hotelId;
           if (!hotelIdToUse) return;
 
@@ -103,7 +118,14 @@ function HotelSettings({
           setPhoneNumber(currentUserData?.phoneNumber || '');
           setEmail(currentUserData?.email || '');
 
-          // 새 호텔이므로, 야놀자 로그인 정보는 빈 값 유지
+          // (추가) 동의 여부
+          if (currentUserData?.consentChecked) {
+            setConsentChecked(true);
+          } else {
+            setConsentChecked(false);
+          }
+
+          // 새 호텔이면 야놀자 정보는 빈 값
           setYanoljaId('');
           setYanoljaPw('');
         }
@@ -116,25 +138,22 @@ function HotelSettings({
     loadSettings();
   }, [hotelId, existingSettings]);
 
-  // 객실 타입 변경 처리 함수
+  // [원본] 객실타입 변경
   const handleRoomTypeChange = (index, field, value) => {
     const newRoomTypes = [...roomTypes];
     if (field === 'price' || field === 'stock') {
       newRoomTypes[index][field] = value === '' ? '' : Number(value);
     } else if (field === 'aliases') {
-      // 문자열을 '||'로 분리하여 배열로 변환
       newRoomTypes[index][field] = value
         .split('||')
         .map((alias) => alias.trim());
-    } else if (field === 'type') {
-      newRoomTypes[index][field] = value;
     } else {
       newRoomTypes[index][field] = value;
     }
     setRoomTypes(newRoomTypes);
   };
 
-  // 객실 타입 추가 함수
+  // [원본] 객실타입 추가/삭제
   const addRoomType = () => {
     setRoomTypes([
       ...roomTypes,
@@ -149,12 +168,11 @@ function HotelSettings({
     ]);
   };
 
-  // 객실 타입 제거 함수
   const removeRoomType = (index) => {
     setRoomTypes(roomTypes.filter((_, i) => i !== index));
   };
 
-  // 저장 버튼 클릭 시 처리 함수
+  // [원본] 저장
   const handleSave = async () => {
     if (
       !hotelId.trim() ||
@@ -175,6 +193,7 @@ function HotelSettings({
       return;
     }
 
+    // 객실 타입 검사
     if (
       roomTypes.length === 0 ||
       roomTypes.some(
@@ -193,7 +212,7 @@ function HotelSettings({
 
     const normalizedHotelId = hotelId.trim().toLowerCase();
 
-    // === (핵심) otaCredentials에 야놀자 정보 추가 ===
+    // (기존) otaCredentials
     const otaCredentials = {
       yanolja: {
         loginId: yanoljaId.trim(),
@@ -212,7 +231,7 @@ function HotelSettings({
         nameEng: rt.nameEng ? rt.nameEng.trim() : '',
         nameKor: rt.nameKor ? rt.nameKor.trim() : '',
         aliases: Array.isArray(rt.aliases)
-          ? rt.aliases.map((alias) => (alias ? alias.trim().toLowerCase() : ''))
+          ? rt.aliases.map((alias) => alias.trim().toLowerCase())
           : [],
       })),
       email: email.trim(),
@@ -242,21 +261,53 @@ function HotelSettings({
     }
   };
 
+  // (추가) 개인정보 동의 모달 핸들러
+  const openPrivacyModal = () => {
+    setShowPrivacyModal(true);
+  };
+  const closePrivacyModal = () => {
+    setShowPrivacyModal(false);
+  };
+  const handleConsentComplete = () => {
+    setConsentChecked(true);
+    closePrivacyModal();
+  };
+
   return (
-    // ==== (추가) autoComplete="off"로 폼 전체의 자동 완성 끄기 ====
     <div className="hotel-settings-modal">
       <form className="hotel-settings-content" autoComplete="off">
-        {/* ↑ 혹은 <form autoComplete="new-password"> 등 다른 값도 사용 가능 */}
-
         <button className="close-button" onClick={onClose} aria-label="닫기">
           &times;
         </button>
 
-        <h2>{isExisting ? '호텔 설정 수정' : '호텔 초기 설정'}</h2>
+        <div className="settings-header">
+          {/* 상단 타이틀 */}
+          <h2 className="settings-title">
+            {isExisting ? '호텔 설정 수정' : '호텔 초기 설정'}
+          </h2>
+
+          {/* 개인정보 처리방침 동의 버튼/표시 (타이틀 아래) */}
+          <div className="consent-button-container">
+            {consentChecked ? (
+              <span className="consent-checked-label">
+                Has been consented to privacy policy. thx.
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="consent-button"
+                onClick={openPrivacyModal}
+              >
+                개인정보처리방침 확인하기
+              </button>
+            )}
+          </div>
+        </div>
+
         {error && <p className="error">{error}</p>}
         {!isExisting && !error && <p className="info">호텔 설정을 해주세요.</p>}
 
-        {/* 호텔 정보 입력 필드 */}
+        {/* 1) 호텔 기본정보 입력 */}
         <input
           type="text"
           placeholder="호텔 ID"
@@ -264,7 +315,6 @@ function HotelSettings({
           onChange={(e) => setHotelId(e.target.value)}
           required
           disabled={isExisting}
-          // ==== (추가) 개별 필드에도 autoComplete="off" ====
           autoComplete="off"
         />
         <input
@@ -274,7 +324,7 @@ function HotelSettings({
           onChange={(e) => setTotalRooms(e.target.value)}
           required
           min="1"
-          autoComplete="off" // (추가)
+          autoComplete="off"
         />
         <input
           type="email"
@@ -282,7 +332,7 @@ function HotelSettings({
           value={email || ''}
           onChange={(e) => setEmail(e.target.value)}
           required
-          autoComplete="off" // (추가)
+          autoComplete="off"
         />
         <input
           type="text"
@@ -290,7 +340,7 @@ function HotelSettings({
           value={address || ''}
           onChange={(e) => setAddress(e.target.value)}
           required
-          autoComplete="off" // (추가)
+          autoComplete="off"
         />
         <input
           type="text"
@@ -298,9 +348,10 @@ function HotelSettings({
           value={phoneNumber || ''}
           onChange={(e) => setPhoneNumber(e.target.value)}
           required
-          autoComplete="off" // (추가)
+          autoComplete="off"
         />
 
+        {/* 2) 객실 타입 및 가격/재고 */}
         <h3>객실 타입 및 가격/재고</h3>
         {roomTypes.map((room, index) => (
           <div key={index} className="room-type">
@@ -312,7 +363,7 @@ function HotelSettings({
                 handleRoomTypeChange(index, 'nameKor', e.target.value)
               }
               required
-              autoComplete="off" // (추가)
+              autoComplete="off"
             />
             <input
               type="text"
@@ -322,7 +373,7 @@ function HotelSettings({
                 handleRoomTypeChange(index, 'nameEng', e.target.value)
               }
               required
-              autoComplete="off" // (추가)
+              autoComplete="off"
             />
             <input
               type="number"
@@ -332,7 +383,7 @@ function HotelSettings({
                 handleRoomTypeChange(index, 'price', e.target.value)
               }
               required
-              autoComplete="off" // (추가)
+              autoComplete="off"
             />
             <input
               type="number"
@@ -342,7 +393,7 @@ function HotelSettings({
                 handleRoomTypeChange(index, 'stock', e.target.value)
               }
               required
-              autoComplete="off" // (추가)
+              autoComplete="off"
             />
             <input
               type="text"
@@ -355,7 +406,7 @@ function HotelSettings({
               onChange={(e) =>
                 handleRoomTypeChange(index, 'aliases', e.target.value)
               }
-              autoComplete="off" // (추가)
+              autoComplete="off"
             />
             <button
               className="delete-roomType"
@@ -367,14 +418,22 @@ function HotelSettings({
           </div>
         ))}
 
-        {/* === (추가) 야놀자 아이디/비번 입력 영역 === */}
+        <button
+          className="add_button"
+          onClick={addRoomType}
+          type="button"
+          style={{ marginBottom: '1rem' }}
+        >
+          객실 타입 추가
+        </button>
+
+        {/* 3) 야놀자 로그인 정보 */}
         <h3>야놀자 로그인 정보</h3>
         <input
           type="text"
           placeholder="야놀자 아이디"
           value={yanoljaId}
           onChange={(e) => setYanoljaId(e.target.value)}
-          // ==== (추가) 명시적으로 자동 완성 끄기 ====
           autoComplete="new-username"
         />
         <input
@@ -382,13 +441,10 @@ function HotelSettings({
           placeholder="야놀자 비밀번호"
           value={yanoljaPw}
           onChange={(e) => setYanoljaPw(e.target.value)}
-          autoComplete="new-password" // (추가)
+          autoComplete="new-password"
         />
 
         <div className="buttons_container">
-          <button className="add_button" onClick={addRoomType} type="button">
-            객실 타입 추가
-          </button>
           <div className="buttons">
             <button className="save-button" onClick={handleSave} type="button">
               저장
@@ -399,6 +455,15 @@ function HotelSettings({
           </div>
         </div>
       </form>
+
+      {/* (추가) 개인정보처리방침 모달 표시 */}
+      {showPrivacyModal && (
+        <PrivacyConsentModal
+          hotelId={hotelId}
+          onClose={closePrivacyModal}
+          onConsentComplete={handleConsentComplete}
+        />
+      )}
     </div>
   );
 }

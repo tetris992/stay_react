@@ -24,6 +24,18 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// CSRF 토큰을 Axios 요청 헤더에 자동으로 포함시키는 인터셉터
+api.interceptors.request.use(
+  (config) => {
+    const csrfToken = localStorage.getItem('csrfToken');
+    if (csrfToken) {
+      config.headers['CSRF-Token'] = csrfToken;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // 응답 인터셉터 설정 (토큰 만료 시 갱신 시도)
 let isRefreshing = false;
 let failedQueue = [];
@@ -119,6 +131,11 @@ export const loginUser = async (credentials) => {
 
     throw new ApiError(statusCode, errorMessage);
   }
+};
+
+// CSRF 토큰을 로컬 스토리지에 저장하는 함수 (예: 로그인 후)
+export const setCsrfToken = (token) => {
+  localStorage.setItem('csrfToken', token);
 };
 
 // 사용자 등록 API
@@ -375,6 +392,25 @@ export const resetPassword = async (token, newPassword) => {
     const errorMessage =
       error.response?.data?.message || '비밀번호 재설정에 실패했습니다.';
     throw new Error(errorMessage);
+  }
+};
+
+/**
+ * 개인정보 동의 요청
+ * @param {string} hotelId - 현재 호텔 ID
+ * @returns {Promise<void>}
+ */
+export const consentUser = async (hotelId) => {
+  try {
+    // baseURL + "/auth/consent?hotelId=" + hotelId
+    // Protect 미들웨어 + CSRF 토큰 자동 적용
+    const response = await api.post(`/auth/consent?hotelId=${hotelId}`, {});
+    // 서버에서 { message: '개인정보 동의가 완료되었습니다.' } 반환 예상
+    return response.data;
+  } catch (error) {
+    console.error('개인정보 동의 실패:', error);
+    // 필요 시 에러 처리/throw
+    throw error;
   }
 };
 

@@ -45,6 +45,7 @@ function RoomGrid({
   newlyCreatedId,
   flipAllMemos, // [추가] flipAllMemos Prop 추가
   sortOrder,
+  needsConsent, // 개인정보 동의 필요 여부
 }) {
   const [isEvening, setIsEvening] = useState(false);
   const [flippedIndexes, setFlippedIndexes] = useState(new Set());
@@ -188,7 +189,6 @@ function RoomGrid({
 
   // 메모 저장 (서버로 보내지 않고 로컬 스토리지에만 반영)
   const handleMemoSave = (reservationId) => {
-    // currentMemo 변수를 제거해도 로직에 문제 없음
     setMemos((prev) => {
       const updated = {
         ...prev,
@@ -408,8 +408,10 @@ function RoomGrid({
   const renderActionButtons = (reservation) => {
     const isOTA = availableOTAs.includes(reservation.siteName);
     const isCancelled =
-      isCancelledStatus(reservation.reservationStatus || '') ||
-      reservation._id.includes('Canceled');
+      isCancelledStatus(
+        reservation.reservationStatus || '',
+        reservation.customerName || ''
+      ) || reservation._id.includes('Canceled');
     const isConfirmed =
       reservation.reservationStatus &&
       reservation.reservationStatus.toLowerCase() === 'confirmed';
@@ -455,7 +457,7 @@ function RoomGrid({
         if (now >= checkInPlus3h) {
           isAutoConfirmed = true;
 
-          onConfirm(reservation._id, hotelId); // 자동 확정이 되었을때 바로 서버로 전송
+          onConfirm(reservation._id, hotelId); // 자동 확정이 되었을 때 바로 서버로 전송
         }
       }
     }
@@ -482,16 +484,6 @@ function RoomGrid({
         canEdit = true;
       }
     }
-
-    // if (
-    //   !isCancelled &&
-    //   finalIsConfirmed &&
-    //   stayDuration <= 1 &&
-    //   checkInPassed
-    // ) {
-    //   canDelete = false;
-    //   canEdit = false;
-    // }
 
     return (
       <span className="button-group">
@@ -614,471 +606,486 @@ function RoomGrid({
         position: 'relative',
       }}
     >
-      <div
-        className={`edit-panel-left ${
-          selectedReservation && !isModalOpen ? 'open' : ''
-        }`}
-      >
-        {selectedReservation &&
-          !isModalOpen &&
-          editedValues[selectedReservation._id] && (
-            <form onSubmit={handleSubmit}>
-              <h2>예약 수정</h2>
-              {/* 예약 정보 수정 필드들 */}
-              <label>
-                예약자:
-                <input
-                  type="text"
-                  value={editedValues[selectedReservation._id].customerName}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'customerName',
-                      e.target.value
-                    )
-                  }
-                  required
-                />
-              </label>
+      <>
+        <div
+          className={`edit-panel-left ${
+            selectedReservation && !isModalOpen ? 'open' : ''
+          }`}
+        >
+          {selectedReservation &&
+            !isModalOpen &&
+            editedValues[selectedReservation._id] && (
+              <form onSubmit={handleSubmit}>
+                <h2>예약 수정</h2>
+                {/* 예약 정보 수정 필드들 */}
+                <label>
+                  예약자:
+                  <input
+                    type="text"
+                    value={editedValues[selectedReservation._id].customerName}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'customerName',
+                        e.target.value
+                      )
+                    }
+                    required
+                  />
+                </label>
 
-              <label>
-                전화번호:
-                <input
-                  type="text"
-                  value={editedValues[selectedReservation._id].phoneNumber}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'phoneNumber',
-                      e.target.value
-                    )
-                  }
-                />
-              </label>
+                <label>
+                  전화번호:
+                  <input
+                    type="text"
+                    value={editedValues[selectedReservation._id].phoneNumber}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'phoneNumber',
+                        e.target.value
+                      )
+                    }
+                  />
+                </label>
 
-              <label>
-                체크인 날짜:
-                <input
-                  type="date"
-                  value={editedValues[selectedReservation._id].checkInDate}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'checkInDate',
-                      e.target.value
-                    )
-                  }
-                />
-              </label>
+                <label>
+                  체크인 날짜:
+                  <input
+                    type="date"
+                    value={editedValues[selectedReservation._id].checkInDate}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'checkInDate',
+                        e.target.value
+                      )
+                    }
+                  />
+                </label>
 
-              <label>
-                체크아웃 날짜:
-                <input
-                  type="date"
-                  value={editedValues[selectedReservation._id].checkOutDate}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'checkOutDate',
-                      e.target.value
-                    )
-                  }
-                />
-              </label>
+                <label>
+                  체크아웃 날짜:
+                  <input
+                    type="date"
+                    value={editedValues[selectedReservation._id].checkOutDate}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'checkOutDate',
+                        e.target.value
+                      )
+                    }
+                  />
+                </label>
 
-              <label>
-                객실타입:
-                <select
-                  value={editedValues[selectedReservation._id].roomInfo}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'roomInfo',
-                      e.target.value
-                    )
-                  }
-                >
-                  {roomTypes.map((room, i) => (
-                    <option key={i} value={room.type}>
-                      {room.type}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label>
+                  객실타입:
+                  <select
+                    value={editedValues[selectedReservation._id].roomInfo}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'roomInfo',
+                        e.target.value
+                      )
+                    }
+                  >
+                    {roomTypes.map((room, i) => (
+                      <option key={i} value={room.type}>
+                        {room.type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <label>
-                가격 (KRW):
-                <input
-                  type="number"
-                  value={editedValues[selectedReservation._id].price}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'price',
-                      e.target.value
-                    )
-                  }
-                  min="0"
-                  step="1"
-                />
-              </label>
+                <label>
+                  가격 (KRW):
+                  <input
+                    type="number"
+                    value={editedValues[selectedReservation._id].price}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'price',
+                        e.target.value
+                      )
+                    }
+                    min="0"
+                    step="1"
+                  />
+                </label>
 
-              <label>
-                결제방법/상태:
-                {availableOTAs.includes(selectedReservation.siteName) ? (
-                  // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
+                <label>
+                  결제방법/상태:
+                  {availableOTAs.includes(selectedReservation.siteName) ? (
+                    // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
+                    <input
+                      type="text"
+                      value={
+                        editedValues[selectedReservation._id].paymentMethod ||
+                        'OTA'
+                      }
+                      disabled // or readOnly
+                      style={{ backgroundColor: '#eee' }}
+                      onChange={() => {
+                        /* OTA는 수정 불가 → 막기 */
+                      }}
+                    />
+                  ) : selectedReservation.siteName === '현장예약' ? (
+                    // 2) 현장예약 → 기존 <select> 유지
+                    <select
+                      value={
+                        editedValues[selectedReservation._id].paymentMethod ||
+                        'Pending'
+                      }
+                      onChange={(e) =>
+                        handleFieldChange(
+                          selectedReservation._id,
+                          'paymentMethod',
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="Card">Card</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Account Transfer">Account Transfer</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  ) : (
+                    // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
+                    <select
+                      value={
+                        editedValues[selectedReservation._id].paymentMethod ||
+                        'Pending'
+                      }
+                      onChange={(e) =>
+                        handleFieldChange(
+                          selectedReservation._id,
+                          'paymentMethod',
+                          e.target.value
+                        )
+                      }
+                    >
+                      <option value="Pending">Pending</option>
+                      {/* 필요하면 Card/Cash/Transfer 등 추가 */}
+                    </select>
+                  )}
+                </label>
+
+                <label>
+                  고객요청:
                   <input
                     type="text"
                     value={
-                      editedValues[selectedReservation._id].paymentMethod ||
-                      'OTA'
+                      editedValues[selectedReservation._id].specialRequests
                     }
-                    disabled // or readOnly
-                    style={{ backgroundColor: '#eee' }}
-                    onChange={() => {
-                      /* OTA는 수정 불가 → 막기 */
-                    }}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        selectedReservation._id,
+                        'specialRequests',
+                        e.target.value
+                      )
+                    }
                   />
-                ) : selectedReservation.siteName === '현장예약' ? (
-                  // 2) 현장예약 → 기존 <select> 유지
-                  <select
-                    value={
-                      editedValues[selectedReservation._id].paymentMethod ||
-                      'Pending'
-                    }
-                    onChange={(e) =>
-                      handleFieldChange(
-                        selectedReservation._id,
-                        'paymentMethod',
-                        e.target.value
-                      )
-                    }
+                </label>
+
+                <div className="panel-actions">
+                  <button type="submit" className="save-button">
+                    저장
+                  </button>
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={() => setSelectedReservation(null)}
                   >
-                    <option value="Card">Card</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Account Transfer">Account Transfer</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                ) : (
-                  // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
-                  <select
-                    value={
-                      editedValues[selectedReservation._id].paymentMethod ||
-                      'Pending'
-                    }
-                    onChange={(e) =>
-                      handleFieldChange(
-                        selectedReservation._id,
-                        'paymentMethod',
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="Pending">Pending</option>
-                    {/* 필요하면 Card/Cash/Transfer 등 추가 */}
-                  </select>
-                )}
-              </label>
+                    취소
+                  </button>
+                </div>
+              </form>
+            )}
+        </div>
 
-              <label>
-                고객요청:
-                <input
-                  type="text"
-                  value={editedValues[selectedReservation._id].specialRequests}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      selectedReservation._id,
-                      'specialRequests',
-                      e.target.value
-                    )
-                  }
-                />
-              </label>
+        <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
+          <div
+            className={`grid-container ${isEvening ? 'evening-mode' : ''} ${
+              isAnyEditing ? 'editing-active' : ''
+            }`}
+          >
+            {sortedReservations.map((reservation, index) => {
+              // index + 1 이 가장 마지막이 1번이 되므로, numbering을 다음과 같이 할 수 있음:
+              const displayNumber = sortedReservations.length - index;
+              const isHighlighted =
+                highlightedReservationIds.includes(reservation._id) &&
+                isSearching;
 
-              <div className="panel-actions">
-                <button type="submit" className="save-button">
-                  저장
-                </button>
-                <button
-                  type="button"
-                  className="cancel-button"
-                  onClick={() => setSelectedReservation(null)}
-                >
-                  취소
-                </button>
-              </div>
-            </form>
-          )}
-      </div>
+              const isCancelled =
+                isCancelledStatus(
+                  reservation.reservationStatus || '',
+                  reservation.customerName || ''
+                ) || reservation._id.includes('Canceled');
 
-      <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
-        <div
-          className={`grid-container ${isEvening ? 'evening-mode' : ''} ${
-            isAnyEditing ? 'editing-active' : ''
-          }`}
-        >
-          {sortedReservations.map((reservation, index) => {
-            // index + 1 이 가장 마지막이 1번이 되므로, numbering을 다음과 같이 할 수 있음:
-            const displayNumber = sortedReservations.length - index;
-            const isHighlighted =
-              highlightedReservationIds.includes(reservation._id) &&
-              isSearching;
+              const isOnsiteReservation = reservation.siteName === '현장예약';
+              const isFirstCard = index === 0;
+              const isFlipped = flippedIndexes.has(index);
 
-            const isCancelled =
-              isCancelledStatus(
-                reservation.reservationStatus || '',
-                reservation.customerName || ''
-              ) || reservation._id.includes('Canceled');
+              // 수정: selectedReservation가 있고, 해당 카드가 현재 수정중인 카드인지 확인
+              const isEditingThisCard =
+                selectedReservation &&
+                selectedReservation._id === reservation._id;
 
-            const isOnsiteReservation = reservation.siteName === '현장예약';
-            const isFirstCard = index === 0;
-            const isFlipped = flippedIndexes.has(index);
+              // editMode 클래스 적용 여부
+              const editMode = isEditingThisCard; // true/false
 
-            // 수정: selectedReservation가 있고, 해당 카드가 현재 수정중인 카드인지 확인
-            const isEditingThisCard =
-              selectedReservation &&
-              selectedReservation._id === reservation._id;
+              // *** 여기서 onsite-effect 클래스를 추가하여 현장예약 카드도 효과 적용 ***
+              const cardClassNames = [
+                'room-card',
+                getBorderColor(reservation),
+                isCancelled ? 'cancelled' : '',
+                isHighlighted ? 'highlighted' : '',
+                editMode ? 'edit-mode' : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
 
-            // editMode 클래스 적용 여부
-            const editMode = isEditingThisCard; // true/false
+              const checkInDateOnly = new Date(
+                reservation.parsedCheckInDate.getFullYear(),
+                reservation.parsedCheckInDate.getMonth(),
+                reservation.parsedCheckInDate.getDate()
+              );
+              const checkOutDateOnly = new Date(
+                reservation.parsedCheckOutDate.getFullYear(),
+                reservation.parsedCheckOutDate.getMonth(),
+                reservation.parsedCheckOutDate.getDate()
+              );
+              const dayDifference =
+                (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24);
 
-            // *** 여기서 onsite-effect 클래스를 추가하여 현장예약 카드도 효과 적용 ***
-            const cardClassNames = [
-              'room-card',
-              getBorderColor(reservation),
-              isCancelled ? 'cancelled' : '',
-              isHighlighted ? 'highlighted' : '',
-              editMode ? 'edit-mode' : '',
-            ]
-              .filter(Boolean)
-              .join(' ');
+              let stayLabel = '';
+              if (dayDifference === 0) {
+                stayLabel = '(대실)';
+              } else if (
+                dayDifference === 1 &&
+                reservation.customerName.includes('대실')
+              ) {
+                stayLabel = '(대실)';
+              } else if (dayDifference === 1) {
+                stayLabel = '(1박)';
+              } else if (dayDifference >= 2) {
+                stayLabel = `(${dayDifference}박)`;
+              }
 
-            const checkInDateOnly = new Date(
-              reservation.parsedCheckInDate.getFullYear(),
-              reservation.parsedCheckInDate.getMonth(),
-              reservation.parsedCheckInDate.getDate()
-            );
-            const checkOutDateOnly = new Date(
-              reservation.parsedCheckOutDate.getFullYear(),
-              reservation.parsedCheckOutDate.getMonth(),
-              reservation.parsedCheckOutDate.getDate()
-            );
-            const dayDifference =
-              (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24);
+              // memo 객체 가져오기
+              const memo = memos[reservation._id] || {
+                text: '',
+                isEditing: false,
+              };
 
-            let stayLabel = '';
-            if (dayDifference === 0) {
-              stayLabel = '(대실)';
-            } else if (
-              dayDifference === 1 &&
-              reservation.customerName.includes('대실')
-            ) {
-              stayLabel = '(대실)';
-            } else if (dayDifference === 1) {
-              stayLabel = '(1박)';
-            } else if (dayDifference >= 2) {
-              stayLabel = `(${dayDifference}박)`;
-            }
-
-            // memo 객체 가져오기
-            const memo = memos[reservation._id] || {
-              text: '',
-              isEditing: false,
-            };
-
-            return (
-              <div
-                key={reservation._id}
-                className={cardClassNames}
-                data-id={reservation._id}
-                style={{
-                  position: 'relative',
-                  cursor: editMode ? 'default' : 'pointer',
-                  // opacity: cardOpacities[index] || 1,
-                  transition: 'opacity 0.2s ease-in-out',
-                }}
-                onClick={() => {
-                  // 플립은 memo 편집 중이 아닐 때만
-                  if (!memo.isEditing && !editMode)
-                    handleCardFlip(index, reservation._id);
-                }}
-              >
+              return (
                 <div
-                  className={`flip-container ${
-                    isFlipped && !editMode ? 'flipped' : ''
-                  } ${isFirstCard && autoFlips.has(index) ? 'auto-flip' : ''}`}
+                  key={reservation._id}
+                  className={cardClassNames}
+                  data-id={reservation._id}
                   style={{
                     position: 'relative',
                     cursor: editMode ? 'default' : 'pointer',
+                    // opacity: cardOpacities[index] || 1,
+                    transition: 'opacity 0.2s ease-in-out',
+                  }}
+                  onClick={() => {
+                    // 플립은 memo 편집 중이 아닐 때만
+                    if (!memo.isEditing && !editMode)
+                      handleCardFlip(index, reservation._id);
                   }}
                 >
-                  <div className="room-card-inner">
-                    <div className="room-card-front">
-                      <div className="card-content">
-                        <div className="card-header">
-                          <h3>
-                            No: {displayNumber} {stayLabel}
-                            {renderActionButtons(reservation)}
-                          </h3>
+                  <div
+                    className={`flip-container ${
+                      isFlipped && !editMode ? 'flipped' : ''
+                    } ${
+                      isFirstCard && autoFlips.has(index) ? 'auto-flip' : ''
+                    }`}
+                    style={{
+                      position: 'relative',
+                      cursor: editMode ? 'default' : 'pointer',
+                    }}
+                  >
+                    <div className="room-card-inner">
+                      <div className="room-card-front">
+                        <div className="card-content">
+                          <div className="card-header">
+                            <h3>
+                              No: {displayNumber} {stayLabel}
+                              {renderActionButtons(reservation)}
+                            </h3>
+                          </div>
+                          <p>{reservation._id.replace(`${hotelId}-`, '')}</p>
+                          <p>
+                            예약자: {reservation.customerName || '정보 없음'}
+                          </p>
+                          <p>
+                            체크인:{' '}
+                            {reservation.parsedCheckInDate
+                              ? format(
+                                  reservation.parsedCheckInDate,
+                                  'yyyy-MM-dd HH:mm'
+                                )
+                              : '정보 없음'}
+                          </p>
+                          <p>
+                            체크아웃:{' '}
+                            {reservation.parsedCheckOutDate
+                              ? format(
+                                  reservation.parsedCheckOutDate,
+                                  'yyyy-MM-dd HH:mm'
+                                )
+                              : '정보 없음'}
+                          </p>
+                          <p>가격: {getPriceForDisplay(reservation)}</p>
+                          <p>
+                            객실 정보:{' '}
+                            {reservation.roomInfo
+                              ? reservation.roomInfo.length > 30
+                                ? `${reservation.roomInfo.substring(0, 21)}...`
+                                : reservation.roomInfo
+                              : '정보 없음'}
+                          </p>
+                          <p>
+                            예약일:{' '}
+                            {reservation.reservationDate
+                              ? format(
+                                  parseISO(reservation.reservationDate),
+                                  'yyyy-MM-dd'
+                                )
+                              : '정보 없음'}
+                          </p>
+                          {reservation.phoneNumber && (
+                            <p>전화번호: {reservation.phoneNumber}</p>
+                          )}
+                          <p>
+                            고객요청: {reservation.specialRequests || '없음'}
+                          </p>
+                          <p className="payment-method">
+                            결제방법:{' '}
+                            {getPaymentMethodIcon(reservation.paymentMethod)}{' '}
+                            {reservation.paymentMethod || '정보 없음'}
+                          </p>
                         </div>
-                        <p>{reservation._id.replace(`${hotelId}-`, '')}</p>
-                        <p>예약자: {reservation.customerName || '정보 없음'}</p>
-                        <p>
-                          체크인:{' '}
-                          {reservation.parsedCheckInDate
-                            ? format(
-                                reservation.parsedCheckInDate,
-                                'yyyy-MM-dd HH:mm'
-                              )
-                            : '정보 없음'}
-                        </p>
-                        <p>
-                          체크아웃:{' '}
-                          {reservation.parsedCheckOutDate
-                            ? format(
-                                reservation.parsedCheckOutDate,
-                                'yyyy-MM-dd HH:mm'
-                              )
-                            : '정보 없음'}
-                        </p>
-                        <p>가격: {getPriceForDisplay(reservation)}</p>
-                        <p>
-                          객실 정보:{' '}
-                          {reservation.roomInfo
-                            ? reservation.roomInfo.length > 30
-                              ? `${reservation.roomInfo.substring(0, 21)}...`
-                              : reservation.roomInfo
-                            : '정보 없음'}
-                        </p>
-                        <p>
-                          예약일:{' '}
-                          {reservation.reservationDate
-                            ? format(
-                                parseISO(reservation.reservationDate),
-                                'yyyy-MM-dd'
-                              )
-                            : '정보 없음'}
-                        </p>
-                        {reservation.phoneNumber && (
-                          <p>전화번호: {reservation.phoneNumber}</p>
-                        )}
-                        <p>고객요청: {reservation.specialRequests || '없음'}</p>
-                        <p className="payment-method">
-                          결제방법:{' '}
-                          {getPaymentMethodIcon(reservation.paymentMethod)}{' '}
-                          {reservation.paymentMethod || '정보 없음'}
-                        </p>
-                      </div>
-                      <div className="site-info-wrapper">
-                        <p className="site-info">
-                          사이트:{' '}
-                          <span
-                            className={
-                              isOnsiteReservation ? 'onsite-reservation' : ''
-                            }
-                          >
-                            {reservation.siteName || '정보 없음'}
-                          </span>
-                        </p>
-                        <button
-                          type="button"
-                          className="invoice-icon-button-back"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openInvoiceModal(reservation);
-                          }}
-                          aria-label={`Open invoice for reservation ${reservation.customerName}`}
-                          title="인보이스 보기"
-                        >
-                          <FaFileInvoice size={20} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="room-card-back">
-                      {/* 메모 헤더 */}
-                      <div className="memo-header">
-                        <span>Memo</span>
-                        {!memo.isEditing ? (
+                        <div className="site-info-wrapper">
+                          <p className="site-info">
+                            사이트:{' '}
+                            <span
+                              className={
+                                isOnsiteReservation ? 'onsite-reservation' : ''
+                              }
+                            >
+                              {reservation.siteName || '정보 없음'}
+                            </span>
+                          </p>
                           <button
-                            className="memo-edit-button"
+                            type="button"
+                            className="invoice-icon-button-back"
                             onClick={(e) => {
                               e.stopPropagation();
-                              toggleMemoEdit(reservation._id);
+                              openInvoiceModal(reservation);
                             }}
+                            aria-label={`Open invoice for reservation ${reservation.customerName}`}
+                            title="인보이스 보기"
                           >
-                            <FaPen /> {/* 여기서 "Edit" 대신 연필아이콘 사용 */}
+                            <FaFileInvoice size={20} />
                           </button>
-                        ) : (
-                          <span className="memo-edit-actions">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMemoSave(reservation._id);
-                              }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleMemoCancel(reservation._id);
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </span>
-                        )}
+                        </div>
                       </div>
 
-                      {/* 메모 본문 영역 */}
-                      <div className="memo-body">
-                        {!memo.isEditing ? (
-                          <div className="memo-text-display">
-                            {memo.text || ''}
-                          </div>
-                        ) : (
-                          <textarea
-                            ref={(el) =>
-                              (memoRefs.current[reservation._id] = el)
-                            }
-                            value={memo.text}
-                            onChange={(e) =>
-                              handleMemoChange(reservation._id, e.target.value)
-                            }
-                            className="memo-textarea"
-                          />
-                        )}
+                      <div className="room-card-back">
+                        {/* 메모 헤더 */}
+                        <div className="memo-header">
+                          <span>Memo</span>
+                          {!memo.isEditing ? (
+                            <button
+                              className="memo-edit-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleMemoEdit(reservation._id);
+                              }}
+                            >
+                              <FaPen />{' '}
+                              {/* 여기서 "Edit" 대신 연필 아이콘 사용 */}
+                            </button>
+                          ) : (
+                            <span className="memo-edit-actions">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMemoSave(reservation._id);
+                                }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMemoCancel(reservation._id);
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 메모 본문 영역 */}
+                        <div className="memo-body">
+                          {!memo.isEditing ? (
+                            <div className="memo-text-display">
+                              {memo.text || ''}
+                            </div>
+                          ) : (
+                            <textarea
+                              ref={(el) =>
+                                (memoRefs.current[reservation._id] = el)
+                              }
+                              value={memo.text}
+                              onChange={(e) =>
+                                handleMemoChange(
+                                  reservation._id,
+                                  e.target.value
+                                )
+                              }
+                              className="memo-textarea"
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
+                  {loadedReservations.includes(reservation._id) && (
+                    <div className="fade-in-overlay"></div>
+                  )}
                 </div>
-                {loadedReservations.includes(reservation._id) && (
-                  <div className="fade-in-overlay"></div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {isProcessing && <p>처리 중...</p>}
-        {error && <p className="error-message">{error}</p>}
+              );
+            })}
+          </div>
 
-        {isModalOpen && modalType === 'invoice' && selectedReservation && (
-          <InvoiceModal
-            isOpen={isModalOpen}
-            onRequestClose={closeModal}
-            onSave={handleEditSave}
-            invoiceRef={invoiceRef}
-            reservationNo={
-              selectedReservation.reservationNo || selectedReservation._id
-            }
-            reservation={selectedReservation}
-            hotelAddress={hotelAddress}
-            phoneNumber={phoneNumber}
-            email={email}
-          />
-        )}
-      </div>
+          {isProcessing && <p>처리 중...</p>}
+          {error && <p className="error-message">{error}</p>}
+
+          {isModalOpen && modalType === 'invoice' && selectedReservation && (
+            <InvoiceModal
+              isOpen={isModalOpen}
+              onRequestClose={closeModal}
+              onSave={handleEditSave}
+              invoiceRef={invoiceRef}
+              reservationNo={
+                selectedReservation.reservationNo || selectedReservation._id
+              }
+              reservation={selectedReservation}
+              hotelAddress={hotelAddress}
+              phoneNumber={phoneNumber}
+              email={email}
+            />
+          )}
+        </div>
+      </>
     </div>
   );
 }
@@ -1099,7 +1106,8 @@ RoomGrid.propTypes = {
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
   flipAllMemos: PropTypes.bool.isRequired, // [추가]
-  otaSortOrders: PropTypes.array.isRequired, // [추가]
+  sortOrder: PropTypes.string.isRequired, // 추가
+  needsConsent: PropTypes.bool.isRequired, // 개인정보 동의 필요 여부
 };
 
 // Border 색상 결정 함수

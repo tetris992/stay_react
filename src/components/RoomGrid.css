@@ -622,3 +622,42 @@ html {
     box-shadow: 0 0 0 #c4f4c3;
   }
 }
+
+/* [추가] 개인정보 동의 필요 시 NOTICE 메시지 스타일 */
+.consent-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background-color: #fff3cd; /* 연한 노란색 배경 */
+  color: #856404; /* 진한 노란색 텍스트 */
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.consent-notice h2 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.consent-notice p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.consent-notice button {
+  padding: 10px 20px;
+  background-color: #ffc107; /* 노란색 버튼 */
+  color: #212529; /* 어두운 텍스트 */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.consent-notice button:hover {
+  background-color: #e0a800;
+}

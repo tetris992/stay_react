@@ -8,6 +8,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from './components/Header.js';
 import SideBar from './components/SideBar.js';
 import RoomGrid from './components/RoomGrid.js';
@@ -17,8 +18,10 @@ import HotelSettings from './components/HotelSettings';
 import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
+import PrivacyConsent from './components/PrivacyConsentModal.js';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { fetchUserInfo, updateUser } from './api/api.js';
+import api, { fetchUserInfo, updateUser } from './api/api.js';
+
 import DetailPanel from './components/DetailPanel';
 import { parseDate } from './utils/dateParser.js';
 import {
@@ -108,6 +111,9 @@ const App = () => {
   const [isSearching, setIsSearching] = useState(false);
 
   const highlightTimeoutRef = useRef(null);
+
+  // [추가] 개인정보 동의 필요 상태
+  const [needsConsent, setNeedsConsent] = useState(false);
 
   // 매출 모달 관련 상태 추가
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
@@ -968,11 +974,26 @@ const App = () => {
         const userId = userInfo?.id || userInfo?._id;
 
         if (userId) {
-          const updatedUserInfo = await updateUser(userId, userSettings);
-          setUserInfo(updatedUserInfo);
+          console.log('Updating user info');
+          await updateUser(userId, userSettings);
+          // userInfo 업데이트는 별도로 처리
+          setUserInfo((prev) => ({
+            ...prev,
+            email: newEmail,
+            address,
+            phoneNumber: newPhoneNumber,
+          }));
 
           // 로컬 스토리지에 userInfo 저장
-          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+          localStorage.setItem(
+            'userInfo',
+            JSON.stringify({
+              ...userInfo,
+              email: newEmail,
+              address,
+              phoneNumber: newPhoneNumber,
+            })
+          );
         } else {
           console.warn('User ID not found. Skipping user update.');
         }
@@ -999,6 +1020,19 @@ const App = () => {
     [isNewSetup, userInfo]
   );
 
+  useEffect(() => {
+    async function fetchCsrf() {
+      try {
+        const { data } = await api.get('/csrf-token'); // baseURL=localhost:3003
+        // data: { csrfToken: '...' }
+        localStorage.setItem('csrfToken', data.csrfToken);
+      } catch (e) {
+        console.error('CSRF 토큰 요청 실패:', e);
+      }
+    }
+    fetchCsrf();
+  }, []);
+
   // 초기 로그인 상태 확인 및 설정 로드
   useEffect(() => {
     const initializeAuth = async () => {
@@ -1009,33 +1043,29 @@ const App = () => {
         setIsAuthenticated(true);
         setHotelId(storedHotelId);
 
-        // try {
-        //   // 호텔 설정 로드
-        //   const settings = await loadHotelSettings(storedHotelId);
-        //   await loadReservations();
-
-        //   if (
-        //     !settings ||
-        //     !settings.roomTypes ||
-        //     settings.roomTypes.length === 0
-        //   ) {
-        //     console.warn(
-        //       '호텔 설정이 완료되지 않았습니다. 설정 버튼을 클릭하여 설정을 완료하세요.'
-        //     );
-        //   }
-
         try {
           // 호텔 설정 로드
           await loadHotelSettings(storedHotelId);
+          // 예약 정보 로드
           await loadReservations();
 
           // 사용자 정보 불러오기
           const userInfoData = await fetchUserInfo(storedHotelId);
           setUserInfo(userInfoData);
 
-          // setHotelAddress(userInfoData?.address || '주소 정보 없음'); // 제거
+          // 호텔 주소 설정 (필요 시)
+          const fetchedHotelSettings = await fetchHotelSettings(storedHotelId);
+          setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
         } catch (error) {
           console.error('초기 인증 및 데이터 로딩 실패:', error);
+
+          // [추가] 개인정보 동의 필요 오류 감지
+          if (error.response && error.response.status === 403) {
+            const errorMessage = error.response.data.message;
+            if (errorMessage === '개인정보 동의가 필요합니다.') {
+              setNeedsConsent(true);
+            }
+          }
         }
       } else {
         console.log('저장된 세션이 없습니다. 로그인 해주세요.');
@@ -1288,6 +1318,22 @@ const App = () => {
     return monthlyTotal > 0 ? Math.floor(monthlyTotal * 0.9) : 0;
   }, [monthlyTotal]);
 
+  const navigate = useNavigate();
+
+  // Consent 완료 시 호출되는 함수
+  const handleConsentComplete = useCallback(() => {
+    // 사용자 정보를 다시 불러와 상태를 업데이트
+    fetchUserInfo(hotelId)
+      .then((data) => {
+        setUserInfo(data);
+        // [추가] 개인정보 동의 완료 시 needsConsent 상태 업데이트
+        setNeedsConsent(false);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch user info after consent:', error);
+      });
+  }, [hotelId]);
+
   // 렌더링
   return (
     <div
@@ -1325,6 +1371,16 @@ const App = () => {
           ) : (
             // 인증된 사용자 라우트
             <>
+              {/* 개인정보 동의가 완료된 경우에만 메인 라우트 접근 가능 */}
+              <Route
+                path="/consent"
+                element={
+                  <PrivacyConsent
+                    onConsentComplete={handleConsentComplete}
+                    onClose={() => navigate(-1)} // 모달 닫기 시 이전 페이지로 돌아가기
+                  />
+                }
+              />
               <Route
                 path="/"
                 element={
@@ -1383,6 +1439,7 @@ const App = () => {
                       memos={memos} // 추가
                       setMemos={setMemos} // 추가
                       onOnsiteReservationClick={openOnSiteReservationForm}
+                      needsConsent={needsConsent} // [추가] 개인정보 동의 상태 전달
                     />
 
                     {/* 메인 콘텐츠 영역 */}
@@ -1402,17 +1459,18 @@ const App = () => {
                             phoneNumber={phoneNumber}
                             email={email}
                             roomTypes={roomTypes}
-                            memos={memos} // 추가
-                            setMemos={setMemos} // 추가
+                            memos={memos}
+                            setMemos={setMemos}
                             searchCriteria={searchCriteria}
-                            isSearching={isSearching} // 검색 중 여부 전달
+                            isSearching={isSearching}
                             highlightedReservationIds={
                               highlightedReservationIds
                             }
                             headerHeight={140}
                             newlyCreatedId={newlyCreatedId}
-                            flipAllMemos={flipAllMemos} // [추가]
-                            sortOrder={sortOrder} // 추가
+                            flipAllMemos={flipAllMemos}
+                            sortOrder={sortOrder}
+                            needsConsent={needsConsent}
                           />
                         </div>
                         <div className="right-pane">

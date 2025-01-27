@@ -22,6 +22,7 @@ const DailySalesModal = ({
   monthlySales,
   selectedDate,
   totalRooms,
+  occupancyRate,
   remainingRooms,
   dailyAverageRoomPrice,
 }) => {
@@ -126,6 +127,7 @@ const DailySalesModal = ({
           selectedDate={selectedDate}
           totalRooms={totalRooms}
           remainingRooms={remainingRooms}
+          occupancyRate={occupancyRate} // 전달
           dailyAverageRoomPrice={dailyAverageRoomPrice}
         />
       </div>

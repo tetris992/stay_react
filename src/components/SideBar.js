@@ -55,6 +55,7 @@ function SideBar({
   memos,
   setMemos,
   onOnsiteReservationClick,
+  needsConsent,
 }) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isRoomTypesOpen, setIsRoomTypesOpen] = useState(false);
@@ -141,7 +142,10 @@ function SideBar({
       />
 
       <div className="sync-section">
-        <button className="settings-button" onClick={handleSettingsClick}>
+        <button
+          className={`settings-button ${needsConsent ? 'blink-button' : ''}`}
+          onClick={handleSettingsClick}
+        >
           <FaCog className="settings-icon" />
           <span className="hotel-id-tooltip">호텔 설정</span>
         </button>
