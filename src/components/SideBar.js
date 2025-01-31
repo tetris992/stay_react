@@ -59,11 +59,16 @@ function SideBar({
   setMemos,
   onOnsiteReservationClick,
   needsConsent,
+  dailySalesByOTA,
+  labelsForOTA,
 }) {
+  // 기존 상태 변수들...
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isRoomTypesOpen, setIsRoomTypesOpen] = useState(false);
   const [highlightEffect, setHighlightEffect] = useState('');
-  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false); // 그래프 모달 열림 여부 상태
+  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false); // 그래프 모달 열림 여부
+  // ★ 새로 추가: OTA 설정 토글 상태 (기본적으로 닫힘)
+  const [isOtaSettingsOpen, setIsOtaSettingsOpen] = useState(false);
 
   // 1) Sync 버튼 클릭 핸들러
   const handleSyncClick = () => {
@@ -114,22 +119,19 @@ function SideBar({
 
   // 8) 활성화된 OTA 목록
   const activeOTAs = availableOTAs.filter((ota) => otaToggles?.[ota]);
+
   // 모달 열기/닫기
   const handleOpenGraphModal = () => setIsGraphModalOpen(true);
   const handleCloseGraphModal = () => setIsGraphModalOpen(false);
 
   // 그래프에 쓸 데이터 구성
-  // 일별 매출 = dailyBreakdown (이미 배열 형태)
-  // 월 매출 = monthlyTotal (하나의 수치)
   const dailySales = {
-    labels: dailyBreakdown.map((_, idx) => `${idx + 1}일`),
-    values: dailyBreakdown,
+    labels: labelsForOTA, // 예: ['08-01', '08-02', ...]
+    values: [],
   };
 
-  // 라인차트를 위해 단일 데이터를 배열로 감쌉니다. (현재월 하나만 표현)
-  // 실제로 12개월 등 여러 달을 보시려면 [monthly1, monthly2, ...] 형태로 바꾸시면 됩니다.
   const monthlySales = {
-    labels: ['현재월'], // 실제로는 ['1월','2월',...,'12월'] 등으로 구성
+    labels: ['현재월'],
     values: [monthlyTotal],
   };
 
@@ -247,8 +249,7 @@ function SideBar({
             ) : (
               <div className="room-type-info">
                 <p>
-                  타입: {defaultRoomTypes[0].nameKor} /{' '}
-                  {defaultRoomTypes[0].nameEng}
+                  타입: {defaultRoomTypes[0].nameKor} / {defaultRoomTypes[0].nameEng}
                 </p>
                 <p>가격: {defaultRoomTypes[0].price.toLocaleString()}원</p>
                 <p>잔여 수: {defaultRoomTypes[0].stock}</p>
@@ -272,21 +273,29 @@ function SideBar({
         openGraphModal={handleOpenGraphModal} // 추가: 새 그래프 모달 열기
       />
 
-      {/* OTA 설정 섹션 */}
+      {/* ★ OTA 설정 섹션 (토글 가능하게 변경) */}
       <div className="ota-settings-section">
-        <h4>OTA 설정</h4>
-        <div className="ota-toggles">
-          {availableOTAs.map((ota) => (
-            <label key={ota}>
-              <input
-                type="checkbox"
-                checked={otaToggles?.[ota] || false}
-                onChange={() => onToggleOTA(ota)}
-              />
-              {ota}
-            </label>
-          ))}
+        <div
+          className="ota-settings-header"
+          onClick={() => setIsOtaSettingsOpen((prev) => !prev)}
+        >
+          <h4 className='otaSetup'>OTA 설정</h4>
+          {isOtaSettingsOpen ? <FaChevronUp /> : <FaChevronDown />}
         </div>
+        {isOtaSettingsOpen && (
+          <div className="ota-toggles">
+            {availableOTAs.map((ota) => (
+              <label key={ota}>
+                <input
+                  type="checkbox"
+                  checked={otaToggles?.[ota] || false}
+                  onChange={() => onToggleOTA(ota)}
+                />
+                {ota}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 호텔 설정 모달 */}
@@ -311,21 +320,37 @@ function SideBar({
       <SalesGraphModal
         isOpen={isGraphModalOpen}
         onRequestClose={handleCloseGraphModal}
-        dailySales={dailySales}
         monthlySales={monthlySales}
         monthlyDailyBreakdown={monthlyDailyBreakdown}
         selectedDate={selectedDate}
+        dailySales={dailySales}
+        dailySalesByOTA={dailySalesByOTA}
       />
 
-      {/* 푸터 */}
+      {/* Footer */}
       <div className="sidebar-footer">
         <div className="footer-divider" />
         <p>
-          Zero to One, Inc. - By subscribing, you agree to our{' '}
-          <span>Purchaser Terms of Service</span>. Subscriptions auto-renew
-          until canceled. Cancel anytime, at least 24 hours prior to renewal to
-          avoid additional charges. Manage your subscription through the
-          platform you subscribed on.
+          Zero to One, Inc. - STAYSYNC is distributed for free and is supported by
+          voluntary donations. By using this service, you are considered to have
+          agreed to the{' '}
+          <a
+            href="https://staysync.framer.ai/privacypolicy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Terms of Service
+          </a>{' '}
+          and{' '}
+          <a
+            href="https://staysync.framer.ai/privacypolicy"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            the Privacy Policy
+          </a>
+          . Donations are optional, and refunds are not supported. Thank you for
+          your generous support.
         </p>
         <div className="footer-divider" />
       </div>

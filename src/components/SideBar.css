@@ -424,3 +424,63 @@ h4 {
     box-shadow: 0 0 0 #c4f4c3;
   }
 }
+
+
+/* OTA 설정 섹션 */
+.ota-settings-section {
+  margin-top: 24px;
+  border-top: 1px solid #ffffff6a;
+  padding-top: 12px;
+}
+
+.ota-settings-header {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  cursor: pointer;
+  padding: 0px;
+  margin-bottom: 20px;
+  background-color: #9696966a;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.ota-settings-header:hover {
+  background-color: #f645456a;
+}
+
+.ota-settings-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  margin-right: 50px;
+  width: 50%;
+  border: 1px solid transparent;
+  background-color: transparent;
+}
+
+.ota-toggles {
+  margin-top: 8px;
+  padding-left: 0px;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  gap: 8px;
+}
+
+.ota-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: rgb(0, 102, 255)
+}
+
+.ota-toggles input[type='checkbox'] {
+  margin: 5px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #007bff;
+}

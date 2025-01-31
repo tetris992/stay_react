@@ -220,9 +220,14 @@ export const updateHotelSettings = async (hotelId, settings) => {
 export const fetchReservations = async (hotelId) => {
   try {
     const response = await api.get('/reservations', { params: { hotelId } });
-    return response.data;
+    // 응답 데이터가 배열인지 확인하여 배열이 아니면 빈 배열로 반환
+    return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     console.error('예약 정보 불러오기 실패:', error);
+    // 404 오류 등, 예약 정보가 없는 경우 빈 배열을 반환
+    if (error.response && error.response.status === 404) {
+      return [];
+    }
     throw error.response?.data || error;
   }
 };

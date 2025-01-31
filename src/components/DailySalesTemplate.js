@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
 const DailySalesTemplate = ({
-  dailySales,
+  dailySalesReport,
   dailyTotal,
   monthlySales,
   selectedDate,
@@ -52,8 +52,8 @@ const DailySalesTemplate = ({
           </tr>
         </thead>
         <tbody>
-          {dailySales.length > 0 ? (
-            dailySales.map((sale) => {
+          {dailySalesReport.length > 0 ? (
+            dailySalesReport.map((sale) => {
               const [rawCheckIn, rawCheckOut] =
                 sale.checkInCheckOut.split(' ~ ');
               const checkInDate = formatDateOnly(rawCheckIn);
@@ -168,7 +168,7 @@ const DailySalesTemplate = ({
 };
 
 DailySalesTemplate.propTypes = {
-  dailySales: PropTypes.array.isRequired,
+  dailySalesReport: PropTypes.array.isRequired,
   dailyTotal: PropTypes.number.isRequired,
   monthlySales: PropTypes.number.isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,

@@ -12,12 +12,10 @@ import { format } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
-
 const DailySalesModal = ({
   isOpen,
   onRequestClose,
-  dailySales,
+  dailySalesReport,
   dailyTotal,
   monthlySales,
   selectedDate,
@@ -78,7 +76,7 @@ const DailySalesModal = ({
     document.body.innerHTML = printContents;
     window.print();
     document.body.innerHTML = originalContents;
-    window.location.reload(); 
+    window.location.reload();
   };
 
   return (
@@ -121,7 +119,7 @@ const DailySalesModal = ({
 
       <div id="daily-sales-content" ref={componentRef}>
         <DailySalesTemplate
-          dailySales={dailySales}
+          dailySalesReport={dailySalesReport}
           dailyTotal={dailyTotal}
           monthlySales={monthlySales}
           selectedDate={selectedDate}
@@ -138,7 +136,7 @@ const DailySalesModal = ({
 DailySalesModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onRequestClose: PropTypes.func.isRequired,
-  dailySales: PropTypes.array.isRequired,
+  dailySalesReport: PropTypes.array.isRequired,
   dailyTotal: PropTypes.number.isRequired,
   monthlySales: PropTypes.number.isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,

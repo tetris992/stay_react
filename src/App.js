@@ -40,11 +40,113 @@ import './i18n';
 // import { getPriceForDisplay } from './utils/getPriceForDisplay.js';
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
-import { format, startOfMonth, addDays,endOfMonth, differenceInCalendarDays } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  addDays,
+  endOfMonth,
+  differenceInCalendarDays,
+} from 'date-fns';
 import { defaultRoomTypes } from './config/defaultRoomTypes';
 import availableOTAs from './config/availableOTAs'; // availableOTAs 임포트
 import SalesModal from './components/DailySalesModal.js';
 import { isCancelledStatus } from './utils/isCancelledStatus.js';
+
+// (1) 한 달치 "OTA/현장예약/대실"별 판매 건수 집계 함수
+function buildDailySalesByOTA(reservations, targetDate) {
+  // 1) 해당 달의 시작일~말일 구하기
+  const monthStart = startOfMonth(targetDate);
+  const monthEnd = endOfMonth(targetDate);
+  const numDays = differenceInCalendarDays(monthEnd, monthStart) + 1;
+
+  // 2) 일자 라벨 만들기 (['08-01','08-02','08-03',...])
+  const labels = [];
+  for (let i = 0; i < numDays; i++) {
+    const d = addDays(monthStart, i);
+    labels.push(format(d, 'MM-dd')); // 혹은 'yyyy-MM-dd' 등 필요 포맷
+  }
+
+  // 3) 카테고리 목록(OTA + '현장예약' + '대실' + '기타' 등)
+  //    - 필요에 따라 '대실' 판단 로직을 어떻게 할지 결정 (ex: customerName.includes('대실')?)
+  const categories = new Set([
+    ...availableOTAs, // ['Yanolja','GoodHotel','Agoda',...]
+    '현장예약',
+    '대실',
+    '기타',
+  ]);
+
+  // 4) 카테고리별로 일자 수만큼 0으로 채운 배열을 미리 생성
+  const dailySalesByOTA = {};
+  categories.forEach((cat) => {
+    dailySalesByOTA[cat] = new Array(numDays).fill(0);
+  });
+
+  // 5) 예약들 순회하면서, 각 예약이 걸쳐있는 날짜마다 해당 OTA 카테고리++
+  reservations.forEach((res) => {
+    // 5-1) 취소된 예약이면 skip
+    if (isCancelledStatus(res.reservationStatus, res.customerName)) {
+      return;
+    }
+
+    // 5-2) 예약의 카테고리 식별
+    //      (1) siteName이 OTA 목록에 있으면 해당 문자열
+    //      (2) siteName이 '현장예약'이면 '현장예약'
+    //      (3) 혹은 customerName에 '대실'이 들어있으면 '대실'
+    //      (4) 아니면 '기타' 등...
+    let category = '기타';
+    if (res.siteName === '현장예약') {
+      category = '현장예약';
+    } else if (res.customerName?.includes('대실')) {
+      category = '대실';
+    } else if (availableOTAs.includes(res.siteName)) {
+      category = res.siteName;
+    }
+
+    // 5-3) 예약의 체크인/체크아웃 범위를 day 단위로 순회
+    if (!res.parsedCheckInDate || !res.parsedCheckOutDate) return;
+
+    // (참고) 여기서는 체크아웃 당일은 미포함(체크인 <= day < 체크아웃),
+    //        but 대실처럼 같은날 체크인/체크아웃은 포함해야 함.
+    //        상황에 맞게 로직 수정 가능
+    const checkInDay = new Date(
+      res.parsedCheckInDate.getFullYear(),
+      res.parsedCheckInDate.getMonth(),
+      res.parsedCheckInDate.getDate()
+    );
+    const checkOutDay = new Date(
+      res.parsedCheckOutDate.getFullYear(),
+      res.parsedCheckOutDate.getMonth(),
+      res.parsedCheckOutDate.getDate()
+    );
+
+    // 당일 대실 케이스(체크인=체크아웃) 처리 시 => 하루는 포함
+    // 예: checkInDay와 checkOutDay가 같으면 당일만 1건
+    // or 원하는 로직대로...
+
+    // (간단히) checkInDay부터 checkOutDay - 1 일까지 반복
+    let cursor = checkInDay;
+    while (cursor < checkOutDay) {
+      // 만약 monthStart보다 이전이면 skip, monthEnd보다 이후면 stop
+      if (cursor < monthStart) {
+        cursor = addDays(cursor, 1);
+        continue;
+      }
+      if (cursor > monthEnd) break;
+
+      // dayIndex 계산
+      const dayIndex = differenceInCalendarDays(cursor, monthStart);
+      // 유효 범위 내라면 카테고리 카운트++
+      if (dayIndex >= 0 && dayIndex < numDays) {
+        dailySalesByOTA[category][dayIndex]++;
+      }
+
+      // 다음날
+      cursor = addDays(cursor, 1);
+    }
+  });
+
+  return { labels, dailySalesByOTA };
+}
 
 // === [ADD] 헬퍼 함수: 한 달치 일 매출 계산 함수 추가
 function buildMonthlyDailyBreakdown(reservations, targetDate) {
@@ -176,6 +278,20 @@ const App = () => {
       setIsShining(false);
     }, 5000);
   };
+
+  const [labelsForOTA, setLabelsForOTA] = useState([]);
+  const [dailySalesByOTA, setDailySalesByOTA] = useState({});
+
+  useEffect(() => {
+    if (allReservations.length > 0 && selectedDate) {
+      const { labels, dailySalesByOTA } = buildDailySalesByOTA(
+        allReservations,
+        selectedDate
+      );
+      setLabelsForOTA(labels);
+      setDailySalesByOTA(dailySalesByOTA);
+    }
+  }, [allReservations, selectedDate]);
 
   // 로컬 스토리지에서 토글 상태 불러오기
   useEffect(() => {
@@ -450,7 +566,10 @@ const App = () => {
   // === [ADD] useEffect: 한 달치 일 매출 계산 및 상태 업데이트
   useEffect(() => {
     if (allReservations.length > 0 && selectedDate) {
-      const breakdown = buildMonthlyDailyBreakdown(allReservations, selectedDate);
+      const breakdown = buildMonthlyDailyBreakdown(
+        allReservations,
+        selectedDate
+      );
       setMonthlyDailyBreakdown(breakdown);
       console.log('Monthly Daily Breakdown:', breakdown);
     }
@@ -553,10 +672,11 @@ const App = () => {
     setLoading(true);
     try {
       const data = await fetchReservations(hotelId);
-      const processedReservations = data
+      // 반환된 data가 배열이 아닐 경우 빈 배열로 강제 변환
+      const reservationsArray = Array.isArray(data) ? data : [];
+      const processedReservations = reservationsArray
         .map(processReservation)
-        .filter((res) => res !== null); // 유효하지 않은 예약 제외
-
+        .filter((res) => res !== null); // 유효하지 않은 예약 제거
       setAllReservations(processedReservations);
       filterReservationsByDate(processedReservations, selectedDate);
       console.log('Reservations Loaded:', processedReservations);
@@ -1010,25 +1130,34 @@ const App = () => {
 
         if (userId) {
           console.log('Updating user info');
-          await updateUser(userId, userSettings);
-          // userInfo 업데이트는 별도로 처리
-          setUserInfo((prev) => ({
-            ...prev,
-            email: newEmail,
-            address,
-            phoneNumber: newPhoneNumber,
-          }));
-
-          // 로컬 스토리지에 userInfo 저장
-          localStorage.setItem(
-            'userInfo',
-            JSON.stringify({
-              ...userInfo,
+          try {
+            await updateUser(userId, userSettings);
+            // userInfo 업데이트
+            setUserInfo((prev) => ({
+              ...prev,
               email: newEmail,
               address,
               phoneNumber: newPhoneNumber,
-            })
-          );
+            }));
+            localStorage.setItem(
+              'userInfo',
+              JSON.stringify({
+                ...userInfo,
+                email: newEmail,
+                address,
+                phoneNumber: newPhoneNumber,
+              })
+            );
+          } catch (err) {
+            // 만약 "권한이 없습니다"라는 에러라면 경고 로그만 남기고 진행
+            if (err.message && err.message.includes('권한이 없습니다')) {
+              console.warn(
+                'User update failed (403 - 권한이 없습니다), but settings saved.'
+              );
+            } else {
+              throw err;
+            }
+          }
         } else {
           console.warn('User ID not found. Skipping user update.');
         }
@@ -1316,7 +1445,7 @@ const App = () => {
   };
 
   // `dailySales` 데이터 구성
-  const dailySales = useMemo(() => {
+  const dailySalesReport = useMemo(() => {
     return activeReservations.map((reservation, index) => {
       let pricePerNight;
       // nightlyRates가 있으면 첫 번째 nights의 rate가 1박 가격
@@ -1474,8 +1603,10 @@ const App = () => {
                       memos={memos} // 추가
                       setMemos={setMemos} // 추가
                       onOnsiteReservationClick={openOnSiteReservationForm}
-                      needsConsent={needsConsent} 
+                      needsConsent={needsConsent}
                       monthlyDailyBreakdown={monthlyDailyBreakdown}
+                      labelsForOTA={labelsForOTA} // ← 필수로 넘겨준다!
+                      dailySalesByOTA={dailySalesByOTA}
                     />
 
                     {/* 메인 콘텐츠 영역 */}
@@ -1556,7 +1687,11 @@ const App = () => {
                     <SalesModal
                       isOpen={isSalesModalOpen}
                       onRequestClose={closeSalesModal}
-                      dailySales={dailySales}
+                      dailySalesReport={dailySalesReport}
+                      dailySales={{
+                        labels: labelsForOTA, // "['08-01','08-02','08-03',...]"
+                        values: [], // (일단 안쓰면 빈 배열)
+                      }}
                       dailyTotal={dailyTotal}
                       monthlySales={monthlySales}
                       selectedDate={selectedDate}
@@ -1567,6 +1702,7 @@ const App = () => {
                       dailyAverageRoomPrice={dailyAverageRoomPrice}
                       roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
                       monthlyDailyBreakdown={monthlyDailyBreakdown}
+                      dailySalesByOTA={dailySalesByOTA}
                     />
                     {showCanceledModal && (
                       <CanceledReservationsModal

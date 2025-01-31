@@ -1,4 +1,5 @@
 /* src/components/SalesGraphModal.css */
+
 .sales-graph-modal-overlay {
   position: fixed;
   top: 0;
@@ -16,11 +17,9 @@
   position: relative;
   background: #ffffff;
   padding: 20px;
-  /* A4 종이 비율: 210mm x 297mm → 대략 가로세로 비율 1:1.414
-     실제 픽셀로 맞추기 어려우니 넉넉하게 width/height 지정 */
-  width: 850px;   /* 약 A4 너비(수평) 정도 */
-  max-width: 90%; 
-  height: 1150px; /* A4 높이(수직) 정도 */
+  width: 900px; /* Increased width */
+  max-width: 95%; /* Adjusted from 90% */
+  height: auto; /* Changed from fixed height to auto */
   max-height: 95vh;
   overflow-y: auto;
   border-radius: 8px;
@@ -62,31 +61,66 @@
 .chart-container {
   margin-top: 20px;
   width: 100%;
-  height: 45%; /* 그래프 높이를 적절히 분배 */
+  height: 500px; /* Increased height */
+  max-height: 80vh; /* Ensures it doesn't exceed viewport height */
 }
 
-/* 미디어 쿼리: 실제 프린트 시 A4에 맞추기 */
-@media print {
-  .sales-graph-modal-overlay {
-    display: block; /* 모달 배경도 인쇄할지 말지는 상황에 따라 */
-    position: static;
-    background: none;
-    height: auto;
-  }
+/* Customize Chart.js tooltips */
+.chart-container .chartjs-tooltip {
+  opacity: 1;
+  position: absolute;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 3px;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  transition: all .1s ease;
+  padding: 10px;
+  font-size: 12px;
+}
 
+/* Responsive adjustments */
+@media (max-width: 768px) {
   .sales-graph-modal {
-    width: 210mm;   /* A4 폭 */
-    height: 297mm;  /* A4 높이 */
-    max-width: 210mm;
-    max-height: 297mm;
-    margin: 0 auto;
-    overflow: visible; /* 인쇄 시는 스크롤 무시 */
-    box-shadow: none;
-    border: none;
+    width: 95%;
+    padding: 10px;
   }
 
-  .close-button,
-  .print-button {
-    display: none; /* 인쇄 시 닫기/인쇄버튼은 숨김 */
+  .chart-container {
+    height: 300px; /* Adjusted height for smaller screens */
   }
+
+  .print-button {
+    right: 50px;
+    top: 10px;
+  }
+
+  .close-button {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+/* Color variables for consistency */
+:root {
+  --color-Yanolja: #FF6384;
+  --color-GoodHotel: #36A2EB;
+  --color-GoodMotel: #FFCE56;
+  --color-Agoda: #4BC0C0;
+  --color-CoolStay: #9966FF;
+  --color-Booking: #FF9F40;
+  --color-Expedia: #C9CBCF;
+  --color-현장예약: #8A2BE2;
+  --color-대실: #2E8B57;
+  /* Add more as needed */
+}
+
+/* Example usage for other elements */
+.site-info-wrapper .onsite-reservation {
+  color: var(--color-현장예약);
+}
+
+.room-card-front .payment-method .payment-icon {
+  /* Ensure payment icons have distinct colors */
+  fill: currentColor;
 }
