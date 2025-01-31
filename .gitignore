@@ -9,4 +9,4 @@ build/
 
 # 기타
 *.log
-.DS_Store
+.DS_Stored

@@ -1,8 +1,9 @@
 // src/components/AccountingInfo.js
 
-import React, { useState } from 'react';
-import { FaFileAlt } from 'react-icons/fa';
+import React from 'react';
+import { FaFileAlt, FaChartLine } from 'react-icons/fa';
 import PropTypes from 'prop-types';
+import './AccountingInfo.css';
 
 function AccountingInfo({
   dailyTotal,
@@ -12,22 +13,29 @@ function AccountingInfo({
   avgMonthlyRoomPrice,
   monthlySoldRooms,
   dailyBreakdown,
-  openSalesModal, // openSalesModal prop 추가
+  monthlyDailyBreakdown,
+  openSalesModal, // 기존 매출 상세 모달 열기용 prop
+  openGraphModal, // 새로 추가: 그래프 모달 열기용 prop
 }) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  const toggleDetails = () => {
-    setShowDetails(!showDetails);
-  };
-
   return (
     <div className="accounting-info">
       <h4 className="accounting-title">
         매출 정보
-        <button className="sales-button" onClick={openSalesModal}>
-          <FaFileAlt className="sales-icon" />
-        </button>
+        <div className='accounting-buttons'>
+          {' '}
+          {/* 기존 SalesModal 열기 버튼 */}
+          <button className="sales-button" onClick={openSalesModal}>
+            <FaFileAlt className="sales-icon" />
+          </button>
+          {/* 새로 추가한 그래프 모달 열기 버튼 */}
+          {openGraphModal && (
+            <button className="sales-button" onClick={openGraphModal}>
+              <FaChartLine className="sales-icon"  style={{ marginRight: '5px' }} />
+            </button>
+          )}
+        </div>
       </h4>
+
       <ul className="accounting-detail">
         <li>
           <span>일 매출 : </span>₩{dailyTotal.toLocaleString()}
@@ -52,19 +60,10 @@ function AccountingInfo({
           {monthlySoldRooms}
         </li>
       </ul>
-      <button onClick={toggleDetails} className="details-button">
-        {showDetails ? '상세보기 닫기' : '상세보기'}
-      </button>
-      {/* {showDetails && (
-        <div className="daily-breakdown">
-          <h3>일 매출 상세:</h3>
-          <ol>
-            {dailyBreakdown.map((price, index) => (
-              <li key={index}>₩{price.toLocaleString()}</li>
-            ))}
-          </ol>
-        </div>
-      )} */}
+
+      {/* 일 매출 상세보기 토글 버튼 */}
+
+      {/* 일 매출 상세 정보 */}
     </div>
   );
 }
@@ -77,7 +76,8 @@ AccountingInfo.propTypes = {
   avgMonthlyRoomPrice: PropTypes.number.isRequired,
   monthlySoldRooms: PropTypes.number.isRequired,
   dailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
-  openSalesModal: PropTypes.func.isRequired, // propTypes 추가
+  openSalesModal: PropTypes.func.isRequired, // 기존 상세 모달 콜백
+  openGraphModal: PropTypes.func, // 새로 추가된 그래프 모달 콜백
 };
 
 export default AccountingInfo;

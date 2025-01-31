@@ -1,0 +1,23 @@
+/* src/components/RoomStatusChart.css */
+
+.room-status-chart-container {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto;
+  }
+  
+  .chart-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .chart-center p {
+    margin: 0;
+  }
+  

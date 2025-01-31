@@ -40,11 +40,34 @@ import './i18n';
 // import { getPriceForDisplay } from './utils/getPriceForDisplay.js';
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
-import { format, startOfMonth, addDays } from 'date-fns';
+import { format, startOfMonth, addDays,endOfMonth, differenceInCalendarDays } from 'date-fns';
 import { defaultRoomTypes } from './config/defaultRoomTypes';
 import availableOTAs from './config/availableOTAs'; // availableOTAs 임포트
 import SalesModal from './components/DailySalesModal.js';
 import { isCancelledStatus } from './utils/isCancelledStatus.js';
+
+// === [ADD] 헬퍼 함수: 한 달치 일 매출 계산 함수 추가
+function buildMonthlyDailyBreakdown(reservations, targetDate) {
+  const monthStart = startOfMonth(targetDate);
+  const monthEnd = endOfMonth(targetDate);
+
+  const totalDays = differenceInCalendarDays(monthEnd, monthStart) + 1;
+  const dailyTotals = new Array(totalDays).fill(0);
+
+  reservations.forEach((res) => {
+    if (!res.nightlyRates) return;
+
+    res.nightlyRates.forEach((nr) => {
+      const rateDate = parseDate(nr.date);
+      if (rateDate >= monthStart && rateDate <= monthEnd) {
+        const dayIndex = differenceInCalendarDays(rateDate, monthStart);
+        dailyTotals[dayIndex] += nr.rate;
+      }
+    });
+  });
+
+  return dailyTotals;
+}
 
 // === [ADD] 헬퍼 함수: 확장에 OTA 상태를 전달
 function sendOtaTogglesToExtension(otaToggles) {
@@ -420,6 +443,18 @@ const App = () => {
     },
     [selectedDate]
   );
+
+  // === [ADD] 상태: 한 달치 일 매출 상태
+  const [monthlyDailyBreakdown, setMonthlyDailyBreakdown] = useState([]);
+
+  // === [ADD] useEffect: 한 달치 일 매출 계산 및 상태 업데이트
+  useEffect(() => {
+    if (allReservations.length > 0 && selectedDate) {
+      const breakdown = buildMonthlyDailyBreakdown(allReservations, selectedDate);
+      setMonthlyDailyBreakdown(breakdown);
+      console.log('Monthly Daily Breakdown:', breakdown);
+    }
+  }, [allReservations, selectedDate]);
 
   // processReservation 함수 내에서 nights 계산 후 calculatePerNightPrice를 호출
   const processReservation = useCallback(
@@ -1439,7 +1474,8 @@ const App = () => {
                       memos={memos} // 추가
                       setMemos={setMemos} // 추가
                       onOnsiteReservationClick={openOnSiteReservationForm}
-                      needsConsent={needsConsent} // [추가] 개인정보 동의 상태 전달
+                      needsConsent={needsConsent} 
+                      monthlyDailyBreakdown={monthlyDailyBreakdown}
                     />
 
                     {/* 메인 콘텐츠 영역 */}
@@ -1471,6 +1507,7 @@ const App = () => {
                             flipAllMemos={flipAllMemos}
                             sortOrder={sortOrder}
                             needsConsent={needsConsent}
+                            monthlyDailyBreakdown={monthlyDailyBreakdown}
                           />
                         </div>
                         <div className="right-pane">
@@ -1527,8 +1564,9 @@ const App = () => {
                       remainingRooms={remainingRooms}
                       occupancyRate={occupancyRate}
                       avgMonthlyRoomPrice={avgMonthlyRoomPrice}
-                      dailyAverageRoomPrice={dailyAverageRoomPrice} // 추가
+                      dailyAverageRoomPrice={dailyAverageRoomPrice}
                       roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
+                      monthlyDailyBreakdown={monthlyDailyBreakdown}
                     />
                     {showCanceledModal && (
                       <CanceledReservationsModal

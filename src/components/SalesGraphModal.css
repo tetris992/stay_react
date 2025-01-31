@@ -1,0 +1,92 @@
+/* src/components/SalesGraphModal.css */
+.sales-graph-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.sales-graph-modal {
+  position: relative;
+  background: #ffffff;
+  padding: 20px;
+  /* A4 종이 비율: 210mm x 297mm → 대략 가로세로 비율 1:1.414
+     실제 픽셀로 맞추기 어려우니 넉넉하게 width/height 지정 */
+  width: 850px;   /* 약 A4 너비(수평) 정도 */
+  max-width: 90%; 
+  height: 1150px; /* A4 높이(수직) 정도 */
+  max-height: 95vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* 인쇄용 버튼 스타일 */
+.print-button {
+  position: absolute;
+  top: 15px;
+  right: 60px;
+  background: #f1f1f1;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.print-button:hover {
+  background-color: #e2e2e2;
+}
+
+/* 모달 닫기 버튼 */
+.close-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.sales-graph-modal h2 {
+  text-align: center;
+}
+
+.chart-container {
+  margin-top: 20px;
+  width: 100%;
+  height: 45%; /* 그래프 높이를 적절히 분배 */
+}
+
+/* 미디어 쿼리: 실제 프린트 시 A4에 맞추기 */
+@media print {
+  .sales-graph-modal-overlay {
+    display: block; /* 모달 배경도 인쇄할지 말지는 상황에 따라 */
+    position: static;
+    background: none;
+    height: auto;
+  }
+
+  .sales-graph-modal {
+    width: 210mm;   /* A4 폭 */
+    height: 297mm;  /* A4 높이 */
+    max-width: 210mm;
+    max-height: 297mm;
+    margin: 0 auto;
+    overflow: visible; /* 인쇄 시는 스크롤 무시 */
+    box-shadow: none;
+    border: none;
+  }
+
+  .close-button,
+  .print-button {
+    display: none; /* 인쇄 시 닫기/인쇄버튼은 숨김 */
+  }
+}

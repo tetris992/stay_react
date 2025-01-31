@@ -23,6 +23,8 @@ import HotelSettings from './HotelSettings';
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import ScrapeNowButton from './ScrapeNowButton';
 import availableOTAs from '../config/availableOTAs';
+import RoomStatusChart from './RoomStatusChart';
+import SalesGraphModal from './SalesGraphModal';
 
 function SideBar({
   loading,
@@ -42,6 +44,7 @@ function SideBar({
   avgMonthlyRoomPrice,
   onLogout,
   dailyBreakdown,
+  monthlyDailyBreakdown,
   openSalesModal,
   hotelSettings,
   hotelId,
@@ -60,60 +63,75 @@ function SideBar({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isRoomTypesOpen, setIsRoomTypesOpen] = useState(false);
   const [highlightEffect, setHighlightEffect] = useState('');
+  const [isGraphModalOpen, setIsGraphModalOpen] = useState(false); // 그래프 모달 열림 여부 상태
 
-  // Handles the sync and applies the shining effect
+  // 1) Sync 버튼 클릭 핸들러
   const handleSyncClick = () => {
     setIsShining(true);
     onSync();
     setTimeout(() => setIsShining(false), 5000);
   };
 
+  // 2) 호텔 설정 버튼 클릭 핸들러
   const handleSettingsClick = () => {
     setShowSettingsModal(true);
   };
 
+  // 3) 객실 타입 토글
   const toggleRoomTypes = () => {
     setIsRoomTypesOpen((prev) => !prev);
   };
 
-  // 날짜 변경 시 처리
+  // 4) 날짜 변경
   const handleDateChangeInternal = (date) => {
     onDateChange(date);
   };
 
-  // 음성 검색 결과 처리 함수
+  // 5) 음성 검색 결과 처리
   const handleVoiceResult = (transcript) => {
     setSearchCriteria({ ...searchCriteria, name: transcript });
-
-    // 1초 후에 executeSearch 호출
     setTimeout(() => {
       executeSearch(transcript);
     }, 1000);
   };
 
-  // 특정 단어에 대한 시각적 효과 트리거 함수
+  // 6) 시각적 효과 트리거
   const triggerVisualEffect = (effectType) => {
     if (effectType === 'battery') {
       setHighlightEffect('blink');
-      // 효과를 잠시 적용 후 초기화
       setTimeout(() => setHighlightEffect(''), 2000);
     }
-    // 다른 효과 타입을 추가할 수 있습니다.
   };
 
-  // 검색 제출 함수
+  // 7) 검색 제출
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     executeSearch(searchCriteria.name || '');
-
-    // 검색 후 입력창을 잠시 후에 비우기
     setTimeout(() => {
       setSearchCriteria({ ...searchCriteria, name: '' });
     }, 1000);
   };
 
-  // 활성화된 OTA 목록 가져오기
+  // 8) 활성화된 OTA 목록
   const activeOTAs = availableOTAs.filter((ota) => otaToggles?.[ota]);
+  // 모달 열기/닫기
+  const handleOpenGraphModal = () => setIsGraphModalOpen(true);
+  const handleCloseGraphModal = () => setIsGraphModalOpen(false);
+
+  // 그래프에 쓸 데이터 구성
+  // 일별 매출 = dailyBreakdown (이미 배열 형태)
+  // 월 매출 = monthlyTotal (하나의 수치)
+  const dailySales = {
+    labels: dailyBreakdown.map((_, idx) => `${idx + 1}일`),
+    values: dailyBreakdown,
+  };
+
+  // 라인차트를 위해 단일 데이터를 배열로 감쌉니다. (현재월 하나만 표현)
+  // 실제로 12개월 등 여러 달을 보시려면 [monthly1, monthly2, ...] 형태로 바꾸시면 됩니다.
+  const monthlySales = {
+    labels: ['현재월'], // 실제로는 ['1월','2월',...,'12월'] 등으로 구성
+    values: [monthlyTotal],
+  };
 
   return (
     <div
@@ -121,7 +139,7 @@ function SideBar({
         highlightEffect === 'blink' ? 'highlight-blink' : ''
       }`}
     >
-      {/* 헤더 섹션 추가 */}
+      {/* 로고 섹션 */}
       <div className="sidebar-header">
         <a
           href="https://staysync.framer.ai/"
@@ -131,6 +149,8 @@ function SideBar({
           <img src={logo} alt="Logo" className="sidebar-logo" />
         </a>
       </div>
+
+      {/* 검색 섹션 */}
       <Search
         searchCriteria={searchCriteria}
         setSearchCriteria={setSearchCriteria}
@@ -141,6 +161,7 @@ function SideBar({
         triggerVisualEffect={triggerVisualEffect}
       />
 
+      {/* 동기화, 설정, 로그아웃 등 버튼 섹션 */}
       <div className="sync-section">
         <button
           className={`settings-button ${needsConsent ? 'blink-button' : ''}`}
@@ -158,10 +179,7 @@ function SideBar({
           <FaCircleNotch className={`sync-icon ${loading ? 'spinning' : ''}`} />
           {loading ? '동기화 중...' : '서버 동기화'}
         </button>
-
-        {/* 즉시 스크랩 버튼 추가 */}
         <ScrapeNowButton hotelId={hotelId} activeOTAs={activeOTAs} />
-        {/* 현장예약 */}
         <button className="onsite-button" onClick={onOnsiteReservationClick}>
           <FaClipboardCheck className="onsite-icon" /> 현장예약
         </button>
@@ -174,7 +192,7 @@ function SideBar({
         </button>
       </div>
 
-      {/* Date Picker Section */}
+      {/* 날짜 선택 섹션 */}
       <div className="date-picker-section">
         <h4>날짜 선택</h4>
         <div className="date-picker-row">
@@ -189,23 +207,30 @@ function SideBar({
         </div>
       </div>
 
-      {/* Room Status Section */}
+      {/* 객실 상태 섹션 */}
       <div className="room-status-section">
         <h4>객실 상태</h4>
-        <p>총 객실: {totalRooms}</p>
-        <p>판매된 객실: {roomsSold}</p>
-        <p>잔여 객실: {remainingRooms}</p>
-        <button className="toggle-room-types-button" onClick={toggleRoomTypes}>
-          {isRoomTypesOpen ? (
-            <>
-              객실 타입 숨기기 <FaChevronUp />
-            </>
-          ) : (
-            <>
-              객실 타입 보기 <FaChevronDown />
-            </>
-          )}
-        </button>
+        <div className="room-status-content">
+          <RoomStatusChart
+            totalRooms={totalRooms}
+            roomsSold={roomsSold}
+            remainingRooms={remainingRooms}
+          />
+          <button
+            className="toggle-room-types-button"
+            onClick={toggleRoomTypes}
+          >
+            {isRoomTypesOpen ? (
+              <>
+                객실 타입 숨기기 <FaChevronUp />
+              </>
+            ) : (
+              <>
+                객실 타입 보기 <FaChevronDown />
+              </>
+            )}
+          </button>
+        </div>
 
         {isRoomTypesOpen && (
           <div className="room-types">
@@ -233,7 +258,7 @@ function SideBar({
         )}
       </div>
 
-      {/* Accounting Information Section */}
+      {/* 매출 정보 섹션 (AccountingInfo) */}
       <AccountingInfo
         dailyTotal={dailyTotal}
         monthlyTotal={monthlyTotal}
@@ -242,10 +267,12 @@ function SideBar({
         monthlySoldRooms={monthlySoldRooms}
         avgMonthlyRoomPrice={avgMonthlyRoomPrice}
         dailyBreakdown={dailyBreakdown}
-        openSalesModal={openSalesModal}
+        monthlyDailyBreakdown={monthlyDailyBreakdown}
+        openSalesModal={openSalesModal} // 기존 상세 보기 모달
+        openGraphModal={handleOpenGraphModal} // 추가: 새 그래프 모달 열기
       />
 
-      {/* OTA 설정 섹션 추가 */}
+      {/* OTA 설정 섹션 */}
       <div className="ota-settings-section">
         <h4>OTA 설정</h4>
         <div className="ota-toggles">
@@ -262,7 +289,7 @@ function SideBar({
         </div>
       </div>
 
-      {/* 호텔 설정 모달 열기 */}
+      {/* 호텔 설정 모달 */}
       {showSettingsModal && (
         <HotelSettings
           onClose={() => setShowSettingsModal(false)}
@@ -279,7 +306,18 @@ function SideBar({
           }}
         />
       )}
-      {/* 새롭게 추가한 회색 박스 */}
+
+      {/* 추가: 매출 그래프 모달 (SalesGraphModal) */}
+      <SalesGraphModal
+        isOpen={isGraphModalOpen}
+        onRequestClose={handleCloseGraphModal}
+        dailySales={dailySales}
+        monthlySales={monthlySales}
+        monthlyDailyBreakdown={monthlyDailyBreakdown}
+        selectedDate={selectedDate}
+      />
+
+      {/* 푸터 */}
       <div className="sidebar-footer">
         <div className="footer-divider" />
         <p>

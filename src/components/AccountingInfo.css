@@ -1,17 +1,43 @@
 .accounting-info {
+  display: flex;
+  flex-direction: column;
   width: 240px;
-  height: 300px;
+  height: auto;
   margin-top: 20px;
   font-size: 1rem;
   border: none;
-  border-bottom: 1px solid rgb(212, 17, 17);
-  padding: 10px;
+  /* border-bottom: 1px solid rgb(212, 17, 17); */
+  padding: 0px;
   box-sizing: border-box;
-  overflow-y: auto;
+  /* overflow-y: auto; */
+}
+
+h4 {
+  padding: 12px;
+  background-color: #9a9a9a6a;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .accounting-title {
-  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  width: 90%;
+}
+.accounting-buttons {
+  display: flex;
+  justify-content: end;
+  margin-right: 20px;
+  font-size: 14px;
+  width: 20%;
 }
 
 .accounting-detail {

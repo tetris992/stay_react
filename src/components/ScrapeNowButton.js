@@ -38,7 +38,7 @@ const EXTENSION_OTAS = [
 ];
 
 // 서버쪽 Puppeteer로 처리해야 할 OTA 목록
-const SERVER_OTAS = ['Yanolja'];
+const SERVER_OTAS = [''];
 
 /**
  * [추가 설명]
@@ -161,7 +161,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
       }
 
       // (B) 서버OTAs 처리
-      //  - 여기서는 "한번에" 서버 API를 호출. 
+      //  - 여기서는 "한번에" 서버 API를 호출.
       //  - 만약 OTA별로 따로 처리하고 싶다면 for문 돌며 enqueueScrapeTasks(ota)로직 작성 가능
       if (serverOTAsToScrape.length > 0) {
         try {

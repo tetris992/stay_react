@@ -90,13 +90,31 @@ h4 {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.room-status-section,
 .date-picker-section {
   margin-top: 24px;
 }
 
-.room-status-section p {
-  margin-left: 20px;
+/* Room Status Chart 스타일 */
+.room-status-chart-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 20px auto;
+}
+
+.chart-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+}
+
+.chart-center p {
+  margin: 2px 0;
+  font-weight: bold;
 }
 
 .toggle-room-types-button {
@@ -119,6 +137,7 @@ h4 {
 .room-types {
   margin-top: 12px;
   font-size: 12px;
+  width: 90%;
 }
 
 .room-types p {
@@ -278,7 +297,6 @@ h4 {
   width: 6px;
 }
 
-
 .sidebar:hover::-webkit-scrollbar-thumb {
   background-color: #ebe9e9; /* 스크롤바 thumb 색상 */
   border-radius: 3px;
@@ -405,4 +423,3 @@ h4 {
     box-shadow: 0 0 0 #c4f4c3;
   }
 }
-
