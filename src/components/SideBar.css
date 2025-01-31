@@ -2,7 +2,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 290px;
+  width: 300px;
   height: 100vh;
   background-color: #f4f4f4;
   padding: 10px;
@@ -80,6 +80,9 @@ h4 {
 }
 .sync-button {
   color: green;
+}
+.scrape-now-button svg {
+  margin-right: 0 !important;
 }
 
 .settings-button:hover,
@@ -276,36 +279,34 @@ h4 {
   gap: 10px;
 }
 
-/* 기본적으로 스크롤바 너비를 0으로 설정하여 숨김 */
+/* 파이어폭스 전용: 얇은 스크롤바로 표시 */
 .sidebar {
-  overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: thin;
 }
 
+/* WebKit(크롬/사파리) 전용: 기본 상태에서 스크롤바 track은 얇은 폭을 차지하지만 투명(또는 미묘한 색) */
 .sidebar::-webkit-scrollbar {
-  width: 0;
+  width: 2px; /* 항상 6px 폭으로 공간 차지 */
   background: transparent;
 }
 
-/* 마우스 호버 시, 얇은 스크롤바 표시하기 */
-.sidebar:hover {
-  scrollbar-width: thin; /* Firefox용: 얇게 표시 */
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: transparent;
 }
 
-.sidebar:hover::-webkit-scrollbar {
-  width: 6px;
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
+/* 호버 시 thumb에만 색상 표시 */
 .sidebar:hover::-webkit-scrollbar-thumb {
-  background-color: #ebe9e9; /* 스크롤바 thumb 색상 */
-  border-radius: 3px;
+  background-color: #ebe9e9; /* thumb 색상 */
+  border-radius: 2px;
 }
 
 .sidebar:hover::-webkit-scrollbar-track {
-  background: #d9d8d8; /* 스크롤바 트랙 색상 */
+  background: #d9d8d8; /* 트랙 색상 */
 }
-
 /* 헤더 섹션 스타일 */
 .sidebar-header {
   display: flex;

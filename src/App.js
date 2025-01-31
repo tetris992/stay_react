@@ -574,7 +574,7 @@ const App = () => {
     console.log('Moved to Today:', currentDate);
   }, [allReservations, filterReservationsByDate]);
 
-  console.log(activeReservations);
+  // console.log(activeReservations);
 
   // 예약 삭제 핸들러
   const handleDelete = useCallback(

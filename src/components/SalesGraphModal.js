@@ -109,13 +109,13 @@ function SalesGraphModal({
   };
 
   // Props 검증 및 디버깅
-  console.log('SalesGraphModal props:', {
-    isOpen,
-    onRequestClose,
-    dailySales,
-    monthlySales,
-    monthlyDailyBreakdown,
-  });
+  // console.log('SalesGraphModal props:', {
+  //   isOpen,
+  //   onRequestClose,
+  //   dailySales,
+  //   monthlySales,
+  //   monthlyDailyBreakdown,
+  // });
 
   // 선택된 날짜의 월과 연도를 포맷팅
   const formattedMonthYear = format(selectedDate, 'yyyy년 MM월');
