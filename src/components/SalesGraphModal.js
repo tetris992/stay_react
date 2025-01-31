@@ -32,9 +32,18 @@ ChartJS.register(
 
 Modal.setAppElement('#root');
 
-function SalesGraphModal({ isOpen, onRequestClose, dailySales, monthlySales, monthlyDailyBreakdown = [] }) {
+function SalesGraphModal({
+  isOpen,
+  onRequestClose,
+  dailySales,
+  monthlySales,
+  monthlyDailyBreakdown = [],
+  selectedDate,
+}) {
   // 디폴트 값을 설정하여 undefined를 방지
-  const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown) ? monthlyDailyBreakdown : [];
+  const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown)
+    ? monthlyDailyBreakdown
+    : [];
 
   // 1) 일별 매출 (막대 그래프)
   const barData = {
@@ -100,10 +109,16 @@ function SalesGraphModal({ isOpen, onRequestClose, dailySales, monthlySales, mon
   };
 
   // Props 검증 및 디버깅
-  console.log('SalesGraphModal props:', { isOpen, onRequestClose, dailySales, monthlySales, monthlyDailyBreakdown });
+  console.log('SalesGraphModal props:', {
+    isOpen,
+    onRequestClose,
+    dailySales,
+    monthlySales,
+    monthlyDailyBreakdown,
+  });
 
-   // 선택된 날짜의 월과 연도를 포맷팅
-   const formattedMonthYear = format(selectedDate, 'yyyy년 MM월');
+  // 선택된 날짜의 월과 연도를 포맷팅
+  const formattedMonthYear = format(selectedDate, 'yyyy년 MM월');
 
   return (
     <Modal
