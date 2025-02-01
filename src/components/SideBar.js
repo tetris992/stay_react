@@ -249,7 +249,8 @@ function SideBar({
             ) : (
               <div className="room-type-info">
                 <p>
-                  타입: {defaultRoomTypes[0].nameKor} / {defaultRoomTypes[0].nameEng}
+                  타입: {defaultRoomTypes[0].nameKor} /{' '}
+                  {defaultRoomTypes[0].nameEng}
                 </p>
                 <p>가격: {defaultRoomTypes[0].price.toLocaleString()}원</p>
                 <p>잔여 수: {defaultRoomTypes[0].stock}</p>
@@ -279,7 +280,7 @@ function SideBar({
           className="ota-settings-header"
           onClick={() => setIsOtaSettingsOpen((prev) => !prev)}
         >
-          <h4 className='otaSetup'>OTA 설정</h4>
+          <h4 className="otaSetup">OTA 설정</h4>
           {isOtaSettingsOpen ? <FaChevronUp /> : <FaChevronDown />}
         </div>
         {isOtaSettingsOpen && (
@@ -325,15 +326,16 @@ function SideBar({
         selectedDate={selectedDate}
         dailySales={dailySales}
         dailySalesByOTA={dailySalesByOTA}
+        maxRooms={totalRooms}
       />
 
       {/* Footer */}
       <div className="sidebar-footer">
         <div className="footer-divider" />
         <p>
-          Zero to One, Inc. - STAYSYNC is distributed for free and is supported by
-          voluntary donations. By using this service, you are considered to have
-          agreed to the{' '}
+          Zero to One, Inc. - STAYSYNC is distributed for free and is supported
+          by voluntary donations. By using this service, you are considered to
+          have agreed to the{' '}
           <a
             href="https://staysync.framer.ai/privacypolicy"
             target="_blank"

@@ -90,7 +90,7 @@ function SalesGraphModal({
   const remainingDataset = {
     label: '남은 객실',
     data: totals.map((total) => Math.max(0, maxRooms - total)),
-    backgroundColor: '#CCCCCC',
+    backgroundColor: 'white',
   };
 
   const combinedDatasets = [...otaDatasets, remainingDataset];
@@ -296,7 +296,7 @@ function SalesGraphModal({
         <FaPrint /> 인쇄하기
       </button>
 
-      <h2>매출 그래프 - {formattedMonthYear}</h2>
+      <h2>매출 보드 - {formattedMonthYear}</h2>
 
       {/* (1) 날짜별 판매/남은 객실수 스택형 막대그래프 */}
       <div className="chart-container">

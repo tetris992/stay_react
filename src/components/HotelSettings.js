@@ -28,7 +28,8 @@ function HotelSettings({
   const [hotelId, setHotelId] = useState(
     existingSettings?.hotelId || localStorage.getItem('hotelId') || ''
   );
-  const [totalRooms, setTotalRooms] = useState(existingSettings?.totalRooms || '');
+  // totalRooms는 이제 개별 재고 합계로 자동 계산되므로 초기값은 기존 설정을 그대로 사용(나중에 useEffect에서 업데이트)
+  const [totalRooms, setTotalRooms] = useState(existingSettings?.totalRooms || 0);
   const [address, setAddress] = useState(existingSettings?.address || '');
   const [phoneNumber, setPhoneNumber] = useState(existingSettings?.phoneNumber || '');
   const [email, setEmail] = useState(existingSettings?.email || '');
@@ -112,6 +113,15 @@ function HotelSettings({
     loadSettings();
   }, [hotelId, existingSettings]);
 
+  // ⭐️ 개별 객실 타입의 재고(stock) 값이 변경될 때마다 총 객실 수를 자동 계산
+  useEffect(() => {
+    const computedTotal = roomTypes.reduce(
+      (acc, rt) => acc + (Number(rt.stock) || 0),
+      0
+    );
+    setTotalRooms(computedTotal);
+  }, [roomTypes]);
+
   // 객실 타입 변경 (별칭은 별도의 5개 입력란으로 처리)
   const handleRoomTypeChange = (index, field, value) => {
     const newRoomTypes = [...roomTypes];
@@ -150,16 +160,9 @@ function HotelSettings({
       !hotelId.trim() ||
       !address.trim() ||
       !phoneNumber.trim() ||
-      !email.trim() ||
-      !totalRooms
+      !email.trim()
     ) {
-      alert('호텔 ID, 총 객실 수, 주소, 전화번호, 이메일은 필수 입력 항목입니다.');
-      return;
-    }
-
-    const normalizedTotalRooms = Number(totalRooms);
-    if (isNaN(normalizedTotalRooms) || normalizedTotalRooms < 1) {
-      alert('총 객실 수는 유효한 숫자여야 합니다.');
+      alert('호텔 ID, 주소, 전화번호, 이메일은 필수 입력 항목입니다.');
       return;
     }
 
@@ -190,9 +193,15 @@ function HotelSettings({
       },
     };
 
+    // ⭐️ 개별 객실 재고(stock)의 합계를 총 객실 수로 사용
+    const computedTotalRooms = roomTypes.reduce(
+      (sum, rt) => sum + (Number(rt.stock) || 0),
+      0
+    );
+
     const newSettings = {
       hotelId: normalizedHotelId,
-      totalRooms: normalizedTotalRooms,
+      totalRooms: computedTotalRooms,
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
         price: Number(rt.price),
@@ -286,13 +295,14 @@ function HotelSettings({
             disabled={isExisting}
             autoComplete="off"
           />
+          {/* 총 객실 수는 개별 재고 합계로 자동 계산되므로 읽기 전용 */}
           <input
             type="number"
             placeholder="총 객실 수"
             value={totalRooms}
-            onChange={(e) => setTotalRooms(e.target.value)}
+            readOnly
             required
-            min="1"
+            min="0"
             autoComplete="off"
           />
           <input

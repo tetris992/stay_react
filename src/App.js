@@ -1,6 +1,4 @@
-// src/App.js
 /* global chrome */
-
 import React, {
   useEffect,
   useState,
@@ -8,7 +6,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header.js';
 import SideBar from './components/SideBar.js';
 import RoomGrid from './components/RoomGrid.js';
@@ -19,12 +17,23 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import PrivacyConsent from './components/PrivacyConsentModal.js';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import api, { fetchUserInfo, updateUser } from './api/api.js';
-
 import DetailPanel from './components/DetailPanel';
 import { parseDate } from './utils/dateParser.js';
 import {
+  format,
+  startOfMonth,
+  addDays,
+  endOfMonth,
+  differenceInCalendarDays,
+} from 'date-fns';
+import { defaultRoomTypes } from './config/defaultRoomTypes';
+import availableOTAs from './config/availableOTAs';
+import SalesModal from './components/DailySalesModal.js';
+import { isCancelledStatus } from './utils/isCancelledStatus.js';
+// * Refactored: API 관련 함수들을 한 번에 import (중복 제거)
+import api, {
+  fetchUserInfo,
+  updateUser,
   fetchReservations,
   deleteReservation,
   confirmReservation,
@@ -37,62 +46,31 @@ import {
 } from './api/api.js';
 import './App.css';
 import './i18n';
-// import { getPriceForDisplay } from './utils/getPriceForDisplay.js';
+
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
-import {
-  format,
-  startOfMonth,
-  addDays,
-  endOfMonth,
-  differenceInCalendarDays,
-} from 'date-fns';
-import { defaultRoomTypes } from './config/defaultRoomTypes';
-import availableOTAs from './config/availableOTAs'; // availableOTAs 임포트
-import SalesModal from './components/DailySalesModal.js';
-import { isCancelledStatus } from './utils/isCancelledStatus.js';
 
-// (1) 한 달치 "OTA/현장예약/대실"별 판매 건수 집계 함수
+/* ============================================================================
+   HELPER FUNCTIONS (추후 별도 유틸 파일로 분리 가능)
+   ============================================================================ */
+// * Refactored: 매출 집계 및 날짜 관련 헬퍼 함수들을 컴포넌트 외부로 이동하여
+//            렌더링 시 재생성 비용을 줄이고 재사용하도록 함.
 function buildDailySalesByOTA(reservations, targetDate) {
-  // 1) 해당 달의 시작일~말일 구하기
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
   const numDays = differenceInCalendarDays(monthEnd, monthStart) + 1;
-
-  // 2) 일자 라벨 만들기 (['08-01','08-02','08-03',...])
   const labels = [];
   for (let i = 0; i < numDays; i++) {
     const d = addDays(monthStart, i);
-    labels.push(format(d, 'MM-dd')); // 혹은 'yyyy-MM-dd' 등 필요 포맷
+    labels.push(format(d, 'MM-dd'));
   }
-
-  // 3) 카테고리 목록(OTA + '현장예약' + '대실' + '기타' 등)
-  //    - 필요에 따라 '대실' 판단 로직을 어떻게 할지 결정 (ex: customerName.includes('대실')?)
-  const categories = new Set([
-    ...availableOTAs, // ['Yanolja','GoodHotel','Agoda',...]
-    '현장예약',
-    '대실',
-    '기타',
-  ]);
-
-  // 4) 카테고리별로 일자 수만큼 0으로 채운 배열을 미리 생성
+  const categories = new Set([...availableOTAs, '현장예약', '대실', '기타']);
   const dailySalesByOTA = {};
   categories.forEach((cat) => {
     dailySalesByOTA[cat] = new Array(numDays).fill(0);
   });
-
-  // 5) 예약들 순회하면서, 각 예약이 걸쳐있는 날짜마다 해당 OTA 카테고리++
   reservations.forEach((res) => {
-    // 5-1) 취소된 예약이면 skip
-    if (isCancelledStatus(res.reservationStatus, res.customerName)) {
-      return;
-    }
-
-    // 5-2) 예약의 카테고리 식별
-    //      (1) siteName이 OTA 목록에 있으면 해당 문자열
-    //      (2) siteName이 '현장예약'이면 '현장예약'
-    //      (3) 혹은 customerName에 '대실'이 들어있으면 '대실'
-    //      (4) 아니면 '기타' 등...
+    if (isCancelledStatus(res.reservationStatus, res.customerName)) return;
     let category = '기타';
     if (res.siteName === '현장예약') {
       category = '현장예약';
@@ -101,13 +79,7 @@ function buildDailySalesByOTA(reservations, targetDate) {
     } else if (availableOTAs.includes(res.siteName)) {
       category = res.siteName;
     }
-
-    // 5-3) 예약의 체크인/체크아웃 범위를 day 단위로 순회
     if (!res.parsedCheckInDate || !res.parsedCheckOutDate) return;
-
-    // (참고) 여기서는 체크아웃 당일은 미포함(체크인 <= day < 체크아웃),
-    //        but 대실처럼 같은날 체크인/체크아웃은 포함해야 함.
-    //        상황에 맞게 로직 수정 가능
     const checkInDay = new Date(
       res.parsedCheckInDate.getFullYear(),
       res.parsedCheckInDate.getMonth(),
@@ -118,47 +90,30 @@ function buildDailySalesByOTA(reservations, targetDate) {
       res.parsedCheckOutDate.getMonth(),
       res.parsedCheckOutDate.getDate()
     );
-
-    // 당일 대실 케이스(체크인=체크아웃) 처리 시 => 하루는 포함
-    // 예: checkInDay와 checkOutDay가 같으면 당일만 1건
-    // or 원하는 로직대로...
-
-    // (간단히) checkInDay부터 checkOutDay - 1 일까지 반복
     let cursor = checkInDay;
     while (cursor < checkOutDay) {
-      // 만약 monthStart보다 이전이면 skip, monthEnd보다 이후면 stop
       if (cursor < monthStart) {
         cursor = addDays(cursor, 1);
         continue;
       }
       if (cursor > monthEnd) break;
-
-      // dayIndex 계산
       const dayIndex = differenceInCalendarDays(cursor, monthStart);
-      // 유효 범위 내라면 카테고리 카운트++
       if (dayIndex >= 0 && dayIndex < numDays) {
         dailySalesByOTA[category][dayIndex]++;
       }
-
-      // 다음날
       cursor = addDays(cursor, 1);
     }
   });
-
   return { labels, dailySalesByOTA };
 }
 
-// === [ADD] 헬퍼 함수: 한 달치 일 매출 계산 함수 추가
 function buildMonthlyDailyBreakdown(reservations, targetDate) {
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
-
   const totalDays = differenceInCalendarDays(monthEnd, monthStart) + 1;
   const dailyTotals = new Array(totalDays).fill(0);
-
   reservations.forEach((res) => {
     if (!res.nightlyRates) return;
-
     res.nightlyRates.forEach((nr) => {
       const rateDate = parseDate(nr.date);
       if (rateDate >= monthStart && rateDate <= monthEnd) {
@@ -167,15 +122,12 @@ function buildMonthlyDailyBreakdown(reservations, targetDate) {
       }
     });
   });
-
   return dailyTotals;
 }
 
-// === [ADD] 헬퍼 함수: 확장에 OTA 상태를 전달
 function sendOtaTogglesToExtension(otaToggles) {
-  // 크롬 확장에 메시지를 보내는 함수
   if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-    const EXTENSION_ID = 'ohekbjnbdpnkbahggohidddlgdbbggph'; // 실제 확장 ID로 교체
+    const EXTENSION_ID = 'ohekbjnbdpnkbahggohidddlgdbbggph';
     chrome.runtime.sendMessage(
       EXTENSION_ID,
       {
@@ -189,7 +141,11 @@ function sendOtaTogglesToExtension(otaToggles) {
   }
 }
 
+/* ============================================================================
+   APP COMPONENT
+   ============================================================================ */
 const App = () => {
+  // * Refactored: 상태 선언 부분 그룹화
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hotelId, setHotelId] = useState('');
   const [allReservations, setAllReservations] = useState([]);
@@ -209,62 +165,49 @@ const App = () => {
   });
   const [isNewSetup, setIsNewSetup] = useState(true);
   const [roomsSold, setRoomsSold] = useState(0);
-
   const [monthlySoldRooms, setMonthlySoldRooms] = useState(0);
   const [avgMonthlyRoomPrice, setAvgMonthlyRoomPrice] = useState(0);
   const dailyAverageRoomPrice =
     roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
-
   const [guestFormData, setGuestFormData] = useState(null);
-
   const [isLoading, setIsLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
   const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
   const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
   const [email, setEmail] = useState('이메일 정보 없음');
-
   const totalRooms = hotelSettings?.totalRooms || 0;
   const remainingRooms = totalRooms - roomsSold;
   const roomTypes = hotelSettings?.roomTypes || [];
   const [dailyBreakdown, setDailyBreakdown] = useState([]);
   const [newlyCreatedId, setNewlyCreatedId] = useState(null);
-
-  // **수정된 상태: 검색된 예약 ID 저장**
   const [highlightedReservationIds, setHighlightedReservationIds] = useState(
     []
   );
   const [isSearching, setIsSearching] = useState(false);
-
   const highlightTimeoutRef = useRef(null);
-
-  // [추가] 개인정보 동의 필요 상태
   const [needsConsent, setNeedsConsent] = useState(false);
-
-  // 매출 모달 관련 상태 추가
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
   const [showCanceledModal, setShowCanceledModal] = useState(false);
-
   const [otaToggles, setOtaToggles] = useState(
     availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
   );
-
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [sortOrder, setSortOrder] = useState('newest');
+  const navigate = useNavigate();
 
+  // * Refactored: useCallback 및 useMemo로 함수 재생성 최소화
   const handleSort = useCallback(() => {
     setSortOrder((prev) => (prev === 'newest' ? 'oldest' : 'newest'));
   }, []);
 
-  // RoomGrid에 전달할 핸들러
-  const handleReservationSelect = (res) => {
+  const handleReservationSelect = useCallback((res) => {
     setSelectedReservation(res);
-  };
+  }, []);
 
-  const handleCloseDetail = () => {
+  const handleCloseDetail = useCallback(() => {
     setSelectedReservation(null);
-  };
+  }, []);
 
-  // onSave, onEdit 핸들러도 App에서 정의해서 DetailPanel에 전달
   const handleDetailSave = (updatedData) => {
     // reservationId를 updatedData에서 추출 후 handleEdit 호출
     handleEdit(updatedData.reservationNo, updatedData, hotelId);
@@ -272,12 +215,10 @@ const App = () => {
   };
 
   const [isShining, setIsShining] = useState(false);
-  const handleSync = () => {
+  const handleSync = useCallback(() => {
     setIsShining(true);
-    setTimeout(() => {
-      setIsShining(false);
-    }, 5000);
-  };
+    setTimeout(() => setIsShining(false), 5000);
+  }, []);
 
   const [labelsForOTA, setLabelsForOTA] = useState([]);
   const [dailySalesByOTA, setDailySalesByOTA] = useState({});
@@ -293,25 +234,20 @@ const App = () => {
     }
   }, [allReservations, selectedDate]);
 
-  // 로컬 스토리지에서 토글 상태 불러오기
   useEffect(() => {
     const savedToggles = JSON.parse(localStorage.getItem('otaToggles'));
     if (savedToggles) setOtaToggles(savedToggles);
   }, []);
 
-  // 호텔 설정을 열기 위한 핸들러
-  const openSettingsModal = () => {
+  const openSettingsModal = useCallback(() => {
     setShowSettingsModal(true);
-  };
+  }, []);
 
-  // 호텔 설정을 닫기 위한 핸들러
-  const closeSettingsModal = () => {
+  const closeSettingsModal = useCallback(() => {
     setShowSettingsModal(false);
-  };
+  }, []);
 
-  const [flipAllMemos, setFlipAllMemos] = useState(false); // [추가]
-
-  // 메모 버튼 클릭 핸들러
+  const [flipAllMemos, setFlipAllMemos] = useState(false);
   const handleMemoButtonClick = useCallback(() => {
     setFlipAllMemos((prev) => !prev);
   }, []);
@@ -328,96 +264,27 @@ const App = () => {
     }
   }, [hotelSettings]);
 
-  // 로그인 함수: accessToken과 hotelId를 매개변수로 받아 로컬 스토리지에 저장
-  const handleLogin = async (accessToken, hotelIdParam) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('hotelId', hotelIdParam);
-
-    setIsAuthenticated(true);
-    setHotelId(hotelIdParam);
-
-    try {
-      // (1) Chrome Extension에 토큰 전달 (기존)
-      if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-        const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl'; // 실제 확장 ID
-
-        // 1-1) 토큰 전달
-        chrome.runtime.sendMessage(
-          EXTENSION_ID,
-          {
-            action: 'SET_TOKEN',
-            token: accessToken,
-          },
-          (response) => {
-            console.log('[handleLogin] Sent token to extension:', response);
-          }
-        );
-
-        // 1-2) 현재 OTA 토글 상태(react state: otaToggles)도 함께 전달
-        //     → 확장 측에서 “어떤 OTA를 활성화할지” 판단 가능
-        chrome.runtime.sendMessage(
-          EXTENSION_ID,
-          {
-            action: 'SET_OTA_TOGGLES',
-            toggles: otaToggles, // { GoodMotel: true, Yanolja: false, ... }
-          },
-          (response) => {
-            console.log(
-              '[handleLogin] Sent OTA toggles to extension:',
-              response
-            );
-          }
-        );
-      }
-
-      // (2) 호텔 설정 & 예약 정보 로드
-      await loadHotelSettings(hotelIdParam);
-      await loadReservations();
-
-      // (3) 사용자 정보 불러오기
-      const userInfoData = await fetchUserInfo(hotelIdParam);
-      setUserInfo(userInfoData);
-
-      // (4) 호텔 주소 설정 (필요 시)
-      const fetchedHotelSettings = await fetchHotelSettings(hotelIdParam);
-      setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
-    } catch (error) {
-      console.error('Failed to load hotel settings after login:', error);
-    }
-  };
-
-  // `calculatePerNightPrice`
   const calculatePerNightPrice = useCallback(
     (reservation, totalPrice, nights) => {
-      // totalPrice: 전체 숙박 금액
-      // nights: 총 박 수
       if (nights > 0) {
         const perNightPrice = totalPrice / nights;
-        console.log(`(Revised) Per night price: ${perNightPrice}`);
+        // console.log(`(Revised) Per night price: ${perNightPrice}`);
         return Math.floor(perNightPrice);
       }
-      // nights가 0 이하라면 그냥 totalPrice를 반환(당일 대실 등)
       return Math.floor(totalPrice);
     },
     []
   );
 
-  // 예약 데이터 필터링 및 상태 업데이트 함수
   const filterReservationsByDate = useCallback(
     (reservationsData, date) => {
       const selectedDateString = format(date, 'yyyy-MM-dd');
-
       console.log(`Filtering reservations for date: ${selectedDateString}`);
-
-      // 선택된 날짜에 맞는 예약 필터링: checkInDate <= selectedDate < checkOutDate
       const selectedDateReservations = reservationsData.filter(
         (reservation) => {
           const checkInDate = reservation.parsedCheckInDate;
           const checkOutDate = reservation.parsedCheckOutDate;
-
           if (!checkInDate || !checkOutDate) return false;
-
-          // 날짜만 비교하기 위해 시간 부분 제거
           const checkInDateOnly = new Date(
             checkInDate.getFullYear(),
             checkInDate.getMonth(),
@@ -428,20 +295,14 @@ const App = () => {
             checkOutDate.getMonth(),
             checkOutDate.getDate()
           );
-          // 기존 조건: 선택된 날짜가 체크인 날짜 이상이고 체크아웃 날짜 미만인지 확인
           const isIncluded =
             selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
             selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
-
-          // 대실 조건: 체크인과 체크아웃 날짜가 같고, 선택된 날짜가 체크인 날짜인 경우
           const isSameDayStay =
             format(checkInDateOnly, 'yyyy-MM-dd') ===
               format(checkOutDateOnly, 'yyyy-MM-dd') &&
             selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
-
-          // 최종 포함 조건: 기존 조건 또는 대실 조건을 만족하는 경우
           const finalIncluded = isIncluded || isSameDayStay;
-
           if (finalIncluded) {
             console.log(
               `Including reservation from ${format(
@@ -453,34 +314,24 @@ const App = () => {
               )} on ${selectedDateString}`
             );
           }
-
           return finalIncluded;
         }
       );
-
       setActiveReservations(selectedDateReservations);
-
-      // 선택된 날짜의 일 매출 계산 및 세부 내역 생성
       const breakdown = selectedDateReservations.map((reservation) => {
         let pricePerNight;
         if (reservation.nightlyRates && reservation.nightlyRates.length > 0) {
           pricePerNight = reservation.nightlyRates[0].rate;
         } else {
-          // nightlyRates가 없으므로 1박짜리 예약이거나 대실
           pricePerNight = reservation.totalPrice || 0;
         }
         return pricePerNight;
       });
-
       setDailyBreakdown(breakdown);
-
       const dailyTotalAmount = breakdown.reduce((sum, price) => sum + price, 0);
       setDailyTotal(Math.floor(dailyTotalAmount));
-
-      // 월간 매출 계산을 위해 해당 월의 예약 필터링
       const firstDayOfMonth = startOfMonth(date);
-      const lastDayOfMonth = selectedDate; // 수정: 현재 선택된 날짜로 설정
-
+      const lastDayOfMonth = selectedDate;
       const monthlyReservations = reservationsData.filter((reservation) => {
         if (
           isCancelledStatus(
@@ -489,23 +340,18 @@ const App = () => {
           )
         )
           return false;
-
         const checkInDate = reservation.checkIn
           ? parseDate(reservation.checkIn)
           : null;
         const checkOutDate = reservation.checkOut
           ? parseDate(reservation.checkOut)
           : null;
-
         if (!checkInDate || !checkOutDate) return false;
-
         return (
           checkOutDate > firstDayOfMonth &&
           checkInDate < addDays(lastDayOfMonth, 1)
         );
       });
-
-      // 월간 매출 계산 - 각 예약의 nightlyRates를 사용하여 합산
       let monthlyTotalAmount = 0;
       monthlyReservations.forEach((reservation) => {
         if (reservation.nightlyRates) {
@@ -517,16 +363,11 @@ const App = () => {
           });
         }
       });
-
-      // 음수 및 소수점 방지
       monthlyTotalAmount = Math.max(0, Math.floor(monthlyTotalAmount));
       setMonthlyTotal(monthlyTotalAmount);
-
       console.log(
         `Calculated Monthly Total: ₩${monthlyTotalAmount.toLocaleString()}`
       );
-
-      // 월간 판매 객실 수 계산
       let totalRoomsSold = 0;
       monthlyReservations.forEach((reservation) => {
         if (reservation.nightlyRates) {
@@ -538,32 +379,22 @@ const App = () => {
           ).length;
           totalRoomsSold += nightsInMonth;
         } else {
-          // nightlyRates가 없을 경우, 단일 예약으로 간주하여 1 추가
           totalRoomsSold += 1;
         }
       });
       setMonthlySoldRooms(totalRoomsSold);
-
-      // 월 평균 객실 가격 계산
       const avgPrice =
         totalRoomsSold > 0
           ? Math.floor(monthlyTotalAmount / totalRoomsSold)
           : 0;
       setAvgMonthlyRoomPrice(avgPrice);
-
-      // 선택된 날짜의 판매 객실 수 상태 업데이트
       setRoomsSold(selectedDateReservations.length);
-
-      // 로드된 예약 ID 업데이트 (UI 애니메이션 등)
       setLoadedReservations(selectedDateReservations.map((res) => res._id));
     },
     [selectedDate]
   );
 
-  // === [ADD] 상태: 한 달치 일 매출 상태
   const [monthlyDailyBreakdown, setMonthlyDailyBreakdown] = useState([]);
-
-  // === [ADD] useEffect: 한 달치 일 매출 계산 및 상태 업데이트
   useEffect(() => {
     if (allReservations.length > 0 && selectedDate) {
       const breakdown = buildMonthlyDailyBreakdown(
@@ -575,31 +406,25 @@ const App = () => {
     }
   }, [allReservations, selectedDate]);
 
-  // processReservation 함수 내에서 nights 계산 후 calculatePerNightPrice를 호출
   const processReservation = useCallback(
     (res) => {
       const { price, isDefault } = extractPrice(res.priceString || res.price);
       let totalPrice = price;
       let isDefaultPriceFlag = isDefault;
-
       if (totalPrice <= 0) {
         const roomType = matchRoomType(res.roomInfo);
         totalPrice = roomType?.price || 0;
         isDefaultPriceFlag = false;
       }
-
       const parsedCheckInDate = new Date(res.checkIn);
       const parsedCheckOutDate = new Date(res.checkOut);
-
       let nightlyRates = [];
       let finalTotalPrice = 0;
-
       if (
         parsedCheckInDate &&
         parsedCheckOutDate &&
         parsedCheckOutDate > parsedCheckInDate
       ) {
-        // 날짜만 비교하기 위해 시간 부분을 제거한 날짜 객체 생성
         const checkInDateOnly = new Date(
           parsedCheckInDate.getFullYear(),
           parsedCheckInDate.getMonth(),
@@ -610,29 +435,21 @@ const App = () => {
           parsedCheckOutDate.getMonth(),
           parsedCheckOutDate.getDate()
         );
-
-        // 순수한 일수 차이 계산
         const days = Math.floor(
           (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24)
         );
-
-        // 0일 차이가 나면 당일 대실로 간주하여 1박으로 처리
         const nights = days > 0 ? days : 1;
-
         if (isDefaultPriceFlag) {
-          totalPrice = 100000; // 기본 가격 적용
+          totalPrice = 100000;
         }
-
         const perNightPriceCalculated = calculatePerNightPrice(
           res,
           totalPrice,
           nights
         );
-
-        console.log(
-          `Testing perNightPriceCalculated for ${res._id}: ${perNightPriceCalculated} (should be per-night value)`
-        );
-
+        // console.log(
+        //   `Testing perNightPriceCalculated for ${res._id}: ${perNightPriceCalculated} (should be per-night value)`
+        // );
         for (let i = 0; i < nights; i++) {
           const date = new Date(checkInDateOnly);
           date.setDate(checkInDateOnly.getDate() + i);
@@ -641,19 +458,16 @@ const App = () => {
             rate: perNightPriceCalculated,
           });
         }
-
         finalTotalPrice = nightlyRates.reduce((sum, nr) => sum + nr.rate, 0);
-        console.log(
-          `Total Price for ${res._id} (recalculated): ${finalTotalPrice}`
-        );
+        // console.log(
+        //   `Total Price for ${res._id} (recalculated): ${finalTotalPrice}`
+        // );
       } else {
-        // 동일 날짜 숙박 또는 유효하지 않은 날짜의 경우, 1박 가격을 총 가격으로 설정
         if (isDefaultPriceFlag) {
-          totalPrice = 100000; // 기본값
+          totalPrice = 100000;
         }
         finalTotalPrice = totalPrice;
       }
-
       return {
         ...res,
         reservationNo: res.reservationNo || res._id,
@@ -667,16 +481,73 @@ const App = () => {
     [calculatePerNightPrice]
   );
 
+  const loadHotelSettings = useCallback(async (inputHotelId) => {
+    try {
+      const settings = await fetchHotelSettings(inputHotelId);
+      console.log('Fetched settings:', settings);
+      if (settings) {
+        setHotelSettings(settings);
+        setIsNewSetup(false);
+        const initialOTAToggles = settings.otas.reduce((acc, ota) => {
+          acc[ota.name] = ota.isActive;
+          return acc;
+        }, {});
+        availableOTAs.forEach((ota) => {
+          if (!(ota in initialOTAToggles)) {
+            initialOTAToggles[ota] = false;
+          }
+        });
+        console.log('Initial OTA Toggles:', initialOTAToggles);
+        setOtaToggles(initialOTAToggles);
+        setHotelAddress(settings.address || '주소 정보 없음');
+        setPhoneNumber(settings.phoneNumber || '전화번호 정보 없음');
+        setEmail(settings.email || '이메일 정보 없음');
+      } else {
+        const defaultOTAToggles = availableOTAs.reduce(
+          (acc, ota) => ({ ...acc, [ota]: false }),
+          {}
+        );
+        setHotelSettings({
+          hotelId: inputHotelId,
+          roomTypes: defaultRoomTypes,
+          totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+          otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+        });
+        setIsNewSetup(true);
+        setOtaToggles(defaultOTAToggles);
+        setHotelAddress('주소 정보 없음');
+        setPhoneNumber('전화번호 정보 없음');
+        setEmail('이메일 정보 없음');
+      }
+    } catch (error) {
+      console.error('Failed to load hotel settings:', error);
+      const defaultOTAToggles = availableOTAs.reduce(
+        (acc, ota) => ({ ...acc, [ota]: false }),
+        {}
+      );
+      setIsNewSetup(true);
+      setHotelSettings({
+        hotelId: inputHotelId,
+        roomTypes: defaultRoomTypes,
+        totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+        otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+      });
+      setOtaToggles(defaultOTAToggles);
+      setHotelAddress('주소 정보 없음');
+      setPhoneNumber('전화번호 정보 없음');
+      setEmail('이메일 정보 없음');
+    }
+  }, []);
+
   const loadReservations = useCallback(async () => {
     if (!hotelId) return;
     setLoading(true);
     try {
       const data = await fetchReservations(hotelId);
-      // 반환된 data가 배열이 아닐 경우 빈 배열로 강제 변환
       const reservationsArray = Array.isArray(data) ? data : [];
       const processedReservations = reservationsArray
         .map(processReservation)
-        .filter((res) => res !== null); // 유효하지 않은 예약 제거
+        .filter((res) => res !== null);
       setAllReservations(processedReservations);
       filterReservationsByDate(processedReservations, selectedDate);
       console.log('Reservations Loaded:', processedReservations);
@@ -686,7 +557,6 @@ const App = () => {
     setLoading(false);
   }, [filterReservationsByDate, selectedDate, hotelId, processReservation]);
 
-  // 오늘 날짜로 이동하는 함수
   const today = useCallback(() => {
     const currentDate = new Date();
     setSelectedDate(currentDate);
@@ -694,12 +564,8 @@ const App = () => {
     console.log('Moved to Today:', currentDate);
   }, [allReservations, filterReservationsByDate]);
 
-  // console.log(activeReservations);
-
-  // 예약 삭제 핸들러
   const handleDelete = useCallback(
     async (reservationId, hotelIdParam, siteName) => {
-      // hotelIdParam로 변경
       try {
         await deleteReservation(reservationId, hotelIdParam, siteName);
         await loadReservations();
@@ -714,12 +580,52 @@ const App = () => {
     [loadReservations]
   );
 
-  // 예약 확정 핸들러
+  // * Refactored: handleLogin 함수에 의존성 otaToggles 추가 및 간결하게 정리
+  const handleLogin = useCallback(
+    async (accessToken, hotelIdParam) => {
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('hotelId', hotelIdParam);
+      setIsAuthenticated(true);
+      setHotelId(hotelIdParam);
+      try {
+        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+          const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl';
+          chrome.runtime.sendMessage(
+            EXTENSION_ID,
+            { action: 'SET_TOKEN', token: accessToken },
+            (response) => {
+              console.log('[handleLogin] Sent token to extension:', response);
+            }
+          );
+          chrome.runtime.sendMessage(
+            EXTENSION_ID,
+            { action: 'SET_OTA_TOGGLES', toggles: otaToggles },
+            (response) => {
+              console.log(
+                '[handleLogin] Sent OTA toggles to extension:',
+                response
+              );
+            }
+          );
+        }
+        await loadHotelSettings(hotelIdParam);
+        await loadReservations();
+        const userInfoData = await fetchUserInfo(hotelIdParam);
+        setUserInfo(userInfoData);
+        const fetchedHotelSettings = await fetchHotelSettings(hotelIdParam);
+        setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
+      } catch (error) {
+        console.error('Failed to load hotel settings after login:', error);
+      }
+    },
+    [loadHotelSettings, loadReservations, otaToggles]
+  );
+
   const handleConfirm = useCallback(
     async (reservationId, hotelIdParam) => {
       try {
-        await confirmReservation(reservationId, hotelIdParam); // API 호출
-        await loadReservations(); // 예약 목록 재로드
+        await confirmReservation(reservationId, hotelIdParam);
+        await loadReservations();
         console.log(
           `Reservation ${reservationId} confirmed for hotel ${hotelIdParam}`
         );
@@ -731,12 +637,11 @@ const App = () => {
     [loadReservations]
   );
 
-  // 예약 수정 핸들러
   const handleEdit = useCallback(
     async (reservationId, updatedData, hotelIdParam) => {
       try {
-        await updateReservation(reservationId, updatedData, hotelId); // API 호출
-        await loadReservations(); // 예약 목록 재로드
+        await updateReservation(reservationId, updatedData, hotelId);
+        await loadReservations();
         console.log(
           `Reservation ${reservationId} updated for hotel ${hotelIdParam}`
         );
@@ -748,7 +653,6 @@ const App = () => {
     [loadReservations, hotelId]
   );
 
-  // 이전 날짜로 이동
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prevDate) => {
       const newDate = addDays(prevDate, -1);
@@ -758,7 +662,6 @@ const App = () => {
     });
   }, [filterReservationsByDate, allReservations]);
 
-  // 다음 날짜로 이동
   const handleNextDay = useCallback(() => {
     setSelectedDate((prevDate) => {
       const newDate = addDays(prevDate, 1);
@@ -768,125 +671,35 @@ const App = () => {
     });
   }, [filterReservationsByDate, allReservations]);
 
-  // ※ 키보드 이벤트 등록 (useEffect)
   useEffect(() => {
-    let lastKeyTime = 0; // 마지막으로 키를 처리한 시점 (timestamp)
-
+    let lastKeyTime = 0;
     function handleKeyDown(e) {
-      // ArrowLeft, ArrowRight 키만 처리
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-
-      // input, textarea 등의 포커스 시 무시 (선택사항)
       const ignoreTags = ['INPUT', 'TEXTAREA', 'SELECT'];
       if (ignoreTags.includes(e.target.tagName)) return;
-
-      // 연타 방지: 최소 300ms 간격
       const now = Date.now();
-      if (now - lastKeyTime < 300) {
-        // 300ms 안에 다시 눌렸다면 무시
-        return;
-      }
-      // 처리: 여기서 날짜 이동 수행
+      if (now - lastKeyTime < 300) return;
       if (e.key === 'ArrowLeft') handlePrevDay();
       else handleNextDay();
-
       lastKeyTime = now;
     }
-
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [handlePrevDay, handleNextDay]);
 
-  // App.js 내 loadHotelSettings 함수 수정
-  const loadHotelSettings = useCallback(async (inputHotelId) => {
-    try {
-      const settings = await fetchHotelSettings(inputHotelId);
-      console.log('Fetched settings:', settings);
-      if (settings) {
-        setHotelSettings(settings);
-        setIsNewSetup(false);
-
-        // OTA 토글 상태 설정
-        const initialOTAToggles = settings.otas.reduce((acc, ota) => {
-          acc[ota.name] = ota.isActive;
-          return acc;
-        }, {});
-
-        // `availableOTAs`에 포함되지 않은 OTA는 기본값으로 false 설정
-        availableOTAs.forEach((ota) => {
-          if (!(ota in initialOTAToggles)) {
-            initialOTAToggles[ota] = false;
-          }
-        });
-
-        console.log('Initial OTA Toggles:', initialOTAToggles); // 로그 추가
-        setOtaToggles(initialOTAToggles);
-
-        // 호텔 정보 설정
-        setHotelAddress(settings.address || '주소 정보 없음');
-        setPhoneNumber(settings.phoneNumber || '전화번호 정보 없음');
-        setEmail(settings.email || '이메일 정보 없음');
-      } else {
-        // 기본 설정
-        const defaultOTAToggles = availableOTAs.reduce(
-          (acc, ota) => ({ ...acc, [ota]: false }),
-          {}
-        );
-        setHotelSettings({
-          hotelId: inputHotelId,
-          roomTypes: defaultRoomTypes,
-          totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-          otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
-        });
-        setIsNewSetup(true);
-        setOtaToggles(defaultOTAToggles);
-
-        // 기본 정보 설정
-        setHotelAddress('주소 정보 없음');
-        setPhoneNumber('전화번호 정보 없음');
-        setEmail('이메일 정보 없음');
-      }
-    } catch (error) {
-      console.error('Failed to load hotel settings:', error);
-      // 에러 발생 시 기본 설정
-      const defaultOTAToggles = availableOTAs.reduce(
-        (acc, ota) => ({ ...acc, [ota]: false }),
-        {}
-      );
-      setIsNewSetup(true);
-      setHotelSettings({
-        hotelId: inputHotelId,
-        roomTypes: defaultRoomTypes,
-        totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-        otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
-      });
-      setOtaToggles(defaultOTAToggles);
-
-      // 기본 정보 설정
-      setHotelAddress('주소 정보 없음');
-      setPhoneNumber('전화번호 정보 없음');
-      setEmail('이메일 정보 없음');
-    }
-  }, []);
-
-  // OTA 활성화 상태 변경 함수 (수정된 버전)
   const handleToggleOTA = useCallback(
     async (ota) => {
       if (!availableOTAs.includes(ota)) {
         console.warn(`Unsupported OTA: ${ota}`);
         return;
       }
-
-      // 함수형 업데이트를 사용하여 최신 상태 기반으로 OTA 토글
       setOtaToggles((prevOtaToggles) => {
         const updatedOtaToggles = {
           ...prevOtaToggles,
           [ota]: !prevOtaToggles[ota],
         };
-
-        // 업데이트된 OTA 토글 상태를 서버에 전송
         updateHotelSettings(hotelId, {
           otas: availableOTAs.map((name) => ({
             name,
@@ -894,30 +707,25 @@ const App = () => {
           })),
         })
           .then(() => {
-            // 크롬 확장에 OTA 토글 상태 전송
             sendOtaTogglesToExtension(updatedOtaToggles);
             console.log(`OTA ${ota} 상태가 변경되었습니다.`);
           })
           .catch((error) => {
             console.error(`OTA ${ota} 상태 업데이트 실패:`, error);
-            // 롤백: OTA 상태를 원래대로 복구
             setOtaToggles((prev) => ({
               ...prev,
               [ota]: !prev[ota],
             }));
           });
-
         return updatedOtaToggles;
       });
     },
     [hotelId]
   );
 
-  // 예약 저장 후 데이터 갱신
   const handleFormSave = useCallback(
     async (reservationId, data) => {
       if (reservationId) {
-        // (수정 모드)
         try {
           await handleEdit(reservationId, data, hotelId);
           console.log('예약이 성공적으로 수정되었습니다.');
@@ -925,44 +733,31 @@ const App = () => {
           console.error('예약 수정 실패:', error);
         }
       } else {
-        // (생성 모드)
         try {
           const reservationData = {
             siteName: '현장예약',
             reservations: [data],
             hotelId,
           };
-
           console.log('handleFormSave:', reservationId, data);
           const newReservation = await saveOnSiteReservation(reservationData);
-          // ★★★ [추가된 부분] ★★★
           if (
             newReservation &&
             Array.isArray(newReservation.createdReservationIds) &&
             newReservation.createdReservationIds.length > 0
           ) {
-            // (1) createdReservationIds[0] 에 새 예약 ID가 들어있다
             const newlyCreatedIdFromServer =
               newReservation.createdReservationIds[0];
             console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
-
-            // (2) "체크인 날짜"로 이동
             if (data.checkIn) {
               const parsedDate = parseDate(data.checkIn);
               setSelectedDate(parsedDate);
             }
-
-            // (3) RoomGrid 하이라이트
             setNewlyCreatedId(newlyCreatedIdFromServer);
           }
-
           console.log('Guest Form saved =>', newReservation);
-
-          // 모달 닫고 전체 예약 다시 로드
           setShowGuestForm(false);
           await loadReservations();
-
-          // (기존 로직) newReservation._id 참고
           if (newReservation && newReservation._id) {
             if (newReservation.checkIn) {
               const parsedDate = parseDate(newReservation.checkIn);
@@ -978,7 +773,6 @@ const App = () => {
     [hotelId, loadReservations, handleEdit]
   );
 
-  // 검색 상태 및 핸들러 추가 (수정된 부분)
   const [searchCriteria, setSearchCriteria] = useState({
     name: '',
     reservationNo: '',
@@ -986,27 +780,20 @@ const App = () => {
     checkOutDate: '',
   });
 
-  // 음성 검색 결과 처리 함수
   const handleVoiceResult = (transcript) => {
     setSearchCriteria({ ...searchCriteria, name: transcript });
-
-    // 1초 후에 executeSearch 호출하면서 검색어 직접 전달
     setTimeout(() => {
       executeSearch(transcript);
     }, 1000);
   };
 
-  // 예약 검색 함수
   const executeSearch = useCallback(
     (searchTerm) => {
       const trimmedSearchTerm = searchTerm.trim();
-
-      // 검색어 유효성 검사: 최소 2자 이상
       if (trimmedSearchTerm.length < 2) {
         alert('검색어는 최소 2자 이상 입력해야 합니다.');
         return;
       }
-
       const lowerCaseSearchTerm = trimmedSearchTerm.toLowerCase();
       const results = allReservations.filter((reservation) => {
         const nameMatch = reservation.customerName
@@ -1015,41 +802,28 @@ const App = () => {
         const reservationNoMatch = reservation.reservationNo
           ?.toLowerCase()
           .includes(lowerCaseSearchTerm);
-
-        // 메모 내용 검색: reservation._id를 사용해 memos를 참조
         const memoText = memos[reservation._id]?.text || '';
         const memoMatch = memoText.toLowerCase().includes(lowerCaseSearchTerm);
-
         return nameMatch || reservationNoMatch || memoMatch;
       });
-
       if (results.length > 0) {
-        setIsSearching(true); // 검색 중 상태 활성화
-
-        // 최대 5개의 결과로 제한
+        setIsSearching(true);
         const limitedResults = results.slice(0, 5);
-
         const reservationIds = limitedResults.map((res) => res._id);
         setHighlightedReservationIds(reservationIds);
-
-        // 날짜 설정 (첫 번째 결과의 체크인 날짜)
         const firstResult = limitedResults[0];
         const checkInDate = parseDate(firstResult.checkIn);
         if (checkInDate) {
           setSelectedDate(checkInDate);
           filterReservationsByDate(allReservations, checkInDate);
         }
-
-        // 기존 타이머가 있다면 클리어
         if (highlightTimeoutRef.current) {
           clearTimeout(highlightTimeoutRef.current);
         }
-
-        // 5초 후에 강조 상태를 제거하는 타이머 설정
         highlightTimeoutRef.current = setTimeout(() => {
           setHighlightedReservationIds([]);
           setIsSearching(false);
-        }, 5000); // 5000ms = 5초
+        }, 5000);
       } else {
         alert('검색 결과가 없습니다.');
         setHighlightedReservationIds([]);
@@ -1059,7 +833,6 @@ const App = () => {
     [allReservations, filterReservationsByDate, memos]
   );
 
-  // 컴포넌트 언마운트 시 타이머 클리어
   useEffect(() => {
     return () => {
       if (highlightTimeoutRef.current) {
@@ -1068,18 +841,14 @@ const App = () => {
     };
   }, []);
 
-  // 날짜 변경 시 검색 상태 초기화
   const handleDateChange = useCallback(
     (date) => {
       const newDate = new Date(date);
       setSelectedDate(newDate);
       filterReservationsByDate(allReservations, newDate);
       console.log('Date Changed to:', newDate);
-      // 날짜를 변경하면 검색 상태 초기화
       setHighlightedReservationIds([]);
       setIsSearching(false);
-
-      // 기존 타이머가 있다면 클리어
       if (highlightTimeoutRef.current) {
         clearTimeout(highlightTimeoutRef.current);
       }
@@ -1087,7 +856,6 @@ const App = () => {
     [filterReservationsByDate, allReservations]
   );
 
-  // 호텔 설정 저장
   const handleSaveSettings = useCallback(
     async (newSettings) => {
       console.log('Saving settings. isNewSetup:', isNewSetup);
@@ -1101,7 +869,6 @@ const App = () => {
           phoneNumber: newPhoneNumber,
           otas,
         } = newSettings;
-
         const hotelSettingsData = {
           hotelId: newHotelId,
           totalRooms,
@@ -1111,13 +878,11 @@ const App = () => {
               ? otas
               : availableOTAs.map((ota) => ({ name: ota, isActive: false })),
         };
-
         const userSettings = {
           email: newEmail,
           address,
           phoneNumber: newPhoneNumber,
         };
-
         if (isNewSetup) {
           console.log('Using saveHotelSettings (POST)');
           await saveHotelSettings(hotelSettingsData);
@@ -1125,14 +890,11 @@ const App = () => {
           console.log('Using updateHotelSettings (PATCH)');
           await updateHotelSettings(newHotelId, hotelSettingsData);
         }
-
         const userId = userInfo?.id || userInfo?._id;
-
         if (userId) {
           console.log('Updating user info');
           try {
             await updateUser(userId, userSettings);
-            // userInfo 업데이트
             setUserInfo((prev) => ({
               ...prev,
               email: newEmail,
@@ -1149,7 +911,6 @@ const App = () => {
               })
             );
           } catch (err) {
-            // 만약 "권한이 없습니다"라는 에러라면 경고 로그만 남기고 진행
             if (err.message && err.message.includes('권한이 없습니다')) {
               console.warn(
                 'User update failed (403 - 권한이 없습니다), but settings saved.'
@@ -1161,14 +922,11 @@ const App = () => {
         } else {
           console.warn('User ID not found. Skipping user update.');
         }
-
-        // 상태 업데이트
         setHotelSettings(hotelSettingsData);
         setHotelAddress(address || '주소 정보 없음');
         setPhoneNumber(newPhoneNumber || '전화번호 정보 없음');
         setEmail(newEmail || '이메일 정보 없음');
         setHotelId(newHotelId);
-
         setIsNewSetup(false);
         setShowSettingsModal(false);
         console.log('Hotel Settings and User Info Saved:', {
@@ -1188,7 +946,6 @@ const App = () => {
     async function fetchCsrf() {
       try {
         const { data } = await api.get('/csrf-token');
-        // data: { csrfToken: '...' }
         localStorage.setItem('csrfToken', data.csrfToken);
       } catch (e) {
         console.error('CSRF 토큰 요청 실패:', e);
@@ -1197,33 +954,22 @@ const App = () => {
     fetchCsrf();
   }, []);
 
-  // 초기 로그인 상태 확인 및 설정 로드
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('accessToken');
       const storedHotelId = localStorage.getItem('hotelId');
-
       if (storedToken && storedHotelId) {
         setIsAuthenticated(true);
         setHotelId(storedHotelId);
-
         try {
-          // 호텔 설정 로드
           await loadHotelSettings(storedHotelId);
-          // 예약 정보 로드
           await loadReservations();
-
-          // 사용자 정보 불러오기
           const userInfoData = await fetchUserInfo(storedHotelId);
           setUserInfo(userInfoData);
-
-          // 호텔 주소 설정 (필요 시)
           const fetchedHotelSettings = await fetchHotelSettings(storedHotelId);
           setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
         } catch (error) {
           console.error('초기 인증 및 데이터 로딩 실패:', error);
-
-          // [추가] 개인정보 동의 필요 오류 감지
           if (error.response && error.response.status === 403) {
             const errorMessage = error.response.data.message;
             if (errorMessage === '개인정보 동의가 필요합니다.') {
@@ -1234,27 +980,22 @@ const App = () => {
       } else {
         console.log('저장된 세션이 없습니다. 로그인 해주세요.');
       }
-
       setIsLoading(false);
     };
-
     initializeAuth();
   }, [loadHotelSettings, loadReservations]);
 
-  // 로그아웃 핸들러 수정
   const handleLogout = useCallback(async () => {
     try {
       await logoutUser();
     } catch (error) {
       console.error('백엔드 로그아웃 실패:', error);
     }
-
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
     localStorage.removeItem('hotelSettings');
     setIsAuthenticated(false);
     setHotelId('');
-
     setHotelSettings(null);
     setAllReservations([]);
     setActiveReservations([]);
@@ -1263,19 +1004,14 @@ const App = () => {
     setAvgMonthlyRoomPrice(0);
     setSelectedDate(new Date());
     setDailyTotal(0);
-
-    // OTA 토글 초기화
     setOtaToggles(
       availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
     );
-
-    // === 수정: 확장에도 “비활성화된 otaToggles” 전달
     sendOtaTogglesToExtension(
       availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
     );
   }, []);
 
-  // 예약 데이터 갱신
   useEffect(() => {
     if (isAuthenticated && hotelId && !isLoading) {
       loadReservations();
@@ -1289,32 +1025,17 @@ const App = () => {
   const occupancyRate =
     totalRooms > 0 ? Math.round((roomsSold / totalRooms) * 100) : 0;
 
-  ///////////////////////////////////////////////
-  // 1) 새 함수: 현장예약 버튼 전용
-  ///////////////////////////////////////////////
+  // * Refactored: 현장 예약 생성용 함수 정리
   const openOnSiteReservationForm = () => {
-    // 1) 현재 App의 selectedDate를 기준으로 checkIn/checkOut 시각 세팅
-    //    여기서는 예: 체크인=선택날짜+16:00, 체크아웃=다음날+11:00
     const checkInObj = new Date(selectedDate);
-    checkInObj.setHours(16, 0, 0, 0); // 16:00
+    checkInObj.setHours(16, 0, 0, 0);
     const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
-    // ↑ 19시간 후면 다음날 11:00 (16:00~다음날 11:00 = 19시간 차이)
-    //  또는 아래처럼 정확히 다음날로 계산:
-    // const checkOutObj = new Date(checkInObj);
-    // checkOutObj.setDate(checkOutObj.getDate() + 1);
-    // checkOutObj.setHours(11, 0, 0, 0);
-
-    // 2) 문자열로 변환
     const checkInDate = format(checkInObj, 'yyyy-MM-dd');
     const checkInTime = format(checkInObj, 'HH:mm');
     const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
     const checkOutTime = format(checkOutObj, 'HH:mm');
-
-    // 3) 예시 고객명: "현장숙박1234"
     const rand = Math.floor(1000 + Math.random() * 9000);
     const customerName = `현장숙박${rand}`;
-
-    // 4) 게스트 폼에 사용할 state 세팅
     setGuestFormData({
       reservationNo: `${Date.now()}`,
       customerName,
@@ -1324,44 +1045,32 @@ const App = () => {
       checkOutDate,
       checkOutTime,
       reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-      roomInfo: roomTypes[0]?.type || 'Standard', // 기본값
-      price: roomTypes[0]?.price?.toString() || '0', // 기본값
+      roomInfo: roomTypes[0]?.type || 'Standard',
+      price: roomTypes[0]?.price?.toString() || '0',
       paymentMethod: 'Pending',
       specialRequests: '',
-      // ISO full string
       checkIn: `${checkInDate}T${checkInTime}:00`,
       checkOut: `${checkOutDate}T${checkOutTime}:00`,
     });
-
-    // 5) 모달 열기
     setShowGuestForm(true);
   };
 
-  // 간편 입력 버튼 (onQuickCreate) 함수
+  // * Refactored: 간편 예약 입력 함수 통합
   const onQuickCreate = (type) => {
-    let checkInDate, checkInTime, checkOutDate, checkOutTime;
-    let customerName;
+    let checkInDate, checkInTime, checkOutDate, checkOutTime, customerName;
     const rand = Math.floor(1000 + Math.random() * 9000);
-
     if (type === '대실') {
-      // 대실 로직: "지금(this moment)부터 4시간 후"
-      const now = new Date(); // 현재 시각
+      const now = new Date();
       checkInDate = format(now, 'yyyy-MM-dd');
       checkInTime = format(now, 'HH:mm');
-
       const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
       customerName = `현장대실${rand}`;
-
-      // 대실 가격 계산 (예: 기본 요금 * 0.5)
       const basePrice = roomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
-
-      // ISO 문자열로
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
-
       setGuestFormData({
         reservationNo: `${Date.now()}`,
         customerName,
@@ -1369,7 +1078,7 @@ const App = () => {
         checkInTime,
         checkOutDate,
         checkOutTime,
-        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'), // 생성 시점 기록
+        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
         roomInfo: roomTypes[0].type,
         price: price.toString(),
         paymentMethod: 'Pending',
@@ -1378,36 +1087,24 @@ const App = () => {
         checkOut: checkOutISO,
       });
     } else {
-      // 숙박 로직: “선택된 날짜의 오후 16시" 기준
       const baseDate = new Date(selectedDate);
-      baseDate.setHours(16, 0, 0, 0); // 오후 4시로 세팅
-
+      baseDate.setHours(16, 0, 0, 0);
       checkInDate = format(baseDate, 'yyyy-MM-dd');
       checkInTime = '16:00';
       checkOutTime = '11:00';
-
-      // 며칠 숙박인지
       let nights = 1;
       if (type === '2박') nights = 2;
       else if (type === '3박') nights = 3;
       else if (type === '4박') nights = 4;
-
-      // 체크아웃 시점 계산
       const checkInObj = new Date(baseDate);
       const checkOutObj = new Date(
         checkInObj.getTime() + nights * 24 * 60 * 60 * 1000
       );
       checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
-
       customerName = `현장숙박${rand}`;
-
-      // 숙박 가격 계산
       const basePrice = roomTypes[0].price * nights;
-
-      // ISO 문자열
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
-
       setGuestFormData({
         reservationNo: `${Date.now()}`,
         customerName,
@@ -1415,7 +1112,7 @@ const App = () => {
         checkInTime,
         checkOutDate,
         checkOutTime,
-        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'), // 생성 시점
+        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
         roomInfo: roomTypes[0].type,
         price: basePrice.toString(),
         paymentMethod: 'Pending',
@@ -1424,8 +1121,6 @@ const App = () => {
         checkOut: checkOutISO,
       });
     }
-
-    // 현장예약 폼 모달 열기
     setShowGuestForm(true);
   };
 
@@ -1434,27 +1129,22 @@ const App = () => {
     handleSync();
   };
 
-  // 매출 모달 열기 핸들러
   const openSalesModal = () => {
     setIsSalesModalOpen(true);
   };
 
-  // 매출 모달 닫기 핸들러
   const closeSalesModal = () => {
     setIsSalesModalOpen(false);
   };
 
-  // `dailySales` 데이터 구성
   const dailySalesReport = useMemo(() => {
     return activeReservations.map((reservation, index) => {
       let pricePerNight;
-      // nightlyRates가 있으면 첫 번째 nights의 rate가 1박 가격
       if (reservation.nightlyRates && reservation.nightlyRates.length > 0) {
         pricePerNight = reservation.nightlyRates[0].rate;
       } else {
         pricePerNight = reservation.totalPrice || 0;
       }
-
       return {
         reservationId: reservation._id || reservation.reservationNo,
         roomNumber: `No.${index + 1}`,
@@ -1477,20 +1167,14 @@ const App = () => {
     });
   }, [activeReservations]);
 
-  // `monthlySales` 계산
   const monthlySales = useMemo(() => {
     return monthlyTotal > 0 ? Math.floor(monthlyTotal * 0.9) : 0;
   }, [monthlyTotal]);
 
-  const navigate = useNavigate();
-
-  // Consent 완료 시 호출되는 함수
   const handleConsentComplete = useCallback(() => {
-    // 사용자 정보를 다시 불러와 상태를 업데이트
     fetchUserInfo(hotelId)
       .then((data) => {
         setUserInfo(data);
-        // [추가] 개인정보 동의 완료 시 needsConsent 상태 업데이트
         setNeedsConsent(false);
       })
       .catch((error) => {
@@ -1498,7 +1182,6 @@ const App = () => {
       });
   }, [hotelId]);
 
-  // 렌더링
   return (
     <div
       className={`app-layout ${!isAuthenticated ? 'logged-out' : ''}`}
@@ -1508,7 +1191,6 @@ const App = () => {
         <div className="loading-spinner">로딩 중...</div>
       ) : (
         <Routes>
-          {/* 인증되지 않은 사용자 라우트 */}
           {!isAuthenticated ? (
             <>
               <Route path="/login" element={<Login onLogin={handleLogin} />} />
@@ -1528,20 +1210,17 @@ const App = () => {
               <Route
                 path="/reset-password/:token"
                 element={<ResetPassword />}
-              />{' '}
-              {/* ResetPassword 라우트 추가 */}
+              />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           ) : (
-            // 인증된 사용자 라우트
             <>
-              {/* 개인정보 동의가 완료된 경우에만 메인 라우트 접근 가능 */}
               <Route
                 path="/consent"
                 element={
                   <PrivacyConsent
                     onConsentComplete={handleConsentComplete}
-                    onClose={() => navigate(-1)} // 모달 닫기 시 이전 페이지로 돌아가기
+                    onClose={() => navigate(-1)}
                   />
                 }
               />
@@ -1551,7 +1230,6 @@ const App = () => {
                   <>
                     <Header
                       selectedDate={selectedDate}
-                      // onDateChange={handleDateChange}
                       onPrevDay={handlePrevDay}
                       onNextDay={handleNextDay}
                       onQuickCreate={onQuickCreate}
@@ -1559,13 +1237,12 @@ const App = () => {
                       isShining={isShining}
                       otaToggles={otaToggles}
                       onToggleOTA={handleToggleOTA}
-                      onSort={handleSort} // [추가] 정렬 핸들러 전달
+                      onSort={handleSort}
                       onDateChange={handleDateChange}
-                      onMemo={handleMemoButtonClick} // [추가] 메모 버튼 핸들러 전달
+                      onMemo={handleMemoButtonClick}
                       flipAllMemos={flipAllMemos}
-                      sortOrder={sortOrder} // 추가
+                      sortOrder={sortOrder}
                     />
-
                     <SideBar
                       loading={loading}
                       onSync={combinedSync}
@@ -1576,7 +1253,6 @@ const App = () => {
                       occupancyRate={occupancyRate}
                       selectedDate={selectedDate}
                       onDateChange={handleDateChange}
-                      // onFormToggle={toggleGuestForm}
                       hotelId={hotelId}
                       hotelSettings={hotelSettings}
                       handleSaveSettings={handleSaveSettings}
@@ -1600,16 +1276,14 @@ const App = () => {
                       handleVoiceResult={handleVoiceResult}
                       executeSearch={executeSearch}
                       onShowCanceledModal={() => setShowCanceledModal(true)}
-                      memos={memos} // 추가
-                      setMemos={setMemos} // 추가
+                      memos={memos}
+                      setMemos={setMemos}
                       onOnsiteReservationClick={openOnSiteReservationForm}
                       needsConsent={needsConsent}
                       monthlyDailyBreakdown={monthlyDailyBreakdown}
-                      labelsForOTA={labelsForOTA} // ← 필수로 넘겨준다!
+                      labelsForOTA={labelsForOTA}
                       dailySalesByOTA={dailySalesByOTA}
                     />
-
-                    {/* 메인 콘텐츠 영역 */}
                     <div className="main-content" style={{ flex: '1' }}>
                       <div className="split-view-layout">
                         <div className="left-pane">
@@ -1654,7 +1328,6 @@ const App = () => {
                           )}
                         </div>
                       </div>
-
                       {showGuestForm && (
                         <GuestFormModal
                           initialData={guestFormData}
@@ -1666,14 +1339,13 @@ const App = () => {
                         />
                       )}
                     </div>
-                    {/* 호텔 설정 모달 열기 */}
                     {showSettingsModal && (
                       <HotelSettings
                         onClose={closeSettingsModal}
                         onSave={handleSaveSettings}
                         existingSettings={{
-                          ...userInfo,
                           ...hotelSettings,
+                          ...userInfo,
                           otas:
                             hotelSettings?.otas ||
                             availableOTAs.map((ota) => ({
@@ -1683,15 +1355,11 @@ const App = () => {
                         }}
                       />
                     )}
-                    {/* 매출 정보 모달 추가 */}
                     <SalesModal
                       isOpen={isSalesModalOpen}
                       onRequestClose={closeSalesModal}
                       dailySalesReport={dailySalesReport}
-                      dailySales={{
-                        labels: labelsForOTA, // "['08-01','08-02','08-03',...]"
-                        values: [], // (일단 안쓰면 빈 배열)
-                      }}
+                      dailySales={{ labels: labelsForOTA, values: [] }}
                       dailyTotal={dailyTotal}
                       monthlySales={monthlySales}
                       selectedDate={selectedDate}
@@ -1714,7 +1382,6 @@ const App = () => {
                   </>
                 }
               />
-              {/* 인증된 사용자를 위한 기타 라우트 추가 가능 */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}

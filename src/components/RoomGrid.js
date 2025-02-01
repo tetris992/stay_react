@@ -62,17 +62,15 @@ function RoomGrid({
   // 전체 방 카드 플립 상태 관리
   useEffect(() => {
     if (flipAllMemos) {
-      // 모든 카드 플립: 모든 인덱스를 flippedIndexes에 추가
       const allIndexes = new Set();
       reservations.forEach((_, idx) => allIndexes.add(idx));
       setFlippedIndexes(allIndexes);
     } else {
-      // 모든 카드 언플립: flippedIndexes 비우기
       setFlippedIndexes(new Set());
     }
   }, [flipAllMemos, reservations]);
 
-  // 인라인 수정 모드 제거 -> editModes 관련 코드 삭제
+  // 인라인 수정 모드 관련 (원본에서는 editModes 관련 코드는 삭제)
   const [editedValues, setEditedValues] = useState({});
   useEffect(() => {
     if (!newlyCreatedId) return;
@@ -84,7 +82,6 @@ function RoomGrid({
       setTimeout(() => {
         card.classList.remove('onsite-created');
       }, 10000);
-
       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [reservations, newlyCreatedId]);
@@ -93,7 +90,6 @@ function RoomGrid({
     if (reservations.length > 0 && highlightFirstCard) {
       const firstCardIndex = 0;
       setAutoFlips((prev) => new Set(prev).add(firstCardIndex));
-
       const timer = setTimeout(() => {
         setAutoFlips((prev) => {
           const newSet = new Set(prev);
@@ -101,7 +97,6 @@ function RoomGrid({
           return newSet;
         });
       }, 4000);
-
       return () => clearTimeout(timer);
     }
   }, [reservations, highlightFirstCard]);
@@ -116,7 +111,6 @@ function RoomGrid({
       const hours = now.getHours();
       const isNowEvening = hours >= 2 && hours < 6;
       setIsEvening(isNowEvening);
-
       let nextTransition;
       if (isNowEvening) {
         nextTransition = new Date(
@@ -140,73 +134,75 @@ function RoomGrid({
           0
         );
       }
-
       const msUntilNextTransition = nextTransition - now;
       setTimeout(updateIsEvening, msUntilNextTransition);
     };
-
     updateIsEvening();
     return () => clearTimeout(updateIsEvening);
   }, []);
 
-  // 초기 로드시 로컬 스토리지에서 메모를 가져옴
+  // 초기 로드시 로컬 스토리지에서 메모 가져오기
   useEffect(() => {
     const savedMemos = JSON.parse(localStorage.getItem('localMemos') || '{}');
     setMemos(savedMemos);
   }, [setMemos]);
 
   // 메모 편집 모드 토글 함수
-  const toggleMemoEdit = (reservationId) => {
-    setMemos((prev) => {
-      const current = prev[reservationId] || { text: '', isEditing: false };
-      const isEditing = !current.isEditing;
-      const updatedMemos = {
+  const toggleMemoEdit = useCallback(
+    (reservationId) => {
+      setMemos((prev) => {
+        const current = prev[reservationId] || { text: '', isEditing: false };
+        const isEditing = !current.isEditing;
+        const updatedMemos = {
+          ...prev,
+          [reservationId]: { ...current, isEditing },
+        };
+        if (isEditing) {
+          setTimeout(() => {
+            if (memoRefs.current[reservationId]) {
+              memoRefs.current[reservationId].focus();
+            }
+          }, 0);
+        }
+        return updatedMemos;
+      });
+    },
+    [setMemos]
+  );
+
+  const handleMemoChange = useCallback(
+    (reservationId, value) => {
+      setMemos((prev) => ({
         ...prev,
-        [reservationId]: { ...current, isEditing },
-      };
+        [reservationId]: { ...prev[reservationId], text: value },
+      }));
+    },
+    [setMemos]
+  );
 
-      // 편집 모드가 true로 전환될 때 textarea에 포커스
-      if (isEditing) {
-        setTimeout(() => {
-          if (memoRefs.current[reservationId]) {
-            // 메모장본문에 커서가 깜빡이게 하는 부분
-            memoRefs.current[reservationId].focus();
-          }
-        }, 0);
-      }
+  const handleMemoSave = useCallback(
+    (reservationId) => {
+      setMemos((prev) => {
+        const updated = {
+          ...prev,
+          [reservationId]: { ...prev[reservationId], isEditing: false },
+        };
+        localStorage.setItem('localMemos', JSON.stringify(updated));
+        return updated;
+      });
+    },
+    [setMemos]
+  );
 
-      return updatedMemos;
-    });
-  };
-
-  // 메모 텍스트 변경
-  const handleMemoChange = (reservationId, value) => {
-    setMemos((prev) => ({
-      ...prev,
-      [reservationId]: { ...prev[reservationId], text: value },
-    }));
-  };
-
-  // 메모 저장 (서버로 보내지 않고 로컬 스토리지에만 반영)
-  const handleMemoSave = (reservationId) => {
-    setMemos((prev) => {
-      const updated = {
+  const handleMemoCancel = useCallback(
+    (reservationId) => {
+      setMemos((prev) => ({
         ...prev,
         [reservationId]: { ...prev[reservationId], isEditing: false },
-      };
-      localStorage.setItem('localMemos', JSON.stringify(updated));
-      console.log(updated);
-      return updated;
-    });
-  };
-
-  // 메모 편집 취소
-  const handleMemoCancel = (reservationId) => {
-    setMemos((prev) => ({
-      ...prev,
-      [reservationId]: { ...prev[reservationId], isEditing: false },
-    }));
-  };
+      }));
+    },
+    [setMemos]
+  );
 
   const handleDeleteClick = async (reservationId, siteName) => {
     if (window.confirm('정말로 이 예약을 삭제하시겠습니까?')) {
@@ -215,8 +211,6 @@ function RoomGrid({
       try {
         await onDelete(reservationId, hotelId, siteName);
         console.log('예약이 성공적으로 삭제되었습니다.');
-
-        // 예약 삭제 후 해당 메모 제거 로직 추가
         setMemos((prevMemos) => {
           const updatedMemos = { ...prevMemos };
           delete updatedMemos[reservationId];
@@ -252,36 +246,23 @@ function RoomGrid({
     async (reservationId, updatedData) => {
       setIsProcessing(true);
       setError(null);
-
       try {
-        // checkInDate, checkOutDate를 Date 객체로 변환
         const checkInDateStr = updatedData.checkInDate || null;
         const checkOutDateStr = updatedData.checkOutDate || null;
-
         if (checkInDateStr) {
           const checkInDate = new Date(checkInDateStr);
-          // 필요하다면 체크인 시간 설정 (예: 14:00)
           checkInDate.setHours(14, 0, 0, 0);
           updatedData.checkIn = checkInDate.toISOString();
         }
-
         if (checkOutDateStr) {
           const checkOutDate = new Date(checkOutDateStr);
-          // 필요하다면 체크아웃 시간 설정 (예: 11:00)
           checkOutDate.setHours(11, 0, 0, 0);
           updatedData.checkOut = checkOutDate.toISOString();
         }
-
-        // 불필요한 필드 제거 (백엔드에서 checkInDate, checkOutDate가 필요없다면)
         delete updatedData.checkInDate;
         delete updatedData.checkOutDate;
-
-        // 실제 업데이트 호출
         await onEdit(reservationId, updatedData, hotelId);
-
         alert('예약이 성공적으로 수정되었습니다.');
-
-        // 예약 수정 성공 후 해당 예약 카드에 임시 강조 효과 부여
         const card = document.querySelector(
           `.room-card[data-id="${reservationId}"]`
         );
@@ -289,9 +270,8 @@ function RoomGrid({
           card.classList.add('temporary-highlight');
           setTimeout(() => {
             card.classList.remove('temporary-highlight');
-          }, 10000); // 10초 후 제거
+          }, 10000);
         }
-
         setSelectedReservation(null);
       } catch (error) {
         console.error(`예약 수정 실패 (${reservationId}):`, error);
@@ -317,7 +297,6 @@ function RoomGrid({
     setModalType(null);
   };
 
-  // 날짜 차이로 night 계산
   const calcNights = (checkInDate, checkOutDate) => {
     const inDate = new Date(checkInDate);
     const outDate = new Date(checkOutDate);
@@ -326,16 +305,13 @@ function RoomGrid({
     return nights;
   };
 
-  // 가격 재계산 함수: 시간 고려하지 않고 날짜만 계산
   const recalcPrice = (data) => {
     const { checkInDate, checkOutDate, roomInfo } = data;
     if (!checkInDate || !checkOutDate || !roomInfo) return data.price || 0;
-
     const selectedRoom = roomTypes.find((r) => r.type === roomInfo);
     const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
-
     const nights = calcNights(checkInDate, checkOutDate);
-    if (nights <= 0) return 0; // 유효하지 않은 경우
+    if (nights <= 0) return 0;
     const totalPrice = nightlyPrice * nights;
     return totalPrice.toString();
   };
@@ -346,8 +322,6 @@ function RoomGrid({
         ...prev[reservationId],
         [field]: value,
       };
-
-      // 날짜나 객실타입 변경 시 가격 재계산
       if (
         field === 'checkInDate' ||
         field === 'checkOutDate' ||
@@ -355,7 +329,6 @@ function RoomGrid({
       ) {
         updated.price = recalcPrice(updated);
       }
-
       return {
         ...prev,
         [reservationId]: updated,
@@ -364,10 +337,8 @@ function RoomGrid({
   };
 
   const handleCardFlip = (index, reservationId) => {
-    // 메모 편집 중이면 플립 금지
     const memo = memos[reservationId] || { isEditing: false };
     if (memo.isEditing) return;
-
     setFlippedIndexes((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(index)) newSet.delete(index);
@@ -393,7 +364,6 @@ function RoomGrid({
     }
   };
 
-  // 폼 제출 핸들러
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedReservation) {
@@ -404,7 +374,7 @@ function RoomGrid({
     }
   };
 
-  // 액션 버튼 렌더링 함수
+  // 액션 버튼 렌더링 함수 (예약 카드 상단에 버튼들을 표시)
   const renderActionButtons = (reservation) => {
     const isOTA = availableOTAs.includes(reservation.siteName);
     const isCancelled =
@@ -415,18 +385,14 @@ function RoomGrid({
     const isConfirmed =
       reservation.reservationStatus &&
       reservation.reservationStatus.toLowerCase() === 'confirmed';
-
     const checkInDate = reservation.parsedCheckInDate;
     const checkOutDate = reservation.parsedCheckOutDate;
     const now = new Date();
-
     let stayDuration = 0;
     if (checkInDate && checkOutDate) {
       stayDuration = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
     }
-
     const checkInPassed = checkInDate && now > checkInDate;
-
     let after7PMOnCheckInDate = false;
     if (checkInDate) {
       const sevenPM = new Date(
@@ -439,35 +405,28 @@ function RoomGrid({
       );
       after7PMOnCheckInDate = now >= sevenPM;
     }
-
     let isAutoConfirmed = false;
     const isDaesil =
       reservation.customerName && reservation.customerName.includes('대실');
-
     if (!isCancelled && !isConfirmed) {
       if (isOTA && after7PMOnCheckInDate) {
         isAutoConfirmed = true;
       } else if (stayDuration <= 1 && checkInPassed) {
         isAutoConfirmed = true;
       } else if (isDaesil) {
-        // 대실이면: checkIn + 3시간 지난 경우 => auto confirm
         const checkInPlus3h = new Date(
           checkInDate.getTime() + 3 * 60 * 60 * 1000
         );
         if (now >= checkInPlus3h) {
           isAutoConfirmed = true;
-
-          onConfirm(reservation._id, hotelId); // 자동 확정이 되었을 때 바로 서버로 전송
+          onConfirm(reservation._id, hotelId);
         }
       }
     }
-
     const finalIsConfirmed = isConfirmed || isAutoConfirmed;
-
     let canDelete = false;
     let canConfirm = false;
     let canEdit = false;
-
     if (isOTA) {
       canEdit = false;
       if (isCancelled) {
@@ -484,7 +443,6 @@ function RoomGrid({
         canEdit = true;
       }
     }
-
     return (
       <span className="button-group">
         {canDelete && (
@@ -518,20 +476,16 @@ function RoomGrid({
             className="action-button edit-button small-button green-edit"
             onClick={(e) => {
               e.stopPropagation();
-              // 만약 OTA 예약이라면 수정 불가 경고
               if (isOTA) {
                 alert('OTA 예약은 수정할 수 없습니다.');
                 return;
               }
-
-              // OTA가 아니라면 기존 수정 패널 로직 실행
               const checkIn = reservation.checkIn
                 ? new Date(reservation.checkIn)
                 : new Date();
               const checkOut = reservation.checkOut
                 ? new Date(reservation.checkOut)
                 : addDays(checkIn, 1);
-
               const checkInDate = format(checkIn, 'yyyy-MM-dd');
               const checkOutDate = format(checkOut, 'yyyy-MM-dd');
               const reservationDate = reservation.reservationDate
@@ -541,7 +495,6 @@ function RoomGrid({
                   )
                 : format(new Date(), 'yyyy-MM-dd HH:mm');
               const priceVal = extractPrice(reservation.price);
-
               const initialData = {
                 reservationNo: reservation.reservationNo || reservation._id,
                 customerName: reservation.customerName || '',
@@ -556,9 +509,7 @@ function RoomGrid({
                 paymentMethod: reservation.paymentMethod || 'Pending',
                 specialRequests: reservation.specialRequests || '',
               };
-
               initialData.price = recalcPrice(initialData);
-
               setEditedValues((prev) => ({
                 ...prev,
                 [reservation._id]: initialData,
@@ -580,23 +531,16 @@ function RoomGrid({
     );
   };
 
-  const isAnyEditing = false; // 인라인 수정 모드 사용 안하므로 false
+  const isAnyEditing = false;
 
-  // 소트 로직 수정
   const sortedReservations = useMemo(() => {
     return [...reservations].sort((a, b) => {
       const dateA = new Date(a.checkIn);
       const dateB = new Date(b.checkIn);
-      if (sortOrder === 'newest') {
-        return dateB - dateA; // 최신순
-      } else {
-        // 'oldest'
-        return dateA - dateB; // 과거순
-      }
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
     });
   }, [reservations, sortOrder]);
 
-  // JSX 반환
   return (
     <div
       style={{
@@ -617,7 +561,6 @@ function RoomGrid({
             editedValues[selectedReservation._id] && (
               <form onSubmit={handleSubmit}>
                 <h2>예약 수정</h2>
-                {/* 예약 정보 수정 필드들 */}
                 <label>
                   예약자:
                   <input
@@ -633,7 +576,6 @@ function RoomGrid({
                     required
                   />
                 </label>
-
                 <label>
                   전화번호:
                   <input
@@ -648,7 +590,6 @@ function RoomGrid({
                     }
                   />
                 </label>
-
                 <label>
                   체크인 날짜:
                   <input
@@ -663,7 +604,6 @@ function RoomGrid({
                     }
                   />
                 </label>
-
                 <label>
                   체크아웃 날짜:
                   <input
@@ -678,7 +618,6 @@ function RoomGrid({
                     }
                   />
                 </label>
-
                 <label>
                   객실타입:
                   <select
@@ -698,7 +637,6 @@ function RoomGrid({
                     ))}
                   </select>
                 </label>
-
                 <label>
                   가격 (KRW):
                   <input
@@ -715,25 +653,19 @@ function RoomGrid({
                     step="1"
                   />
                 </label>
-
                 <label>
                   결제방법/상태:
                   {availableOTAs.includes(selectedReservation.siteName) ? (
-                    // 1) OTA 예약 → paymentMethod를 수정 못 하게 readOnly/disabled
                     <input
                       type="text"
                       value={
                         editedValues[selectedReservation._id].paymentMethod ||
                         'OTA'
                       }
-                      disabled // or readOnly
+                      disabled
                       style={{ backgroundColor: '#eee' }}
-                      onChange={() => {
-                        /* OTA는 수정 불가 → 막기 */
-                      }}
                     />
                   ) : selectedReservation.siteName === '현장예약' ? (
-                    // 2) 현장예약 → 기존 <select> 유지
                     <select
                       value={
                         editedValues[selectedReservation._id].paymentMethod ||
@@ -753,7 +685,6 @@ function RoomGrid({
                       <option value="Pending">Pending</option>
                     </select>
                   ) : (
-                    // 3) 그 외 사이트 → 예: 없으면 'Pending' 처리 or 필요 시 다른 로직
                     <select
                       value={
                         editedValues[selectedReservation._id].paymentMethod ||
@@ -768,11 +699,9 @@ function RoomGrid({
                       }
                     >
                       <option value="Pending">Pending</option>
-                      {/* 필요하면 Card/Cash/Transfer 등 추가 */}
                     </select>
                   )}
                 </label>
-
                 <label>
                   고객요청:
                   <input
@@ -789,7 +718,6 @@ function RoomGrid({
                     }
                   />
                 </label>
-
                 <div className="panel-actions">
                   <button type="submit" className="save-button">
                     저장
@@ -813,31 +741,22 @@ function RoomGrid({
             }`}
           >
             {sortedReservations.map((reservation, index) => {
-              // index + 1 이 가장 마지막이 1번이 되므로, numbering을 다음과 같이 할 수 있음:
               const displayNumber = sortedReservations.length - index;
               const isHighlighted =
                 highlightedReservationIds.includes(reservation._id) &&
                 isSearching;
-
               const isCancelled =
                 isCancelledStatus(
                   reservation.reservationStatus || '',
                   reservation.customerName || ''
                 ) || reservation._id.includes('Canceled');
-
               const isOnsiteReservation = reservation.siteName === '현장예약';
               const isFirstCard = index === 0;
               const isFlipped = flippedIndexes.has(index);
-
-              // 수정: selectedReservation가 있고, 해당 카드가 현재 수정중인 카드인지 확인
               const isEditingThisCard =
                 selectedReservation &&
                 selectedReservation._id === reservation._id;
-
-              // editMode 클래스 적용 여부
-              const editMode = isEditingThisCard; // true/false
-
-              // *** 여기서 onsite-effect 클래스를 추가하여 현장예약 카드도 효과 적용 ***
+              const editMode = isEditingThisCard;
               const cardClassNames = [
                 'room-card',
                 getBorderColor(reservation),
@@ -847,7 +766,6 @@ function RoomGrid({
               ]
                 .filter(Boolean)
                 .join(' ');
-
               const checkInDateOnly = new Date(
                 reservation.parsedCheckInDate.getFullYear(),
                 reservation.parsedCheckInDate.getMonth(),
@@ -860,7 +778,6 @@ function RoomGrid({
               );
               const dayDifference =
                 (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24);
-
               let stayLabel = '';
               if (dayDifference === 0) {
                 stayLabel = '(대실)';
@@ -874,13 +791,10 @@ function RoomGrid({
               } else if (dayDifference >= 2) {
                 stayLabel = `(${dayDifference}박)`;
               }
-
-              // memo 객체 가져오기
               const memo = memos[reservation._id] || {
                 text: '',
                 isEditing: false,
               };
-
               return (
                 <div
                   key={reservation._id}
@@ -889,11 +803,9 @@ function RoomGrid({
                   style={{
                     position: 'relative',
                     cursor: editMode ? 'default' : 'pointer',
-                    // opacity: cardOpacities[index] || 1,
                     transition: 'opacity 0.2s ease-in-out',
                   }}
                   onClick={() => {
-                    // 플립은 memo 편집 중이 아닐 때만
                     if (!memo.isEditing && !editMode)
                       handleCardFlip(index, reservation._id);
                   }}
@@ -914,7 +826,7 @@ function RoomGrid({
                         <div className="card-content">
                           <div className="card-header">
                             <h3>
-                              No: {displayNumber} {stayLabel}
+                              No: {displayNumber} {stayLabel}{' '}
                               {renderActionButtons(reservation)}
                             </h3>
                           </div>
@@ -995,9 +907,7 @@ function RoomGrid({
                           </button>
                         </div>
                       </div>
-
                       <div className="room-card-back">
-                        {/* 메모 헤더 */}
                         <div className="memo-header">
                           <span>Memo</span>
                           {!memo.isEditing ? (
@@ -1008,8 +918,7 @@ function RoomGrid({
                                 toggleMemoEdit(reservation._id);
                               }}
                             >
-                              <FaPen />{' '}
-                              {/* 여기서 "Edit" 대신 연필 아이콘 사용 */}
+                              <FaPen />
                             </button>
                           ) : (
                             <span className="memo-edit-actions">
@@ -1032,8 +941,6 @@ function RoomGrid({
                             </span>
                           )}
                         </div>
-
-                        {/* 메모 본문 영역 */}
                         <div className="memo-body">
                           {!memo.isEditing ? (
                             <div className="memo-text-display">
@@ -1065,10 +972,8 @@ function RoomGrid({
               );
             })}
           </div>
-
           {isProcessing && <p>처리 중...</p>}
           {error && <p className="error-message">{error}</p>}
-
           {isModalOpen && modalType === 'invoice' && selectedReservation && (
             <InvoiceModal
               isOpen={isModalOpen}
@@ -1105,19 +1010,17 @@ RoomGrid.propTypes = {
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
-  flipAllMemos: PropTypes.bool.isRequired, // [추가]
-  sortOrder: PropTypes.string.isRequired, // 추가
-  needsConsent: PropTypes.bool.isRequired, // 개인정보 동의 필요 여부
+  flipAllMemos: PropTypes.bool.isRequired,
+  sortOrder: PropTypes.string.isRequired,
+  needsConsent: PropTypes.bool.isRequired,
 };
 
 // Border 색상 결정 함수
 function getBorderColor(reservation) {
   let checkInDate, checkOutDate;
-
   try {
     checkInDate = reservation.parsedCheckInDate;
     checkOutDate = reservation.parsedCheckOutDate;
-
     if (
       !checkInDate ||
       !checkOutDate ||
@@ -1130,15 +1033,12 @@ function getBorderColor(reservation) {
     console.error('Error calculating dates:', error);
     return '';
   }
-
   const hasDaesil =
     (reservation.customerName && reservation.customerName.includes('대실')) ||
     (reservation.roomInfo && reservation.roomInfo.includes('대실'));
-
   if (hasDaesil) {
     return 'border-primary-soft-green';
   }
-
   const checkInDateOnly = new Date(
     checkInDate.getFullYear(),
     checkInDate.getMonth(),
@@ -1149,10 +1049,8 @@ function getBorderColor(reservation) {
     checkOutDate.getMonth(),
     checkOutDate.getDate()
   );
-
   const dayDifference =
     (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24);
-
   if (dayDifference === 0) {
     return 'border-primary-soft-green';
   } else if (dayDifference === 1) {
@@ -1160,7 +1058,6 @@ function getBorderColor(reservation) {
   } else if (dayDifference >= 2) {
     return 'border-primary-deep-blue';
   }
-
   return '';
 }
 
