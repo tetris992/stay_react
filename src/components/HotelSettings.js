@@ -17,6 +17,7 @@ function HotelSettings({
   onSave,
   existingSettings = {
     hotelId: '',
+    hotelName: '',
     totalRooms: 0,
     roomTypes: defaultRoomTypes,
     email: '',
@@ -28,12 +29,19 @@ function HotelSettings({
   const [hotelId, setHotelId] = useState(
     existingSettings?.hotelId || localStorage.getItem('hotelId') || ''
   );
+  const [hotelName, setHotelName] = useState(existingSettings?.hotelName || '');
   // totalRooms는 이제 개별 재고 합계로 자동 계산되므로 초기값은 기존 설정을 그대로 사용(나중에 useEffect에서 업데이트)
-  const [totalRooms, setTotalRooms] = useState(existingSettings?.totalRooms || 0);
+  const [totalRooms, setTotalRooms] = useState(
+    existingSettings?.totalRooms || 0
+  );
   const [address, setAddress] = useState(existingSettings?.address || '');
-  const [phoneNumber, setPhoneNumber] = useState(existingSettings?.phoneNumber || '');
+  const [phoneNumber, setPhoneNumber] = useState(
+    existingSettings?.phoneNumber || ''
+  );
   const [email, setEmail] = useState(existingSettings?.email || '');
-  const [roomTypes, setRoomTypes] = useState(existingSettings?.roomTypes || defaultRoomTypes);
+  const [roomTypes, setRoomTypes] = useState(
+    existingSettings?.roomTypes || defaultRoomTypes
+  );
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
@@ -82,6 +90,10 @@ function HotelSettings({
             setYanoljaId(existingSettings.otaCredentials.yanolja.loginId || '');
             setYanoljaPw(existingSettings.otaCredentials.yanolja.loginPw || '');
           }
+
+          if (existingSettings.hotelName) {
+            setHotelName(existingSettings.hotelName);
+          }
         } else {
           // 새 호텔 설정
           const hotelIdToUse = localStorage.getItem('hotelId') || hotelId;
@@ -91,6 +103,10 @@ function HotelSettings({
             setRoomTypes(hotelData.roomTypes);
             setTotalRooms(hotelData.totalRooms);
             setIsExisting(true);
+
+            if (hotelData.hotelName) {
+              setHotelName(hotelData.hotelName);
+            }
           } else {
             setIsExisting(false);
           }
@@ -158,6 +174,7 @@ function HotelSettings({
   const handleSave = async () => {
     if (
       !hotelId.trim() ||
+      !hotelName.trim() ||
       !address.trim() ||
       !phoneNumber.trim() ||
       !email.trim()
@@ -201,6 +218,7 @@ function HotelSettings({
 
     const newSettings = {
       hotelId: normalizedHotelId,
+      hotelName: hotelName.trim(),
       totalRooms: computedTotalRooms,
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
@@ -281,7 +299,9 @@ function HotelSettings({
         </div>
 
         {error && <p className="error">{error}</p>}
-        {!isExisting && !error && <p className="info">호텔 설정을 입력해주세요.</p>}
+        {!isExisting && !error && (
+          <p className="info">호텔 설정을 입력해주세요.</p>
+        )}
 
         {/* 섹션 1: 호텔 기본정보 */}
         <div className="section">
@@ -293,6 +313,15 @@ function HotelSettings({
             onChange={(e) => setHotelId(e.target.value)}
             required
             disabled={isExisting}
+            autoComplete="off"
+          />
+          {/* 수정된 부분: 호텔 이름 입력란 추가 */}
+          <input
+            type="text"
+            placeholder="호텔 이름"
+            value={hotelName}
+            onChange={(e) => setHotelName(e.target.value)}
+            required
             autoComplete="off"
           />
           {/* 총 객실 수는 개별 재고 합계로 자동 계산되므로 읽기 전용 */}
@@ -383,7 +412,9 @@ function HotelSettings({
                     key={i}
                     type="text"
                     placeholder={`별칭 ${i + 1}`}
-                    value={room.aliases && room.aliases[i] ? room.aliases[i] : ''}
+                    value={
+                      room.aliases && room.aliases[i] ? room.aliases[i] : ''
+                    }
                     onChange={(e) => {
                       const newAliases = room.aliases ? [...room.aliases] : [];
                       newAliases[i] = e.target.value;
@@ -460,6 +491,7 @@ HotelSettings.propTypes = {
   onSave: PropTypes.func,
   existingSettings: PropTypes.shape({
     hotelId: PropTypes.string,
+    hotelName: PropTypes.string,
     totalRooms: PropTypes.number,
     roomTypes: PropTypes.arrayOf(
       PropTypes.shape({

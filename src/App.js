@@ -862,6 +862,7 @@ const App = () => {
       try {
         const {
           hotelId: newHotelId,
+          hotelName,
           totalRooms,
           roomTypes,
           email: newEmail,
@@ -871,6 +872,7 @@ const App = () => {
         } = newSettings;
         const hotelSettingsData = {
           hotelId: newHotelId,
+          hotelName: hotelName,
           totalRooms,
           roomTypes,
           otas:
@@ -1370,6 +1372,7 @@ const App = () => {
                         onSave={handleSaveSettings}
                         existingSettings={{
                           ...hotelSettings,
+                          hotelName: hotelSettings?.hotelName,
                           ...userInfo,
                           otas:
                             hotelSettings?.otas ||
