@@ -902,6 +902,7 @@ const App = () => {
               email: newEmail,
               address,
               phoneNumber: newPhoneNumber,
+              hotelName: hotelName,
             }));
             localStorage.setItem(
               'userInfo',
@@ -910,6 +911,7 @@ const App = () => {
                 email: newEmail,
                 address,
                 phoneNumber: newPhoneNumber,
+                hotelName: hotelName,
               })
             );
           } catch (err) {

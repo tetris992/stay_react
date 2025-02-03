@@ -91,8 +91,8 @@ function HotelSettings({
             setYanoljaPw(existingSettings.otaCredentials.yanolja.loginPw || '');
           }
 
-          if (existingSettings.hotelName) {
-            setHotelName(existingSettings.hotelName);
+          if (currentUserData && currentUserData.hotelName) {
+            setHotelName(currentUserData.hotelName);
           }
         } else {
           // 새 호텔 설정
@@ -305,7 +305,7 @@ function HotelSettings({
 
         {/* 섹션 1: 호텔 기본정보 */}
         <div className="section">
-          <h3>호텔 기본정보</h3>
+          <h3>호텔 기본정보(필수)</h3>
           <input
             type="text"
             placeholder="호텔 ID"
@@ -362,7 +362,7 @@ function HotelSettings({
 
         {/* 섹션 2: 객실 타입 및 가격/재고 */}
         <div className="section">
-          <h3>객실 타입 및 가격/재고</h3>
+          <h3>객실 타입 및 가격/재고(옵션)</h3>
           {roomTypes.map((room, index) => (
             <div key={index} className="room-type">
               <input
@@ -446,17 +446,24 @@ function HotelSettings({
 
         {/* 섹션 3: OTA 로그인 정보 */}
         <div className="section">
-          <h3>야놀자 로그인 정보</h3>
+          <h3>OTA 로그인 정보(선택)</h3>
           <input
             type="text"
-            placeholder="야놀자 아이디"
+            placeholder="OTA 이름"
+            value={yanoljaId}
+            onChange={(e) => setYanoljaId(e.target.value)}
+            autoComplete="new-otaname"
+          />
+          <input
+            type="text"
+            placeholder="아이디"
             value={yanoljaId}
             onChange={(e) => setYanoljaId(e.target.value)}
             autoComplete="new-username"
           />
           <input
             type="password"
-            placeholder="야놀자 비밀번호"
+            placeholder="비밀번호"
             value={yanoljaPw}
             onChange={(e) => setYanoljaPw(e.target.value)}
             autoComplete="new-password"

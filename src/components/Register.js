@@ -1,14 +1,13 @@
-// src/components/Register.js
-
 import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
-import { Link } from 'react-router-dom'; // Link 컴포넌트 추가
-// import ApiError from '../utils/ApiError.js';
+import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
 
 const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [hotelId, setHotelId] = useState('');
+  // 수정된 부분: hotelName 상태 추가
+  const [hotelName, setHotelName] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
@@ -18,13 +17,15 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setIsProcessing(true); // 처리 시작
-    setError(''); // 오류 초기화
+    setIsProcessing(true);
+    setError('');
 
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
+      // 수정된 부분: hotelName도 포함하여 userData 구성
       const userData = {
         hotelId: normalizedHotelId,
+        hotelName: hotelName.trim(),
         password,
         email: email.trim(),
         address: address.trim(),
@@ -35,13 +36,11 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       onRegisterSuccess();
     } catch (error) {
       console.error('회원가입 실패:', error);
-
-      // 오류 메시지 추출
       const message = error?.message || '회원가입 중 오류가 발생했습니다.';
-      console.log('설정된 오류 메시지:', message); // 추가된 로그
+      console.log('설정된 오류 메시지:', message);
       setError(message);
     } finally {
-      setIsProcessing(false); // 처리 종료
+      setIsProcessing(false);
     }
   };
 
@@ -50,7 +49,15 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       <form onSubmit={handleRegister} className="register-form">
         <h2>회원가입</h2>
         {error && <p className="error">{error}</p>}
-
+        {/* 수정된 부분: 호텔 이름 입력란 추가 */}
+        <input
+          type="text"
+          placeholder="호텔 이름"
+          value={hotelName}
+          onChange={(e) => setHotelName(e.target.value)}
+          required
+          aria-label="호텔 이름"
+        />
         <input
           type="text"
           placeholder="호텔 ID"
@@ -58,7 +65,6 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           onChange={(e) => setHotelId(e.target.value)}
           required
           aria-label="호텔 ID"
-          // autoComplete="off"
         />
         <input
           type="password"
@@ -109,7 +115,6 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
 };
 
 Register.propTypes = {
-  //배포에서는 삭제하는게 좋음.(개발단계에서 정확한 타입을 정의하기 위해 사용)
   onRegisterSuccess: PropTypes.func.isRequired,
   onSwitchToLogin: PropTypes.func,
 };
