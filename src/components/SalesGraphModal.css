@@ -23,7 +23,7 @@
   max-height: 95vh;
   overflow-y: auto;
   border-radius: 8px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 /* 인쇄용 버튼 스타일 */
@@ -54,6 +54,22 @@
   cursor: pointer;
 }
 
+.download-pdf-button {
+  position: absolute;
+  top: 15px;
+  right: 100px; /* 인쇄 버튼 옆에 배치 (필요시 조정) */
+  background: #f1f1f1;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.download-pdf-button:hover {
+  background-color: #e2e2e2;
+}
+
 .sales-graph-modal h2 {
   text-align: center;
 }
@@ -74,7 +90,7 @@
   border-radius: 3px;
   pointer-events: none;
   transform: translate(-50%, 0);
-  transition: all .1s ease;
+  transition: all 0.1s ease;
   padding: 10px;
   font-size: 12px;
 }
@@ -103,15 +119,15 @@
 
 /* Color variables for consistency */
 :root {
-  --color-Yanolja: #FF6384;
-  --color-GoodHotel: #36A2EB;
-  --color-GoodMotel: #FFCE56;
-  --color-Agoda: #4BC0C0;
-  --color-CoolStay: #9966FF;
-  --color-Booking: #FF9F40;
-  --color-Expedia: #C9CBCF;
-  --color-현장예약: #8A2BE2;
-  --color-대실: #2E8B57;
+  --color-Yanolja: #ff6384;
+  --color-GoodHotel: #36a2eb;
+  --color-GoodMotel: #ffce56;
+  --color-Agoda: #4bc0c0;
+  --color-CoolStay: #9966ff;
+  --color-Booking: #ff9f40;
+  --color-Expedia: #c9cbcf;
+  --color-현장예약: #8a2be2;
+  --color-대실: #2e8b57;
   /* Add more as needed */
 }
 
@@ -123,4 +139,42 @@
 .room-card-front .payment-method .payment-icon {
   /* Ensure payment icons have distinct colors */
   fill: currentColor;
+}
+
+@media print {
+  /* body의 모든 요소를 숨김 */
+  body * {
+    display: none !important;
+  }
+
+  /* .sales-graph-modal과 그 자손 요소들은 보이도록 설정 */
+  .sales-graph-modal,
+  .sales-graph-modal * {
+    display: block !important;
+  }
+
+  /* 모달 컨테이너를 인쇄용으로 재조정 */
+  .sales-graph-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    padding: 10mm; /* 인쇄용 여백 (필요에 따라 조정) */
+    border: none;
+    box-shadow: none;
+    background: #fff;
+  }
+
+  /* 페이지 설정 */
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  /* 인쇄 시 모달 내 인터랙티브 요소 숨김 */
+  .print-button,
+  .close-button {
+    display: none !important;
+  }
 }

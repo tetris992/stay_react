@@ -1027,15 +1027,28 @@ const App = () => {
 
   // * Refactored: 현장 예약 생성용 함수 정리
   const openOnSiteReservationForm = () => {
-    const checkInObj = new Date(selectedDate);
+    const now = new Date();
+    // 오늘 자정 계산
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    // 선택된 날짜가 오늘 이전이면 오늘 날짜로 조정
+    const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
+
+    // effectiveDate를 기준으로 체크인/체크아웃 시간을 설정
+    const checkInObj = new Date(effectiveDate);
     checkInObj.setHours(16, 0, 0, 0);
     const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
+
     const checkInDate = format(checkInObj, 'yyyy-MM-dd');
     const checkInTime = format(checkInObj, 'HH:mm');
     const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
     const checkOutTime = format(checkOutObj, 'HH:mm');
     const rand = Math.floor(1000 + Math.random() * 9000);
     const customerName = `현장숙박${rand}`;
+
     setGuestFormData({
       reservationNo: `${Date.now()}`,
       customerName,
@@ -1059,8 +1072,19 @@ const App = () => {
   const onQuickCreate = (type) => {
     let checkInDate, checkInTime, checkOutDate, checkOutTime, customerName;
     const rand = Math.floor(1000 + Math.random() * 9000);
+    const now = new Date();
+    // 오늘 자정 계산 (오늘 날짜 기준)
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    // 선택된 날짜가 과거라면 오늘 날짜로 대체
+    const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
+
     if (type === '대실') {
-      const now = new Date();
+      // 대실은 현재 시각을 기준으로 예약 생성 (대실은 당일 기준으로 처리하는 경우)
       checkInDate = format(now, 'yyyy-MM-dd');
       checkInTime = format(now, 'HH:mm');
       const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
@@ -1087,8 +1111,9 @@ const App = () => {
         checkOut: checkOutISO,
       });
     } else {
-      const baseDate = new Date(selectedDate);
-      baseDate.setHours(16, 0, 0, 0);
+      // 퀵예약(현장예약) 일반 예약의 경우 effectiveDate(선택 날짜가 과거이면 오늘로 대체)를 기준으로 진행
+      const baseDate = new Date(effectiveDate);
+      baseDate.setHours(16, 0, 0, 0); // 기본 체크인 시간: 오후 4시
       checkInDate = format(baseDate, 'yyyy-MM-dd');
       checkInTime = '16:00';
       checkOutTime = '11:00';

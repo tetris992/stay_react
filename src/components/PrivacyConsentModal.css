@@ -12,11 +12,11 @@
 }
 
 .modal-content {
-  background-color: #fffae6;
-  border: 1px solid #ffe58f;
+  background-color: #ffffff;
+  border: 1px solid #ffffff;
   padding: 30px;
   border-radius: 10px;
-  width: 90%;
+  width: 100%;
   max-width: 600px;
   text-align: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
@@ -76,7 +76,7 @@
 .modal-buttons {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 10px;
   margin-top: 20px;
 }
 
@@ -105,4 +105,11 @@
 
 .modal-buttons button:last-child:hover {
   background-color: #da190b;
+}
+
+.consent-item {
+  margin-bottom: 1px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
 }

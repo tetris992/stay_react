@@ -93,7 +93,6 @@ html {
   gap: 10px;
   margin-top: 20px;
   margin-left: 20px;
-
 }
 
 .grid-container.halo-effect {
@@ -340,7 +339,7 @@ html {
 }
 
 /* Highlighted overlay */
-.highlighted-overlay {
+/* .highlighted-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -364,7 +363,7 @@ html {
   100% {
     opacity: 0.5;
   }
-}
+} */
 
 /* site-info-wrapper */
 .site-info-wrapper {
@@ -429,21 +428,21 @@ html {
 }
 
 .room-card.highlighted {
-  background-color: rgba(70, 103, 148, 0.596);
-  border-color: var(--color-accent-gold);
+  background-color: rgba(201, 252, 224, 0.596);
+  border-color: var(--color-border-hover-coral);
   box-shadow: 0 0 10px var(--color-accent-gold);
-  animation: highlightPulse 2s infinite;
+  animation: highlightPulse 1.5s infinite;
 }
 
 @keyframes highlightPulse {
   0% {
-    background-color: rgba(70, 103, 148, 0.596);
+    background-color: rgba(241, 244, 248, 0.596);
   }
   50% {
-    background-color: rgba(255, 215, 0, 0.5);
+    background-color: rgba(255, 47, 0, 0.5);
   }
   100% {
-    background-color: rgba(70, 103, 148, 0.596);
+    background-color: rgba(239, 242, 247, 0.596);
   }
 }
 

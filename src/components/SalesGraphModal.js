@@ -4,9 +4,13 @@ import React from 'react';
 import Modal from 'react-modal';
 import { Bar, Line } from 'react-chartjs-2';
 import PropTypes from 'prop-types';
-import { FaTimes, FaPrint } from 'react-icons/fa';
+import { FaTimes, FaPrint, FaDownload } from 'react-icons/fa'; // FaDownload 추가
 import { format } from 'date-fns';
 import './SalesGraphModal.css';
+
+// 추가: jsPDF와 html2canvas 임포트
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import {
   Chart as ChartJS,
@@ -45,31 +49,27 @@ function SalesGraphModal({
   dailySalesByOTA = {}, // { [category]: number[] } – 날짜별(OTA/현장예약/대실) 판매 건수
   maxRooms, // 호텔의 최대 객실수 (y축 최대값)
 }) {
-  /**
-   * 1) 날짜별 판매/남은 객실수 스택형 막대그래프
-   */
+  // -------------------------
+  // (1) 날짜별 판매/남은 객실수 스택형 막대그래프 관련 코드
+  // -------------------------
   const labels = dailySales.labels || [];
-
   const safeDailySalesByOTA =
     dailySalesByOTA && typeof dailySalesByOTA === 'object'
       ? dailySalesByOTA
       : {};
-
   const otaCategories = Object.keys(safeDailySalesByOTA);
-
   const categoryColors = {
-    Yanolja: '#FF6384',
-    GoodHotel: '#36A2EB',
-    GoodMotel: '#FFCE56',
-    Agoda: '#4BC0C0',
-    CoolStay: '#9966FF',
-    Booking: '#FF9F40',
-    Expedia: '#C9CBCF',
-    현장예약: '#8A2BE2',
-    대실: '#2E8B57',
+    Yanolja: '#001F3F', // 야놀자: 진한 남색
+    GoodHotel: '#FF0000', // 여기어때호텔: 붉은색
+    GoodMotel: '#B22222', // 여기어때모텔: 약간 톤 다운된 붉은색 (firebrick)
+    Booking: '#3F4F61', // 부킹: 야놀자보다 낮은 채도의 남색
+    Agoda: '#87CEEB', // 아고다: 하늘색 (sky blue)
+    Expedia: '#000000', // 익스피디아: 검은색
+    CoolStay: '#FFC107', // 쿨스테이: 꿀벌 노란색 (amber)
+    현장예약: '#8A2BE2', // 기타: 기존 색상 유지
+    대실: '#2E8B57', // 기타: 기존 색상 유지
   };
 
-  // 각 날짜별 총 판매 건수 계산
   const totals = labels.map((_, idx) => {
     let sum = 0;
     otaCategories.forEach((category) => {
@@ -79,14 +79,12 @@ function SalesGraphModal({
     return sum;
   });
 
-  // 각 카테고리별 판매 데이터 (절대 수치)
   const otaDatasets = otaCategories.map((category) => ({
     label: category,
     data: safeDailySalesByOTA[category] || [],
     backgroundColor: categoryColors[category] || '#AAAAAA',
   }));
 
-  // 남은 객실수: maxRooms - 총판매건수
   const remainingDataset = {
     label: '남은 객실',
     data: totals.map((total) => Math.max(0, maxRooms - total)),
@@ -100,11 +98,9 @@ function SalesGraphModal({
     datasets: combinedDatasets,
   };
 
-  // x축 tick 옵션: 막대그래프의 라벨은 "MM-dd" 형태라고 가정
   const barXAxisTicks = {
-    // scriptable 옵션을 사용하여 각 tick의 색상을 조건부로 설정
     color: (context) => {
-      const label = context.tick.label; // 예: "08-01"
+      const label = context.tick.label;
       const parts = label.split('-');
       if (parts.length === 2) {
         const month = parseInt(parts[0], 10) - 1;
@@ -112,7 +108,6 @@ function SalesGraphModal({
         const year = selectedDate.getFullYear();
         const dateObj = new Date(year, month, day);
         const dow = dateObj.getDay();
-        // 일요일(0) 또는 토요일(6)면 'red', 아니면 기본 색상 (예: '#666')
         return dow === 0 || dow === 6 ? 'red' : '#666';
       }
       return '#666';
@@ -125,7 +120,7 @@ function SalesGraphModal({
       legend: {
         position: 'top',
         labels: {
-          boxWidth: 12, // 범례 색상바 크기를 작게
+          boxWidth: 12,
           usePointStyle: false,
         },
       },
@@ -144,7 +139,7 @@ function SalesGraphModal({
       x: {
         stacked: true,
         title: { display: true, text: '날짜' },
-        ticks: barXAxisTicks, // 추가된 x축 tick 옵션 적용
+        ticks: barXAxisTicks,
       },
       y: {
         stacked: true,
@@ -158,14 +153,13 @@ function SalesGraphModal({
     },
   };
 
-  /**
-   * 2) 월간 일 매출 라인 차트 – 누적매출 및 평균 매출 점선 표시
-   */
+  // -------------------------
+  // (2) 월간 일 매출 라인 차트 관련 코드
+  // -------------------------
   const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown)
     ? monthlyDailyBreakdown
     : [];
 
-  // 누적매출 계산
   const cumulativeSales = safeMonthlyDailyBreakdown.reduce((acc, curr, idx) => {
     if (idx === 0) {
       acc.push(curr);
@@ -175,7 +169,6 @@ function SalesGraphModal({
     return acc;
   }, []);
 
-  // 일 평균 매출 계산
   const totalMonthlySales = safeMonthlyDailyBreakdown.reduce(
     (sum, curr) => sum + curr,
     0
@@ -185,13 +178,11 @@ function SalesGraphModal({
       ? totalMonthlySales / safeMonthlyDailyBreakdown.length
       : 0;
 
-  // x축 라벨: "1일", "2일", ...
   const lineLabels = safeMonthlyDailyBreakdown.map((_, idx) => `${idx + 1}일`);
 
-  // x축 tick 옵션: 라인차트의 라벨은 "1일", "2일" 등 => 숫자만 추출하여 날짜 판단
   const lineXAxisTicks = {
     color: (context) => {
-      const label = context.tick.label; // 예: "1일"
+      const label = context.tick.label;
       const dayStr = label.replace('일', '');
       const day = parseInt(dayStr, 10);
       const year = selectedDate.getFullYear();
@@ -250,7 +241,7 @@ function SalesGraphModal({
     },
     scales: {
       x: {
-        ticks: lineXAxisTicks, // 라인차트 x축 tick 옵션 적용
+        ticks: lineXAxisTicks,
       },
       y1: {
         beginAtZero: true,
@@ -271,9 +262,30 @@ function SalesGraphModal({
     },
   };
 
-  // 인쇄(브라우저 print) 핸들러
+  // -------------------------
+  // 인쇄 및 PDF 다운로드 핸들러
+  // -------------------------
   const handlePrint = () => {
     window.print();
+  };
+
+  // PDF 다운로드 핸들러 (html2canvas와 jsPDF 사용)
+  const handleDownloadPdf = async () => {
+    const modalElement = document.querySelector('.sales-graph-modal');
+    if (modalElement) {
+      try {
+        const canvas = await html2canvas(modalElement, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        // 이미지의 종횡비 유지하며 전체 페이지에 맞춤
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('sales_graph.pdf');
+      } catch (error) {
+        console.error('PDF 생성 실패:', error);
+      }
+    }
   };
 
   const formattedMonthYear = format(selectedDate, 'yyyy년 MM월');
@@ -293,7 +305,12 @@ function SalesGraphModal({
 
       {/* 인쇄 버튼 */}
       <button className="print-button" onClick={handlePrint}>
-        <FaPrint /> 인쇄하기
+        <FaPrint />
+      </button>
+
+      {/* PDF 다운로드 버튼 (인쇄 버튼 옆에 배치) */}
+      <button className="download-pdf-button" onClick={handleDownloadPdf}>
+        <FaDownload />
       </button>
 
       <h2>매출 보드 - {formattedMonthYear}</h2>

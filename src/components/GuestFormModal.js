@@ -42,7 +42,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         reservationDate: initialData.reservationDate
           ? format(new Date(initialData.reservationDate), 'yyyy-MM-dd HH:mm')
           : format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: initialData.roomInfo || (roomTypes.length > 0 ? roomTypes[0].type : ''),
+        roomInfo:
+          initialData.roomInfo ||
+          (roomTypes.length > 0 ? roomTypes[0].type : ''),
         price: initialData.price ? initialData.price.toString() : '',
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
@@ -91,13 +93,27 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       const selectedRoom = roomTypes.find((room) => room.type === value);
       const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
       if (formData.checkInDate && formData.checkOutDate) {
-        const checkInDateObj = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-        const checkOutDateObj = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-        const nightsStayed = Math.ceil((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24));
+        const checkInDateObj = new Date(
+          `${formData.checkInDate}T${formData.checkInTime}:00`
+        );
+        const checkOutDateObj = new Date(
+          `${formData.checkOutDate}T${formData.checkOutTime}:00`
+        );
+        const nightsStayed = Math.ceil(
+          (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
+        );
         const totalPrice = nightlyPrice * nightsStayed;
-        setFormData((prev) => ({ ...prev, [name]: value, price: totalPrice.toString() }));
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+          price: totalPrice.toString(),
+        }));
       } else {
-        setFormData((prev) => ({ ...prev, [name]: value, price: nightlyPrice.toString() }));
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+          price: nightlyPrice.toString(),
+        }));
       }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -123,39 +139,82 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
   // 체크아웃 날짜 변경 시, 가격 재계산
   const handleCheckOutDateChange = (e) => {
     const selectedDate = e.target.value;
-    const checkInDateObj = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateObj = new Date(`${selectedDate}T${formData.checkOutTime}:00`);
-    const nightsStayed = Math.ceil((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24));
-    const selectedRoom = roomTypes.find((room) => room.type === formData.roomInfo);
+    const checkInDateObj = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateObj = new Date(
+      `${selectedDate}T${formData.checkOutTime}:00`
+    );
+    const nightsStayed = Math.ceil(
+      (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
+    );
+    const selectedRoom = roomTypes.find(
+      (room) => room.type === formData.roomInfo
+    );
     const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
     const totalPrice = nightlyPrice * nightsStayed;
-    setFormData((prev) => ({ ...prev, checkOutDate: selectedDate, price: totalPrice.toString() }));
+    setFormData((prev) => ({
+      ...prev,
+      checkOutDate: selectedDate,
+      price: totalPrice.toString(),
+    }));
   };
 
-  // 폼 제출 핸들러: 유효성 검사 후 onSave 콜백 호출
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // 1. 가격 유효성 검사
     const numericPrice = parseFloat(formData.price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
       return;
     }
-    const checkInDateTime = parseDate(`${formData.checkInDate} ${formData.checkInTime}`);
-    const checkOutDateTime = parseDate(`${formData.checkOutDate} ${formData.checkOutTime}`);
+
+    // 2. 체크인/체크아웃 날짜와 시간을 파싱 (ISO 형식 사용)
+    const checkInDateTime = parseDate(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = parseDate(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
+
+    // 3. 날짜 파싱 실패 검사
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
       return;
     }
+
+    // 4. 체크인 시간이 체크아웃 시간보다 이전인지 검사
     if (checkInDateTime >= checkOutDateTime) {
       alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
       return;
     }
+
+    // 5. 현장예약(퀵예약)인 경우, 신규 예약 시 체크인 날짜는 오늘 이후여야 함.
+    const now = new Date();
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    if (!initialData && formData.customerName.includes('현장')) {
+      if (checkInDateTime < todayStart) {
+        alert(
+          '현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.'
+        );
+        return;
+      }
+    }
+
+    // 6. 최종 데이터 구성
     const finalData = {
       ...formData,
       price: numericPrice,
       checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm"),
       checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm"),
     };
+
+    // 7. 저장 요청 및 에러 처리
     try {
       if (initialData && initialData._id) {
         await onSave(initialData._id, finalData);
@@ -165,7 +224,14 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       }
       onClose();
     } catch (error) {
-      alert('예약 저장에 실패했습니다. 다시 시도해주세요.');
+      // 서버에서 전달된 구체적인 에러 메시지가 있다면 사용
+      const errorMessage =
+        (error.response &&
+          error.response.data &&
+          error.response.data.message) ||
+        error.message ||
+        '예약 저장에 실패했습니다. 다시 시도해주세요.';
+      alert(errorMessage);
       console.error('예약 저장 오류:', error);
     }
   };
