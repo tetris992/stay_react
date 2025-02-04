@@ -144,7 +144,7 @@ function SideBar({
     () => computeRemainingInventory(roomTypes, activeReservations || []),
     [roomTypes, activeReservations]
   );
-  console.log(activeReservations);
+  // console.log(activeReservations);
 
   return (
     <div
@@ -250,7 +250,6 @@ function SideBar({
             {roomTypes.length > 0 ? (
               roomTypes.map((room, index) => {
                 const remaining = remainingInventory[room.type] ?? room.stock;
-                console.log(remaining);
                 const isLowStock = remaining <= 1; // 남은 재고가 1 이하이면 경고 표시
                 return (
                   <div key={index} className="room-type-info">
