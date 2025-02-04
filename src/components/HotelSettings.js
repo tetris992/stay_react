@@ -284,7 +284,8 @@ function HotelSettings({
           <div className="consent-banner">
             {consentChecked ? (
               <span className="consent-checked-label">
-                <i className="fa fa-check-circle"></i> 개인정보 동의 완료
+                <i className="fa fa-check-circle"></i> 서비스 약관 및 개인 정보
+                처리방침에 동의 완료
               </span>
             ) : (
               <button
@@ -292,7 +293,7 @@ function HotelSettings({
                 className="consent-button"
                 onClick={openPrivacyModal}
               >
-                개인정보처리방침 확인 및 동의
+                서비스약관 / 개인정보처리방침 확인 및 동의
               </button>
             )}
           </div>

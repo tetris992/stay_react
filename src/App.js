@@ -49,7 +49,7 @@ import './i18n';
 
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
-
+import { computeRemainingInventory } from './utils/computeRemainingInventory';
 /* ============================================================================
    HELPER FUNCTIONS (추후 별도 유틸 파일로 분리 가능)
    ============================================================================ */
@@ -177,7 +177,11 @@ const App = () => {
   const [email, setEmail] = useState('이메일 정보 없음');
   const totalRooms = hotelSettings?.totalRooms || 0;
   const remainingRooms = totalRooms - roomsSold;
-  const roomTypes = hotelSettings?.roomTypes || [];
+  // Use useMemo to memoize it:
+  const roomTypes = useMemo(() => {
+    return hotelSettings?.roomTypes || [];
+  }, [hotelSettings]);
+
   const [dailyBreakdown, setDailyBreakdown] = useState([]);
   const [newlyCreatedId, setNewlyCreatedId] = useState(null);
   const [highlightedReservationIds, setHighlightedReservationIds] = useState(
@@ -275,6 +279,25 @@ const App = () => {
     },
     []
   );
+
+  // roomTypes와 activeReservations가 업데이트될 때마다 남은 재고 계산
+  const remainingInventory = useMemo(() => {
+    return computeRemainingInventory(roomTypes, activeReservations);
+  }, [roomTypes, activeReservations]);
+
+  // 남은 재고가 1 이하인 객실타입이 하나라도 있으면 true
+  const hasLowStock = useMemo(() => {
+    return Object.values(remainingInventory).some(
+      (remaining) => remaining <= 1
+    );
+  }, [remainingInventory]);
+
+  // 남은 재고가 1 이하인 객실 타입의 이름 배열을 계산
+  const lowStockRoomTypes = useMemo(() => {
+    return Object.entries(remainingInventory)
+      .filter(([roomType, remaining]) => remaining <= 1)
+      .map(([roomType]) => roomType);
+  }, [remainingInventory]);
 
   const filterReservationsByDate = useCallback(
     (reservationsData, date) => {
@@ -1271,6 +1294,8 @@ const App = () => {
                       onMemo={handleMemoButtonClick}
                       flipAllMemos={flipAllMemos}
                       sortOrder={sortOrder}
+                      hasLowStock={hasLowStock}
+                      lowStockRoomTypes={lowStockRoomTypes}
                     />
                     <SideBar
                       loading={loading}

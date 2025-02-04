@@ -22,6 +22,8 @@ function Header({
   onMemo, // 메모 버튼 핸들러
   flipAllMemos,
   sortOrder, // 추가된 sortOrder Prop
+  hasLowStock,
+  lowStockRoomTypes,
 }) {
   const dayOfWeek = selectedDate.getDay();
   const weekdayName = selectedDate.toLocaleDateString('ko-KR', {
@@ -68,7 +70,6 @@ function Header({
 
       {/* 두 번째 줄: Sort/Memo 버튼, OTA 상태, Quick-create 버튼 */}
       <div className="header-bottom">
-        {/* 왼쪽: Sort 및 Memo 버튼 */}
         <div className="header-left">
           <div className="additional-buttons">
             <button
@@ -76,7 +77,8 @@ function Header({
               onClick={onSort}
               aria-label="정렬 버튼"
             >
-              <FontAwesomeIcon icon={faSort} /> {sortOrder === 'newest' ? '최신순' : '과거순'}
+              <FontAwesomeIcon icon={faSort} />{' '}
+              {sortOrder === 'newest' ? '최신순' : '과거순'}
             </button>
             <button
               className={`memo-button ${flipAllMemos ? 'active' : ''}`}
@@ -85,6 +87,11 @@ function Header({
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
             </button>
+            {hasLowStock && lowStockRoomTypes && lowStockRoomTypes.length > 0 && (
+              <span className="low-stock-header-warning" title="재고 부족">
+                ⚠️ {lowStockRoomTypes.join(', ')} 객실이 부족할 수 있습니다.
+              </span>
+            )}
           </div>
         </div>
 
@@ -159,7 +166,9 @@ Header.propTypes = {
   otaToggles: PropTypes.object.isRequired,
   onSort: PropTypes.func.isRequired, // 정렬 버튼 핸들러 Prop 추가
   onMemo: PropTypes.func.isRequired, // 메모 버튼 핸들러 Prop 추가
-  sortOrder: PropTypes.string.isRequired, // 추가
+  sortOrder: PropTypes.string.isRequired,
+  hasLowStock: PropTypes.bool,
+  lowStockRoomTypes: PropTypes.arrayOf(PropTypes.string),
 };
 
 export default Header;
