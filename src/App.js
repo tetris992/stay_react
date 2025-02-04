@@ -1312,6 +1312,7 @@ const App = () => {
                       monthlyDailyBreakdown={monthlyDailyBreakdown}
                       labelsForOTA={labelsForOTA}
                       dailySalesByOTA={dailySalesByOTA}
+                      activeReservations={activeReservations}
                     />
                     <div className="main-content" style={{ flex: '1' }}>
                       <div className="split-view-layout">

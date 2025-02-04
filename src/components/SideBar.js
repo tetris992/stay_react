@@ -1,6 +1,6 @@
 // src/components/SideBar.js
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AccountingInfo from './AccountingInfo';
 import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
@@ -25,6 +25,9 @@ import ScrapeNowButton from './ScrapeNowButton';
 import availableOTAs from '../config/availableOTAs';
 import RoomStatusChart from './RoomStatusChart';
 import SalesGraphModal from './SalesGraphModal';
+
+// [추가] 재고 계산 유틸 함수 import
+import { computeRemainingInventory } from '../utils/computeRemainingInventory';
 
 function SideBar({
   loading,
@@ -61,6 +64,7 @@ function SideBar({
   needsConsent,
   dailySalesByOTA,
   labelsForOTA,
+  activeReservations,
 }) {
   // 기존 상태 변수들...
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -134,6 +138,13 @@ function SideBar({
     labels: ['현재월'],
     values: [monthlyTotal],
   };
+
+  // [추가된 부분: 남은 재고 계산]
+  const remainingInventory = useMemo(
+    () => computeRemainingInventory(roomTypes, activeReservations || []),
+    [roomTypes, activeReservations]
+  );
+  console.log(activeReservations);
 
   return (
     <div
@@ -237,15 +248,30 @@ function SideBar({
         {isRoomTypesOpen && (
           <div className="room-types">
             {roomTypes.length > 0 ? (
-              roomTypes.map((room, index) => (
-                <div key={index} className="room-type-info">
-                  <p>
-                    타입: {room.nameKor} / {room.nameEng}
-                  </p>
-                  <p>가격: {room.price.toLocaleString()}원</p>
-                  <p>잔여 수: {room.stock}</p>
-                </div>
-              ))
+              roomTypes.map((room, index) => {
+                const remaining = remainingInventory[room.type] ?? room.stock;
+                console.log(remaining);
+                const isLowStock = remaining <= 1; // 남은 재고가 1 이하이면 경고 표시
+                return (
+                  <div key={index} className="room-type-info">
+                    <p>
+                      타입: {room.nameKor} / {room.nameEng}
+                    </p>
+                    <p>가격: {room.price.toLocaleString()}원</p>
+                    <p>
+                      잔여 수:{' '}
+                      <span style={{ color: isLowStock ? 'red' : 'inherit' }}>
+                        ({remaining})
+                      </span>{' '}
+                      {isLowStock && (
+                        <span className="low-stock-warning" title="재고 부족!">
+                          ⚠️
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                );
+              })
             ) : (
               <div className="room-type-info">
                 <p>
