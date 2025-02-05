@@ -191,7 +191,7 @@
 }
 
 /* 반응형 디자인 */
-@media (max-width: 1600px) {
+@media (max-width: 1700px) {
   .header {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
@@ -202,8 +202,7 @@
   }
 
   .header-bottom {
-    display: none;
-    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-columns: 10fr 1fr 1fr;
   }
 
   .header-left {
@@ -222,6 +221,7 @@
   }
 
   .header-ota-status {
+    display: none;
     justify-content: center;
   }
 
@@ -231,6 +231,7 @@
   }
 
   .header-right {
+    display: none;
     justify-content: flex-end;
   }
 
@@ -252,4 +253,7 @@
 
 .low-stock-header-warning {
   color: red;
+  white-space: nowrap; /* 줄바꿈 방지 */
+  overflow: hidden; /* 넘치는 부분 숨김 */
+  text-overflow: ellipsis; /* 넘치는 텍스트는 "..."로 표시 (선택사항) */
 }

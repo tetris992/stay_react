@@ -283,10 +283,12 @@ function HotelSettings({
           {/* 개인정보 동의 배너 */}
           <div className="consent-banner">
             {consentChecked ? (
-              <span className="consent-checked-label">
-                <i className="fa fa-check-circle"></i> 서비스 약관 및 개인 정보
-                처리방침에 동의 완료
-              </span>
+              <div className="consent-checked-container">
+                <span className="consent-checked-label">
+                  <i className="fa fa-check-circle"></i> 서비스 약관 및 개인정보
+                  처리방침에 동의 완료
+                </span>
+              </div>
             ) : (
               <button
                 type="button"
@@ -447,7 +449,24 @@ function HotelSettings({
 
         {/* 섹션 3: OTA 로그인 정보 */}
         <div className="section">
-          <h3>OTA 로그인 정보(선택)</h3>
+          <h3>
+            OTA 로그인 정보(선택){' '}
+            {/* 확장 연결 버튼으로 변경 (클릭 시 새 탭에서 확장 페이지 오픈) */}
+            <button
+              type="button"
+              className="extension-link-button"
+              onClick={() =>
+                window.open(
+                  'https://chromewebstore.google.com/detail/ota-scraper-extension/cnoicicjafgmfcnjclhlehfpojfaelag?authuser=0&hl=ko',
+                  '_blank',
+                  'noopener,noreferrer'
+                )
+              }
+              style={{ marginLeft: '10px' }} // 동의문과 버튼 사이에 여백 추가
+            >
+              Chrome-Extension
+            </button>
+          </h3>
           <input
             type="text"
             placeholder="OTA 이름"

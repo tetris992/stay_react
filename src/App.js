@@ -127,7 +127,7 @@ function buildMonthlyDailyBreakdown(reservations, targetDate) {
 
 function sendOtaTogglesToExtension(otaToggles) {
   if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-    const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID; 
+    const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
     chrome.runtime.sendMessage(
       EXTENSION_ID,
       {
@@ -612,7 +612,7 @@ const App = () => {
       setHotelId(hotelIdParam);
       try {
         if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-          const EXTENSION_ID = 'cnoicicjafgmfcnjclhlehfpojfaelag';
+          const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
           chrome.runtime.sendMessage(
             EXTENSION_ID,
             { action: 'SET_TOKEN', token: accessToken },
