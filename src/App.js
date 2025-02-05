@@ -612,7 +612,7 @@ const App = () => {
       setHotelId(hotelIdParam);
       try {
         if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-          const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl';
+          const EXTENSION_ID = 'cnoicicjafgmfcnjclhlehfpojfaelag';
           chrome.runtime.sendMessage(
             EXTENSION_ID,
             { action: 'SET_TOKEN', token: accessToken },
