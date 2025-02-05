@@ -127,7 +127,7 @@ function buildMonthlyDailyBreakdown(reservations, targetDate) {
 
 function sendOtaTogglesToExtension(otaToggles) {
   if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-    const EXTENSION_ID = 'ohekbjnbdpnkbahggohidddlgdbbggph';
+    const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID; 
     chrome.runtime.sendMessage(
       EXTENSION_ID,
       {

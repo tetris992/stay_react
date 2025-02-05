@@ -59,7 +59,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
    */
   const scrapeOneExtensionOTA = (otaName) => {
     return new Promise((resolve, reject) => {
-      const EXTENSION_ID = 'bhfggeheelkddgmlegkppgpkmioldfkl'; // 실제 크롬 확장 ID
+      const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
       const action =
         ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
 
