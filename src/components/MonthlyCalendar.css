@@ -39,7 +39,7 @@
   .calendar-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 10px;
+    gap: 1px;
     height: calc(100% - 80px); /* 제목 영역 높이 고려 */
   }
   
@@ -69,7 +69,7 @@
     font-weight: bold;
     font-size: 1.2rem;
     border-radius: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
   }
   
   /* 주말(토, 일) 헤더 텍스트를 붉은 색으로 */
@@ -81,20 +81,22 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 0px;
     overflow-y: auto;
   }
   
   .room-type {
     font-size: 1.2rem;
+    height: 30px;
     background-color: transparent;
     border: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 2px 16px;
+    padding: 0px 16px;
     border-bottom: 1px dashed #ddd;
     cursor: pointer;
+    margin: 5px;
   }
   
   /* 마우스 오버시 약간의 배경 변화 */
