@@ -38,7 +38,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         reservationDate: initialData.reservationDate
           ? format(new Date(initialData.reservationDate), 'yyyy-MM-dd HH:mm')
           : format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: initialData.roomInfo || (roomTypes.length > 0 ? roomTypes[0].type : ''),
+        roomInfo:
+          initialData.roomInfo ||
+          (roomTypes.length > 0 ? roomTypes[0].type : ''),
         price: initialData.price ? initialData.price.toString() : '',
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
@@ -70,14 +72,22 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
   // 입력값(체크인, 체크아웃, 객실타입)이 바뀔 때마다 숙박일수에 따른 가격 재계산
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
-      const checkInDateObj = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-      const checkOutDateObj = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-      const nightsStayed = Math.ceil((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24));
-      const selectedRoom = roomTypes.find(room => room.type === formData.roomInfo);
+      const checkInDateObj = new Date(
+        `${formData.checkInDate}T${formData.checkInTime}:00`
+      );
+      const checkOutDateObj = new Date(
+        `${formData.checkOutDate}T${formData.checkOutTime}:00`
+      );
+      const nightsStayed = Math.ceil(
+        (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
+      );
+      const selectedRoom = roomTypes.find(
+        (room) => room.type === formData.roomInfo
+      );
       const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
       const totalPrice = nightlyPrice * nightsStayed;
       if (totalPrice.toString() !== formData.price) {
-        setFormData(prev => ({ ...prev, price: totalPrice.toString() }));
+        setFormData((prev) => ({ ...prev, price: totalPrice.toString() }));
       }
     }
   }, [
@@ -86,39 +96,54 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     formData.checkOutDate,
     formData.checkOutTime,
     formData.roomInfo,
-    roomTypes
+    formData.price,
+    roomTypes,
   ]);
 
   const handlePriceIncrement = () => {
     const currentPrice = parseInt(formData.price || '0', 10);
     const newPrice = currentPrice + 1000;
-    setFormData(prev => ({ ...prev, price: newPrice.toString() }));
+    setFormData((prev) => ({ ...prev, price: newPrice.toString() }));
   };
 
   const handlePriceDecrement = () => {
     const currentPrice = parseInt(formData.price || '0', 10);
     const newPrice = currentPrice - 1000;
     if (newPrice >= 0) {
-      setFormData(prev => ({ ...prev, price: newPrice.toString() }));
+      setFormData((prev) => ({ ...prev, price: newPrice.toString() }));
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'roomInfo') {
-      const selectedRoom = roomTypes.find(room => room.type === value);
+      const selectedRoom = roomTypes.find((room) => room.type === value);
       const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
       if (formData.checkInDate && formData.checkOutDate) {
-        const checkInDateObj = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-        const checkOutDateObj = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-        const nightsStayed = Math.ceil((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24));
+        const checkInDateObj = new Date(
+          `${formData.checkInDate}T${formData.checkInTime}:00`
+        );
+        const checkOutDateObj = new Date(
+          `${formData.checkOutDate}T${formData.checkOutTime}:00`
+        );
+        const nightsStayed = Math.ceil(
+          (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
+        );
         const totalPrice = nightlyPrice * nightsStayed;
-        setFormData(prev => ({ ...prev, [name]: value, price: totalPrice.toString() }));
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+          price: totalPrice.toString(),
+        }));
       } else {
-        setFormData(prev => ({ ...prev, [name]: value, price: nightlyPrice.toString() }));
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+          price: nightlyPrice.toString(),
+        }));
       }
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -128,7 +153,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     const checkInDateObj = new Date(`${selectedDate}T${defaultCheckInTime}:00`);
     const checkOutDateObj = addDays(checkInDateObj, 1);
     checkOutDateObj.setHours(11, 0, 0, 0);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       checkInDate: selectedDate,
       checkInTime: defaultCheckInTime,
@@ -139,13 +164,25 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
 
   const handleCheckOutDateChange = (e) => {
     const selectedDate = e.target.value;
-    const checkInDateObj = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateObj = new Date(`${selectedDate}T${formData.checkOutTime}:00`);
-    const nightsStayed = Math.ceil((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24));
-    const selectedRoom = roomTypes.find(room => room.type === formData.roomInfo);
+    const checkInDateObj = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateObj = new Date(
+      `${selectedDate}T${formData.checkOutTime}:00`
+    );
+    const nightsStayed = Math.ceil(
+      (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
+    );
+    const selectedRoom = roomTypes.find(
+      (room) => room.type === formData.roomInfo
+    );
     const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
     const totalPrice = nightlyPrice * nightsStayed;
-    setFormData(prev => ({ ...prev, checkOutDate: selectedDate, price: totalPrice.toString() }));
+    setFormData((prev) => ({
+      ...prev,
+      checkOutDate: selectedDate,
+      price: totalPrice.toString(),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -157,8 +194,12 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       return;
     }
 
-    const checkInDateTime = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateTime = parseDate(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+    const checkInDateTime = parseDate(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = parseDate(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
 
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
@@ -171,9 +212,19 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     }
 
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (!initialData && formData.customerName.includes('현장') && checkInDateTime < todayStart) {
-      alert('현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.');
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    if (
+      !initialData &&
+      formData.customerName.includes('현장') &&
+      checkInDateTime < todayStart
+    ) {
+      alert(
+        '현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.'
+      );
       return;
     }
 
@@ -193,7 +244,10 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       }
       onClose();
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || '예약 저장에 실패했습니다. 다시 시도해주세요.';
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
       console.error('예약 저장 오류:', error);
     }
@@ -202,7 +256,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
   return ReactDOM.createPortal(
     <div className="guest-form-modal">
       <div className="modal-card">
-        <span className="close-button" onClick={onClose}>&times;</span>
+        <span className="close-button" onClick={onClose}>
+          &times;
+        </span>
         <h2>현장 예약 입력</h2>
         <form onSubmit={handleSubmit}>
           <label htmlFor="reservationNo">
@@ -353,7 +409,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
             />
           </label>
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>취소</button>
+            <button type="button" onClick={onClose}>
+              취소
+            </button>
             <button type="submit">저장</button>
           </div>
         </form>
