@@ -368,7 +368,7 @@ function HotelSettings({
         <div className="section">
           <h3>객실 타입 및 가격/재고(옵션)</h3>
           {roomTypes.map((room, index) => (
-            <div key={index} className="room-type">
+            <div key={index} className="room-type_setting">
               <input
                 type="text"
                 placeholder="한글 이름 (예: 스탠다드)"

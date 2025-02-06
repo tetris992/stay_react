@@ -120,7 +120,7 @@ select:focus {
 }
 
 /* --- Room Type Layout --- */
-.room-type {
+.room-type_setting {
   display: flex;
   flex-direction: column;
   border: 1px solid #eee;
@@ -130,7 +130,7 @@ select:focus {
   background-color: #f9f9f9;
 }
 
-.room-type input {
+.room-type_setting input {
   margin-bottom: 8px;
 }
 
@@ -261,7 +261,7 @@ select:focus {
   background-color: var(--primary-color-hover);
 }
 
-.room-type {
+.room-type_setting {
   display: flex;
   flex-direction: column;
   border: 1px solid #959494; /* 약간 더 진한 테두리 */
@@ -273,7 +273,7 @@ select:focus {
   transition: box-shadow 0.3s ease;
 }
 
-.room-type:hover {
+.room-type_setting:hover {
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15); /* 호버 시 살짝 강조 */
 }
 
@@ -281,7 +281,7 @@ select:focus {
   background-color: var(--primary-color);
   color: #fff;
   border: none;
-  padding: 10px 16px;
+  padding: 5px 16px;
   border-radius: var(--border-radius);
   cursor: pointer;
   font-size: 0.8rem;
