@@ -138,19 +138,33 @@ function HotelSettings({
     setTotalRooms(computedTotal);
   }, [roomTypes]);
 
-  // 객실 타입 변경 (별칭은 별도의 5개 입력란으로 처리)
-  const handleRoomTypeChange = (index, field, value) => {
-    const newRoomTypes = [...roomTypes];
-    if (field === 'price' || field === 'stock') {
-      newRoomTypes[index][field] = value === '' ? '' : Number(value);
-    } else if (field === 'aliases') {
-      newRoomTypes[index][field] = value;
-    } else {
-      newRoomTypes[index][field] = value;
-    }
-    setRoomTypes(newRoomTypes);
-  };
+// 객실 타입 변경 함수
+const handleRoomTypeChange = (index, field, value) => {
+  const newRoomTypes = [...roomTypes];
 
+  // 가격과 재고는 숫자로 변환
+  if (field === 'price' || field === 'stock') {
+    newRoomTypes[index][field] = value === '' ? '' : Number(value);
+  } else if (field === 'aliases') {
+    newRoomTypes[index][field] = value;
+  } else {
+    newRoomTypes[index][field] = value;
+  }
+
+  // 만약 영어 이름(nameEng)이 입력되면, 이를 type 값으로 자동 설정 (한글이 없다면)
+  // 또는, 두 입력란 중 하나를 기준으로 자동 업데이트할 수 있습니다.
+  if ((field === 'nameEng' || field === 'nameKor') && value.trim() !== '') {
+    // 영어 이름이 있으면 영어 이름의 소문자 버전을, 없으면 한글 이름을 사용
+    const engName = newRoomTypes[index].nameEng?.trim();
+    const korName = newRoomTypes[index].nameKor?.trim();
+    newRoomTypes[index].type = engName ? engName.toLowerCase() : korName;
+  } else if (!newRoomTypes[index].nameEng && !newRoomTypes[index].nameKor) {
+    // 만약 두 입력란 모두 비어있다면 기본값을 사용
+    newRoomTypes[index].type = 'custom-type-' + (roomTypes.length + 1);
+  }
+
+  setRoomTypes(newRoomTypes);
+};
   // 객실 타입 추가/삭제
   const addRoomType = () => {
     setRoomTypes([
