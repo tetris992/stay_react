@@ -1,116 +1,190 @@
 .monthly-calendar {
-    width: 100vw;
-    height: 100vh;
-    padding: 20px;
-    box-sizing: border-box;
-    background-color: transparent;
-    overflow-y: auto;
-  }
-  
-  .calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .calendar-title {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: var(--room-card-text-color);
-    margin: 0;
-  }
-  
-  .return-button {
-    padding: 8px 16px;
+  width: 100vw;
+  height: 100vh;
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: transparent;
+  overflow-y: auto;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.calendar-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--room-card-text-color);
+  margin: 0;
+}
+
+/* 아이콘 및 텍스트를 포함하는 버튼 스타일 */
+.lock-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* 아이콘과 텍스트 사이 간격 */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--room-card-text-color);
+}
+
+.lock-icon {
+  font-size: 1rem;
+  margin-left: 10px;
+  color: rgb(0, 51, 255);
+}
+
+.lock-text {
+  font-size: 1rem;
+  margin-left: 5px;
+}
+
+.return-button {
+  padding: 8px 16px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: #6287ace1;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.return-button:hover {
+  background-color: #007cb576;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1px;
+  /* 고정 높이 제거하고, 내용만큼 높이가 결정되도록 */
+  align-items: start;
+}
+
+.calendar-cell {
+  border: 1px solid var(--color-border-default);
+  border-radius: 12px;
+  background: var(--room-card-background-color);
+  color: var(--room-card-text-color);
+  min-height: 330px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.calendar-cell.selected {
+  border-color: var(--color-primary-soft-green);
+  background-color: #e0ffe0;
+}
+
+.cell-header {
+  background-color: #c9c9c9;
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+/* 주말(토, 일) 헤더 텍스트를 붉은 색으로 */
+.cell-header.weekend {
+  color: red;
+}
+
+.cell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  overflow-y: auto;
+  line-height: 30px;
+}
+
+.room-type {
+  font-size: 1.2rem;
+  height: 30px;
+  background-color: transparent;
+  border: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0px 16px;
+  border-bottom: 1px dashed #ddd;
+  cursor: pointer;
+  margin: 5px;
+}
+
+/* 마우스 오버시 약간의 배경 변화 */
+.room-type:hover {
+  background-color: #dfdede;
+  border-radius: 5px;
+}
+
+/* 선택된 객실타입 드래그 시 배경색 */
+.room-type.selected-room-type {
+  background-color: #e0ffe0; /* 연한 녹색 배경 */
+  border: 1px solid var(--color-primary-soft-green);
+}
+
+.weekday-header {
+  display: flex;
+  background-color: #f8f8f8;
+  border-bottom: 2px solid #ddd;
+}
+
+.weekday-cell {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-weight: bold;
+}
+
+/* 고정모드일 때 그리드 컬럼을 7열로 고정 */
+.calendar-grid.locked {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+/* (선택사항) 달력 범위 밖의 날짜를 흐리게 표시 */
+.calendar-cell.outside {
+  opacity: 0.5;
+}
+
+.calendar-title {
+  display: flex;
+}
+
+.weekday-header {
+  display: flex;
+  font-size: 1.3rem;
+  background-color: #f8f8f8;
+  border-bottom: 2px solid #ddd;
+}
+
+.weekday-cell.weekend {
+  color: red;
+}
+
+@media (max-width: 1400px) {
+  .room-type {
     font-size: 1rem;
-    border: none;
-    border-radius: 4px;
-    background-color: #6287ace1;
-    color: #fff;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
   }
-  
-  .return-button:hover {
-    background-color: #007cb576;
-  }
-  
-  .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1px;
-    height: calc(100% - 80px); /* 제목 영역 높이 고려 */
-  }
-  
-  .calendar-cell {
-    border: 3px solid var(--color-border-default);
-    border-radius: 12px;
-    background: var(--room-card-background-color);
-    color: var(--room-card-text-color);
-    min-height: 330px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding: 10px;
-    box-sizing: border-box;
-    user-select: none;
-  }
-  
-  .calendar-cell.selected {
-    border-color: var(--color-primary-soft-green);
-    background-color: #e0ffe0;
-  }
-  
   .cell-header {
-    background-color: #f0f0f0;
+    background-color: #c9c9c9;
     padding: 10px;
     text-align: center;
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1rem;
     border-radius: 8px;
     margin-bottom: 15px;
   }
-  
-  /* 주말(토, 일) 헤더 텍스트를 붉은 색으로 */
-  .cell-header.weekend {
-    color: red;
-  }
-  
-  .cell-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0px;
-    overflow-y: auto;
-  }
-  
-  .room-type {
-    font-size: 1.2rem;
-    height: 30px;
-    background-color: transparent;
-    border: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0px 16px;
-    border-bottom: 1px dashed #ddd;
-    cursor: pointer;
-    margin: 5px;
-  }
-  
-  /* 마우스 오버시 약간의 배경 변화 */
-  .room-type:hover {
-    background-color: #fff0f0;
-  }
-  
-  /* 선택된 객실타입 드래그 시 배경색 */
-  .room-type.selected-room-type {
-    background-color: #d0ffd0;
-  }
-  
-  .room-type.selected-room-type {
-    background-color: #e0ffe0;  /* 연한 녹색 배경 */
-    border: 1px solid var(--color-primary-soft-green);
-  }
-  
+}
