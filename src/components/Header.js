@@ -24,6 +24,7 @@ function Header({
   sortOrder, // 추가된 sortOrder Prop
   hasLowStock,
   lowStockRoomTypes,
+  onMonthlyView,
 }) {
   const dayOfWeek = selectedDate.getDay();
   const weekdayName = selectedDate.toLocaleDateString('ko-KR', {
@@ -78,7 +79,7 @@ function Header({
               aria-label="정렬 버튼"
             >
               <FontAwesomeIcon icon={faSort} />{' '}
-              {sortOrder === 'newest' ? '최신순' : '과거순'}
+              {sortOrder === 'newest' ? '객실타입별' : '과거순'}
             </button>
             <button
               className={`memo-button ${flipAllMemos ? 'active' : ''}`}
@@ -87,11 +88,13 @@ function Header({
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
             </button>
-            {hasLowStock && lowStockRoomTypes && lowStockRoomTypes.length > 0 && (
-              <span className="low-stock-header-warning" title="재고 부족">
-                ⚠️ {lowStockRoomTypes.join(', ')} 객실이 부족할 수 있습니다.
-              </span>
-            )}
+            {hasLowStock &&
+              lowStockRoomTypes &&
+              lowStockRoomTypes.length > 0 && (
+                <span className="low-stock-header-warning" title="재고 부족">
+                  ⚠️ {lowStockRoomTypes.join(', ')} 재고확인
+                </span>
+              )}
           </div>
         </div>
 
@@ -112,9 +115,17 @@ function Header({
           ))}
         </div>
 
-        {/* 오른쪽: Quick-create 버튼 */}
+        {/* 오른쪽: ★ 월간예약 버튼과 Quick-create 버튼 */}
         <div className="header-right">
           <div className="quick-create-buttons">
+            {/* 1박 버튼 앞쪽에 월간예약 버튼 추가 */}
+            <button
+              className="monthly-view-button"
+              onClick={onMonthlyView}
+              aria-label="월간 예약 현황 보기"
+            >
+              객실 재고확인
+            </button>
             <button
               className="quick-button"
               onClick={() => onQuickCreate('1박')}
@@ -148,7 +159,6 @@ function Header({
           </div>
         </div>
       </div>
-
       {/* 투명도 효과를 위한 영역 */}
       <div className="header-fade"></div>
     </div>
@@ -169,6 +179,7 @@ Header.propTypes = {
   sortOrder: PropTypes.string.isRequired,
   hasLowStock: PropTypes.bool,
   lowStockRoomTypes: PropTypes.arrayOf(PropTypes.string),
+  onMonthlyView: PropTypes.func.isRequired,
 };
 
 export default Header;

@@ -25,6 +25,7 @@ import availableOTAs from '../config/availableOTAs.js';
 import { extractPrice } from '../utils/extractPrice.js';
 import { isCancelledStatus } from '../utils/isCancelledStatus.js';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay.js';
+import { matchRoomType } from '../utils/matchRoomType.js';
 
 function RoomGrid({
   reservations,
@@ -533,13 +534,39 @@ function RoomGrid({
 
   const isAnyEditing = false;
 
+  // 소트할 때, sortOrder가 "roomType"이면 객실타입 기준 정렬,
+  // 매칭되지 않거나 "대실"이 포함된 경우는 마지막으로 정렬합니다.
   const sortedReservations = useMemo(() => {
-    return [...reservations].sort((a, b) => {
-      const dateA = new Date(a.checkIn);
-      const dateB = new Date(b.checkIn);
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-    });
-  }, [reservations, sortOrder]);
+    if (sortOrder === 'roomType') {
+      return [...reservations].sort((a, b) => {
+        const matchA = matchRoomType(a.roomInfo, roomTypes);
+        const matchB = matchRoomType(b.roomInfo, roomTypes);
+
+        // getSortKey: 매칭 결과가 없거나 roomInfo에 "대실"이 포함된 경우 "zzz" 반환하여 마지막으로 정렬
+        const getSortKey = (matchObj, originalInfo) => {
+          if (!matchObj || originalInfo.toLowerCase().includes('대실')) {
+            return 'zzz'; // 마지막에 정렬할 키 값
+          }
+          return matchObj.type.toLowerCase();
+        };
+
+        const keyA = getSortKey(matchA, a.roomInfo);
+        const keyB = getSortKey(matchB, b.roomInfo);
+
+        if (keyA < keyB) return -1;
+        if (keyA > keyB) return 1;
+        // 동일한 객실타입이면 체크인 날짜 기준 오름차순 정렬
+        return new Date(a.checkIn) - new Date(b.checkIn);
+      });
+    } else {
+      // sortOrder이 "newest" 또는 "oldest" 인 경우
+      return [...reservations].sort((a, b) => {
+        const dateA = new Date(a.checkIn);
+        const dateB = new Date(b.checkIn);
+        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      });
+    }
+  }, [reservations, sortOrder, roomTypes]);
 
   return (
     <div

@@ -11,6 +11,7 @@ import Header from './components/Header.js';
 import SideBar from './components/SideBar.js';
 import RoomGrid from './components/RoomGrid.js';
 import CanceledReservationsModal from './components/CanceledReservationsModal.js';
+import MonthlyCalendar from './components/MonthlyCalendar';
 import GuestFormModal from './components/GuestFormModal';
 import HotelSettings from './components/HotelSettings';
 import Login from './components/Login';
@@ -201,7 +202,10 @@ const App = () => {
 
   // * Refactored: useCallback 및 useMemo로 함수 재생성 최소화
   const handleSort = useCallback(() => {
-    setSortOrder((prev) => (prev === 'newest' ? 'oldest' : 'newest'));
+    // 기존에는 newest와 oldest 사이를 토글했다면,
+    // 여기서는 현재 sortOrder가 'roomType'이 아니면 'roomType'으로,
+    // 이미 'roomType'이면 다시 'newest'로 전환하도록 합니다.
+    setSortOrder((prev) => (prev !== 'roomType' ? 'roomType' : 'newest'));
   }, []);
 
   const handleReservationSelect = useCallback((res) => {
@@ -279,6 +283,42 @@ const App = () => {
     },
     []
   );
+
+   // 드래그 범위 선택 후, 현장예약 모달을 오픈하는 함수
+   const onQuickCreateRange = (start, end, roomType) => {
+    // 선택된 날짜 중 가장 빠른 날짜를 체크인, 가장 늦은 날짜를 체크아웃으로 지정합니다.
+    const checkInDate = format(start, 'yyyy-MM-dd');
+    const checkOutDate = format(end, 'yyyy-MM-dd');
+    const defaultCheckInTime = '16:00'; // 기본 체크인 시간
+    const defaultCheckOutTime = '11:00'; // 기본 체크아웃 시간
+
+    // 예약번호는 현재 시간 기반으로 생성 (예시)
+    const reservationNo = `${Date.now()}`;
+    // 기본 예약자명은 빈 값 혹은 자동생성 이름 (원하는대로 수정)
+    const customerName = ''; 
+
+    // GuestFormModal에 전달할 초기 데이터를 구성합니다.
+    const guestData = {
+      reservationNo,
+      customerName,
+      phoneNumber: '',
+      checkInDate,
+      checkInTime: defaultCheckInTime,
+      checkOutDate,
+      checkOutTime: defaultCheckOutTime,
+      reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+      roomInfo: roomType,
+      price: '', // 가격은 추후 수동 입력 혹은 계산할 수 있습니다.
+      paymentMethod: 'Pending',
+      specialRequests: '',
+      checkIn: `${checkInDate}T${defaultCheckInTime}:00`,
+      checkOut: `${checkOutDate}T${defaultCheckOutTime}:00`,
+    };
+
+    // GuestFormModal을 오픈
+    setGuestFormData(guestData);
+    setShowGuestForm(true);
+  };
 
   // roomTypes와 activeReservations가 업데이트될 때마다 남은 재고 계산
   const remainingInventory = useMemo(() => {
@@ -1276,6 +1316,22 @@ const App = () => {
                   />
                 }
               />
+
+              {/* ★ 월간 달력 페이지 라우트 */}
+              <Route
+                path="/monthly-calendar"
+                element={
+                  <MonthlyCalendar
+                    reservations={allReservations}
+                    roomTypes={roomTypes}
+                    currentDate={selectedDate}
+                    onRangeSelect={onQuickCreateRange}
+                    onReturnView={() => navigate('/')}
+                  />
+                }
+              />
+
+              {/* 기존 일간예약 화면 라우트 */}
               <Route
                 path="/"
                 element={
@@ -1296,6 +1352,7 @@ const App = () => {
                       sortOrder={sortOrder}
                       hasLowStock={hasLowStock}
                       lowStockRoomTypes={lowStockRoomTypes}
+                      onMonthlyView={() => navigate('/monthly-calendar')}
                     />
                     <SideBar
                       loading={loading}

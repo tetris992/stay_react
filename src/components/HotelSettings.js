@@ -229,6 +229,9 @@ function HotelSettings({
         aliases: Array.isArray(rt.aliases)
           ? rt.aliases.map((alias) => alias.trim().toLowerCase())
           : [],
+        roomNumbers: Array.isArray(rt.roomNumbers)
+          ? rt.roomNumbers.map((num) => num.trim())
+          : [],
       })),
       email: email.trim(),
       address: address.trim(),
@@ -283,12 +286,10 @@ function HotelSettings({
           {/* 개인정보 동의 배너 */}
           <div className="consent-banner">
             {consentChecked ? (
-              <div className="consent-checked-container">
-                <span className="consent-checked-label">
-                  <i className="fa fa-check-circle"></i> 서비스 약관 및 개인정보
-                  처리방침에 동의 완료
-                </span>
-              </div>
+              <span className="consent-checked-label">
+                <i className="fa fa-check-circle"></i> 서비스 약관 및 개인 정보
+                처리방침에 동의 완료
+              </span>
             ) : (
               <button
                 type="button"
@@ -408,6 +409,20 @@ function HotelSettings({
                 required
                 autoComplete="off"
               />
+              {/* ★ 객실번호 입력란: 쉼표(,)로 구분하여 입력 */}
+              <input
+                type="text"
+                placeholder="객실 번호 (예: 201,202,203,...)"
+                value={room.roomNumbers ? room.roomNumbers.join(',') : ''}
+                onChange={(e) => {
+                  const numbers = e.target.value
+                    .split(',')
+                    .map((num) => num.trim())
+                    .filter((num) => num !== '');
+                  handleRoomTypeChange(index, 'roomNumbers', numbers);
+                }}
+                autoComplete="off"
+              />
               {/* 별칭 입력란: 5개의 입력필드를 한 행에 배치 */}
               <div className="alias-inputs">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -450,7 +465,7 @@ function HotelSettings({
         {/* 섹션 3: OTA 로그인 정보 */}
         <div className="section">
           <h3>
-            OTA 로그인 정보(선택){' '}
+            OTA 로그인 정보(선택)
             {/* 확장 연결 버튼으로 변경 (클릭 시 새 탭에서 확장 페이지 오픈) */}
             <button
               type="button"
@@ -528,6 +543,7 @@ HotelSettings.propTypes = {
         price: PropTypes.number,
         stock: PropTypes.number,
         aliases: PropTypes.arrayOf(PropTypes.string),
+        roomNumbers: PropTypes.arrayOf(PropTypes.string),
       })
     ),
     email: PropTypes.string,

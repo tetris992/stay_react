@@ -8,7 +8,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
   padding: 1rem;
   overflow-y: auto;
 }
@@ -18,10 +17,11 @@
   border-radius: 10px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   padding: 20px;
-  width: 100%;
+  width: 140%;
   max-width: 500px;
   display: flex;
   flex-direction: column;
+  z-index: 10000;
 }
 
 .modal-card h2 {
@@ -153,11 +153,11 @@ label {
   font-size: 14px;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-input[type="number"],
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='date'],
+input[type='number'],
 select {
   width: 100%;
   padding: 8px 12px;
@@ -172,7 +172,7 @@ select {
   position: relative;
 }
 
-.price-input-wrapper input[type="number"] {
+.price-input-wrapper input[type='number'] {
   padding-right: 60px; /* 오른쪽 여유 공간 확보 */
 }
 
@@ -225,12 +225,12 @@ select {
   cursor: pointer;
 }
 
-.modal-actions button[type="button"] {
+.modal-actions button[type='button'] {
   background-color: #ccc;
   color: #333;
 }
 
-.modal-actions button[type="submit"] {
+.modal-actions button[type='submit'] {
   background-color: #007bff;
   color: #fff;
 }

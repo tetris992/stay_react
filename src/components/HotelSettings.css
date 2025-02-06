@@ -276,3 +276,14 @@ select:focus {
 .room-type:hover {
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15); /* 호버 시 살짝 강조 */
 }
+
+.extension-link-button {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.3s;
+}

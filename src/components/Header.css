@@ -152,13 +152,24 @@
   align-items: center;
 }
 
-.quick-button {
+ .quick-button {
   padding: 6px 12px;
   font-size: 1.1rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   background-color: #6287ace1;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.monthly-view-button {
+  padding: 6px 12px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #9662ace1;
   color: #ffffff;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
@@ -218,6 +229,7 @@
   .memo-button {
     padding: 5px 10px;
     font-size: 0.9rem;
+    white-space: nowrap;
   }
 
   .header-ota-status {
