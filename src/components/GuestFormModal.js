@@ -1,6 +1,6 @@
 // src/components/GuestFormModal.js
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom'; // Portal 사용을 위해 추가
+import ReactDOM from 'react-dom'; // Portal 사용
 import './GuestFormModal.css';
 import { parseDate } from '../utils/dateParser.js';
 import { format, addDays } from 'date-fns';
@@ -40,8 +40,14 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
           : format(new Date(), 'yyyy-MM-dd HH:mm'),
         roomInfo:
           initialData.roomInfo ||
-          (roomTypes.length > 0 ? roomTypes[0].type : ''),
-        price: initialData.price ? initialData.price.toString() : '',
+          (roomTypes.length > 0 ? roomTypes[0].roomInfo : ''),
+        // 수정: roomTypes[0].price가 없으면 기본값 '0'으로 설정
+        price:
+          initialData.price !== undefined
+            ? initialData.price.toString()
+            : roomTypes.length > 0 && roomTypes[0].price !== undefined
+            ? roomTypes[0].price.toString()
+            : '0',
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
       });
@@ -61,15 +67,18 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         checkOutDate: format(addDays(now, 1), 'yyyy-MM-dd'),
         checkOutTime: '11:00', // 기본 체크아웃 시간: 오전 11시
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-        roomInfo: roomTypes.length > 0 ? roomTypes[0].type : 'Standard',
-        price: roomTypes.length > 0 ? roomTypes[0].price.toString() : '',
+        roomInfo: roomTypes.length > 0 ? roomTypes[0].roomInfo : 'Standard',
+        price:
+          roomTypes.length > 0 && roomTypes[0].price !== undefined
+            ? roomTypes[0].price.toString()
+            : '0',
         paymentMethod: 'Pending',
         specialRequests: '',
       });
     }
   }, [initialData, roomTypes]);
 
-  // 입력값(체크인, 체크아웃, 객실타입)이 바뀔 때마다 숙박일수에 따른 가격 재계산
+  // 숙박일수에 따른 가격 재계산
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
       const checkInDateObj = new Date(
@@ -81,10 +90,12 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       const nightsStayed = Math.ceil(
         (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
       );
+      // 수정된 부분: room.type -> room.roomInfo
       const selectedRoom = roomTypes.find(
-        (room) => room.type === formData.roomInfo
+        (room) => room.roomInfo === formData.roomInfo
       );
-      const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
+      const nightlyPrice =
+        selectedRoom && selectedRoom.price !== undefined ? selectedRoom.price : 0;
       const totalPrice = nightlyPrice * nightsStayed;
       if (totalPrice.toString() !== formData.price) {
         setFormData((prev) => ({ ...prev, price: totalPrice.toString() }));
@@ -99,6 +110,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     formData.price,
     roomTypes,
   ]);
+  
 
   const handlePriceIncrement = () => {
     const currentPrice = parseInt(formData.price || '0', 10);
@@ -117,8 +129,11 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     if (name === 'roomInfo') {
-      const selectedRoom = roomTypes.find((room) => room.type === value);
-      const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
+      const selectedRoom = roomTypes.find((room) => room.roomInfo === value);
+      const nightlyPrice =
+        selectedRoom && selectedRoom.price !== undefined
+          ? selectedRoom.price
+          : 0;
       if (formData.checkInDate && formData.checkOutDate) {
         const checkInDateObj = new Date(
           `${formData.checkInDate}T${formData.checkInTime}:00`
@@ -143,7 +158,11 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         }));
       }
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      // 기본적으로 다른 입력 필드에 대한 업데이트 처리
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
     }
   };
 
@@ -174,9 +193,10 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
     );
     const selectedRoom = roomTypes.find(
-      (room) => room.type === formData.roomInfo
+      (room) => room.roomInfo === formData.roomInfo
     );
-    const nightlyPrice = selectedRoom ? selectedRoom.price : 0;
+    const nightlyPrice =
+      selectedRoom && selectedRoom.price !== undefined ? selectedRoom.price : 0;
     const totalPrice = nightlyPrice * nightsStayed;
     setFormData((prev) => ({
       ...prev,
@@ -335,9 +355,10 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
             >
               {roomTypes && roomTypes.length > 0 ? (
                 roomTypes.map((room, index) =>
-                  room.type ? (
-                    <option key={index} value={room.type}>
-                      {room.type.charAt(0).toUpperCase() + room.type.slice(1)}
+                  room.roomInfo ? (
+                    <option key={index} value={room.roomInfo}>
+                      {room.roomInfo.charAt(0).toUpperCase() +
+                        room.roomInfo.slice(1)}
                     </option>
                   ) : (
                     <option key={index} value="">
@@ -427,7 +448,8 @@ GuestFormModal.propTypes = {
   initialData: PropTypes.object,
   roomTypes: PropTypes.arrayOf(
     PropTypes.shape({
-      type: PropTypes.string.isRequired,
+      roomInfo: PropTypes.string.isRequired,
+      // price는 이제 기본값 0을 보장하므로 required로 유지하거나, 선택적으로 변경할 수 있음
       price: PropTypes.number.isRequired,
     })
   ).isRequired,

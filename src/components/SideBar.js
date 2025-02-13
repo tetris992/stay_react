@@ -1,7 +1,8 @@
 // src/components/SideBar.js
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import AccountingInfo from './AccountingInfo';
+import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -18,16 +19,14 @@ import {
   FaCircleNotch,
   FaClipboardCheck,
   FaTimesCircle,
+  // FaTh,
 } from 'react-icons/fa';
-import HotelSettings from './HotelSettings';
-import { defaultRoomTypes } from '../config/defaultRoomTypes';
+
+// import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import ScrapeNowButton from './ScrapeNowButton';
 import availableOTAs from '../config/availableOTAs';
 import RoomStatusChart from './RoomStatusChart';
 import SalesGraphModal from './SalesGraphModal';
-
-// [추가] 재고 계산 유틸 함수 import
-import { computeRemainingInventory } from '../utils/computeRemainingInventory';
 
 function SideBar({
   loading,
@@ -39,40 +38,37 @@ function SideBar({
   occupancyRate,
   selectedDate,
   onDateChange,
-  handleSaveSettings,
+  // handleSaveSettings,
   totalRooms,
   remainingRooms,
-  roomTypes,
+  // roomTypes,
   monthlySoldRooms,
   avgMonthlyRoomPrice,
   onLogout,
   dailyBreakdown,
   monthlyDailyBreakdown,
   openSalesModal,
-  hotelSettings,
+  // hotelSettings,
   hotelId,
   otaToggles,
-  userInfo,
   onToggleOTA,
   searchCriteria,
   setSearchCriteria,
   executeSearch,
   onShowCanceledModal,
-  memos,
-  setMemos,
   onOnsiteReservationClick,
   needsConsent,
   dailySalesByOTA,
   labelsForOTA,
   activeReservations,
 }) {
-  // 기존 상태 변수들...
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [isRoomTypesOpen, setIsRoomTypesOpen] = useState(false);
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false); // 그래프 모달 열림 여부
   // ★ 새로 추가: OTA 설정 토글 상태 (기본적으로 닫힘)
   const [isOtaSettingsOpen, setIsOtaSettingsOpen] = useState(false);
+
+  // ★ 추가: react-router-dom의 useNavigate 훅
+  const navigate = useNavigate();
 
   // 1) Sync 버튼 클릭 핸들러
   const handleSyncClick = () => {
@@ -83,12 +79,7 @@ function SideBar({
 
   // 2) 호텔 설정 버튼 클릭 핸들러
   const handleSettingsClick = () => {
-    setShowSettingsModal(true);
-  };
-
-  // 3) 객실 타입 토글
-  const toggleRoomTypes = () => {
-    setIsRoomTypesOpen((prev) => !prev);
+    navigate('/hotel-settings'); // ← 페이지 전환
   };
 
   // 4) 날짜 변경
@@ -130,7 +121,7 @@ function SideBar({
 
   // 그래프에 쓸 데이터 구성
   const dailySales = {
-    labels: labelsForOTA, // 예: ['08-01', '08-02', ...]
+    labels: labelsForOTA,
     values: [],
   };
 
@@ -138,13 +129,6 @@ function SideBar({
     labels: ['현재월'],
     values: [monthlyTotal],
   };
-
-  // [추가된 부분: 남은 재고 계산]
-  const remainingInventory = useMemo(
-    () => computeRemainingInventory(roomTypes, activeReservations || []),
-    [roomTypes, activeReservations]
-  );
-  // console.log(activeReservations);
 
   return (
     <div
@@ -229,60 +213,7 @@ function SideBar({
             roomsSold={roomsSold}
             remainingRooms={remainingRooms}
           />
-          <button
-            className="toggle-room-types-button"
-            onClick={toggleRoomTypes}
-          >
-            {isRoomTypesOpen ? (
-              <>
-                객실 타입 숨기기 <FaChevronUp />
-              </>
-            ) : (
-              <>
-                객실 타입 보기 <FaChevronDown />
-              </>
-            )}
-          </button>
         </div>
-
-        {isRoomTypesOpen && (
-          <div className="room-types">
-            {roomTypes.length > 0 ? (
-              roomTypes.map((room, index) => {
-                const remaining = remainingInventory[room.type] ?? room.stock;
-                const isLowStock = remaining <= 1; // 남은 재고가 1 이하이면 경고 표시
-                return (
-                  <div key={index} className="room-type-info">
-                    <p>
-                      타입: {room.nameKor} / {room.nameEng}
-                    </p>
-                    <p>가격: {room.price.toLocaleString()}원</p>
-                    <p>
-                      잔여 수:{' '}
-                      <span style={{ color: isLowStock ? 'red' : 'inherit' }}>
-                        ({remaining})
-                      </span>{' '}
-                      {isLowStock && (
-                        <span className="low-stock-warning" title="재고 부족!">
-                          ⚠️
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="room-type-info">
-                <p>
-                  타입: {defaultRoomTypes[0].nameKor} /{' '}
-                  {defaultRoomTypes[0].nameEng}
-                </p>
-                <p>가격: {defaultRoomTypes[0].price.toLocaleString()}원</p>
-                <p>잔여 수: {defaultRoomTypes[0].stock}</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* 매출 정보 섹션 (AccountingInfo) */}
@@ -323,24 +254,6 @@ function SideBar({
           </div>
         )}
       </div>
-
-      {/* 호텔 설정 모달 */}
-      {showSettingsModal && (
-        <HotelSettings
-          onClose={() => setShowSettingsModal(false)}
-          onSave={handleSaveSettings}
-          existingSettings={{
-            ...userInfo,
-            ...hotelSettings,
-            otas:
-              hotelSettings?.otas ||
-              availableOTAs.map((ota) => ({
-                name: ota,
-                isActive: false,
-              })),
-          }}
-        />
-      )}
 
       {/* 추가: 매출 그래프 모달 (SalesGraphModal) */}
       <SalesGraphModal

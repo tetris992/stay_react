@@ -32,6 +32,14 @@ function DetailPanel({ reservation, onClose, onEdit, onSave }) {
               onChange={handleChange}
             />
           </label>
+          <label>
+            객실번호:
+            <input
+              name="roomNumber"
+              value={editData.roomNumber || ''}
+              onChange={handleChange}
+            />
+          </label>
           {/* 다른 필드들도 동일한 방식으로 추가/수정 */}
           <button onClick={handleSave}>저장</button>
           <button onClick={handleEditToggle}>취소</button>

@@ -174,17 +174,66 @@
   color: red;
 }
 
+/* 기본 스타일 (1800px 이상) */
+.room-type {
+  font-size: 1.2rem;
+}
+.cell-header {
+  background-color: #c9c9c9;
+  padding: 10px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+/* 화면 폭 1800px 이하 */
+@media (max-width: 1800px) {
+  .room-type {
+    font-size: 1.15rem;
+  }
+  .cell-header {
+    font-size: 1.15rem;
+  }
+}
+
+/* 화면 폭 1400px 이하 */
 @media (max-width: 1400px) {
+  .room-type {
+    font-size: 1.1rem;
+  }
+  .cell-header {
+    font-size: 1.1rem;
+  }
+}
+
+/* 화면 폭 1200px 이하 */
+@media (max-width: 1200px) {
   .room-type {
     font-size: 1rem;
   }
   .cell-header {
-    background-color: #c9c9c9;
-    padding: 10px;
-    text-align: center;
-    font-weight: bold;
     font-size: 1rem;
-    border-radius: 8px;
-    margin-bottom: 15px;
+  }
+}
+
+/* 화면 폭 800px 이하 */
+@media (max-width: 800px) {
+  .room-type {
+    font-size: 0.8rem;
+  }
+  .cell-header {
+    font-size: 0.8rem;
+  }
+}
+
+/* 화면 폭 600px 이하 */
+@media (max-width: 600px) {
+  .room-type {
+    font-size: 0.8rem;
+  }
+  .cell-header {
+    font-size: 0.8rem;
   }
 }

@@ -106,7 +106,7 @@ select {
   margin: 8px 0;
   border: 1px solid #ccc;
   border-radius: var(--border-radius);
-  font-size: 1rem;
+  font-size: 2rem;
   box-sizing: border-box;
   transition: border-color 0.3s;
 }
@@ -156,20 +156,44 @@ select:focus {
 }
 
 /* --- Delete Room Type Button --- */
+.room-type_setting {
+  position: relative; /* 삭제 버튼의 기준이 될 수 있도록 상대 위치 지정 */
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #959494;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: var(--border-radius);
+  background-color: #eae9e9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.3s ease;
+}
+
 .delete-roomType {
+  position: absolute;
+  top: 2px; /* 박스 상단에서 10px 떨어짐 */
+  right: 2px; /* 박스 오른쪽에서 10px 떨어짐 */
   background-color: transparent;
   border: none;
-  font-size: 24px;
-  color: var(--error-color);
+  color: #000000;
+  font-size: 28px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s;
-  align-self: flex-end;
+  transition: transform 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .delete-roomType:hover {
-  transform: scale(1.1);
+  transform: scale(1.2);
+  background-color: #d32f2f;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
-
 /* --- Buttons --- */
 .buttons_container {
   display: flex;
@@ -286,4 +310,27 @@ select:focus {
   cursor: pointer;
   font-size: 0.8rem;
   transition: background-color 0.3s;
+}
+.layout-edit-button {
+  margin-left: 20px;
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 5px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.3s;
+}
+
+.horizontal-fields {
+  display: flex;
+  gap: 10px; /* 필드 사이 간격 */
+  margin-bottom: 4px; /* 아래쪽 여백 */
+}
+
+.horizontal-fields input {
+  flex: 1; /* 모든 입력 필드를 동일한 비율로 확장 */
+  height: 50px; /* 고정 높이 지정 */
+  box-sizing: border-box;
 }

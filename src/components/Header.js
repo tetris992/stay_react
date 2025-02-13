@@ -1,16 +1,19 @@
 // src/components/Header.js
-
 import React from 'react';
 import './Header.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCaretLeft,
   faCaretRight,
-  faSort,
   faStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 
+/**
+ * Header 컴포넌트
+ * - 날짜 네비게이션, 메모 버튼, OTA 상태 표시, 월간 예약/Quick-create 버튼을 표시합니다.
+ * - 정렬 관련 기능은 제거되었습니다.
+ */
 function Header({
   selectedDate,
   onDateChange,
@@ -18,13 +21,12 @@ function Header({
   onNextDay,
   onQuickCreate,
   otaToggles,
-  onSort, // 정렬 버튼 핸들러
-  onMemo, // 메모 버튼 핸들러
+  onMemo,
   flipAllMemos,
-  sortOrder, // 추가된 sortOrder Prop
   hasLowStock,
   lowStockRoomTypes,
   onMonthlyView,
+  isShining,
 }) {
   const dayOfWeek = selectedDate.getDay();
   const weekdayName = selectedDate.toLocaleDateString('ko-KR', {
@@ -69,18 +71,10 @@ function Header({
         </div>
       </div>
 
-      {/* 두 번째 줄: Sort/Memo 버튼, OTA 상태, Quick-create 버튼 */}
+      {/* 두 번째 줄: 메모 버튼, OTA 상태, Quick-create 버튼 */}
       <div className="header-bottom">
         <div className="header-left">
           <div className="additional-buttons">
-            <button
-              className="sort-button"
-              onClick={onSort}
-              aria-label="정렬 버튼"
-            >
-              <FontAwesomeIcon icon={faSort} />{' '}
-              {sortOrder === 'newest' ? '객실타입별' : '과거순'}
-            </button>
             <button
               className={`memo-button ${flipAllMemos ? 'active' : ''}`}
               onClick={onMemo}
@@ -88,13 +82,13 @@ function Header({
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
             </button>
-            {hasLowStock &&
+            {/* {hasLowStock &&
               lowStockRoomTypes &&
               lowStockRoomTypes.length > 0 && (
                 <span className="low-stock-header-warning" title="재고 부족">
                   ⚠️ {lowStockRoomTypes.join(', ')} 재고확인
                 </span>
-              )}
+              )} */}
           </div>
         </div>
 
@@ -115,10 +109,9 @@ function Header({
           ))}
         </div>
 
-        {/* 오른쪽: ★ 월간예약 버튼과 Quick-create 버튼 */}
+        {/* 오른쪽: 월간 예약 버튼과 Quick-create 버튼 */}
         <div className="header-right">
           <div className="quick-create-buttons">
-            {/* 1박 버튼 앞쪽에 월간예약 버튼 추가 */}
             <button
               className="monthly-view-button"
               onClick={onMonthlyView}
@@ -159,13 +152,14 @@ function Header({
           </div>
         </div>
       </div>
-      {/* 투명도 효과를 위한 영역 */}
+
+      {/* 투명도 효과 영역 */}
       <div className="header-fade"></div>
     </div>
   );
 }
 
-// PropTypes 정의
+// PropTypes 정의 (정렬 관련 Prop은 제거됨)
 Header.propTypes = {
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   onDateChange: PropTypes.func.isRequired,
@@ -174,11 +168,10 @@ Header.propTypes = {
   onQuickCreate: PropTypes.func.isRequired,
   isShining: PropTypes.bool.isRequired,
   otaToggles: PropTypes.object.isRequired,
-  onSort: PropTypes.func.isRequired, // 정렬 버튼 핸들러 Prop 추가
-  onMemo: PropTypes.func.isRequired, // 메모 버튼 핸들러 Prop 추가
-  sortOrder: PropTypes.string.isRequired,
-  hasLowStock: PropTypes.bool,
-  lowStockRoomTypes: PropTypes.arrayOf(PropTypes.string),
+  onMemo: PropTypes.func.isRequired,
+  flipAllMemos: PropTypes.bool.isRequired,
+  // hasLowStock: PropTypes.bool,
+  // lowStockRoomTypes: PropTypes.arrayOf(PropTypes.string),
   onMonthlyView: PropTypes.func.isRequired,
 };
 

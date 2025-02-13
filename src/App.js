@@ -7,19 +7,20 @@ import React, {
   useMemo,
 } from 'react';
 import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
+
 import Header from './components/Header.js';
 import SideBar from './components/SideBar.js';
 import RoomGrid from './components/RoomGrid.js';
 import CanceledReservationsModal from './components/CanceledReservationsModal.js';
 import MonthlyCalendar from './components/MonthlyCalendar';
 import GuestFormModal from './components/GuestFormModal';
-import HotelSettings from './components/HotelSettings';
 import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import PrivacyConsent from './components/PrivacyConsentModal.js';
 import DetailPanel from './components/DetailPanel';
 import { parseDate } from './utils/dateParser.js';
+import HotelSettingsPage from './pages/HotelSettingsPage.js';
 import {
   format,
   startOfMonth,
@@ -27,14 +28,17 @@ import {
   endOfMonth,
   differenceInCalendarDays,
 } from 'date-fns';
+
 import { defaultRoomTypes } from './config/defaultRoomTypes';
 import availableOTAs from './config/availableOTAs';
 import SalesModal from './components/DailySalesModal.js';
 import { isCancelledStatus } from './utils/isCancelledStatus.js';
+
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+
 // * Refactored: API 관련 함수들을 한 번에 import (중복 제거)
 import api, {
-  fetchUserInfo,
-  updateUser,
   fetchReservations,
   deleteReservation,
   confirmReservation,
@@ -55,7 +59,6 @@ import { computeRemainingInventory } from './utils/computeRemainingInventory';
    HELPER FUNCTIONS (추후 별도 유틸 파일로 분리 가능)
    ============================================================================ */
 // * Refactored: 매출 집계 및 날짜 관련 헬퍼 함수들을 컴포넌트 외부로 이동하여
-//            렌더링 시 재생성 비용을 줄이고 재사용하도록 함.
 function buildDailySalesByOTA(reservations, targetDate) {
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
@@ -108,6 +111,7 @@ function buildDailySalesByOTA(reservations, targetDate) {
   return { labels, dailySalesByOTA };
 }
 
+
 function buildMonthlyDailyBreakdown(reservations, targetDate) {
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
@@ -157,7 +161,7 @@ const App = () => {
   const [dailyTotal, setDailyTotal] = useState(0);
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [showGuestForm, setShowGuestForm] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  // const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [memos, setMemos] = useState({});
   const [hotelSettings, setHotelSettings] = useState({
     hotelAddress: '',
@@ -172,7 +176,6 @@ const App = () => {
     roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState(null);
   const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
   const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
   const [email, setEmail] = useState('이메일 정보 없음');
@@ -193,20 +196,13 @@ const App = () => {
   const [needsConsent, setNeedsConsent] = useState(false);
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
   const [showCanceledModal, setShowCanceledModal] = useState(false);
+  // const [isLayoutEditorOpen, setIsLayoutEditorOpen] = useState(false);
   const [otaToggles, setOtaToggles] = useState(
     availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
   );
   const [selectedReservation, setSelectedReservation] = useState(null);
-  const [sortOrder, setSortOrder] = useState('newest');
+  // const [sortOrder, setSortOrder] = useState('newest');
   const navigate = useNavigate();
-
-  // * Refactored: useCallback 및 useMemo로 함수 재생성 최소화
-  const handleSort = useCallback(() => {
-    // 기존에는 newest와 oldest 사이를 토글했다면,
-    // 여기서는 현재 sortOrder가 'roomType'이 아니면 'roomType'으로,
-    // 이미 'roomType'이면 다시 'newest'로 전환하도록 합니다.
-    setSortOrder((prev) => (prev !== 'roomType' ? 'roomType' : 'newest'));
-  }, []);
 
   const handleReservationSelect = useCallback((res) => {
     setSelectedReservation(res);
@@ -247,14 +243,6 @@ const App = () => {
     if (savedToggles) setOtaToggles(savedToggles);
   }, []);
 
-  const openSettingsModal = useCallback(() => {
-    setShowSettingsModal(true);
-  }, []);
-
-  const closeSettingsModal = useCallback(() => {
-    setShowSettingsModal(false);
-  }, []);
-
   const [flipAllMemos, setFlipAllMemos] = useState(false);
   const handleMemoButtonClick = useCallback(() => {
     setFlipAllMemos((prev) => !prev);
@@ -274,18 +262,19 @@ const App = () => {
 
   const calculatePerNightPrice = useCallback(
     (reservation, totalPrice, nights) => {
+      const priceNumber = Number(totalPrice); // totalPrice를 숫자로 변환
       if (nights > 0) {
-        const perNightPrice = totalPrice / nights;
-        // console.log(`(Revised) Per night price: ${perNightPrice}`);
-        return Math.floor(perNightPrice);
+        const perNightPrice = priceNumber / nights;
+        console.log(`(Revised) Per night price: ${perNightPrice}`);
+        return Math.round(perNightPrice); // 정수 반환
       }
-      return Math.floor(totalPrice);
+      return Math.round(priceNumber);
     },
     []
   );
 
-   // 드래그 범위 선택 후, 현장예약 모달을 오픈하는 함수
-   const onQuickCreateRange = (start, end, roomType) => {
+  // 드래그 범위 선택 후, 현장예약 모달을 오픈하는 함수
+  const onQuickCreateRange = (start, end, roomType) => {
     // 선택된 날짜 중 가장 빠른 날짜를 체크인, 가장 늦은 날짜를 체크아웃으로 지정합니다.
     const checkInDate = format(start, 'yyyy-MM-dd');
     const checkOutDate = format(end, 'yyyy-MM-dd');
@@ -295,7 +284,7 @@ const App = () => {
     // 예약번호는 현재 시간 기반으로 생성 (예시)
     const reservationNo = `${Date.now()}`;
     // 기본 예약자명은 빈 값 혹은 자동생성 이름 (원하는대로 수정)
-    const customerName = ''; 
+    const customerName = '';
 
     // GuestFormModal에 전달할 초기 데이터를 구성합니다.
     const guestData = {
@@ -381,15 +370,19 @@ const App = () => {
         }
       );
       setActiveReservations(selectedDateReservations);
+
+      // 선택된 날짜의 일 매출 계산 및 세부 내역 생성
       const breakdown = selectedDateReservations.map((reservation) => {
         let pricePerNight;
         if (reservation.nightlyRates && reservation.nightlyRates.length > 0) {
           pricePerNight = reservation.nightlyRates[0].rate;
         } else {
+          // nightlyRates가 없으므로 1박짜리 예약이거나 대실
           pricePerNight = reservation.totalPrice || 0;
         }
         return pricePerNight;
       });
+
       setDailyBreakdown(breakdown);
       const dailyTotalAmount = breakdown.reduce((sum, price) => sum + price, 0);
       setDailyTotal(Math.floor(dailyTotalAmount));
@@ -415,22 +408,24 @@ const App = () => {
           checkInDate < addDays(lastDayOfMonth, 1)
         );
       });
+
       let monthlyTotalAmount = 0;
       monthlyReservations.forEach((reservation) => {
         if (reservation.nightlyRates) {
           reservation.nightlyRates.forEach((nightlyRate) => {
             const rateDate = parseDate(nightlyRate.date);
             if (rateDate >= firstDayOfMonth && rateDate <= lastDayOfMonth) {
-              monthlyTotalAmount += nightlyRate.rate;
+              monthlyTotalAmount += Number(nightlyRate.rate);
             }
           });
         }
       });
-      monthlyTotalAmount = Math.max(0, Math.floor(monthlyTotalAmount));
+      monthlyTotalAmount = Math.max(0, Math.round(monthlyTotalAmount));
       setMonthlyTotal(monthlyTotalAmount);
       console.log(
         `Calculated Monthly Total: ₩${monthlyTotalAmount.toLocaleString()}`
       );
+
       let totalRoomsSold = 0;
       monthlyReservations.forEach((reservation) => {
         if (reservation.nightlyRates) {
@@ -446,10 +441,12 @@ const App = () => {
         }
       });
       setMonthlySoldRooms(totalRoomsSold);
+
       const avgPrice =
         totalRoomsSold > 0
           ? Math.floor(monthlyTotalAmount / totalRoomsSold)
           : 0;
+
       setAvgMonthlyRoomPrice(avgPrice);
       setRoomsSold(selectedDateReservations.length);
       setLoadedReservations(selectedDateReservations.map((res) => res._id));
@@ -548,9 +545,20 @@ const App = () => {
     try {
       const settings = await fetchHotelSettings(inputHotelId);
       console.log('Fetched settings:', settings);
+
       if (settings) {
+        // [MODIFIED] 서버에서 받아온 hotelSettings 문서가 _id를 갖고 있으면 기존 문서
+        if (settings._id) {
+          console.log('This hotelSettings doc has _id => existing doc.');
+          setIsNewSetup(false);
+        } else {
+          console.log('No _id => New setup.');
+          setIsNewSetup(true);
+        }
+
+        // 기존 코드 그대로
         setHotelSettings(settings);
-        setIsNewSetup(false);
+
         const initialOTAToggles = settings.otas.reduce((acc, ota) => {
           acc[ota.name] = ota.isActive;
           return acc;
@@ -566,6 +574,7 @@ const App = () => {
         setPhoneNumber(settings.phoneNumber || '전화번호 정보 없음');
         setEmail(settings.email || '이메일 정보 없음');
       } else {
+        // 기존 코드 그대로: hotelSettings가 없으면 default 생성
         const defaultOTAToggles = availableOTAs.reduce(
           (acc, ota) => ({ ...acc, [ota]: false }),
           {}
@@ -651,6 +660,7 @@ const App = () => {
       setIsAuthenticated(true);
       setHotelId(hotelIdParam);
       try {
+        // 크롬 익스텐션 관련 코드는 그대로 유지
         if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
           const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
           chrome.runtime.sendMessage(
@@ -673,8 +683,7 @@ const App = () => {
         }
         await loadHotelSettings(hotelIdParam);
         await loadReservations();
-        const userInfoData = await fetchUserInfo(hotelIdParam);
-        setUserInfo(userInfoData);
+        // 회원가입 단계에서 이미 consent를 처리하므로, userInfo 관련 호출 제거
         const fetchedHotelSettings = await fetchHotelSettings(hotelIdParam);
         setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
       } catch (error) {
@@ -700,20 +709,125 @@ const App = () => {
     [loadReservations]
   );
 
-  const handleEdit = useCallback(
-    async (reservationId, updatedData, hotelIdParam) => {
+  const handlePartialUpdate = useCallback(
+    async (reservationId, updatedData) => {
+      const currentReservation = allReservations.find(
+        (res) => res._id === reservationId
+      );
+      if (!currentReservation) return;
+
+      // 날짜는 타임스탬프로 비교
+      const checkInChanged =
+        new Date(currentReservation.checkIn).getTime() !==
+        new Date(updatedData.checkIn).getTime();
+      const checkOutChanged =
+        new Date(currentReservation.checkOut).getTime() !==
+        new Date(updatedData.checkOut).getTime();
+
+      const hasOtherChanges =
+        currentReservation.customerName !== updatedData.customerName ||
+        currentReservation.phoneNumber !== updatedData.phoneNumber ||
+        currentReservation.price !== updatedData.price ||
+        checkInChanged ||
+        checkOutChanged ||
+        currentReservation.paymentMethod !== updatedData.paymentMethod ||
+        currentReservation.specialRequests !== updatedData.specialRequests;
+
+      if (!hasOtherChanges) {
+        console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
+        return;
+      }
+
       try {
+        // 낙관적 업데이트: 수정된 필드만 로컬 상태에 반영
+        setAllReservations((prev) => {
+          const newReservations = prev.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedData } : res
+          );
+          filterReservationsByDate(newReservations, selectedDate);
+          return newReservations;
+        });
+
+        // API 호출: 부분 업데이트 요청 (백엔드에서는 전달된 필드만 업데이트)
         await updateReservation(reservationId, updatedData, hotelId);
+        console.log(`예약 ${reservationId}가 부분 업데이트되었습니다.`);
+      } catch (error) {
+        console.error(`예약 ${reservationId} 부분 업데이트 실패:`, error);
+        alert('예약 수정에 실패했습니다. 다시 시도해주세요.');
         await loadReservations();
+      }
+    },
+    [
+      allReservations,
+      hotelId,
+      loadReservations,
+      selectedDate,
+      filterReservationsByDate,
+    ]
+  );
+
+  const handleEdit = useCallback(
+    async (reservationId, updatedData) => {
+      const currentReservation = allReservations.find(
+        (res) => res._id === reservationId
+      );
+      // 만약 roomInfo(객실타입)가 변경되면 사용자에게 확인
+      if (
+        currentReservation &&
+        currentReservation.roomInfo !== updatedData.roomInfo
+      ) {
+        const confirmed = window.confirm(
+          '객실타입이 변경됩니다. 이동하시겠습니까? (기본 가격으로 재설정됩니다.)'
+        );
+        if (!confirmed) return;
+        // 만약 확인하면 기본 가격(예: 해당 roomType의 기본 가격)으로 재설정
+        const matchedType = roomTypes.find(
+          (rt) =>
+            rt.roomInfo.toLowerCase() === updatedData.roomInfo.toLowerCase()
+        );
+        if (matchedType) {
+          updatedData.price = matchedType.price; // 기본 가격으로 설정 (원한다면 계산 추가)
+        }
+      }
+      // 이미 roomNumber가 동일하면 변경할 필요 없음
+      if (
+        currentReservation &&
+        currentReservation.roomInfo === updatedData.roomInfo &&
+        currentReservation.roomNumber === updatedData.roomNumber
+      ) {
+        return;
+      }
+
+      try {
+        // 낙관적 업데이트 (불변성 유지)
+        console.log('Updating local state with:', updatedData);
+        setAllReservations((prev) => {
+          const newReservations = prev.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedData } : res
+          );
+          filterReservationsByDate(newReservations, selectedDate);
+          return newReservations;
+        });
+
+        // API 호출: 실제 예약 업데이트 (updateReservation)
+        await updateReservation(reservationId, updatedData, hotelId);
         console.log(
-          `Reservation ${reservationId} updated for hotel ${hotelIdParam}`
+          `Reservation ${reservationId} updated for hotel ${hotelId}`
         );
       } catch (error) {
         console.error(`Failed to update reservation ${reservationId}:`, error);
         alert('예약 수정에 실패했습니다. 다시 시도해주세요.');
+        await loadReservations();
       }
     },
-    [loadReservations, hotelId]
+    [
+      allReservations,
+      hotelId,
+      loadReservations,
+      selectedDate,
+      filterReservationsByDate,
+      roomTypes,
+    ]
   );
 
   const handlePrevDay = useCallback(() => {
@@ -932,10 +1046,12 @@ const App = () => {
           address,
           phoneNumber: newPhoneNumber,
           otas,
+          _id, // 서버에서 받은 _id가 있을 수 있음
         } = newSettings;
+
         const hotelSettingsData = {
           hotelId: newHotelId,
-          hotelName: hotelName,
+          hotelName,
           totalRooms,
           roomTypes,
           otas:
@@ -943,70 +1059,35 @@ const App = () => {
               ? otas
               : availableOTAs.map((ota) => ({ name: ota, isActive: false })),
         };
-        const userSettings = {
-          email: newEmail,
-          address,
-          phoneNumber: newPhoneNumber,
-        };
-        if (isNewSetup) {
-          console.log('Using saveHotelSettings (POST)');
+
+        // 분기 처리: _id가 있거나 isNewSetup이 false이면 업데이트(PATCH), 아니면 등록(POST)
+        if (_id) {
+          console.log('We have _id => Using updateHotelSettings (PATCH)');
+          await updateHotelSettings(newHotelId, hotelSettingsData);
+        } else if (isNewSetup) {
+          console.log('No _id + isNewSetup => Using saveHotelSettings (POST)');
           await saveHotelSettings(hotelSettingsData);
         } else {
-          console.log('Using updateHotelSettings (PATCH)');
+          console.log(
+            'No _id but isNewSetup==false => fallback to update (PATCH)'
+          );
           await updateHotelSettings(newHotelId, hotelSettingsData);
         }
-        const userId = userInfo?.id || userInfo?._id;
-        if (userId) {
-          console.log('Updating user info');
-          try {
-            await updateUser(userId, userSettings);
-            setUserInfo((prev) => ({
-              ...prev,
-              email: newEmail,
-              address,
-              phoneNumber: newPhoneNumber,
-              hotelName: hotelName,
-            }));
-            localStorage.setItem(
-              'userInfo',
-              JSON.stringify({
-                ...userInfo,
-                email: newEmail,
-                address,
-                phoneNumber: newPhoneNumber,
-                hotelName: hotelName,
-              })
-            );
-          } catch (err) {
-            if (err.message && err.message.includes('권한이 없습니다')) {
-              console.warn(
-                'User update failed (403 - 권한이 없습니다), but settings saved.'
-              );
-            } else {
-              throw err;
-            }
-          }
-        } else {
-          console.warn('User ID not found. Skipping user update.');
-        }
+
         setHotelSettings(hotelSettingsData);
         setHotelAddress(address || '주소 정보 없음');
         setPhoneNumber(newPhoneNumber || '전화번호 정보 없음');
         setEmail(newEmail || '이메일 정보 없음');
         setHotelId(newHotelId);
         setIsNewSetup(false);
-        setShowSettingsModal(false);
         console.log('Hotel Settings and User Info Saved:', {
           ...hotelSettingsData,
-          ...userInfo,
         });
       } catch (error) {
         console.error('Failed to save hotel settings or user info:', error);
-        const errorMessage = error.response?.data?.message || error.message;
-        alert(`설정 저장 실패: ${errorMessage}`);
       }
     },
-    [isNewSetup, userInfo]
+    [isNewSetup]
   );
 
   useEffect(() => {
@@ -1031,18 +1112,12 @@ const App = () => {
         try {
           await loadHotelSettings(storedHotelId);
           await loadReservations();
-          const userInfoData = await fetchUserInfo(storedHotelId);
-          setUserInfo(userInfoData);
+          // userInfo 관련 호출은 삭제합니다.
           const fetchedHotelSettings = await fetchHotelSettings(storedHotelId);
           setHotelAddress(fetchedHotelSettings?.address || '주소 정보 없음');
         } catch (error) {
           console.error('초기 인증 및 데이터 로딩 실패:', error);
-          if (error.response && error.response.status === 403) {
-            const errorMessage = error.response.data.message;
-            if (errorMessage === '개인정보 동의가 필요합니다.') {
-              setNeedsConsent(true);
-            }
-          }
+          // 필요에 따라 개인정보 동의 처리 등은 그대로 둡니다.
         }
       } else {
         console.log('저장된 세션이 없습니다. 로그인 해주세요.');
@@ -1125,7 +1200,7 @@ const App = () => {
       checkOutDate,
       checkOutTime,
       reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-      roomInfo: roomTypes[0]?.type || 'Standard',
+      roomInfo: roomTypes[0]?.roomInfo || 'Standard',
       price: roomTypes[0]?.price?.toString() || '0',
       paymentMethod: 'Pending',
       specialRequests: '',
@@ -1170,7 +1245,7 @@ const App = () => {
         checkOutDate,
         checkOutTime,
         reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: roomTypes[0].type,
+        roomInfo: roomTypes[0].roomInfo,
         price: price.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
@@ -1205,7 +1280,7 @@ const App = () => {
         checkOutDate,
         checkOutTime,
         reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: roomTypes[0].type,
+        roomInfo: roomTypes[0].roomInfo,
         price: basePrice.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
@@ -1264,15 +1339,9 @@ const App = () => {
   }, [monthlyTotal]);
 
   const handleConsentComplete = useCallback(() => {
-    fetchUserInfo(hotelId)
-      .then((data) => {
-        setUserInfo(data);
-        setNeedsConsent(false);
-      })
-      .catch((error) => {
-        console.error('Failed to fetch user info after consent:', error);
-      });
-  }, [hotelId]);
+    // userInfo 관련 호출 제거 – 호텔 설정 페이지에서는 userInfo를 다루지 않습니다.
+    setNeedsConsent(false);
+  }, []);
 
   return (
     <div
@@ -1317,6 +1386,11 @@ const App = () => {
                 }
               />
 
+              <Route
+                path="/hotel-settings"
+                element={<HotelSettingsPage />} // <-- 추가
+              />
+
               {/* ★ 월간 달력 페이지 라우트 */}
               <Route
                 path="/monthly-calendar"
@@ -1345,11 +1419,11 @@ const App = () => {
                       isShining={isShining}
                       otaToggles={otaToggles}
                       onToggleOTA={handleToggleOTA}
-                      onSort={handleSort}
+                      // onSort={handleSort}
                       onDateChange={handleDateChange}
                       onMemo={handleMemoButtonClick}
                       flipAllMemos={flipAllMemos}
-                      sortOrder={sortOrder}
+                      // sortOrder={sortOrder}
                       hasLowStock={hasLowStock}
                       lowStockRoomTypes={lowStockRoomTypes}
                       onMonthlyView={() => navigate('/monthly-calendar')}
@@ -1375,7 +1449,7 @@ const App = () => {
                       monthlySoldRooms={monthlySoldRooms}
                       avgMonthlyRoomPrice={avgMonthlyRoomPrice}
                       onLogout={handleLogout}
-                      openSettingsModal={openSettingsModal}
+                      // openSettingsModal={openSettingsModal}
                       dailyBreakdown={dailyBreakdown}
                       phoneNumber={phoneNumber}
                       email={email}
@@ -1399,33 +1473,37 @@ const App = () => {
                     <div className="main-content" style={{ flex: '1' }}>
                       <div className="split-view-layout">
                         <div className="left-pane">
-                          <RoomGrid
-                            reservations={activeReservations}
-                            onDelete={handleDelete}
-                            onConfirm={handleConfirm}
-                            onEdit={handleEdit}
-                            onReservationSelect={handleReservationSelect}
-                            loadedReservations={loadedReservations}
-                            hotelId={hotelId}
-                            highlightFirstCard={true}
-                            hotelAddress={hotelAddress}
-                            phoneNumber={phoneNumber}
-                            email={email}
-                            roomTypes={roomTypes}
-                            memos={memos}
-                            setMemos={setMemos}
-                            searchCriteria={searchCriteria}
-                            isSearching={isSearching}
-                            highlightedReservationIds={
-                              highlightedReservationIds
-                            }
-                            headerHeight={140}
-                            newlyCreatedId={newlyCreatedId}
-                            flipAllMemos={flipAllMemos}
-                            sortOrder={sortOrder}
-                            needsConsent={needsConsent}
-                            monthlyDailyBreakdown={monthlyDailyBreakdown}
-                          />
+                          <DndProvider backend={HTML5Backend}>
+                            <RoomGrid
+                              reservations={activeReservations}
+                              onDelete={handleDelete}
+                              onConfirm={handleConfirm}
+                              onEdit={handleEdit}
+                              onPartialUpdate={handlePartialUpdate}
+                              onReservationSelect={handleReservationSelect}
+                              loadedReservations={loadedReservations}
+                              hotelId={hotelId}
+                              hotelSettings={hotelSettings}
+                              highlightFirstCard={true}
+                              hotelAddress={hotelAddress}
+                              phoneNumber={phoneNumber}
+                              email={email}
+                              roomTypes={roomTypes}
+                              memos={memos}
+                              setMemos={setMemos}
+                              searchCriteria={searchCriteria}
+                              isSearching={isSearching}
+                              highlightedReservationIds={
+                                highlightedReservationIds
+                              }
+                              headerHeight={140}
+                              newlyCreatedId={newlyCreatedId}
+                              flipAllMemos={flipAllMemos}
+                              needsConsent={needsConsent}
+                              monthlyDailyBreakdown={monthlyDailyBreakdown}
+                              selectedDate={selectedDate}
+                            />
+                          </DndProvider>
                         </div>
                         <div className="right-pane">
                           {selectedReservation && (
@@ -1451,23 +1529,6 @@ const App = () => {
                         />
                       )}
                     </div>
-                    {showSettingsModal && (
-                      <HotelSettings
-                        onClose={closeSettingsModal}
-                        onSave={handleSaveSettings}
-                        existingSettings={{
-                          ...hotelSettings,
-                          hotelName: hotelSettings?.hotelName,
-                          ...userInfo,
-                          otas:
-                            hotelSettings?.otas ||
-                            availableOTAs.map((ota) => ({
-                              name: ota,
-                              isActive: false,
-                            })),
-                        }}
-                      />
-                    )}
                     <SalesModal
                       isOpen={isSalesModalOpen}
                       onRequestClose={closeSalesModal}

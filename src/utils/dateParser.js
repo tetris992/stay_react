@@ -1,5 +1,3 @@
-// frontend/src/utils/dateParser.js
-
 import { parse, isValid } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 
@@ -18,25 +16,31 @@ const cleanString = (str) => {
 };
 
 export const parseDate = (dateString) => {
+  if (!dateString) return null;
+  
   // 캐시에 있는 경우 반환
   if (parsedDateCache[dateString] !== undefined) {
     return parsedDateCache[dateString];
   }
-
+  
+  // ISO 형식 등에서 시간대 정보를 제거하여 로컬 시간으로 처리
+  // 예: "2025-02-14T07:00:00.000+00:00" → "2025-02-14T07:00:00.000"
+  const localDateString = dateString.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
+  
   // 전처리
-  let cleanedDateString = cleanString(dateString);
-
-  // 개발 모드에서만 전처리된 문자열 로그 출력
+  let cleanedDateString = cleanString(localDateString);
+  
+  // 개발 모드에서 전처리된 문자열 로그 출력
   if (process.env.NODE_ENV === 'development') {
     console.log(
-      `Cleaned Date String: "${cleanedDateString}" [length: ${cleanedDateString.length}]`
+      `Cleaned Local Date String: "${cleanedDateString}" [length: ${cleanedDateString.length}]`
     );
   }
-
+  
   const dateFormats = [
-    // 한국어 날짜 형식
-    "yyyy-MM-dd'T'HH:mm",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS", // ISO 형식(시간대 제거)
     "yyyy-MM-dd'T'HH:mm:ss",
+    "yyyy-MM-dd'T'HH:mm",
     'yyyy년 M월 d일 HH:mm',
     'yyyy년 MM월 dd일 HH:mm',
     'yyyy년 M월 d일',
@@ -44,7 +48,7 @@ export const parseDate = (dateString) => {
     'yyyy.MM.dd HH:mm',
     'yyyy.MM.dd',
     'yyyy.MM.dd HH:mm:ss',
-    // 영어 날짜 형식
+    // 영어 형식
     'dd MMM yyyy HH:mm',
     'dd MMM yyyy',
     'MMM dd, yyyy HH:mm',
@@ -56,8 +60,6 @@ export const parseDate = (dateString) => {
     'd MMM yyyy HH:mm:ss',
     'MMM d, yyyy',
     'MMM d, yyyy HH:mm',
-    // ISO 형식
-    "yyyy-MM-dd'T'HH:mm:ss.SSSxxx",
     // 기타 형식
     'yyyy-MM-dd HH:mm',
     'yyyy-MM-dd HH:mm:ss',
@@ -76,24 +78,19 @@ export const parseDate = (dateString) => {
   const locales = [ko, enUS];
 
   let parsedDate = null;
-
-  // 여러 로케일에 대해 시도
   for (let locale of locales) {
     for (let formatString of dateFormats) {
-      const parsed = parse(cleanedDateString, formatString, new Date(), {
-        locale,
-      });
+      const parsed = parse(cleanedDateString, formatString, new Date(), { locale });
       if (isValid(parsed)) {
         parsedDate = parsed;
-        parsedDateCache[dateString] = parsedDate; // 캐시에 저장
+        parsedDateCache[dateString] = parsedDate;
         return parsedDate;
       }
     }
   }
 
-  // 파싱에 실패한 경우만 로그 출력
   if (process.env.NODE_ENV === 'development') {
-    console.error(`Failed to parse date: "${dateString}"`);
+    console.error(`Failed to parse local date: "${dateString}"`);
   }
   parsedDateCache[dateString] = null;
   return null;

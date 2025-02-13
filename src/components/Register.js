@@ -1,3 +1,4 @@
+// Register.js
 import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
@@ -6,12 +7,12 @@ import PropTypes from 'prop-types';
 
 const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [hotelId, setHotelId] = useState('');
-  // 수정된 부분: hotelName 상태 추가
   const [hotelName, setHotelName] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false); // 동의 체크 상태 추가
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -20,9 +21,14 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
     setIsProcessing(true);
     setError('');
 
+    if (!consentChecked) {
+      setError('회원가입을 위해 개인정보 사용 및 서비스 약관에 동의하셔야 합니다.');
+      setIsProcessing(false);
+      return;
+    }
+
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
-      // 수정된 부분: hotelName도 포함하여 userData 구성
       const userData = {
         hotelId: normalizedHotelId,
         hotelName: hotelName.trim(),
@@ -30,6 +36,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
         email: email.trim(),
         address: address.trim(),
         phoneNumber: phoneNumber.trim(),
+        consentChecked, // 동의 여부를 백엔드로 전달
       };
       await registerUser(userData);
       alert('회원가입이 완료되었습니다. 이제 로그인하세요.');
@@ -37,7 +44,6 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
     } catch (error) {
       console.error('회원가입 실패:', error);
       const message = error?.message || '회원가입 중 오류가 발생했습니다.';
-      console.log('설정된 오류 메시지:', message);
       setError(message);
     } finally {
       setIsProcessing(false);
@@ -49,7 +55,6 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       <form onSubmit={handleRegister} className="register-form">
         <h2>회원가입</h2>
         {error && <p className="error">{error}</p>}
-        {/* 수정된 부분: 호텔 이름 입력란 추가 */}
         <input
           type="text"
           placeholder="호텔 이름"
@@ -98,6 +103,21 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           required
           aria-label="전화번호"
         />
+
+        {/* 개인정보 및 서비스 약관 동의 체크박스 */}
+        <div className="consent-container">
+          <input
+            type="checkbox"
+            id="consentCheckbox"
+            checked={consentChecked}
+            onChange={(e) => setConsentChecked(e.target.checked)}
+            required
+          />
+          <label htmlFor="consentCheckbox">
+            개인정보 사용 및 서비스 약관 동의
+          </label>
+        </div>
+
         <button type="submit" disabled={isProcessing}>
           {isProcessing ? '회원가입 중...' : '회원가입'}
         </button>

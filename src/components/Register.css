@@ -81,3 +81,18 @@
 .login-link:hover {
   text-decoration: underline;
 }
+
+.consent-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.consent-container input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.consent-container label {
+  font-size: 0.9rem;
+  color: #333;
+}

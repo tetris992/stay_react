@@ -1,0 +1,411 @@
+/* ===============================
+   [기본 구조] HotelSettings (기본정보/타입 설정) + LayoutEditor + DailyBoard
+   =============================== */
+
+/* 전역 폰트 크기: 18px 이상 */
+body,
+html {
+  height: 100%;
+  margin: 0;
+  font-size: 18px; /* 모든 요소 기본 18px */
+  font-family: 'Helvetica', 'Arial', sans-serif;
+  box-sizing: border-box;
+}
+
+/* 메인 컨테이너 (hotel-settings-page) */
+.hotel-settings-page {
+  min-height: 100vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+  /* 만약 헤더 높이가 60px라면 */
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+/* -------------------------------
+   타이틀, 섹션 헤더, 에러/정보
+------------------------------- */
+.hotel-settings-page h1 {
+  margin-bottom: 1.5rem;
+  font-size: 2rem; /* 약 36px */
+  font-weight: bold;
+  line-height: 1.2;
+}
+.section h3,
+.hotel-info-section h2,
+.room-types-section h2,
+.layout-section h2,
+.preview-section h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.67rem; /* 약 30px */
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.error {
+  color: red;
+  margin: 0.5rem 0;
+  font-size: 1rem; /* 18px */
+}
+.info {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1rem; /* 18px */
+}
+
+/* -------------------------------
+   섹션 레이아웃 공통
+------------------------------- */
+.section,
+.hotel-info-section,
+.room-types-section,
+.layout-section,
+.preview-section {
+  margin-bottom: 2rem;
+}
+
+/* -------------------------------
+   객실 타입 설정 부분
+------------------------------- */
+.room-type_setting {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 1rem; /* 18px */
+}
+
+.room-type_setting input {
+  margin-right: 8px;
+  margin-bottom: 4px;
+  font-size: 1rem; /* 18px */
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* 한 줄에 여러 필드 (한글,영어,가격,재고) */
+.horizontal-fields {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.alias-inputs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* -------------------------------
+   버튼들
+------------------------------- */
+.add_button,
+.save-button,
+.cancel-button,
+.delete-roomType {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1rem; /* 좀 더 크게 */
+  margin-right: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 1rem; /* 18px */
+}
+
+.add_button:hover,
+.save-button:hover,
+.cancel-button:hover,
+.delete-roomType:hover {
+  background-color: #0056b3;
+}
+
+/* 취소 버튼 색 */
+.cancel-button {
+  background-color: #6c757d;
+}
+.cancel-button:hover {
+  background-color: #495057;
+}
+
+/* 삭제 버튼 색 */
+.delete-roomType {
+  background-color: #dc3545;
+}
+.delete-roomType:hover {
+  background-color: #b02a37;
+}
+
+/* 버튼 컨테이너 */
+.buttons_container {
+  margin-top: 1rem;
+}
+.buttons_container .buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* 수정 or 추가 */
+.horizontal-fields {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.room-type_setting input {
+  flex: 1;
+  min-width: 100px;
+  font-size: 1rem; /* 18px */
+}
+
+/* ===============================
+   [2] LayoutEditor (레이아웃 편집) 스타일
+   =============================== */
+.layout-editor-section {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  font-size: 1rem; /* 18px */
+}
+
+.layout-editor-section .layout-control {
+  margin-bottom: 0.5rem;
+}
+
+.layout-inputs label {
+  margin-right: 8px;
+  font-size: 1rem; /* 18px */
+}
+.layout-inputs input {
+  font-size: 1rem; /* 18px */
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* grid 미리보기 */
+.grid-preview {
+  display: grid;
+  gap: 4px;
+  margin-top: 1rem;
+}
+.grid-cell {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 6px;
+  /* grid-template-columns에서 이미 너비를 지정하거나, 아래처럼 고정 너비 설정 */
+  /* width: 250px; */
+  height: 350px; /* 예약 카드의 높이와 일치 */
+  position: relative;
+  background-color: #fafafa;
+  overflow: hidden; /* 내부 스크롤 제거 */
+}
+.grid-cell .cell-label {
+  font-size: 1rem; /* 18px (이전 0.8rem → 1rem) */
+  margin-bottom: 4px;
+}
+.grid-cell .cell-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.grid-cell select {
+  font-size: 1rem; /* 18px */
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* ===============================
+   [3] DailyBoard (드래그&드롭) 스타일
+   =============================== */
+.daily-board-container {
+  display: flex;
+  gap: 20px;
+  padding: 10px;
+  margin-top: 1rem;
+  font-size: 1rem; /* 18px */
+}
+
+/* 미배정 예약 패널 */
+.unassigned-area {
+  width: 220px;
+  background-color: #f8f9fa;
+  border: 1px solid #ccc;
+  padding: 10px;
+  flex-shrink: 0;
+  max-height: 400px; /* 스크롤 */
+  overflow-y: auto;
+}
+
+/* 객실 그리드 */
+.grid-area {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-height: 330px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  padding: 8px;
+  max-height: 400px; /* 스크롤 */
+  overflow-y: auto;
+  font-size: 1rem;
+}
+
+/* 컨테이너 박스 (각 객실 칸) */
+.container-box {
+  border: 2px dashed #ccc;
+  border-radius: 4px;
+  min-height: 60px;
+  background-color: #fff;
+  padding: 4px;
+  transition: background-color 0.3s;
+  display: flex;
+  flex-direction: column;
+  font-size: 1rem; /* 18px */
+}
+.container-box.hovered {
+  background-color: #d1f7c4;
+}
+
+/* 예약 카드 목록(스크롤) */
+.reservation-list {
+  flex: 1;
+  /* overflow-y: auto; */
+  max-height: 330px;
+}
+
+/* 예약 카드 */
+.reservation-card {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  margin-bottom: 6px;
+  padding: 6px;
+  cursor: move;
+  font-size: 1rem; /* 18px */
+}
+
+/* 모달 백드롭 (선택) */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+}
+
+/* close-button */
+.close-button {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem; /* 21.6px */
+  cursor: pointer;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+}
+
+/* layout-editor-modal (선택) */
+.layout-editor-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 700px;
+  max-width: 90%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 1px solid #ccc;
+  z-index: 1000;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 1rem;
+}
+.layout-editor-content {
+  padding: 1rem;
+  position: relative;
+}
+
+/* 추가 섹션 */
+.hotel-basicinfo-section,
+.hotel-info-section {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  margin-bottom: 1rem;
+  font-size: 1rem; /* 18px */
+}
+.room-types-section {
+  padding: 1rem;
+  border: 1px solid #ddd;
+  margin-bottom: 1rem;
+  font-size: 1rem; /* 18px */
+}
+
+/* 레이아웃 섹션 컨테이너 */
+.layout-editor-section {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  font-size: 1rem; /* 섹션 내 기본 폰트 1rem */
+}
+
+.layout-editor-section .layout-inputs label {
+  margin-right: 8px;
+  font-size: 1rem;
+}
+.layout-editor-section .layout-inputs input,
+.layout-editor-section .layout-inputs select {
+  font-size: 1rem; /* 1rem으로 통일 */
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* placeholder만 0.8rem */
+.layout-editor-section input::placeholder,
+.layout-editor-section select::placeholder {
+  font-size: 0.8rem;
+  color: #999; /* 필요 시 */
+}
+
+/* grid 미리보기 */
+.grid-preview {
+  display: grid;
+  gap: 4px;
+  margin-top: 1rem;
+}
+.grid-cell {
+  position: relative;
+  height: 400px;
+  width: 100%;
+  min-width: 300px;
+  max-width: 500px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fafafa;
+  /* 패딩 제거 */
+  padding: 0;
+}
+.grid-cell .cell-label {
+  font-size: 1rem; /* 일관되게 1rem */
+  margin-bottom: 4px;
+}
+.grid-cell .cell-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.grid-cell .cell-inputs input,
+.grid-cell .cell-inputs select {
+  font-size: 1rem;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+.grid-cell .cell-inputs input::placeholder {
+  font-size: 0.8rem; /* 플레이스홀더 크기만 살짝 작게 */
+  color: #aaa;
+}

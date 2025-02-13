@@ -37,6 +37,7 @@ const Login = ({ onLogin }) => {
       });
 
       console.log('로그인 성공:', accessToken, isRegistered);
+      
       onLogin(accessToken, normalizedHotelId);
       setLoginAttempts(0);
       setError('');
@@ -166,7 +167,7 @@ const Login = ({ onLogin }) => {
           onClose={() => setShowHotelSettings(false)}
           onSave={() => {
             setShowHotelSettings(false);
-            alert('호텔 설정이 완료되었습니다. 이제 로그인하세요.');
+            alert('회원가입이 완료되었습니다. 이제 로그인하세요.');
           }}
         />
       )}

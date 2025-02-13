@@ -1,3 +1,4 @@
+// src/components/MonthlyCalendar.js
 import React, { useMemo, useState } from 'react';
 import {
   format,
@@ -8,18 +9,19 @@ import {
   startOfWeek,
   endOfWeek,
 } from 'date-fns';
-import { ko } from 'date-fns/locale'; // 한국어 locale 임포트
+import { ko } from 'date-fns/locale';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
 import './MonthlyCalendar.css';
 
 /**
  * 각 날짜별 객실 재고 계산 (예시)
- * 실제 로직은 예약 데이터와 객실타입 총 재고에 따라 달라질 수 있음.
+ * 실제 로직은 예약 데이터와 객실 정보(룸인포) 총 재고에 따라 달라질 수 있음.
  */
 const getInventoryForDate = (date, roomTypes, reservations = []) => {
   const inventory = {};
   roomTypes.forEach((rt) => {
-    inventory[rt.type] = Number(rt.stock) || 0;
+    // 변경: rt.type → rt.roomInfo
+    inventory[rt.roomInfo] = Number(rt.stock) || 0;
   });
   reservations.forEach((res) => {
     const checkIn = new Date(res.checkIn);
@@ -29,9 +31,9 @@ const getInventoryForDate = (date, roomTypes, reservations = []) => {
     const inStr = format(checkIn, 'yyyy-MM-dd');
     const outStr = format(checkOut, 'yyyy-MM-dd');
     if (dayStr >= inStr && dayStr < outStr) {
-      const rt = res.roomInfo;
-      if (inventory[rt] !== undefined) {
-        inventory[rt] -= 1;
+      const roomInfo = res.roomInfo;
+      if (inventory[roomInfo] !== undefined) {
+        inventory[roomInfo] -= 1;
       }
     }
   });
@@ -65,17 +67,17 @@ const MonthlyCalendar = ({
     [gridStart, gridEnd]
   );
 
-  // 드래그 범위 선택 상태: { roomType, start, end }
+  // 드래그 범위 선택 상태: { roomInfo, start, end }
   const [selectedRange, setSelectedRange] = useState(null);
 
-  // 개별 객실타입 영역에서 마우스 다운 시 선택 시작
-  const handleRoomTypeMouseDown = (day, roomType) => {
-    setSelectedRange({ roomType, start: day, end: day });
+  // 개별 객실 영역에서 마우스 다운 시 선택 시작 (여기서 전달되는 값은 roomInfo)
+  const handleRoomTypeMouseDown = (day, roomInfo) => {
+    setSelectedRange({ roomInfo, start: day, end: day });
   };
 
-  // 같은 객실타입 영역에서 마우스 엔터 시 선택 범위 업데이트
-  const handleRoomTypeMouseEnter = (day, roomType) => {
-    if (selectedRange && selectedRange.roomType === roomType) {
+  // 같은 객실 영역에서 마우스 엔터 시 선택 범위 업데이트
+  const handleRoomTypeMouseEnter = (day, roomInfo) => {
+    if (selectedRange && selectedRange.roomInfo === roomInfo) {
       setSelectedRange((prev) => ({ ...prev, end: day }));
     }
   };
@@ -83,7 +85,7 @@ const MonthlyCalendar = ({
   // 드래그가 끝나면 선택 범위를 확정하고 재고 확인 후, 확인 메시지 표시
   const handleRoomTypeMouseUp = () => {
     if (selectedRange) {
-      const { roomType, start, end } = selectedRange;
+      const { roomInfo, start, end } = selectedRange;
       const rangeStart = start < end ? start : end;
       const rangeEnd = start < end ? end : start;
 
@@ -92,7 +94,7 @@ const MonthlyCalendar = ({
       let current = rangeStart;
       while (current <= rangeEnd) {
         const inventory = getInventoryForDate(current, roomTypes, reservations);
-        if (inventory[roomType] <= 0) {
+        if (inventory[roomInfo] <= 0) {
           insufficientDays.push(
             format(current, 'yyyy년 MM월 dd일 (eee)', { locale: ko })
           );
@@ -103,25 +105,24 @@ const MonthlyCalendar = ({
         alert(
           `경고: ${insufficientDays.join(
             ', '
-          )}에 ${roomType} 객실 재고가 부족합니다.`
+          )}에 ${roomInfo} 객실 재고가 부족합니다.`
         );
         setSelectedRange(null);
         return;
       }
 
-      // 확인 메시지 표시: 선택한 기간에 예약을 진행할지 확인
+      // 확인 메시지 표시: 선택한 기간에 예약 진행 여부 확인
       const confirmMessage = `선택한 기간 (${format(
         rangeStart,
         'yyyy년 MM월 dd일',
         { locale: ko }
       )} ~ ${format(rangeEnd, 'yyyy년 MM월 dd일', {
         locale: ko,
-      })})에 ${roomType} 객실 예약을 진행하시겠습니까?`;
+      })})에 ${roomInfo} 객실 예약을 진행하시겠습니까?`;
       if (window.confirm(confirmMessage)) {
         if (typeof onRangeSelect === 'function') {
-          onRangeSelect(rangeStart, rangeEnd, roomType);
+          onRangeSelect(rangeStart, rangeEnd, roomInfo);
         }
-        // 선택 후 월간 모드 닫기
         if (typeof onReturnView === 'function') {
           onReturnView();
         }
@@ -130,10 +131,10 @@ const MonthlyCalendar = ({
     }
   };
 
-  // 해당 날짜와 객실타입이 선택된 범위 내에 있는지 판단
-  const isRoomTypeSelected = (day, roomType) => {
+  // 해당 날짜와 객실이 선택된 범위 내에 있는지 판단
+  const isRoomTypeSelected = (day, roomInfo) => {
     if (!selectedRange) return false;
-    if (selectedRange.roomType !== roomType) return false;
+    if (selectedRange.roomInfo !== roomInfo) return false;
     const rangeStart =
       selectedRange.start < selectedRange.end
         ? selectedRange.start
@@ -145,7 +146,7 @@ const MonthlyCalendar = ({
     return day >= rangeStart && day <= rangeEnd;
   };
 
-  // 각 날짜별 총 잔여재고(모든 객실타입 합계)를 계산하는 헬퍼 함수
+  // 각 날짜별 총 잔여재고(모든 객실 합계) 계산
   const getTotalInventory = (date) => {
     const inventory = getInventoryForDate(date, roomTypes, reservations);
     return Object.values(inventory).reduce((sum, val) => sum + val, 0);
@@ -176,8 +177,6 @@ const MonthlyCalendar = ({
           </button>
         )}
       </div>
-
-      {/* 고정된 요일 헤더: locked 상태일 때 보임 */}
       {isLocked && (
         <div className="weekday-header">
           {['일', '월', '화', '수', '목', '금', '토'].map((dayName) => {
@@ -193,10 +192,8 @@ const MonthlyCalendar = ({
           })}
         </div>
       )}
-      {/* 고정모드일 때 .locked 클래스를 추가하여 그리드 컬럼을 7열로 고정 */}
       <div className={`calendar-grid ${isLocked ? 'locked' : ''}`}>
         {days.map((day) => {
-          // 달력 범위(calendarStart ~ calendarEnd) 밖의 날짜는 흐리게 표시 (옵션)
           const isOutside = day < calendarStart || day > calendarEnd;
           const inventory = getInventoryForDate(day, roomTypes, reservations);
           const totalInventory = getTotalInventory(day);
@@ -212,20 +209,23 @@ const MonthlyCalendar = ({
               </div>
               <div className="cell-content">
                 {roomTypes.map((rt) => {
-                  const selected = isRoomTypeSelected(day, rt.type);
+                  // 변경: rt.type → rt.roomInfo
+                  const selected = isRoomTypeSelected(day, rt.roomInfo);
                   return (
                     <div
-                      key={rt.type}
+                      key={rt.roomInfo}
                       className={`room-type ${
                         selected ? 'selected-room-type' : ''
                       }`}
-                      onMouseDown={() => handleRoomTypeMouseDown(day, rt.type)}
+                      onMouseDown={() =>
+                        handleRoomTypeMouseDown(day, rt.roomInfo)
+                      }
                       onMouseEnter={() =>
-                        handleRoomTypeMouseEnter(day, rt.type)
+                        handleRoomTypeMouseEnter(day, rt.roomInfo)
                       }
                       onMouseUp={handleRoomTypeMouseUp}
                     >
-                      {rt.type} : {inventory[rt.type] ?? 0}
+                      {rt.roomInfo} : {inventory[rt.roomInfo] ?? 0}
                     </div>
                   );
                 })}

@@ -130,11 +130,11 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
     // 1. 우선, 정확하거나 부분 문자열 매칭 시도
     for (const roomType of roomTypes) {
       const candidates = [
-        roomType.type,
+        roomType.roomInfo, // 기존 roomType.type 대신 roomType.roomInfo 사용
         roomType.nameKor,
         roomType.nameEng,
         ...(roomType.aliases || [])
-      ].filter(Boolean); // falsy한 값(예: null, undefined) 제거
+      ].filter(Boolean);
 
       for (const candidate of candidates) {
         try {
@@ -149,7 +149,6 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
             return roomType;
           }
         } catch (e) {
-          // 개별 후보 처리 중 문제가 발생하면 에러 로그를 남기고 계속 진행
           console.error(`Error processing candidate "${candidate}": ${e.message}`);
           continue;
         }
@@ -164,7 +163,7 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
 
     roomTypes.forEach((roomType) => {
       const candidates = [
-        roomType.type,
+        roomType.roomInfo, // 기존 roomType.type 대신 roomType.roomInfo 사용
         roomType.nameKor,
         roomType.nameEng,
         ...(roomType.aliases || [])
@@ -184,10 +183,8 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
 
         candidateTokens.forEach((ct) => {
           comparisons++;
-          // 접미사 "룸" 제거 후 토큰 비교
           const ctNoRoom = removeRoomSuffix(ct);
           let tokenMatch = false;
-          // roomTokens 중 하나라도 정확히 일치하는지 확인
           for (const rt of roomTokens) {
             const rtNoRoom = removeRoomSuffix(rt);
             if (rt === ct || rtNoRoom === ctNoRoom) {
@@ -198,7 +195,6 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
           if (tokenMatch) {
             scoreSum += 1;
           } else {
-            // 각 후보 토큰과 roomTokens 간의 최대 유사도를 구함
             let maxSim = 0;
             roomTokens.forEach((rt) => {
               const rtNoRoom = removeRoomSuffix(rt);
