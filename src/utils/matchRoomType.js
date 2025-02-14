@@ -103,12 +103,7 @@ function removeRoomSuffix(str) {
 
 /**
  * 예약의 roomInfo와 호텔 세팅의 객실타입(및 별칭)을 비교하여 매칭된 객실타입 객체를 반환합니다.
- *
- * 개선된 사항:
- * - 입력값에 대한 타입 및 유효성 검증
- * - 후보 문자열 및 토큰 처리 중 발생할 수 있는 예외를 개별 try-catch로 처리하여
- *   다른 후보의 매칭에 영향을 주지 않도록 함
- * - fuzzy matching 임계치를 약간 높여(0.5) 엄격하게 매칭하도록 조정 (필요 시 조정 가능)
+ * 가격은 매칭 기준에서 제외합니다.
  *
  * @param {string} roomInfo - 예약의 roomInfo 값
  * @param {Array} [roomTypes=defaultRoomTypes] - 객실타입 배열
@@ -159,11 +154,11 @@ export const matchRoomType = (roomInfo, roomTypes = defaultRoomTypes) => {
     const roomTokens = tokenize(cleanedRoomInfo);
     let bestMatch = null;
     let bestScore = 0;
-    const threshold = 0.5; // 필요에 따라 조정(예: 0.4 ~ 0.6)
+    const threshold = 0.5; // 필요에 따라 조정 (예: 0.4 ~ 0.6)
 
     roomTypes.forEach((roomType) => {
       const candidates = [
-        roomType.roomInfo, // 기존 roomType.type 대신 roomType.roomInfo 사용
+        roomType.roomInfo,
         roomType.nameKor,
         roomType.nameEng,
         ...(roomType.aliases || [])

@@ -111,7 +111,6 @@ function buildDailySalesByOTA(reservations, targetDate) {
   return { labels, dailySalesByOTA };
 }
 
-
 function buildMonthlyDailyBreakdown(reservations, targetDate) {
   const monthStart = startOfMonth(targetDate);
   const monthEnd = endOfMonth(targetDate);
@@ -466,12 +465,16 @@ const App = () => {
     }
   }, [allReservations, selectedDate]);
 
+  function isOtaReservation(reservation) {
+    return availableOTAs.includes(reservation.siteName);
+  }
+
   const processReservation = useCallback(
     (res) => {
       const { price, isDefault } = extractPrice(res.priceString || res.price);
       let totalPrice = price;
       let isDefaultPriceFlag = isDefault;
-      if (totalPrice <= 0) {
+      if (!isOtaReservation(res) && totalPrice <= 0) {
         const roomType = matchRoomType(res.roomInfo);
         totalPrice = roomType?.price || 0;
         isDefaultPriceFlag = false;
@@ -771,25 +774,23 @@ const App = () => {
       const currentReservation = allReservations.find(
         (res) => res._id === reservationId
       );
-      // 만약 roomInfo(객실타입)가 변경되면 사용자에게 확인
+
       if (
         currentReservation &&
-        currentReservation.roomInfo !== updatedData.roomInfo
+        availableOTAs.includes(currentReservation.siteName)
       ) {
-        const confirmed = window.confirm(
-          '객실타입이 변경됩니다. 이동하시겠습니까? (기본 가격으로 재설정됩니다.)'
-        );
-        if (!confirmed) return;
-        // 만약 확인하면 기본 가격(예: 해당 roomType의 기본 가격)으로 재설정
-        const matchedType = roomTypes.find(
-          (rt) =>
-            rt.roomInfo.toLowerCase() === updatedData.roomInfo.toLowerCase()
-        );
-        if (matchedType) {
-          updatedData.price = matchedType.price; // 기본 가격으로 설정 (원한다면 계산 추가)
+        if (!updatedData.manualAssignment) {
+          // 자동 배정 시: OTA 예약은 미배정 처리
+          updatedData.roomNumber = '';
+          updatedData.price = currentReservation.price;
+        } else {
+          // 수동 배정 시: 가격은 그대로 유지하고, 사용자가 드래그한 컨테이너의 roomInfo와 roomNumber를 그대로 사용
+          updatedData.price = currentReservation.price;
+          // updatedData.roomInfo는 drop 이벤트에서 전달된 값을 그대로 유지
         }
       }
-      // 이미 roomNumber가 동일하면 변경할 필요 없음
+
+      // 이미 roomInfo와 roomNumber가 동일하면 업데이트 생략
       if (
         currentReservation &&
         currentReservation.roomInfo === updatedData.roomInfo &&
@@ -799,8 +800,6 @@ const App = () => {
       }
 
       try {
-        // 낙관적 업데이트 (불변성 유지)
-        console.log('Updating local state with:', updatedData);
         setAllReservations((prev) => {
           const newReservations = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedData } : res
@@ -809,7 +808,6 @@ const App = () => {
           return newReservations;
         });
 
-        // API 호출: 실제 예약 업데이트 (updateReservation)
         await updateReservation(reservationId, updatedData, hotelId);
         console.log(
           `Reservation ${reservationId} updated for hotel ${hotelId}`
@@ -826,7 +824,6 @@ const App = () => {
       loadReservations,
       selectedDate,
       filterReservationsByDate,
-      roomTypes,
     ]
   );
 
@@ -1159,7 +1156,7 @@ const App = () => {
       loadReservations();
       const intervalId = setInterval(() => {
         loadReservations();
-      }, 5 * 60 * 1000);
+      }, 120 * 60 * 1000);
       return () => clearInterval(intervalId);
     }
   }, [isAuthenticated, hotelId, loadReservations, isLoading]);

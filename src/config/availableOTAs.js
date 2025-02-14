@@ -1,7 +1,7 @@
 // src/config/availableOTAs.js
 
 const availableOTAs = [
-  'Yanolja',
+  'YanoljaMotel',
   'GoodHotel',
   'GoodMotel',
   'Agoda',

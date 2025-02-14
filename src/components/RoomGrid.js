@@ -28,9 +28,47 @@ import { matchRoomType } from '../utils/matchRoomType';
 // DnD hooks
 import { useDrag, useDrop } from 'react-dnd';
 
-// -------------------------------------------------------------------
-// Helper 함수: getBorderColor (예약 카드 테두리 색상 결정)
-// -------------------------------------------------------------------
+/* ===============================
+   HELPER FUNCTIONS
+=============================== */
+// OTA 예약 판별
+function isOtaReservation(reservation) {
+  return availableOTAs.includes(reservation.siteName);
+}
+
+// 컨테이너 배열 정렬 (숫자 우선)
+function sortContainers(containers) {
+  return containers.sort((a, b) => {
+    const aNum = parseInt(a.roomNumber, 10);
+    const bNum = parseInt(b.roomNumber, 10);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum;
+    }
+    return a.roomNumber.localeCompare(b.roomNumber);
+  });
+}
+
+// 각 객실타입별로 이미 배정된 roomNumber 목록 계산
+function getTypeAssignments(reservations, roomTypes) {
+  const typeAssignments = {};
+  roomTypes.forEach((rt) => {
+    const typeKey = rt.roomInfo.toLowerCase();
+    typeAssignments[typeKey] = reservations
+      .filter(
+        (r) =>
+          r.roomInfo &&
+          r.roomInfo.toLowerCase() === typeKey &&
+          r.roomNumber &&
+          r.roomNumber.trim() !== ''
+      )
+      .map((r) => r.roomNumber);
+  });
+  return typeAssignments;
+}
+
+/* ===============================
+   기존 getBorderColor 함수 (변경없음)
+=============================== */
 function getBorderColor(reservation) {
   try {
     const ci = reservation.parsedCheckInDate;
@@ -61,10 +99,9 @@ function getBorderColor(reservation) {
   }
 }
 
-// -------------------------------------------------------------------
-// [A] DraggableReservationCard 컴포넌트
-// 예약 카드에 useDrag를 적용하여 드래그가 가능하도록 함.
-// -------------------------------------------------------------------
+/* ===============================
+   [A] DraggableReservationCard 컴포넌트 (변경없음)
+=============================== */
 const DraggableReservationCard = React.memo(
   ({
     reservation,
@@ -331,10 +368,9 @@ DraggableReservationCard.propTypes = {
   loadedReservations: PropTypes.array, // 선택적
 };
 
-// -------------------------------------------------------------------
-// [B] ContainerCell 컴포넌트
-// 각 컨테이너(방) 영역에 useDrop를 적용하여 드롭 시 해당 컨테이너로 예약을 배정함.
-// -------------------------------------------------------------------
+/* ===============================
+   [B] ContainerCell 컴포넌트 (변경없음)
+=============================== */
 const ContainerCell = React.memo(
   ({ cont, onEdit, getReservationById, children, assignedReservations }) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
@@ -343,20 +379,20 @@ const ContainerCell = React.memo(
         const { reservationId } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
-          // 이미 해당 컨테이너에 예약이 있으면 (assignedReservations가 비어있지 않으면)
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
               '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
             );
             if (!confirmSwap) return;
-            // 첫 번째 예약과 스왑 (필요시 사용자 선택 로직을 추가할 수 있음)
             const existingReservation = assignedReservations[0];
-            // 업데이트: 드래그한 예약을 현재 컨테이너로 배정
+            console.log(
+              `[Drop] Before move: Reservation ${reservationId} is in room ${draggedReservation?.roomNumber} (${draggedReservation?.roomInfo})`
+            );
             onEdit(reservationId, {
               roomInfo: cont.roomInfo,
               roomNumber: cont.roomNumber,
+              manualAssignment: true,
             });
-            // 그리고 기존 예약은 드래그한 예약이 원래 있던 방으로 스왑
             if (
               draggedReservation &&
               existingReservation &&
@@ -366,10 +402,13 @@ const ContainerCell = React.memo(
               onEdit(existingReservation._id, {
                 roomInfo: draggedReservation.roomInfo,
                 roomNumber: draggedReservation.roomNumber,
+                manualAssignment: true,
               });
+              console.log(
+                `[Drop] After move: Reservation ${reservationId} is now in room ${cont.roomNumber} (${cont.roomInfo})`
+              );
             }
           } else {
-            // 이미 배정된 예약이 없다면, 그대로 배정
             if (
               draggedReservation &&
               draggedReservation.roomInfo === cont.roomInfo &&
@@ -383,10 +422,12 @@ const ContainerCell = React.memo(
             onEdit(reservationId, {
               roomInfo: cont.roomInfo,
               roomNumber: cont.roomNumber,
+              manualAssignment: true,
             });
           }
         }
       },
+
       collect: (monitor) => ({
         isOver: monitor.isOver(),
         canDrop: monitor.canDrop(),
@@ -417,13 +458,12 @@ ContainerCell.propTypes = {
   onEdit: PropTypes.func.isRequired,
   getReservationById: PropTypes.func.isRequired,
   children: PropTypes.node,
-  // 새로 추가한 prop
   assignedReservations: PropTypes.array,
 };
 
-// -------------------------------------------------------------------
-// RoomGrid 컴포넌트 본문
-// -------------------------------------------------------------------
+/* ===============================
+   RoomGrid 컴포넌트 (자동 배정 로직 리팩토링)
+=============================== */
 function RoomGrid({
   reservations,
   onDelete,
@@ -448,6 +488,7 @@ function RoomGrid({
   needsConsent,
   selectedDate,
 }) {
+  // state 및 ref 선언 (변경없음)
   const [isEvening, setIsEvening] = useState(false);
   const [flippedIndexes, setFlippedIndexes] = useState(new Set());
   const [autoFlips, setAutoFlips] = useState(new Set());
@@ -462,9 +503,8 @@ function RoomGrid({
   const memoRefs = useRef({});
 
   const [editedValues, setEditedValues] = useState({});
-  const [autoAssigning, setAutoAssigning] = useState(true);
+  const [autoAssigning, setAutoAssigning] = useState(false);
 
-  // hotelSettings에서 rows/cols/containers 추출 (기본 7×7)
   const { gridSettings = {} } = hotelSettings || {};
   const { rows = 7, cols = 7, containers = [] } = gridSettings;
 
@@ -473,7 +513,6 @@ function RoomGrid({
     [reservations]
   );
 
-  // 고정 컨테이너: gridSettings.containers가 없으면 기본 컨테이너 배열 생성 (roomType -> roomInfo)
   const fixedContainers = useMemo(() => {
     if (containers && containers.length > 0) {
       return containers;
@@ -494,7 +533,7 @@ function RoomGrid({
     return defaultContainers;
   }, [containers, rows, cols]);
 
-  // 4. 날짜 필터링 계산 useMemo – selectedDate에 따른 필터링
+  // 당일 예약 목록 계산 (filteredReservations)
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return reservations.filter((reservation) => {
@@ -522,13 +561,15 @@ function RoomGrid({
     });
   }, [reservations, selectedDate]);
 
-  // 컨테이너별 예약 목록 매핑 (기존 코드)
+  useEffect(() => {
+    console.log('당일 예약:', filteredReservations);
+  }, [filteredReservations]);
+
   const containerReservations = useMemo(() => {
     const map = {};
     fixedContainers.forEach((cont) => {
       map[cont.containerId] = [];
     });
-    // reservations 대신 filteredReservations 사용
     filteredReservations.forEach((res) => {
       const matched = fixedContainers.find(
         (c) =>
@@ -543,22 +584,27 @@ function RoomGrid({
     return map;
   }, [fixedContainers, filteredReservations]);
 
-  // 모든 배정된 예약을 flat 배열로 계산
-  // const assignedReservations = useMemo(() => {
-  //   return Object.values(containerReservations).flat();
-  // }, [containerReservations]);
-
-  // 없으면 기존 로직대로 roomNumber가 없는 예약만 선택
+  // 미배정 예약 목록 계산 (한 번만 선언)
   const unassignedReservations = useMemo(() => {
-    // roomNumber가 비어있으면 할당되지 않은 것으로 판단
-    return reservations.filter(
+    // 단순히 roomNumber가 빈 경우에만 미배정으로 간주합니다.
+    const unassigned = reservations.filter(
       (res) => !res.roomNumber || res.roomNumber.trim() === ''
     );
+    // _id 기준 중복 제거 (선택사항)
+    const uniqueUnassigned = Array.from(new Map(unassigned.map(res => [res._id, res])).values());
+    return uniqueUnassigned;
   }, [reservations]);
+  
+  
 
-  // 상단에 autoAssignTimerRef 선언
+  useEffect(() => {
+    console.log('미배정 예약:', unassignedReservations);
+  }, [unassignedReservations]);
+
+  // -------------------------------
+  // 자동 배정 로직 (중복 코드 리팩토링)
+  // -------------------------------
   const autoAssignTimerRef = useRef(null);
-
   useEffect(() => {
     setAutoAssigning(true);
     if (autoAssignTimerRef.current) {
@@ -577,23 +623,18 @@ function RoomGrid({
     console.log('[RoomGrid] Auto-assignment useEffect triggered.');
 
     autoAssignTimerRef.current = setTimeout(() => {
-      // 각 타입별 이미 배정된 번호를 저장하는 객체 생성
-      const typeAssignments = {};
-      roomTypes.forEach((rt) => {
-        const typeKey = rt.roomInfo.toLowerCase();
-        typeAssignments[typeKey] = reservations
-          .filter(
-            (r) =>
-              r.roomInfo &&
-              r.roomInfo.toLowerCase() === typeKey &&
-              r.roomNumber &&
-              r.roomNumber.trim() !== ''
-          )
-          .map((r) => r.roomNumber);
-      });
-
+      // 1. 각 타입별로 이미 배정된 roomNumber 목록 계산
+      const typeAssignments = getTypeAssignments(reservations, roomTypes);
       const updates = [];
+
+      // 2. 미배정 예약 순회
       unassignedReservations.forEach((res) => {
+        if (isOtaReservation(res)) {
+          console.log(
+            `[RoomGrid] Skipping auto-assignment for OTA reservation: ${res._id}`
+          );
+          return;
+        }
         if (res.roomNumber && res.roomNumber.trim() !== '') {
           console.log(
             '[RoomGrid] Skip auto-assign because roomNumber is already set:',
@@ -610,14 +651,7 @@ function RoomGrid({
           const containersForType = fixedContainers.filter(
             (cont) => cont.roomInfo.toLowerCase() === typeKey
           );
-          const sortedContainers = containersForType.sort((a, b) => {
-            const aNum = parseInt(a.roomNumber, 10);
-            const bNum = parseInt(b.roomNumber, 10);
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-              return aNum - bNum;
-            }
-            return a.roomNumber.localeCompare(b.roomNumber);
-          });
+          const sortedContainers = sortContainers(containersForType);
           const assignedRoomNumbers = typeAssignments[typeKey] || [];
           const availableContainer = sortedContainers.find(
             (cont) => !assignedRoomNumbers.includes(cont.roomNumber)
@@ -645,6 +679,7 @@ function RoomGrid({
         }
       });
 
+      // 3. 업데이트가 있으면 onEdit 호출
       if (updates.length > 0) {
         console.log(
           '[RoomGrid] Will batch update these unassigned reservations =>',
@@ -678,9 +713,9 @@ function RoomGrid({
     containers,
   ]);
 
-  // -------------------------------------------------------------------
-  // 기타 효과들 (flipAllMemos, 새 예약 강조, 날짜 업데이트 등)
-  // -------------------------------------------------------------------
+  // -------------------------------
+  // 나머지 효과 및 렌더링 (변경없음)
+  // -------------------------------
   useEffect(() => {
     if (flipAllMemos) {
       const allIndexes = new Set();
@@ -760,9 +795,6 @@ function RoomGrid({
     updateIsEvening();
   }, []);
 
-  // -------------------------------------------------------------------
-  // (D) 메모 로컬스토리지 및 편집 로직
-  // -------------------------------------------------------------------
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('localMemos') || '{}');
     setMemos(saved);
@@ -824,9 +856,6 @@ function RoomGrid({
     [setMemos]
   );
 
-  // -------------------------------------------------------------------
-  // (F) onDelete, onConfirm, onEdit 래핑
-  // -------------------------------------------------------------------
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     setIsProcessing(true);
@@ -901,9 +930,6 @@ function RoomGrid({
     [hotelId, onEdit]
   );
 
-  // -------------------------------------------------------------------
-  // (G) 인보이스 모달 핸들러
-  // -------------------------------------------------------------------
   const openInvoiceModalHandler = (res) => {
     if (!isModalOpen) {
       setSelectedReservation(res);
@@ -917,16 +943,11 @@ function RoomGrid({
     setModalType(null);
   };
 
-  // -------------------------------------------------------------------
-  // (H) 예약 수정 폼 제출 (부분 업데이트)
-  // -------------------------------------------------------------------
   const handleSubmitForm = (e) => {
     e.preventDefault();
     if (!selectedReservation) return;
     const reservationId = selectedReservation._id;
     const editedData = editedValues[reservationId];
-
-    // 체크인/체크아웃 날짜 입력값(YYYY-MM-DD)을 ISO 문자열로 변환
     const updatedData = {
       customerName: editedData.customerName,
       phoneNumber: editedData.phoneNumber,
@@ -936,16 +957,10 @@ function RoomGrid({
       paymentMethod: editedData.paymentMethod,
       specialRequests: editedData.specialRequests,
     };
-
-    // 부분 업데이트 함수 호출 (컨테이너명, 룸넘버는 업데이트 대상에서 제외)
     onPartialUpdate(reservationId, updatedData);
-
-    // 업데이트 후 편집 상태 초기화
     setSelectedReservation(null);
   };
-  // -------------------------------------------------------------------
-  // (I) recalcPrice 및 handleFieldChange
-  // -------------------------------------------------------------------
+
   const calcNights = (ci, co) => {
     const d1 = new Date(ci);
     const d2 = new Date(co);
@@ -955,26 +970,48 @@ function RoomGrid({
   const recalcPrice = (data) => {
     const { checkInDate, checkOutDate, roomInfo } = data;
     if (!checkInDate || !checkOutDate || !roomInfo) return data.price || 0;
-    const selRoom = roomTypes.find((r) => r.type === roomInfo);
+    // OTA 예약은 가격이 변하면 안 되므로 기존 가격 반환
+    const currentReservation = reservations.find(
+      (r) => r._id === data.reservationNo
+    );
+    if (currentReservation && availableOTAs.includes(currentReservation.siteName)) {
+      return currentReservation.price;
+    }
+    const selRoom = roomTypes.find(
+      (r) => r.roomInfo.toLowerCase() === roomInfo.toLowerCase()
+    );
     const nightly = selRoom ? selRoom.price : 0;
     const nights = calcNights(checkInDate, checkOutDate);
     if (nights <= 0) return 0;
     return (nightly * nights).toString();
   };
+  
 
   const handleFieldChange = (resId, field, val) => {
     setEditedValues((prev) => {
-      const next = { ...prev[resId], [field]: val };
-      if (['checkInDate', 'checkOutDate', 'roomInfo'].includes(field)) {
-        next.price = recalcPrice(next);
+      const currentData = prev[resId] || {};
+      let updatedData = { ...currentData, [field]: val };
+
+      if (field === 'price') {
+        updatedData.manualPriceOverride = true;
+      } else if (['checkInDate', 'checkOutDate', 'roomInfo'].includes(field)) {
+        const currentReservation = reservations.find((r) => r._id === resId);
+        // OTA 예약의 경우, 가격은 변경하지 않음
+        if (
+          currentReservation &&
+          availableOTAs.includes(currentReservation.siteName)
+        ) {
+          // Do nothing for price recalculation
+        } else {
+          if (!currentData.manualPriceOverride) {
+            updatedData.price = recalcPrice(updatedData);
+          }
+        }
       }
-      return { ...prev, [resId]: next };
+      return { ...prev, [resId]: updatedData };
     });
   };
 
-  // -------------------------------------------------------------------
-  // (J) 카드 뒤집기 (메모 보기)
-  // -------------------------------------------------------------------
   const handleCardFlip = (gIndex, resId) => {
     const memo = memos[resId] || { isEditing: false };
     if (memo.isEditing) return;
@@ -986,9 +1023,6 @@ function RoomGrid({
     });
   };
 
-  // -------------------------------------------------------------------
-  // (K) 결제방법 아이콘 렌더 함수
-  // -------------------------------------------------------------------
   const getPaymentMethodIcon = (pm) => {
     switch (pm) {
       case 'Card':
@@ -1004,9 +1038,6 @@ function RoomGrid({
     }
   };
 
-  // -------------------------------------------------------------------
-  // (L) 액션버튼 렌더 함수
-  // -------------------------------------------------------------------
   const renderActionButtons = (reservation) => {
     const isOTA = availableOTAs.includes(reservation.siteName);
     const isCancelled =
@@ -1111,9 +1142,6 @@ function RoomGrid({
     );
   };
 
-  // -------------------------------------------------------------------
-  // (M) sortReservations: sortOrder에 따라 예약 목록 정렬
-  // -------------------------------------------------------------------
   const sortReservations = useCallback(
     (list) => {
       if (sortOrder === 'roomType') {
@@ -1141,9 +1169,7 @@ function RoomGrid({
     },
     [sortOrder, roomTypes]
   );
-  // -------------------------------------------------------------------
-  // 원복(취소)용 데이터 저장
-  // -------------------------------------------------------------------
+
   const originalDataRef = useRef(null);
   useEffect(() => {
     originalDataRef.current = {
@@ -1153,9 +1179,6 @@ function RoomGrid({
     };
   }, [hotelId, roomTypes, gridSettings]);
 
-  // -------------------------------------------------------------------
-  // 최종 렌더링
-  // -------------------------------------------------------------------
   const isAnyEditing = false;
   return (
     <div
@@ -1535,7 +1558,6 @@ RoomGrid.propTypes = {
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
   flipAllMemos: PropTypes.bool.isRequired,
-  // sortOrder: PropTypes.string.isRequired,
   needsConsent: PropTypes.bool.isRequired,
 };
 

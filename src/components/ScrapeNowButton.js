@@ -15,7 +15,7 @@ import { enqueueScrapeTasks } from '../api/api';
 
 // 확장 환경에서 사용할 액션 매핑
 const ACTION_MAP = {
-  Yanolja: 'TRIGGER_YANOLJA_SCRAPE',
+  YanoljaMotel: 'TRIGGER_YANOLJA_SCRAPE',
   GoodMotel: 'TRIGGER_GOODMOTEL_SCRAPE',
   GoodHotel: 'TRIGGER_GOODHOTEL_SCRAPE',
   Agoda: 'TRIGGER_AGODA_SCRAPE',
@@ -27,7 +27,7 @@ const ACTION_MAP = {
 
 // 확장으로 처리해야 할 OTA 목록
 const EXTENSION_OTAS = [
-  'Yanolja',
+  'YanoljaMotel',
   'GoodMotel',
   'GoodHotel',
   'Agoda',

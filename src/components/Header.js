@@ -23,8 +23,6 @@ function Header({
   otaToggles,
   onMemo,
   flipAllMemos,
-  hasLowStock,
-  lowStockRoomTypes,
   onMonthlyView,
   isShining,
 }) {
