@@ -237,3 +237,43 @@
     font-size: 0.8rem;
   }
 }
+
+.calendar-cell.today {
+  border: 3px solid blue;
+  opacity: 1; /* 오늘은 희미하지 않게 */
+}
+
+/* MonthlyCalendar.css 내에 추가 또는 수정 */
+.daily-nav-button {
+  padding: 8px 16px;
+  margin-left: 50px; /* 양쪽에 10px 여백 */
+  background-color: #007bff62;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.daily-nav-button:hover {
+  background-color: #0057b3d4;
+}
+
+.confirm-popup {
+  margin-left: 54px;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+.confirm-popup p {
+  margin: 0;
+}
+.confirm-popup button {
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}

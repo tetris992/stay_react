@@ -1398,6 +1398,10 @@ const App = () => {
                     currentDate={selectedDate}
                     onRangeSelect={onQuickCreateRange}
                     onReturnView={() => navigate('/')}
+                    onDateNavigate={(date) => {
+                      setSelectedDate(date);
+                      navigate('/'); // 일간 화면(루트 경로)으로 이동
+                    }}
                   />
                 }
               />
