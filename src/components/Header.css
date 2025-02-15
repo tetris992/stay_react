@@ -31,8 +31,9 @@
 }
 
 .selected-date {
-  font-size: 1.5rem;
+  font-size: 2rem;
   padding: 0 10px;
+  margin-top: 10px;
   font-weight: 700;
   color: #050505;
 }
@@ -50,9 +51,11 @@
 /* 화살표 버튼 스타일링 */
 .arrow-button {
   background: none;
+  padding: 0 10px;
+  margin-top: 10px;
   border: none;
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: 2rem;
   color: #3f3f3f78;
   transition: color 0.3s ease, transform 0.3s ease;
 }
@@ -152,7 +155,7 @@
   align-items: center;
 }
 
- .quick-button {
+.quick-button {
   padding: 6px 12px;
   font-size: 1.1rem;
   border: none;

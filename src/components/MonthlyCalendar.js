@@ -243,7 +243,7 @@ const MonthlyCalendar = ({
           >
             {format(day, 'MM/dd (EEE)', { locale: ko })}
           </span>
-          <span style={{ fontSize: '0.8rem', marginLeft: 4 }}>
+          <span className='remain_stock' style={{ fontSize: '0.8rem', marginLeft: 4 }}>
             잔여: {totalRemaining}
           </span>
           {remainObj.unassigned > 0 && (

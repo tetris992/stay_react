@@ -189,7 +189,7 @@
 }
 
 /* 화면 폭 1800px 이하 */
-@media (max-width: 1800px) {
+@media (max-width: 2800px) {
   .room-type {
     font-size: 1.15rem;
   }
@@ -198,8 +198,24 @@
   }
 }
 
+@media (max-width: 2350px) {
+  .room-type {
+    font-size: 1.15rem;
+  }
+  .cell-header {
+    font-size: 1.15rem;
+  }
+  .daily-nav-button {
+    display: none;
+    margin-left: 0px;
+  }
+  .remain_stock {
+    display: none;
+  }
+}
+
 /* 화면 폭 1400px 이하 */
-@media (max-width: 1400px) {
+@media (max-width: 1500px) {
   .room-type {
     font-size: 1.1rem;
   }
@@ -246,8 +262,8 @@
 /* MonthlyCalendar.css 내에 추가 또는 수정 */
 .daily-nav-button {
   padding: 8px 16px;
-  margin-left: 50px; /* 양쪽에 10px 여백 */
-  background-color: #007bff62;
+  margin-left: 80px; /* 양쪽에 10px 여백 */
+  background-color: #cbcccde5;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -257,7 +273,7 @@
 }
 
 .daily-nav-button:hover {
-  background-color: #0057b3d4;
+  background-color: #3874b4a0;
 }
 
 .confirm-popup {

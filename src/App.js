@@ -264,7 +264,7 @@ const App = () => {
       const priceNumber = Number(totalPrice); // totalPrice를 숫자로 변환
       if (nights > 0) {
         const perNightPrice = priceNumber / nights;
-        console.log(`(Revised) Per night price: ${perNightPrice}`);
+        // console.log(`(Revised) Per night price: ${perNightPrice}`);
         return Math.round(perNightPrice); // 정수 반환
       }
       return Math.round(priceNumber);
@@ -355,15 +355,15 @@ const App = () => {
             selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
           const finalIncluded = isIncluded || isSameDayStay;
           if (finalIncluded) {
-            console.log(
-              `Including reservation from ${format(
-                checkInDate,
-                'yyyy-MM-dd HH:mm'
-              )} to ${format(
-                checkOutDate,
-                'yyyy-MM-dd HH:mm'
-              )} on ${selectedDateString}`
-            );
+            // console.log(
+            //   `Including reservation from ${format(
+            //     checkInDate,
+            //     'yyyy-MM-dd HH:mm'
+            //   )} to ${format(
+            //     checkOutDate,
+            //     'yyyy-MM-dd HH:mm'
+            //   )} on ${selectedDateString}`
+            // );
           }
           return finalIncluded;
         }
