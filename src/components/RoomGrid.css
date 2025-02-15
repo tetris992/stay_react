@@ -139,11 +139,11 @@ html {
   transition: transform 0.4s, box-shadow 0.4s, opacity 0.4s, scale 0.96;
   text-align: left;
 }
-.room-card:hover {
+/* .room-card:hover {
   z-index: 200;
   background-color: #eae9e1;
   scale: 0.99;
-}
+} */
 
 .room-card h3 {
   font-family: 'Poppins', sans-serif;
@@ -164,6 +164,12 @@ html {
 .room-card:not(.flipped):hover {
   transform: rotateX(1deg) translateX(-1px);
   z-index: 10;
+}
+
+/* (B) 이미 flipped되었거나 edit-mode 상태면 hover 시 transform 제거 */
+.room-card.flipped:hover,
+.room-card.edit-mode:hover {
+  transform: none !important;
 }
 
 /* 사이트 이름, 테마, Border 색상 */
@@ -516,7 +522,17 @@ html {
   color: rgba(0, 0, 0, 0.5);
   font-size: 1.2rem;
 }
-
+.memo-edit-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
 /* 미배정 예약 카드 크기 */
 .unassigned-list .room-card {
   width: 250px;

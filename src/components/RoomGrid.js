@@ -127,6 +127,7 @@ const DraggableReservationCard = React.memo(
         reservationId: reservation._id,
         reservationData: reservation,
       },
+      canDrag: () => !isEditingMemo,
       collect: (monitor) => ({
         isDragging: monitor.isDragging(),
       }),
@@ -165,6 +166,7 @@ const DraggableReservationCard = React.memo(
     const isEditing = false; // 이 컴포넌트 자체에선 편집 모드 없음
     const isFlipped = flippedReservationIds.has(reservation._id);
     const memo = memos[reservation._id] || { text: '', isEditing: false };
+    const isEditingMemo = memo.isEditing; // 메모 편집 상태를 확인
     const borderColorClass = getBorderColor(reservation);
 
     const cardClassNames = [
@@ -403,6 +405,13 @@ const ContainerCell = React.memo(
         const { reservationId } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
+          // [추가] 만약 드래그된 예약의 (roomInfo, roomNumber)가 현재 셀(cont)와 동일하면 아무 동작도 하지 않음
+          if (
+            draggedReservation.roomInfo === cont.roomInfo &&
+            draggedReservation.roomNumber === cont.roomNumber
+          ) {
+            return; // no-op: 동일한 위치이므로 스왑 로직 실행 안 함
+          }
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
               '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
