@@ -719,7 +719,7 @@ const App = () => {
       );
       if (!currentReservation) return;
 
-      // 날짜는 타임스탬프로 비교
+      // 날짜 변경 여부 체크
       const checkInChanged =
         new Date(currentReservation.checkIn).getTime() !==
         new Date(updatedData.checkIn).getTime();
@@ -742,16 +742,31 @@ const App = () => {
       }
 
       try {
-        // 낙관적 업데이트: 수정된 필드만 로컬 상태에 반영
+        // 날짜가 변경되었으면 새로운 날짜 값을 기반으로 파싱된 필드도 업데이트합니다.
+        const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
+        const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
+        const newParsedCheckInDate = new Date(newCheckIn);
+        const newParsedCheckOutDate = new Date(newCheckOut);
+
+        // optimistic update: 변경된 필드와 함께 파생된 날짜 필드도 업데이트
         setAllReservations((prev) => {
           const newReservations = prev.map((res) =>
-            res._id === reservationId ? { ...res, ...updatedData } : res
+            res._id === reservationId
+              ? {
+                  ...res,
+                  ...updatedData,
+                  checkIn: newCheckIn,
+                  checkOut: newCheckOut,
+                  parsedCheckInDate: newParsedCheckInDate,
+                  parsedCheckOutDate: newParsedCheckOutDate,
+                }
+              : res
           );
           filterReservationsByDate(newReservations, selectedDate);
           return newReservations;
         });
 
-        // API 호출: 부분 업데이트 요청 (백엔드에서는 전달된 필드만 업데이트)
+        // API 호출
         await updateReservation(reservationId, updatedData, hotelId);
         console.log(`예약 ${reservationId}가 부분 업데이트되었습니다.`);
       } catch (error) {
@@ -790,7 +805,6 @@ const App = () => {
         }
       }
 
-      // 이미 roomInfo와 roomNumber가 동일하면 업데이트 생략
       if (
         currentReservation &&
         currentReservation.roomInfo === updatedData.roomInfo &&
@@ -800,14 +814,34 @@ const App = () => {
       }
 
       try {
+        // DetailPanel에서 전달한 updatedData에 checkIn, checkOut 값이 있다면 사용하고,
+        // 없다면 기존 값을 유지하도록 처리합니다.
+        const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
+        const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
+
+        // 문자열이 들어올 경우, Date 객체로 변환 (시간 정보가 누락되지 않도록 주의)
+        const newParsedCheckInDate = new Date(newCheckIn);
+        const newParsedCheckOutDate = new Date(newCheckOut);
+
+        // 1. optimistic update: 예약 객체의 checkIn, checkOut, 그리고 파생된 parsed 필드도 업데이트
         setAllReservations((prev) => {
           const newReservations = prev.map((res) =>
-            res._id === reservationId ? { ...res, ...updatedData } : res
+            res._id === reservationId
+              ? {
+                  ...res,
+                  ...updatedData,
+                  checkIn: newCheckIn,
+                  checkOut: newCheckOut,
+                  parsedCheckInDate: newParsedCheckInDate,
+                  parsedCheckOutDate: newParsedCheckOutDate,
+                }
+              : res
           );
           filterReservationsByDate(newReservations, selectedDate);
           return newReservations;
         });
 
+        // 2. 서버에 업데이트 요청
         await updateReservation(reservationId, updatedData, hotelId);
         console.log(
           `Reservation ${reservationId} updated for hotel ${hotelId}`
@@ -815,6 +849,7 @@ const App = () => {
       } catch (error) {
         console.error(`Failed to update reservation ${reservationId}:`, error);
         alert('예약 수정에 실패했습니다. 다시 시도해주세요.');
+        // 실패 시 전체 동기화
         await loadReservations();
       }
     },

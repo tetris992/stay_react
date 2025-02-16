@@ -95,7 +95,9 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         (room) => room.roomInfo === formData.roomInfo
       );
       const nightlyPrice =
-        selectedRoom && selectedRoom.price !== undefined ? selectedRoom.price : 0;
+        selectedRoom && selectedRoom.price !== undefined
+          ? selectedRoom.price
+          : 0;
       const totalPrice = nightlyPrice * nightsStayed;
       if (totalPrice.toString() !== formData.price) {
         setFormData((prev) => ({ ...prev, price: totalPrice.toString() }));
@@ -110,7 +112,6 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     formData.price,
     roomTypes,
   ]);
-  
 
   const handlePriceIncrement = () => {
     const currentPrice = parseInt(formData.price || '0', 10);
@@ -260,7 +261,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         await onSave(initialData._id, finalData);
       } else {
         await onSave(null, finalData);
-        alert('예약이 성공적으로 저장되었습니다.');
+        console.log('예약이 성공적으로 저장되었습니다.');
       }
       onClose();
     } catch (error) {

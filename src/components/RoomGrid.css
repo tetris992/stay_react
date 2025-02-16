@@ -516,8 +516,10 @@ html {
 
 /* 미배정 예약 카드 크기 */
 .unassigned-list .room-card {
-  width: 250px;
+  width: 350px;
   height: 280px;
+  font-size: 0.7rem;
+  background-color: rgb(228, 241, 228);
 }
 
 /* 플립된 카드에서는 hover 효과와 ::before 효과를 숨김 (최신 브라우저용 :has() 사용) */
