@@ -516,7 +516,7 @@ html {
 
 /* 미배정 예약 카드 크기 */
 .unassigned-list .room-card {
-  width: 350px;
+  width: 290px;
   height: 280px;
   font-size: 0.7rem;
   background-color: rgb(228, 241, 228);

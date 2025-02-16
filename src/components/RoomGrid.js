@@ -1363,7 +1363,6 @@ function RoomGrid({
           }`}
           style={{ marginBottom: 20 }}
         >
-          {/* (1) 미배정 예약 */}
           {!autoAssigning && unassignedReservations.length > 0 && (
             <div
               className="unassigned-section"

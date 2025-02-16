@@ -18,6 +18,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import PrivacyConsent from './components/PrivacyConsentModal.js';
+
 import DetailPanel from './components/DetailPanel';
 import { parseDate } from './utils/dateParser.js';
 import HotelSettingsPage from './pages/HotelSettingsPage.js';
@@ -33,7 +34,7 @@ import { defaultRoomTypes } from './config/defaultRoomTypes';
 import availableOTAs from './config/availableOTAs';
 import SalesModal from './components/DailySalesModal.js';
 import { isCancelledStatus } from './utils/isCancelledStatus.js';
-
+import UnassignedReservationsPanel from './components/UnassignedReservationsPanel';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -55,6 +56,7 @@ import './i18n';
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
 import { computeRemainingInventory } from './utils/computeRemainingInventory';
+import { computeDailyAvailability } from './utils/availability';
 /* ============================================================================
    HELPER FUNCTIONS (추후 별도 유틸 파일로 분리 가능)
    ============================================================================ */
@@ -143,6 +145,35 @@ function sendOtaTogglesToExtension(otaToggles) {
       }
     );
   }
+}
+
+/* ================================
+   (★ 추가) roomTypes에 roomNumbers 채워주는 함수
+   ================================ */
+function buildRoomTypesWithNumbers(roomTypes, containers) {
+  console.log('[buildRoomTypesWithNumbers] 시작');
+  console.log('기존 roomTypes:', roomTypes);
+  console.log('gridSettings.containers:', containers);
+
+  // 1) roomTypes를 복제하면서, roomNumbers 필드를 빈 배열로 초기화
+  const cloned = roomTypes.map((rt) => ({
+    ...rt,
+    roomNumbers: [],
+  }));
+
+  // 2) 각 container를 순회하며, container.roomInfo와 일치하는 roomType에 roomNumber를 등록
+  containers.forEach((cont) => {
+    const tKey = (cont.roomInfo || '').toLowerCase();
+    const found = cloned.find(
+      (rt) => (rt.roomInfo || '').toLowerCase() === tKey
+    );
+    if (found && cont.roomNumber) {
+      found.roomNumbers.push(cont.roomNumber);
+    }
+  });
+
+  console.log('[buildRoomTypesWithNumbers] 최종 roomTypes:', cloned);
+  return cloned;
 }
 
 /* ============================================================================
@@ -1159,6 +1190,21 @@ const App = () => {
     initializeAuth();
   }, [loadHotelSettings, loadReservations]);
 
+  // (★) roomTypes를 구성할 때, gridSettings.containers로부터 roomNumbers를 채워넣음
+  //     MonthlyCalendar에 주입하기 직전에 최종 가공
+  const finalRoomTypes = useMemo(() => {
+    // hotelSettings.roomTypes와 hotelSettings.gridSettings.containers가 있다 가정
+    const { roomTypes = [], gridSettings = {} } = hotelSettings;
+    const containers = gridSettings.containers || [];
+
+    // roomTypes가 아직 없으면 그대로 반환
+    if (!roomTypes.length) return [];
+
+    // (중요) 여기서 함수 호출
+    const merged = buildRoomTypesWithNumbers(roomTypes, containers);
+    return merged;
+  }, [hotelSettings]);
+
   const handleLogout = useCallback(async () => {
     try {
       await logoutUser();
@@ -1375,6 +1421,25 @@ const App = () => {
     setNeedsConsent(false);
   }, []);
 
+  // 아래에 guestAvailability를 선언합니다.
+  const guestAvailability = useMemo(() => {
+    if (!guestFormData) return {};
+    const checkIn = parseDate(
+      `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
+    );
+    const checkOut = parseDate(
+      `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
+    );
+    if (!checkIn || !checkOut) return {};
+    return computeDailyAvailability(
+      allReservations,
+      roomTypes,
+      checkIn,
+      checkOut,
+      hotelSettings?.gridSettings
+    );
+  }, [guestFormData, allReservations, roomTypes, hotelSettings]);
+
   return (
     <div
       className={`app-layout ${!isAuthenticated ? 'logged-out' : ''}`}
@@ -1429,7 +1494,7 @@ const App = () => {
                 element={
                   <MonthlyCalendar
                     reservations={allReservations}
-                    roomTypes={roomTypes}
+                    roomTypes={finalRoomTypes}
                     currentDate={selectedDate}
                     onRangeSelect={onQuickCreateRange}
                     onReturnView={() => navigate('/')}
@@ -1507,6 +1572,10 @@ const App = () => {
                       activeReservations={activeReservations}
                     />
                     <div className="main-content" style={{ flex: '1' }}>
+                      {/* 고정 영역으로 미배정 예약 패널 렌더링 */}
+                      <UnassignedReservationsPanel
+                        reservations={allReservations}
+                      />
                       <div className="split-view-layout">
                         <div className="left-pane">
                           <DndProvider backend={HTML5Backend}>
@@ -1554,6 +1623,7 @@ const App = () => {
                           )}
                         </div>
                       </div>
+
                       {showGuestForm && (
                         <GuestFormModal
                           initialData={guestFormData}
@@ -1562,6 +1632,7 @@ const App = () => {
                           }
                           onClose={() => setShowGuestForm(false)}
                           onSave={handleFormSave}
+                          availabilityByDate={guestAvailability}
                         />
                       )}
                     </div>

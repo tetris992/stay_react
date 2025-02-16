@@ -198,7 +198,7 @@
   }
 }
 
-@media (max-width: 2350px) {
+/* @media (max-width: 2350px) {
   .room-type {
     font-size: 1.15rem;
   }
@@ -209,10 +209,7 @@
     display: none;
     margin-left: 0px;
   }
-  .remain_stock {
-    display: none;
-  }
-}
+} */
 
 /* 화면 폭 1400px 이하 */
 @media (max-width: 1500px) {
@@ -261,10 +258,10 @@
 
 /* MonthlyCalendar.css 내에 추가 또는 수정 */
 .daily-nav-button {
-  padding: 8px 16px;
-  margin-left: 80px; /* 양쪽에 10px 여백 */
+  padding: 8px 4px;
+  margin-left: 2px; /* 양쪽에 10px 여백 */
   background-color: #cbcccde5;
-  color: #fff;
+  color: #947dfa;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -273,7 +270,7 @@
 }
 
 .daily-nav-button:hover {
-  background-color: #3874b4a0;
+  background-color: #cfe0f2a0;
 }
 
 .confirm-popup {
@@ -292,4 +289,69 @@
   padding: 4px 8px;
   font-size: 0.9rem;
   cursor: pointer;
+}
+
+.cell-header {
+  display: flex;
+  width: auto;
+  margin: auto;
+  gap: 5px;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+
+/* 기본 스타일 (MonthlyCalendar.css 또는 별도의 CSS 파일에 추가) */
+.room-type {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  /* 필요에 따라 margin, border 등 추가 */
+}
+
+.room-type > span:first-child {
+  /* 왼쪽 영역: 객실타입과 남은 수 */
+  font-size: 1rem;
+}
+
+.room-type > .leftover-rooms {
+  /* 오른쪽 영역: 남은 객실번호 */
+  font-size: 0.8rem;
+  color: red;
+  text-align: right;
+  width: 60%;
+}
+
+/* 미디어 쿼리: FHD 해상도 (최대 1920px) */
+@media (max-width: 1920px) {
+  .room-type > span:first-child {
+    font-size: 0.95rem;
+  }
+  .room-type > .leftover-rooms {
+    font-size: 0.75rem;
+    width: 55%;
+  }
+}
+
+/* 미디어 쿼리: QHD 해상도 (1921px ~ 2560px) */
+@media (min-width: 1921px) and (max-width: 2560px) {
+  .room-type > span:first-child {
+    font-size: 1.05rem;
+  }
+  .room-type > .leftover-rooms {
+    font-size: 0.85rem;
+    width: 60%;
+  }
+}
+
+/* 미디어 쿼리: 27인치 이상 또는 4K 해상도 (2561px 이상) */
+@media (min-width: 2561px) {
+  .room-type > span:first-child {
+    font-size: 1.2rem;
+  }
+  .room-type > .leftover-rooms {
+    font-size: 1rem;
+    width: 65%;
+  }
 }

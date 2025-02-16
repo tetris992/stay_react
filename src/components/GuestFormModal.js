@@ -2,11 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom'; // Portal 사용
 import './GuestFormModal.css';
-import { parseDate } from '../utils/dateParser.js';
-import { format, addDays } from 'date-fns';
+import { parseDate } from '../utils/dateParser';
+import { format, addDays, startOfDay } from 'date-fns';
 import PropTypes from 'prop-types';
+// availability 유틸 함수 import
+import { getDetailedAvailabilityMessage } from '../utils/availability';
 
-const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
+const GuestFormModal = ({
+  onClose,
+  onSave,
+  initialData,
+  roomTypes,
+  // 각 날짜별 객실 잔여 정보를 담은 객체
+  // 예: { '2025-02-16': { standard: { remain, leftoverRooms }, premium: { remain, leftoverRooms } } }
+  availabilityByDate,
+}) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
     customerName: '',
@@ -22,7 +32,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     specialRequests: '',
   });
 
-  // 초기 데이터가 있으면 (수정 모드) formData 초기화
+  // 수정 모드: initialData가 있으면 폼 데이터 초기화
   useEffect(() => {
     if (initialData) {
       const checkInDateObj = new Date(initialData.checkIn);
@@ -41,7 +51,6 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         roomInfo:
           initialData.roomInfo ||
           (roomTypes.length > 0 ? roomTypes[0].roomInfo : ''),
-        // 수정: roomTypes[0].price가 없으면 기본값 '0'으로 설정
         price:
           initialData.price !== undefined
             ? initialData.price.toString()
@@ -90,7 +99,6 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       const nightsStayed = Math.ceil(
         (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
       );
-      // 수정된 부분: room.type -> room.roomInfo
       const selectedRoom = roomTypes.find(
         (room) => room.roomInfo === formData.roomInfo
       );
@@ -159,11 +167,7 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
         }));
       }
     } else {
-      // 기본적으로 다른 입력 필드에 대한 업데이트 처리
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -206,6 +210,29 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     }));
   };
 
+  // Helper: 해당 객실 타입(roomInfo)이 선택한 기간 동안 사용 가능한지 여부 판단
+  // (즉, 체크인 ~ 체크아웃(미포함) 사이 하루라도 remain이 0이면 사용 불가)
+  const isRoomTypeUnavailable = (roomInfo) => {
+    if (!availabilityByDate || !formData.checkInDate || !formData.checkOutDate)
+      return false;
+    const start = new Date(`${formData.checkInDate}T00:00:00`);
+    const end = new Date(`${formData.checkOutDate}T00:00:00`);
+    let cursor = start;
+    while (cursor < end) {
+      const ds = format(cursor, 'yyyy-MM-dd');
+      const availForDay = availabilityByDate[ds]?.[roomInfo.toLowerCase()];
+      if (
+        !availForDay ||
+        (typeof availForDay === 'object' && availForDay.remain <= 0)
+      ) {
+        return true;
+      }
+      cursor = addDays(cursor, 1);
+    }
+    return false;
+  };
+
+  // ★ 연속 예약 가능 여부 검사 로직 ★
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -221,23 +248,16 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
     const checkOutDateTime = parseDate(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
-
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
       return;
     }
-
     if (checkInDateTime >= checkOutDateTime) {
       alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
       return;
     }
-
     const now = new Date();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
+    const todayStart = startOfDay(now);
     if (
       !initialData &&
       formData.customerName.includes('현장') &&
@@ -249,11 +269,56 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
       return;
     }
 
+    // ★ 연속 예약 검사 ★
+    const tKey = formData.roomInfo.toLowerCase();
+    let cursor = new Date(checkInDateTime);
+    let commonRooms = null;
+    let missingDates = [];
+    while (cursor < checkOutDateTime) {
+      const ds = format(cursor, 'yyyy-MM-dd');
+      if (!availabilityByDate[ds] || !availabilityByDate[ds][tKey]) {
+        missingDates.push(ds);
+      } else {
+        const freeRooms = availabilityByDate[ds][tKey].leftoverRooms || [];
+        if (commonRooms === null) {
+          commonRooms = new Set(freeRooms);
+        } else {
+          commonRooms = new Set(
+            [...commonRooms].filter((room) => freeRooms.includes(room))
+          );
+        }
+      }
+      cursor = addDays(cursor, 1);
+    }
+    if (missingDates.length > 0) {
+      const detailedMsg = getDetailedAvailabilityMessage(
+        startOfDay(checkInDateTime),
+        addDays(startOfDay(checkOutDateTime), -1),
+        tKey,
+        availabilityByDate
+      );
+      alert(detailedMsg);
+      return;
+    }
+    if (!commonRooms || commonRooms.size === 0) {
+      const detailedMsg = getDetailedAvailabilityMessage(
+        startOfDay(checkInDateTime),
+        addDays(startOfDay(checkOutDateTime), -1),
+        tKey,
+        availabilityByDate
+      );
+      alert(detailedMsg);
+      return;
+    }
+    // 교집합이 존재하면, 그 중 하나(가장 작은 번호)를 선택합니다.
+    const selectedRoomNumber = Math.min(...Array.from(commonRooms));
+
     const finalData = {
       ...formData,
       price: numericPrice,
-      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm"),
-      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm"),
+      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"), // 초까지 포함
+      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
+      roomNumber: String(selectedRoomNumber), // 문자열로 변환
     };
 
     try {
@@ -357,7 +422,15 @@ const GuestFormModal = ({ onClose, onSave, initialData, roomTypes }) => {
               {roomTypes && roomTypes.length > 0 ? (
                 roomTypes.map((room, index) =>
                   room.roomInfo ? (
-                    <option key={index} value={room.roomInfo}>
+                    <option
+                      key={index}
+                      value={room.roomInfo}
+                      style={{
+                        color: isRoomTypeUnavailable(room.roomInfo)
+                          ? 'red'
+                          : 'inherit',
+                      }}
+                    >
                       {room.roomInfo.charAt(0).toUpperCase() +
                         room.roomInfo.slice(1)}
                     </option>
@@ -450,10 +523,11 @@ GuestFormModal.propTypes = {
   roomTypes: PropTypes.arrayOf(
     PropTypes.shape({
       roomInfo: PropTypes.string.isRequired,
-      // price는 이제 기본값 0을 보장하므로 required로 유지하거나, 선택적으로 변경할 수 있음
       price: PropTypes.number.isRequired,
     })
   ).isRequired,
+  // availabilityByDate: 각 날짜별 객실 잔여 정보를 담은 객체
+  availabilityByDate: PropTypes.object.isRequired,
 };
 
 export default GuestFormModal;
