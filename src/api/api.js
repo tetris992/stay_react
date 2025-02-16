@@ -7,8 +7,8 @@ const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003';
 
 // Axios 인스턴스 생성
 const api = axios.create({
-  baseURL: BASE_URL, 
-  withCredentials: true, 
+  baseURL: BASE_URL,
+  withCredentials: true,
 });
 
 // ============== 요청 인터셉터: accessToken을 헤더에 추가 ==============
@@ -38,7 +38,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ============== 응답 인터셉터 (토큰 만료 시 갱신) ==============
+// ============== 응답 인터셉터 (토큰 만료 시 갱신 및 자동 로그아웃) ==============
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -83,6 +83,10 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
+        // 자동 로그아웃: 로컬 인증정보 삭제 후 로그인 페이지로 리디렉션
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('hotelId');
+        // 필요한 경우 다른 인증정보도 삭제
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -92,7 +96,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
 // ============== Auth ==============
 export const loginUser = async (credentials) => {
   try {
@@ -154,7 +157,7 @@ export const registerUser = async (userData) => {
 export const fetchHotelSettings = async (hotelId) => {
   try {
     const response = await api.get('/hotel-settings', { params: { hotelId } });
-    return response.data.data; 
+    return response.data.data;
   } catch (error) {
     console.error('호텔 설정 불러오기 실패:', error);
     throw error.response?.data || error;
