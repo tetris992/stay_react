@@ -1193,14 +1193,12 @@ const App = () => {
   // (★) roomTypes를 구성할 때, gridSettings.containers로부터 roomNumbers를 채워넣음
   //     MonthlyCalendar에 주입하기 직전에 최종 가공
   const finalRoomTypes = useMemo(() => {
-    // hotelSettings.roomTypes와 hotelSettings.gridSettings.containers가 있다 가정
-    const { roomTypes = [], gridSettings = {} } = hotelSettings;
+    // hotelSettings가 null인 경우 {}를 사용하도록 함
+    const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
     const containers = gridSettings.containers || [];
 
-    // roomTypes가 아직 없으면 그대로 반환
     if (!roomTypes.length) return [];
 
-    // (중요) 여기서 함수 호출
     const merged = buildRoomTypesWithNumbers(roomTypes, containers);
     return merged;
   }, [hotelSettings]);
@@ -1593,7 +1591,7 @@ const App = () => {
                               hotelAddress={hotelAddress}
                               phoneNumber={phoneNumber}
                               email={email}
-                              roomTypes={roomTypes}
+                              roomTypes={finalRoomTypes}
                               memos={memos}
                               setMemos={setMemos}
                               searchCriteria={searchCriteria}

@@ -27,6 +27,11 @@ import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import { matchRoomType } from '../utils/matchRoomType';
 // DnD hooks
 import { useDrag, useDrop } from 'react-dnd';
+import {
+  canMoveToRoom,
+  canSwapReservations,
+  computeDailyAvailability,
+} from '../utils/availability';
 
 /* ===============================
    HELPER FUNCTIONS
@@ -398,54 +403,120 @@ DraggableReservationCard.propTypes = {
    [B] ContainerCell
 =============================== */
 const ContainerCell = React.memo(
-  ({ cont, onEdit, getReservationById, children, assignedReservations }) => {
+  ({
+    cont,
+    onEdit,
+    getReservationById,
+    children,
+    assignedReservations,
+    allReservations, // activeReservations 대신 전체 예약 배열 사용
+    roomTypes,
+    gridSettings,
+  }) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
       drop: (item) => {
         const { reservationId } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
-          // 콘솔 로그 추가: 드래그한 예약과 대상 컨테이너 정보
-          console.log("드래그한 예약:", draggedReservation);
-          console.log("드랍 대상 컨테이너:", cont);
 
-          // [추가] 만약 드래그된 예약의 (roomInfo, roomNumber)가 현재 셀(cont)와 동일하면 아무 동작도 하지 않음
+          // 동일한 컨테이너이면 아무 작업도 하지 않음
           if (
             draggedReservation.roomInfo === cont.roomInfo &&
             draggedReservation.roomNumber === cont.roomNumber
           ) {
-            return; // no-op: 동일한 위치이므로 스왑 로직 실행 안 함
+            return;
           }
+
+          // 스왑의 경우 처리 (이미 예약이 있는 경우)
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
               '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
             );
             if (!confirmSwap) return;
+
             const existingReservation = assignedReservations[0];
-            // Swap
-            onEdit(reservationId, {
-              roomInfo: cont.roomInfo,
-              roomNumber: cont.roomNumber,
-              manualAssignment: true,
-            });
+
             if (
-              draggedReservation &&
-              existingReservation &&
-              draggedReservation.roomNumber &&
-              draggedReservation.roomInfo
+              !canSwapReservations(
+                draggedReservation,
+                existingReservation,
+                allReservations // 전체 예약 배열 사용
+              )
             ) {
-              onEdit(existingReservation._id, {
-                roomInfo: draggedReservation.roomInfo,
-                roomNumber: draggedReservation.roomNumber,
-                manualAssignment: true,
-              });
+              alert(
+                '스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.'
+              );
+              return;
             }
-          } else {
+
+            // 스왑 진행
             onEdit(reservationId, {
               roomInfo: cont.roomInfo,
               roomNumber: cont.roomNumber,
               manualAssignment: true,
             });
+            onEdit(existingReservation._id, {
+              roomInfo: draggedReservation.roomInfo,
+              roomNumber: draggedReservation.roomNumber,
+              manualAssignment: true,
+            });
+          } else {
+            // 빈 객실 이동인 경우:
+            const originalRoomInfo = draggedReservation.roomInfo;
+            const originalRoomNumber = draggedReservation.roomNumber;
+
+            // 낙관적 업데이트: 즉시 새로운 컨테이너(객실)로 이동
+            onEdit(reservationId, {
+              roomInfo: cont.roomInfo,
+              roomNumber: cont.roomNumber,
+              manualAssignment: true,
+            });
+
+            // 잠시 후, 전체 예약 배열을 기반으로 충돌 검사 (체크인~체크아웃 전 범위)
+            setTimeout(() => {
+              const updatedReservations = (allReservations || []).map((r) =>
+                r._id === draggedReservation._id
+                  ? {
+                      ...r,
+                      roomInfo: cont.roomInfo,
+                      roomNumber: cont.roomNumber,
+                    }
+                  : r
+              );
+
+              const availabilityByDate = computeDailyAvailability(
+                updatedReservations,
+                roomTypes,
+                draggedReservation.parsedCheckInDate,
+                draggedReservation.parsedCheckOutDate,
+                gridSettings
+              );
+
+              const { canMove, conflictDays } = canMoveToRoom(
+                cont.roomNumber,
+                cont.roomInfo.toLowerCase(),
+                draggedReservation.parsedCheckInDate,
+                draggedReservation.parsedCheckOutDate,
+                availabilityByDate,
+                updatedReservations,
+                draggedReservation._id // 자기 자신 제외
+              );
+
+              if (!canMove) {
+                // 충돌이 감지되면 원래 상태로 롤백
+                onEdit(reservationId, {
+                  roomInfo: originalRoomInfo,
+                  roomNumber: originalRoomNumber,
+                  manualAssignment: true,
+                });
+                alert(
+                  `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
+                    ', '
+                  )} (해당 날짜에 이미 예약이 있습니다.)`
+                );
+              }
+            }, 100);
           }
         }
       },
@@ -480,6 +551,9 @@ ContainerCell.propTypes = {
   getReservationById: PropTypes.func.isRequired,
   children: PropTypes.node,
   assignedReservations: PropTypes.array,
+  reservations: PropTypes.array.isRequired,
+  roomTypes: PropTypes.array.isRequired,
+  gridSettings: PropTypes.object, // gridSettings가 있을 경우
 };
 
 /* ===============================
@@ -506,7 +580,6 @@ function RoomGrid({
   newlyCreatedId,
   flipAllMemos, // 헤더에서 '메모' 버튼을 누르면 넘어오는 boolean
   sortOrder,
-  needsConsent,
   selectedDate,
 }) {
   // 뒤집힘 여부를 저장할 상태: reservationId 기반
@@ -1418,6 +1491,9 @@ function RoomGrid({
                   onEdit={onEdit}
                   getReservationById={getReservationById}
                   assignedReservations={arr}
+                  reservations={reservations} // 추가: 전체 예약 목록
+                  roomTypes={roomTypes} // 추가: 객실 타입 배열
+                  gridSettings={hotelSettings?.gridSettings} // 추가: gridSettings (있다면)
                 >
                   <div
                     className="container-label"
@@ -1530,7 +1606,6 @@ RoomGrid.propTypes = {
   newlyCreatedId: PropTypes.string,
   flipAllMemos: PropTypes.bool.isRequired, // 헤더에서 넘어오는 값
   needsConsent: PropTypes.bool.isRequired,
-  // 아래 두 개 추가(있다면)
   sortOrder: PropTypes.string,
   selectedDate: PropTypes.instanceOf(Date),
 };
