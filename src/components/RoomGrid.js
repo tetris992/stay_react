@@ -409,7 +409,7 @@ const ContainerCell = React.memo(
     getReservationById,
     children,
     assignedReservations,
-    allReservations, // activeReservations 대신 전체 예약 배열 사용
+    fullReservations, // activeReservations 대신 전체 예약 배열 사용
     roomTypes,
     gridSettings,
   }) => {
@@ -441,7 +441,7 @@ const ContainerCell = React.memo(
               !canSwapReservations(
                 draggedReservation,
                 existingReservation,
-                allReservations // 전체 예약 배열 사용
+                fullReservations // 전체 예약 배열 사용
               )
             ) {
               alert(
@@ -475,7 +475,7 @@ const ContainerCell = React.memo(
 
             // 잠시 후, 전체 예약 배열을 기반으로 충돌 검사 (체크인~체크아웃 전 범위)
             setTimeout(() => {
-              const updatedReservations = (allReservations || []).map((r) =>
+              const updatedReservations = (fullReservations || []).map((r) =>
                 r._id === draggedReservation._id
                   ? {
                       ...r,
@@ -551,7 +551,7 @@ ContainerCell.propTypes = {
   getReservationById: PropTypes.func.isRequired,
   children: PropTypes.node,
   assignedReservations: PropTypes.array,
-  reservations: PropTypes.array.isRequired,
+  fullReservations: PropTypes.array.isRequired, // 변경된 부분
   roomTypes: PropTypes.array.isRequired,
   gridSettings: PropTypes.object, // gridSettings가 있을 경우
 };
@@ -1208,7 +1208,7 @@ function RoomGrid({
           now.getFullYear(),
           now.getMonth(),
           tomorrow,
-          2,
+          5,
           0,
           0,
           0
@@ -1491,7 +1491,7 @@ function RoomGrid({
                   onEdit={onEdit}
                   getReservationById={getReservationById}
                   assignedReservations={arr}
-                  reservations={reservations} // 추가: 전체 예약 목록
+                  fullReservations={reservations}
                   roomTypes={roomTypes} // 추가: 객실 타입 배열
                   gridSettings={hotelSettings?.gridSettings} // 추가: gridSettings (있다면)
                 >

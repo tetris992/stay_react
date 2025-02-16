@@ -1579,6 +1579,7 @@ const App = () => {
                           <DndProvider backend={HTML5Backend}>
                             <RoomGrid
                               reservations={activeReservations}
+                              fullReservations={allReservations}
                               onDelete={handleDelete}
                               onConfirm={handleConfirm}
                               onEdit={handleEdit}
