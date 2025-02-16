@@ -405,6 +405,10 @@ const ContainerCell = React.memo(
         const { reservationId } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
+          // 콘솔 로그 추가: 드래그한 예약과 대상 컨테이너 정보
+          console.log("드래그한 예약:", draggedReservation);
+          console.log("드랍 대상 컨테이너:", cont);
+
           // [추가] 만약 드래그된 예약의 (roomInfo, roomNumber)가 현재 셀(cont)와 동일하면 아무 동작도 하지 않음
           if (
             draggedReservation.roomInfo === cont.roomInfo &&
@@ -605,6 +609,13 @@ function RoomGrid({
     );
   }, [reservations]);
 
+  // 개발용: 전체예약, 일간예약, 미배정 예약 수 출력
+  useEffect(() => {
+    console.log('전체 예약:', reservations);
+    console.log('일간 예약 (filteredReservations):', filteredReservations);
+    console.log('미배정 예약 수:', unassignedReservations.length);
+  }, [reservations, filteredReservations, unassignedReservations]);
+
   // ----------------------------------
   // 자동 배정(useEffect) → roomNumber 자동 할당
   // ----------------------------------
@@ -687,29 +698,22 @@ function RoomGrid({
   }, [flipAllMemos, reservations]);
 
   // ----------------------------------
-  // (5) "새로 생성된 첫 카드 자동 하이라이트/뒤집기" 예시(옵션)
+  // (5) "새로 생성된 첫 카드 자동 하이라이트" 예시(옵션)
   // ----------------------------------
   useEffect(() => {
-    if (reservations.length > 0 && highlightFirstCard) {
-      // 첫 번째 예약만 잠깐 뒤집었다가 4초 뒤 복귀
-      const firstReservation = reservations[0];
-      if (firstReservation) {
-        setFlippedReservationIds((prev) => {
-          const newSet = new Set(prev);
-          newSet.add(firstReservation._id);
-          return newSet;
-        });
-        const t = setTimeout(() => {
-          setFlippedReservationIds((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(firstReservation._id);
-            return newSet;
-          });
-        }, 4000);
-        return () => clearTimeout(t);
+    if (newlyCreatedId) {
+      const card = document.querySelector(
+        `.room-card[data-id="${newlyCreatedId}"]`
+      );
+      if (card) {
+        card.classList.add('onsite-created');
+        setTimeout(() => {
+          card.classList.remove('onsite-created');
+        }, 10000);
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [reservations, highlightFirstCard]);
+  }, [reservations, newlyCreatedId]);
 
   // ----------------------------------
   // (6) 메모 로딩/저장

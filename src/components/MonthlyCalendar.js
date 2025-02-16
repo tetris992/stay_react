@@ -54,7 +54,9 @@ function computeDailyAvailability(reservations, roomTypes, fromDate, toDate) {
     if (res.isCancelled) return; // 취소된 예약은 무시
 
     const ci = res.parsedCheckInDate ? startOfDay(res.parsedCheckInDate) : null;
-    const co = res.parsedCheckOutDate ? startOfDay(res.parsedCheckOutDate) : null;
+    const co = res.parsedCheckOutDate
+      ? startOfDay(res.parsedCheckOutDate)
+      : null;
     if (!ci || !co) return; // 날짜 파싱 실패 시 무시
 
     // roomInfo가 없으면 미배정 처리
@@ -97,6 +99,8 @@ function computeDailyAvailability(reservations, roomTypes, fromDate, toDate) {
       }
     });
   });
+  // 개발용: 일간예약 availability 결과 출력
+  console.log('일간예약 availability:', availability);
 
   return availability;
 }
@@ -108,15 +112,15 @@ function computeDailyAvailability(reservations, roomTypes, fromDate, toDate) {
        확인 후, 클릭한 위치 근처에 팝업으로 이동 여부를 묻고, 확인 시 이동함.
    ============================================================================ */
 const MonthlyCalendar = ({
-  reservations,    // 전체 예약 (각 예약은 parsedCheckInDate, parsedCheckOutDate, roomInfo 포함)
-  roomTypes,       // [{ roomInfo: 'Standard', stock: 7 }, { roomInfo: 'Deluxe', stock: 3 }, ... ]
+  reservations, // 전체 예약 (각 예약은 parsedCheckInDate, parsedCheckOutDate, roomInfo 포함)
+  roomTypes, // [{ roomInfo: 'Standard', stock: 7 }, { roomInfo: 'Deluxe', stock: 3 }, ... ]
   onRangeSelect,
   onReturnView,
-  onDateNavigate,  // 일간 예약 화면으로 이동하는 함수 (예: (date) => { ... })
+  onDateNavigate, // 일간 예약 화면으로 이동하는 함수 (예: (date) => { ... })
 }) => {
   // 1) 달력 범위: 오늘(자정) ~ 다음 달 말일까지
   const calendarStart = startOfDay(new Date());
-  const calendarEnd = endOfMonth(addMonths(new Date(), 1));
+  const calendarEnd = endOfMonth(addMonths(new Date(), 6));
 
   // 2) 잠금 옵션(isLocked) → 주단위로 달력 표시
   const [isLocked, setIsLocked] = useState(true);
@@ -134,7 +138,12 @@ const MonthlyCalendar = ({
 
   // 4) 한 달치 잔여 객실 및 미배정 예약 계산
   const availabilityByDate = useMemo(() => {
-    return computeDailyAvailability(reservations, roomTypes, calendarStart, calendarEnd);
+    return computeDailyAvailability(
+      reservations,
+      roomTypes,
+      calendarStart,
+      calendarEnd
+    );
   }, [reservations, roomTypes, calendarStart, calendarEnd]);
 
   // 5) 날짜 범위 드래그(마우스)로 예약 진행
@@ -177,7 +186,10 @@ const MonthlyCalendar = ({
     }
 
     // 최종 확인 (기존 window.confirm 사용)
-    const msg = `기간: ${format(rangeStart, 'MM/dd')}~${format(rangeEnd, 'MM/dd')} (${roomInfo}). 진행하시겠습니까?`;
+    const msg = `기간: ${format(rangeStart, 'MM/dd')}~${format(
+      rangeEnd,
+      'MM/dd'
+    )} (${roomInfo}). 진행하시겠습니까?`;
     if (window.confirm(msg)) {
       onRangeSelect && onRangeSelect(rangeStart, rangeEnd, roomInfo);
       onReturnView && onReturnView();
@@ -188,7 +200,9 @@ const MonthlyCalendar = ({
   const isRoomTypeSelected = (day, roomInfo) => {
     if (!selectedRange) return false;
     if (selectedRange.roomInfo !== roomInfo) return false;
-    const [rs, re] = [selectedRange.start, selectedRange.end].sort((a, b) => a - b);
+    const [rs, re] = [selectedRange.start, selectedRange.end].sort(
+      (a, b) => a - b
+    );
     return day >= rs && day <= re;
   };
 
@@ -233,7 +247,9 @@ const MonthlyCalendar = ({
     return (
       <div
         key={dateStr}
-        className={`calendar-cell ${isOutside ? 'outside' : ''} ${isToday ? 'today' : ''}`}
+        className={`calendar-cell ${isOutside ? 'outside' : ''} ${
+          isToday ? 'today' : ''
+        }`}
       >
         <div className={`cell-header ${isWeekend ? 'weekend' : ''}`}>
           <span
@@ -243,7 +259,10 @@ const MonthlyCalendar = ({
           >
             {format(day, 'MM/dd (EEE)', { locale: ko })}
           </span>
-          <span className='remain_stock' style={{ fontSize: '0.8rem', marginLeft: 4 }}>
+          <span
+            className="remain_stock"
+            style={{ fontSize: '0.8rem', marginLeft: 4 }}
+          >
             잔여: {totalRemaining}
           </span>
           {remainObj.unassigned > 0 && (
@@ -295,7 +314,9 @@ const MonthlyCalendar = ({
             title={isLocked ? '고정 해제' : '고정'}
           >
             {isLocked ? <FaLock /> : <FaLockOpen />}
-            <span style={{ marginLeft: '4px' }}>{isLocked ? '고정' : '해제'}</span>
+            <span style={{ marginLeft: '4px' }}>
+              {isLocked ? '고정' : '해제'}
+            </span>
           </button>
         </h2>
         {onReturnView && (
@@ -329,7 +350,8 @@ const MonthlyCalendar = ({
           }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem' }}>
-            {format(popup.day, 'MM/dd (EEE)', { locale: ko })}의 일간 예약 화면으로 이동하시겠습니까?
+            {format(popup.day, 'MM/dd (EEE)', { locale: ko })}의 일간 예약
+            화면으로 이동하시겠습니까?
           </p>
           <div style={{ marginTop: '8px', textAlign: 'right' }}>
             <button onClick={handlePopupConfirm} style={{ marginRight: '4px' }}>

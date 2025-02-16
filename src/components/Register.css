@@ -88,11 +88,35 @@
   margin-bottom: 1rem;
 }
 
+/* 기존 체크박스 및 라벨 관련 스타일은 제거 */
+ /*
 .consent-container input[type="checkbox"] {
   margin-right: 0.5rem;
 }
-
 .consent-container label {
   font-size: 0.9rem;
   color: #333;
+}
+*/
+
+/* 모달 호출 버튼 스타일 */
+.consent-container button {
+  padding: 0.5rem 1rem;
+  background: #3498db;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.consent-container button:hover {
+  background: #2980b9;
+}
+
+/* 동의 완료 시 표시되는 문구 스타일 */
+.consent-container p {
+  font-size: 0.9rem;
+  color: #333;
+  margin: 0;
 }

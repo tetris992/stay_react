@@ -139,11 +139,6 @@ html {
   transition: transform 0.4s, box-shadow 0.4s, opacity 0.4s, scale 0.96;
   text-align: left;
 }
-/* .room-card:hover {
-  z-index: 200;
-  background-color: #eae9e1;
-  scale: 0.99;
-} */
 
 .room-card h3 {
   font-family: 'Poppins', sans-serif;
@@ -263,23 +258,17 @@ html {
   transform: rotateY(180deg);
 }
 
-/* .room-card-front,
-.room-card-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  backface-visibility: hidden;
-}
 .room-card-back {
   transform: rotateY(180deg);
   background: none;
   padding: 0;
   box-sizing: border-box;
+  backface-visibility: hidden;
 }
 .room-card-back::before {
   display: none;
-} */
+  backface-visibility: hidden;
+}
 
 /* 플립된 카드에서는 전면 hover 효과 제거 */
 .room-card.flipped:hover,
@@ -444,20 +433,6 @@ html {
   }
 }
 
-/* 메모 헤더(상단) */
-.memo-header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #919191;
-  color: #fff;
-  padding: 5px 10px;
-  border-radius: 5px 5px 0 0;
-  cursor: pointer;
-  z-index: 1;
-}
-
 /* ================================
    (E) 메모 영역 (카드 뒷면 내부)
    - 메모 영역은 헤더와 바디로 구성되며, flex 컬럼 방향으로 배치됩니다.
@@ -533,6 +508,12 @@ html {
   justify-content: center;
   transition: color 0.3s ease, transform 0.2s ease;
 }
+
+.memo-edit-button:hover {
+  color: #f1c40f;
+  transform: scale(1.2);
+}
+
 /* 미배정 예약 카드 크기 */
 .unassigned-list .room-card {
   width: 250px;

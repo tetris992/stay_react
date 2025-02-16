@@ -17,15 +17,18 @@
   padding: 30px;
   border-radius: 10px;
   width: 100%;
-  max-width: 600px;
+  max-width: 920px;
   text-align: center;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: black;
 }
 
 .policy-text {
   text-align: left;
-  max-height: 350px;
+  max-height: 1050px;
+  min-width: 600px;
+  max-width: 920px;
   overflow-y: auto;
   margin-bottom: 20px;
   padding-right: 10px;

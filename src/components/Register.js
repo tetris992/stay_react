@@ -1,9 +1,10 @@
-// Register.js
+// src/components/Register.js
 import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
+import PrivacyConsentModal from './PrivacyConsentModal';
 
 const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [hotelId, setHotelId] = useState('');
@@ -12,21 +13,23 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [consentChecked, setConsentChecked] = useState(false); // 동의 체크 상태 추가
+  // 서버에서는 'consentChecked' 필드로 동의 여부를 관리합니다.
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // 회원가입 버튼 클릭 시 입력 정보와 동의 여부를 포함해 API 호출
   const handleRegister = async (e) => {
     e.preventDefault();
-    setIsProcessing(true);
-    setError('');
-
     if (!consentChecked) {
-      setError('회원가입을 위해 개인정보 사용 및 서비스 약관에 동의하셔야 합니다.');
-      setIsProcessing(false);
+      const errMsg = '회원가입을 위해 개인정보 동의가 필요합니다.';
+      setError(errMsg);
+      alert(errMsg);
       return;
     }
-
+    setIsProcessing(true);
+    setError('');
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
       const userData = {
@@ -36,18 +39,24 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
         email: email.trim(),
         address: address.trim(),
         phoneNumber: phoneNumber.trim(),
-        consentChecked, // 동의 여부를 백엔드로 전달
+        consentChecked: true,
       };
       await registerUser(userData);
-      alert('회원가입이 완료되었습니다. 이제 로그인하세요.');
-      onRegisterSuccess();
+      alert('회원가입이 완료되었습니다.');
+      onRegisterSuccess(); // 로그인 화면으로 전환
     } catch (error) {
-      console.error('회원가입 실패:', error);
       const message = error?.message || '회원가입 중 오류가 발생했습니다.';
       setError(message);
+      alert(message);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // 모달에서 동의 확인 시 호출되는 콜백: 단순히 동의 상태만 업데이트
+  const handleConsentComplete = () => {
+    setConsentChecked(true);
+    setShowConsentModal(false);
   };
 
   return (
@@ -104,22 +113,23 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           aria-label="전화번호"
         />
 
-        {/* 개인정보 및 서비스 약관 동의 체크박스 */}
+        {/* 개인정보 동의 영역 */}
         <div className="consent-container">
-          <input
-            type="checkbox"
-            id="consentCheckbox"
-            checked={consentChecked}
-            onChange={(e) => setConsentChecked(e.target.checked)}
-            required
-          />
-          <label htmlFor="consentCheckbox">
-            개인정보 사용 및 서비스 약관 동의
-          </label>
+          {!consentChecked ? (
+            <button
+              type="button"
+              onClick={() => setShowConsentModal(true)}
+              disabled={isProcessing}
+            >
+              개인정보 사용 및 서비스 약관 동의하기
+            </button>
+          ) : (
+            <p>개인정보 사용 및 서비스 약관에 동의하셨습니다.</p>
+          )}
         </div>
 
         <button type="submit" disabled={isProcessing}>
-          {isProcessing ? '회원가입 중...' : '회원가입'}
+          {isProcessing ? '처리 중...' : '회원가입'}
         </button>
       </form>
       <div className="register-footer">
@@ -130,6 +140,14 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           </Link>
         </div>
       </div>
+
+      {showConsentModal && (
+        <PrivacyConsentModal
+          hotelId={hotelId}
+          onClose={() => setShowConsentModal(false)}
+          onConsentComplete={handleConsentComplete}
+        />
+      )}
     </div>
   );
 };
