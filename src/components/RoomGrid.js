@@ -599,6 +599,7 @@ function RoomGrid({
   const memoRefs = useRef({});
 
   const [editedValues, setEditedValues] = useState({});
+  // eslint-disable-next-line no-unused-vars
   const [autoAssigning, setAutoAssigning] = useState(false);
 
   const { gridSettings = {} } = hotelSettings || {};
