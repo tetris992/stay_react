@@ -742,21 +742,18 @@ export default function HotelSettingsPage() {
 
       {/* (5) 전체 저장 & 취소 */}
       <div style={{ marginTop: '2rem' }}>
-        <button
-          onClick={handleSaveAll}
-          style={{ fontSize: '20px', marginRight: '10px' }}
-        >
+        <button onClick={handleSaveAll} className="custom-btn">
           전체 저장
         </button>
-        <button
-          onClick={handleCancel}
-          style={{ fontSize: '20px', backgroundColor: '#999', color: '#fff' }}
-        >
+        <button onClick={handleCancel} className="custom-btn">
           취소 (원복)
         </button>
-      </div>
-      <div className="footer">
-        <button className="footer-btn">메인으로 돌아가기</button>
+        <button
+          className="custom-btn footer-btn" /* footer-btn 등 추가 클래스를 사용해도 됨 */
+          onClick={() => navigate('/')}
+        >
+          메인으로 돌아가기
+        </button>
       </div>
     </div>
   );

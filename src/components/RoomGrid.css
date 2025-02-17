@@ -27,6 +27,7 @@ body,
 html {
   margin: 5px 25px;
   padding: 5px 25px;
+  box-sizing: border-box;
 }
 
 /* ================================
@@ -128,7 +129,7 @@ html {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 330px;
+  min-height: 280px;
   padding: 15px;
   margin: 1px;
   border: 3px solid var(--color-border-default);
@@ -440,6 +441,7 @@ html {
 .reservation-list {
   position: relative;
 }
+
 .memo-header {
   display: flex;
   flex-direction: row;
