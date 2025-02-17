@@ -591,6 +591,9 @@ function RoomGrid({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
+  // <-- 미배정 예약 패널 토글 상태 추가
+  const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
+
   const invoiceRef = useRef();
   const gridRef = useRef();
   const memoRefs = useRef({});
@@ -680,6 +683,13 @@ function RoomGrid({
       (res) => !res.roomNumber || res.roomNumber.trim() === ''
     );
   }, [reservations]);
+
+  // 미배정 예약이 없으면 패널 자동 닫기
+  useEffect(() => {
+    if (unassignedReservations.length === 0) {
+      setShowUnassignedPanel(false);
+    }
+  }, [unassignedReservations]);
 
   // 개발용: 전체예약, 일간예약, 미배정 예약 수 출력
   useEffect(() => {
@@ -1435,12 +1445,30 @@ function RoomGrid({
           }`}
           style={{ marginBottom: 20 }}
         >
-          {!autoAssigning && unassignedReservations.length > 0 && (
+          {/* 미배정 예약 패널 */}
+          {showUnassignedPanel && unassignedReservations.length > 0 ? (
             <div
               className="unassigned-section"
               style={{ marginBottom: '2rem' }}
             >
-              <h2>미배정 예약</h2>
+              <div
+                className="unassigned-header"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div className="unassigned-header-title">
+                  {/* <h3>미배정 예약: {unassignedReservations.length}건</h3> */}
+                  <button
+                    className="unassigned-header-title-button"
+                    onClick={() => setShowUnassignedPanel(false)}
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
               <div
                 className="unassigned-list"
                 style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
@@ -1468,6 +1496,16 @@ function RoomGrid({
                 ))}
               </div>
             </div>
+          ) : (
+            unassignedReservations.length > 0 && (
+              <button
+                className="unassigned-header-title-button"
+                onClick={() => setShowUnassignedPanel(true)}
+                style={{ cursor: 'pointer', marginBottom: '10px' }}
+              >
+                미배정 열기
+              </button>
+            )
           )}
 
           {/* (2) 컨테이너별 예약 */}

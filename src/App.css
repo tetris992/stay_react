@@ -13,6 +13,7 @@ body,
   background-color: transparent;
   background-size: cover;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 body::before,
