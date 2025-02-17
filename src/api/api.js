@@ -86,7 +86,7 @@ api.interceptors.response.use(
         // 자동 로그아웃: 로컬 인증정보 삭제 후 로그인 페이지로 리디렉션
         localStorage.removeItem('accessToken');
         localStorage.removeItem('hotelId');
-        // 필요한 경우 다른 인증정보도 삭제
+        localStorage.removeItem('csrfToken'); // 추가된 부분
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -126,6 +126,10 @@ export const loginUser = async (credentials) => {
 export const logoutUser = async () => {
   try {
     const response = await api.post('/auth/logout');
+    // 로그아웃 성공 시 로컬 인증정보 클리어
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('hotelId');
+    localStorage.removeItem('csrfToken'); // 추가된 부분
     return response.data;
   } catch (error) {
     console.error('로그아웃 실패:', error);

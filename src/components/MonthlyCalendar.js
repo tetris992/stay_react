@@ -1,5 +1,6 @@
 // src/components/MonthlyCalendar.js
 import React, { useMemo, useState } from 'react';
+// eslint-disable-next-line no-unused-vars
 import {
   format,
   endOfMonth,
@@ -17,12 +18,19 @@ import './MonthlyCalendar.css';
 // computeDailyAvailability 함수를 utils에서 import
 import { computeDailyAvailability } from '../utils/availability';
 
-function getDetailedAvailabilityMessage(rangeStart, rangeEnd, roomTypeKey, availabilityByDate) {
-  let msg = '연박 예약이 불가능합니다.\n선택한 날짜 범위에서 날짜별 사용 가능한 객실번호는 다음과 같습니다:\n';
+function getDetailedAvailabilityMessage(
+  rangeStart,
+  rangeEnd,
+  roomTypeKey,
+  availabilityByDate
+) {
+  let msg =
+    '연박 예약이 불가능합니다.\n선택한 날짜 범위에서 날짜별 사용 가능한 객실번호는 다음과 같습니다:\n';
   let cursor = rangeStart;
   while (cursor <= rangeEnd) {
     const ds = format(cursor, 'yyyy-MM-dd');
-    const freeRooms = availabilityByDate[ds]?.[roomTypeKey]?.leftoverRooms || [];
+    const freeRooms =
+      availabilityByDate[ds]?.[roomTypeKey]?.leftoverRooms || [];
     msg += `${ds}: ${freeRooms.length > 0 ? freeRooms.join(', ') : '없음'}\n`;
     cursor = addDays(cursor, 1);
   }
@@ -147,7 +155,12 @@ const MonthlyCalendar = ({
       cursor = addDays(cursor, 1);
     }
     if (!commonRooms || commonRooms.size === 0) {
-      const detailedMsg = getDetailedAvailabilityMessage(rangeStart, rangeEnd, tKey, availabilityByDate);
+      const detailedMsg = getDetailedAvailabilityMessage(
+        rangeStart,
+        rangeEnd,
+        tKey,
+        availabilityByDate
+      );
       alert(detailedMsg);
       setSelectedRange(null);
       return;

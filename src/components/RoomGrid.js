@@ -195,7 +195,7 @@ const DraggableReservationCard = React.memo(
           opacity: isDragging ? 0.5 : 1,
         }}
         onClick={() => {
-          // 메모 편집 중이면 뒤집지 않음
+          if (isDragging) return;
           if (!memo.isEditing && !isEditing) {
             handleCardFlip(reservation._id);
           }
@@ -297,7 +297,6 @@ const DraggableReservationCard = React.memo(
             {/* 카드 뒷면 (메모 영역) */}
             <div className="room-card-back">
               {/* 메모 헤더: 클릭 시 편집 모드 진입 */}
-              {/* 메모 헤더: 클릭 시 편집 모드 진입. 편집 중이면 취소 버튼(X) 표시 */}
               <div
                 className="memo-header"
                 onClick={(e) => {
