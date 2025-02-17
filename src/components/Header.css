@@ -1,4 +1,4 @@
-/* src/components/Header.css */
+/* 기존 기본 스타일 유지 */
 
 /* 헤더 전체 레이아웃 */
 .header {
@@ -10,8 +10,8 @@
   height: 140px; /* 헤더 높이 */
   z-index: 10; /* 다른 요소보다 앞에 위치 */
   display: grid;
-  grid-template-columns: 1fr; /* 전체를 하나의 컬럼으로 설정 */
-  grid-template-rows: auto auto; /* 두 개의 행 */
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
   gap: 10px;
   padding: 20px;
   background-color: transparent;
@@ -65,10 +65,11 @@
   transform: scale(1.1);
 }
 
-/* 두 번째 줄: Sort/Memo, OTA 상태, Quick-create */
+/* 두 번째 줄: 헤더 하단 */
 .header-bottom {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr; /* 왼쪽, 중앙, 오른쪽 컬럼 비율 */
+  /* 기본에는 3열 (왼쪽: 추가 버튼, 중앙: OTA 상태, 오른쪽: Quick-create) */
+  grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
 }
 
@@ -140,7 +141,7 @@
   background-color: gray;
 }
 
-/* 헤더 오른쪽: Quick-create 버튼 */
+/* 헤더 오른쪽: Quick-create 버튼 영역 */
 .header-right {
   display: flex;
   justify-content: flex-end;
@@ -150,11 +151,11 @@
 
 .quick-create-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
 }
 
+/* 모든 quick-button의 기본 스타일은 그대로 유지 */
 .quick-button {
   padding: 6px 12px;
   font-size: 1.1rem;
@@ -191,7 +192,7 @@
   background-color: #45a04979;
 }
 
-/* 투명도 효과를 위한 영역 */
+/* 투명도 효과 영역 */
 .header-fade {
   position: absolute;
   bottom: 0;
@@ -205,54 +206,23 @@
   );
 }
 
-/* 반응형 디자인 */
+/* 반응형 디자인: 화면 폭 2200px 이하일 때 */
 @media (max-width: 2200px) {
-  .header {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-  }
-
-  .header-center {
-    flex: 1;
-  }
-
-  .header-bottom {
-    grid-template-columns: 10fr 1fr 1fr;
-  }
-
-  .header-left {
-    justify-content: flex-start;
-  }
-
-  .additional-buttons {
-    flex-direction: row;
-    gap: 10px;
-  }
-
-  .sort-button,
-  .memo-button {
-    padding: 5px 10px;
-    font-size: 0.9rem;
-    white-space: nowrap;
-  }
+  /* OTA 상태를 숨김 */
   .header-ota-status {
     display: none;
   }
-  
-  /* monthly-view-button을 제외한 다른 quick 버튼들을 완전히 제거 */
+  /* 헤더 하단 그리드를 2열(왼쪽: 추가 버튼, 오른쪽: Quick-create 영역)으로 재설정 */
+  .header-bottom {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Quick-create 버튼 영역에서 월간뷰 버튼을 제외한 다른 quick 버튼들을 완전히 숨김 */
   .quick-create-buttons .quick-button:not(.monthly-view-button) {
     display: none !important;
   }
-  
+  /* quick-create-buttons의 gap을 제거하여 빈공간 없이 정렬 */
   .quick-create-buttons {
-    gap: 0 !important;
+    gap: 0;
     justify-content: flex-end;
   }
-}
-
-.low-stock-header-warning {
-  color: red;
-  white-space: nowrap; /* 줄바꿈 방지 */
-  overflow: hidden; /* 넘치는 부분 숨김 */
-  text-overflow: ellipsis; /* 넘치는 텍스트는 "..."로 표시 (선택사항) */
 }

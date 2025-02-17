@@ -10,7 +10,7 @@ import {
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import { getColorForRoomType } from '../utils/getColorForRoomType'; // 색상 함수 (roomInfo 값에 따라 색상 결정)
 import './HotelSettingsPage.css'; // 통합 스타일 (Layout+DailyBoard+RoomTypes)
-
+import { FaBed } from 'react-icons/fa';
 /* === DnD 관련 === */
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -40,7 +40,12 @@ function ReservationCard({ reservation }) {
   );
 }
 
-function ContainerBox({ container, reservations, onUpdateReservation }) {
+function ContainerBox({
+  container,
+  roomIndex,
+  reservations,
+  onUpdateReservation,
+}) {
   const [{ isOver }, dropRef] = useDrop({
     accept: 'RESERVATION',
     drop: (item) => {
@@ -55,7 +60,7 @@ function ContainerBox({ container, reservations, onUpdateReservation }) {
     }),
   });
 
-  const headerText = `${container.roomInfo || '미설정'} / ${
+  const headerText = `객실 ${roomIndex}: ${container.roomInfo || '미설정'} / ${
     container.roomNumber || '미설정'
   }`;
 
@@ -85,7 +90,6 @@ function DailyBoard({ gridSettings, reservations, onUpdateReservation }) {
     containers: [],
   };
 
-  // 매칭 함수: 예약의 roomInfo와 컨테이너의 roomInfo가 같고, roomNumber가 같은지 비교
   const isMatching = useCallback((res, cont) => {
     const rInfo = (res.roomInfo || '').toLowerCase();
     const cInfo = (cont.roomInfo || '').toLowerCase();
@@ -104,7 +108,7 @@ function DailyBoard({ gridSettings, reservations, onUpdateReservation }) {
     }
   });
 
-  // 미배정 예약: 어떤 컨테이너와도 매칭되지 않은 예약
+  // 미배정 예약
   const unassigned = reservations.filter(
     (res) => !containers.some((c) => isMatching(res, c))
   );
@@ -121,10 +125,11 @@ function DailyBoard({ gridSettings, reservations, onUpdateReservation }) {
         className="grid-area"
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
       >
-        {containers.map((cont) => (
+        {containers.map((cont, index) => (
           <ContainerBox
             key={cont.containerId}
             container={cont}
+            roomIndex={index + 1} // <-- 여기서 번호 전달
             reservations={containerMap[cont.containerId] || []}
             onUpdateReservation={onUpdateReservation}
           />
@@ -567,7 +572,7 @@ export default function HotelSettingsPage() {
   return (
     <div className="hotel-settings-page" style={{ fontSize: '18px' }}>
       <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>
-        호텔 설정 통합 페이지 (단일 최종 저장)
+        호텔 설정 통합 페이지 (HotelSettingsPage)
       </h1>
 
       <div style={{ marginBottom: '1rem' }}>
@@ -617,7 +622,22 @@ export default function HotelSettingsPage() {
         <h2 style={{ fontSize: '24px' }}>2. 객실 설정</h2>
         {roomTypes.map((rt, idx) => (
           <div key={idx} className="room-type_setting">
-            {/* 첫 줄 */}
+            {/* 객실 번호 라벨에 아이콘 추가 (푸른색) */}
+            <div
+              className="room-type-header"
+              style={{
+                fontSize: '25px',
+                fontWeight: 'bold',
+                marginBottom: '8px',
+                color: '#007bff',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <FaBed style={{ marginRight: '8px' }} />
+              객실 {idx + 1}
+            </div>
+            {/* 첫 줄: 한글 이름, 영어 이름, 가격, 재고 */}
             <div className="horizontal-fields">
               <input
                 type="text"
@@ -646,7 +666,7 @@ export default function HotelSettingsPage() {
                 }
                 style={{ fontSize: '18px' }}
               />
-              {/* stock은 layout에서 자동 업데이트됨 → readOnly */}
+              {/* stock은 LayoutEditor에서 자동 업데이트되므로 readOnly */}
               <input
                 type="number"
                 placeholder="재고"
@@ -734,6 +754,9 @@ export default function HotelSettingsPage() {
         >
           취소 (원복)
         </button>
+      </div>
+      <div className="footer">
+        <button className="footer-btn">메인으로 돌아가기</button>
       </div>
     </div>
   );
