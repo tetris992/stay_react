@@ -143,8 +143,10 @@ export const logoutUser = async () => {
     // 로그아웃 성공 시 로컬 인증정보 클리어
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
-    localStorage.removeItem('csrfToken'); // 추가된 부분
+    // localStorage.removeItem('csrfToken'); 
+    window.location.href = '/login';
     return response.data;
+    // 로그아웃 후 자동으로 로그인 페이지로 이동
   } catch (error) {
     console.error('로그아웃 실패:', error);
     throw error.response?.data || error;
