@@ -45,7 +45,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       alert('회원가입이 완료되었습니다.');
       onRegisterSuccess(); // 로그인 화면으로 전환
     } catch (error) {
-      const message = error?.message || '회원가입 중 오류가 발생했습니다.';
+      const message = error?.response?.data?.message|| '회원가입 중 오류가 발생했습니다.';  //확인이 필요함. 
       setError(message);
       alert(message);
     } finally {
