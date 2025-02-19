@@ -11,7 +11,7 @@
   --color-accent-coral: #939596;
   --color-background-light: #f3f6f8;
   --color-text-dark: #0a0a0a;
-  --color-text-white: #ffffff;
+  /* --color-text-white: #ffffff; */
   --color-border-default: #3c3c3c85;
   --color-border-hover-green: #1e8449;
   --color-border-hover-blue: #1a5276;
@@ -522,6 +522,9 @@ html {
   height: 280px;
   font-size: 0.7rem;
   background-color: rgb(228, 241, 228);
+  overflow: hidden; /* 카드 내부 내용이 넘칠 경우 숨김 처리 */
+  text-overflow: ellipsis; /* 내용이 넘치면 '...'으로 표시 */
+  white-space: nowrap; /* 내용이 한 줄로 표시되도록 설정 */
 }
 
 /* 플립된 카드에서는 hover 효과와 ::before 효과를 숨김 (최신 브라우저용 :has() 사용) */
@@ -536,8 +539,9 @@ html {
 }
 
 .unassigned-header-title-button {
-height: 30px;
-width: 80px;
-border-radius: 10px;
-background-color: #f1c40f;
+  height: 35px;
+  width: 100px;
+  border-radius: 5px;
+  font-weight: 500;
+  background-color: #f4cd33;
 }

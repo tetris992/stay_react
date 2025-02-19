@@ -104,6 +104,10 @@ export const loginUser = async (credentials) => {
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('hotelId', credentials.hotelId);
+
+      // CSRF 토큰 갱신 함수 호출
+      await refreshCsrfToken();
+
       return { accessToken, isRegistered };
     } else {
       throw new ApiError(500, '로그인에 실패했습니다.');
@@ -120,6 +124,16 @@ export const loginUser = async (credentials) => {
       errorMessage = '서버 응답이 없습니다. 네트워크 상태를 확인해주세요.';
     }
     throw new ApiError(statusCode, errorMessage);
+  }
+};
+
+// ============== CSRF 토큰 갱신 함수 ==============
+const refreshCsrfToken = async () => {
+  try {
+    const { data } = await api.get('/csrf-token'); // CSRF 토큰을 받아오는 API 호출
+    localStorage.setItem('csrfToken', data.csrfToken); // 로컬 스토리지에 CSRF 토큰 저장
+  } catch (error) {
+    console.error('CSRF 토큰 갱신 실패:', error);
   }
 };
 

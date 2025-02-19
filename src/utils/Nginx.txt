@@ -1,0 +1,94 @@
+server {
+    listen 80;
+    server_name ztoone.co.kr www.ztoone.co.kr;
+
+    # CORS 설정
+    location / {
+        # CORS 헤더 설정 (배포 서버와 로컬 서버에 대해 CORS 허용)
+        if ($http_origin = "http://localhost:3000") {
+            add_header 'Access-Control-Allow-Origin' 'http://localhost:3000' always;
+        }
+        if ($http_origin = "https://staysync.me") {
+            add_header 'Access-Control-Allow-Origin' 'https://staysync.me' always;
+        }
+        if ($http_origin = "https://ztoone.co.kr") {
+            add_header 'Access-Control-Allow-Origin' 'https://ztoone.co.kr' always;
+        }
+
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization, CSRF-Token' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+
+        # OPTIONS 요청에 대해 미리 응답
+        if ($request_method = 'OPTIONS') {
+            return 204;  
+        }
+
+        # HTTP에서 HTTPS로 리디렉션
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ztoone.co.kr www.ztoone.co.kr;
+
+    # SSL 설정
+    ssl_certificate /etc/letsencrypt/live/ztoone.co.kr/fullchain.pem; 
+    ssl_certificate_key /etc/letsencrypt/live/ztoone.co.kr/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # SSL 인증서 확인 및 응답 설정
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # 공통 CORS 헤더 설정
+    location /api/ {
+        proxy_pass http://localhost:3003/; 
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # CORS 관련 헤더 추가 (동적으로 설정)
+        if ($http_origin = "http://localhost:3000") {
+            add_header 'Access-Control-Allow-Origin' 'http://localhost:3000' always;
+        }
+        if ($http_origin = "https://staysync.me") {
+            add_header 'Access-Control-Allow-Origin' 'https://staysync.me' always;
+        }
+        if ($http_origin = "https://ztoone.co.kr") {
+            add_header 'Access-Control-Allow-Origin' 'https://ztoone.co.kr' always;
+        }
+
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization, CSRF-Token' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+    }
+
+    # 인증 관련 요청 (예: /auth/login, /auth/register 등)
+    location /auth/ {
+        proxy_pass http://localhost:3003/; 
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # CSRF 토큰 관련 설정 (필요시 추가)
+        if ($http_origin = "http://localhost:3000") {
+            add_header 'Access-Control-Allow-Origin' 'http://localhost:3000' always;
+        }
+        if ($http_origin = "https://staysync.me") {
+            add_header 'Access-Control-Allow-Origin' 'https://staysync.me' always;
+        }
+        if ($http_origin = "https://ztoone.co.kr") {
+            add_header 'Access-Control-Allow-Origin' 'https://ztoone.co.kr' always;
+        }
+
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization, CSRF-Token' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+    }
+}
