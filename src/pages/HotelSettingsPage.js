@@ -14,6 +14,7 @@ import { FaBed } from 'react-icons/fa';
 /* === DnD 관련 === */
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { Link } from 'react-router-dom';
 
 /** **************************************
  * (A) DailyBoard (예약 배정)
@@ -585,6 +586,22 @@ export default function HotelSettingsPage() {
         <button style={{ fontSize: '18px' }} onClick={handleCancel}>
           취소 (원복)
         </button>
+        {/* 새로운 링크 버튼 추가 */}
+        <Link
+          to="https://chromewebstore.google.com/detail/ota-scraper-extension/cnoicicjafgmfcnjclhlehfpojfaelag?authuser=0&hl=ko&pli=1"
+          target="_blank"
+          style={{
+            fontSize: '18px',
+            marginLeft: '10px',
+            color: '#007bff',
+            textDecoration: 'none',
+            padding: '10px',
+            border: '1px solid #007bff',
+            borderRadius: '5px',
+          }}
+        >
+          OTA Scraper Extension
+        </Link>
       </div>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
