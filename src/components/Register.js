@@ -18,10 +18,41 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [hotelIdError, setHotelIdError] = useState('');
+  const [phoneNumberError, setPhoneNumberError] = useState('');
 
   // 회원가입 버튼 클릭 시 입력 정보와 동의 여부를 포함해 API 호출
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    // 비밀번호 체크
+    if (password.length < 8) {
+      setPasswordError('비밀번호는 최소 8자 이상이어야 합니다.');
+      return;
+    } else {
+      setPasswordError('');
+    }
+    // 호텔 ID 체크 (5자 이상 20자 이하)
+    if (hotelId.length < 5 || hotelId.length > 20) {
+      setHotelIdError('호텔 ID는 최소 5자 이상, 최대 20자 이하이어야 합니다.');
+      return;
+    } else {
+      setHotelIdError('');
+    }
+
+    // 전화번호 체크 (정규식 기반)
+    const phoneRegex =
+      /^(\+82|0)\s?([0-9]{2,4})\s?-?\s?([0-9]{3,4})\s?-?\s?([0-9]{4})$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      setPhoneNumberError(
+        '전화번호는 올바른 형식이어야 합니다 (예: 010-2224-4444).'
+      );
+      return;
+    } else {
+      setPhoneNumberError('');
+    }
+
     if (!consentChecked) {
       const errMsg = '회원가입을 위해 개인정보 동의가 필요합니다.';
       setError(errMsg);
@@ -43,9 +74,10 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       };
       await registerUser(userData);
       alert('회원가입이 완료되었습니다.');
-      onRegisterSuccess(); // 로그인 화면으로 전환
+      window.location.href = '/login'; // 로그인 페이지로 리다이렉션
     } catch (error) {
-      const message = error?.response?.data?.message|| '회원가입 중 오류가 발생했습니다.';  //확인이 필요함. 
+      const message =
+        error?.response?.data?.message || '회원가입 중 오류가 발생했습니다.'; //확인이 필요함.
       setError(message);
       alert(message);
     } finally {
@@ -80,14 +112,16 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           required
           aria-label="호텔 ID"
         />
+        {hotelIdError && <p className="error">{hotelIdError}</p>}
         <input
           type="password"
-          placeholder="비밀번호"
+          placeholder="비밀번호(8자이상)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           aria-label="비밀번호"
         />
+        {passwordError && <p className="error">{passwordError}</p>}
         <input
           type="email"
           placeholder="이메일"
@@ -112,6 +146,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
           required
           aria-label="전화번호"
         />
+        {phoneNumberError && <p className="error">{phoneNumberError}</p>}
 
         {/* 개인정보 동의 영역 */}
         <div className="consent-container">
