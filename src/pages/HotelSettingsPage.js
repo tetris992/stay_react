@@ -578,12 +578,31 @@ export default function HotelSettingsPage() {
 
       <div style={{ marginBottom: '1rem' }}>
         <button
-          style={{ fontSize: '18px', marginRight: '10px' }}
+          style={{
+            fontSize: '18px',
+            marginLeft: '10px',
+            color: '#007bff',
+            textDecoration: 'none',
+            padding: '10px',
+            border: '1px solid #007bff',
+            borderRadius: '5px',
+          }}
           onClick={() => navigate('/')}
         >
           메인화면으로 돌아가기
         </button>
-        <button style={{ fontSize: '18px' }} onClick={handleCancel}>
+        <button
+          style={{
+            fontSize: '18px',
+            marginLeft: '10px',
+            color: '#007bff',
+            textDecoration: 'none',
+            padding: '10px',
+            border: '1px solid #007bff',
+            borderRadius: '5px',
+          }}
+          onClick={handleCancel}
+        >
           취소 (원복)
         </button>
         {/* 새로운 링크 버튼 추가 */}
