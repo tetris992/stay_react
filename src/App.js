@@ -1163,7 +1163,7 @@ const App = () => {
       }
     }
     fetchCsrf();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const initializeAuth = async () => {

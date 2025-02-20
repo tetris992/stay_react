@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
-import { Link } from 'react-router-dom';
-import PropTypes from 'prop-types';
+import { Link, useNavigate } from 'react-router-dom';
+// import PropTypes from 'prop-types';
 import PrivacyConsentModal from './PrivacyConsentModal';
 
-const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
+const Register = () => {
+  const navigate = useNavigate(); // navigate 훅 사용
   const [hotelId, setHotelId] = useState('');
   const [hotelName, setHotelName] = useState('');
   const [password, setPassword] = useState('');
@@ -74,7 +75,7 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
       };
       await registerUser(userData);
       alert('회원가입이 완료되었습니다.');
-      window.location.href = '/login'; // 로그인 페이지로 리다이렉션
+      navigate('/login'); // 로그인 페이지로 리다이렉션 (이 부분이 변경됨)
     } catch (error) {
       const message =
         error?.response?.data?.message || '회원가입 중 오류가 발생했습니다.'; //확인이 필요함.
@@ -187,9 +188,6 @@ const Register = ({ onRegisterSuccess, onSwitchToLogin }) => {
   );
 };
 
-Register.propTypes = {
-  onRegisterSuccess: PropTypes.func.isRequired,
-  onSwitchToLogin: PropTypes.func,
-};
+Register.propTypes = {};
 
 export default Register;
