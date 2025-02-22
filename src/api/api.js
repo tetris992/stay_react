@@ -268,7 +268,7 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {
-    const response = await api.post('/reservations', reservationData);
+    const response = await api.post('/api/reservations', reservationData);
     return response.data;
   } catch (error) {
     console.error('현장 예약 저장 실패:', error);
