@@ -269,7 +269,6 @@ const GuestFormModal = ({
       return;
     }
 
-    // ★ 연속 예약 검사 ★
     const tKey = formData.roomInfo.toLowerCase();
     let cursor = new Date(checkInDateTime);
     let commonRooms = null;
@@ -310,15 +309,14 @@ const GuestFormModal = ({
       alert(detailedMsg);
       return;
     }
-    // 교집합이 존재하면, 그 중 하나(가장 작은 번호)를 선택합니다.
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
 
     const finalData = {
       ...formData,
       price: numericPrice,
-      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"), // 초까지 포함
+      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
       checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
-      roomNumber: String(selectedRoomNumber), // 문자열로 변환
+      roomNumber: String(selectedRoomNumber),
     };
 
     try {
@@ -331,9 +329,11 @@ const GuestFormModal = ({
       onClose();
     } catch (error) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        '예약 저장에 실패했습니다. 다시 시도해주세요.';
+        error.status === 403
+          ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
+          : error.response?.data?.message ||
+            error.message ||
+            '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
       console.error('예약 저장 오류:', error);
     }

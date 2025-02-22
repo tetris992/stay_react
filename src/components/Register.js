@@ -1,20 +1,17 @@
-// src/components/Register.js
 import React, { useState } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
 import { Link, useNavigate } from 'react-router-dom';
-// import PropTypes from 'prop-types';
 import PrivacyConsentModal from './PrivacyConsentModal';
 
 const Register = () => {
-  const navigate = useNavigate(); // navigate 훅 사용
+  const navigate = useNavigate();
   const [hotelId, setHotelId] = useState('');
   const [hotelName, setHotelName] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  // 서버에서는 'consentChecked' 필드로 동의 여부를 관리합니다.
   const [consentChecked, setConsentChecked] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [error, setError] = useState('');
@@ -23,18 +20,16 @@ const Register = () => {
   const [hotelIdError, setHotelIdError] = useState('');
   const [phoneNumberError, setPhoneNumberError] = useState('');
 
-  // 회원가입 버튼 클릭 시 입력 정보와 동의 여부를 포함해 API 호출
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    // 비밀번호 체크
     if (password.length < 8) {
       setPasswordError('비밀번호는 최소 8자 이상이어야 합니다.');
       return;
     } else {
       setPasswordError('');
     }
-    // 호텔 ID 체크 (5자 이상 20자 이하)
+
     if (hotelId.length < 5 || hotelId.length > 20) {
       setHotelIdError('호텔 ID는 최소 5자 이상, 최대 20자 이하이어야 합니다.');
       return;
@@ -42,13 +37,9 @@ const Register = () => {
       setHotelIdError('');
     }
 
-    // 전화번호 체크 (정규식 기반)
-    const phoneRegex =
-      /^(\+82|0)\s?([0-9]{2,4})\s?-?\s?([0-9]{3,4})\s?-?\s?([0-9]{4})$/;
+    const phoneRegex = /^(\+82|0)\s?([0-9]{2,4})\s?-?\s?([0-9]{3,4})\s?-?\s?([0-9]{4})$/;
     if (!phoneRegex.test(phoneNumber)) {
-      setPhoneNumberError(
-        '전화번호는 올바른 형식이어야 합니다 (예: 010-2224-4444).'
-      );
+      setPhoneNumberError('전화번호는 올바른 형식이어야 합니다 (예: 010-2224-4444).');
       return;
     } else {
       setPhoneNumberError('');
@@ -60,8 +51,10 @@ const Register = () => {
       alert(errMsg);
       return;
     }
+
     setIsProcessing(true);
     setError('');
+
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
       const userData = {
@@ -75,10 +68,16 @@ const Register = () => {
       };
       await registerUser(userData);
       alert('회원가입이 완료되었습니다.');
-      navigate('/login'); // 로그인 페이지로 리다이렉션 (이 부분이 변경됨)
+      navigate('/login');
     } catch (error) {
-      const message =
-        error?.response?.data?.message || '회원가입 중 오류가 발생했습니다.'; //확인이 필요함.
+      let message = '회원가입 중 오류가 발생했습니다.';
+      if (error.status === 403) {
+        message = 'CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.';
+      } else if (error.status === 409) {
+        message = error.message || '이미 존재하는 호텔 ID, 이메일 또는 전화번호입니다.';
+      } else if (error.message) {
+        message = error.message;
+      }
       setError(message);
       alert(message);
     } finally {
@@ -86,7 +85,6 @@ const Register = () => {
     }
   };
 
-  // 모달에서 동의 확인 시 호출되는 콜백: 단순히 동의 상태만 업데이트
   const handleConsentComplete = () => {
     setConsentChecked(true);
     setShowConsentModal(false);
@@ -149,7 +147,6 @@ const Register = () => {
         />
         {phoneNumberError && <p className="error">{phoneNumberError}</p>}
 
-        {/* 개인정보 동의 영역 */}
         <div className="consent-container">
           {!consentChecked ? (
             <button
@@ -187,7 +184,5 @@ const Register = () => {
     </div>
   );
 };
-
-Register.propTypes = {};
 
 export default Register;

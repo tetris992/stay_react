@@ -1,5 +1,3 @@
-// src/components/Login.js
-
 import React, { useState } from 'react';
 import { loginUser, fetchHotelSettings } from '../api/api';
 import ForgotPassword from './ForgotPassword';
@@ -53,31 +51,26 @@ const Login = ({ onLogin }) => {
         }
       }
     } catch (error) {
-      // console.error('로그인 실패:', error);
-      // console.log('에러 객체 상세:', error);
-      // console.log('error.status:', error.status);
-      // console.log('error.message:', error.message);
-
-      // error.response 대신 error.status와 error.message를 활용
       if (error.status === 401) {
         setLoginAttempts((prevAttempts) => {
           const newAttempts = prevAttempts + 1;
           if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
             setShowForgotPassword(true);
             setIsFormDisabled(true);
-            return 0; // 횟수 초기화
+            return 0;
           } else {
             const remainingAttempts = MAX_LOGIN_ATTEMPTS - newAttempts;
             setError(
               error.message ||
-                '로그인 실패: 유효하지 않은 자격 증명 또는 호텔 ID.'
+                '로그인 실패: 유효하지 않은 호텔 ID 또는 비밀번호입니다.'
             );
             setPasswordError(`남은 시도 횟수: ${remainingAttempts}`);
             return newAttempts;
           }
         });
+      } else if (error.status === 403) {
+        setError('CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.');
       } else {
-        // 네트워크 에러 또는 서버, 기타 에러
         setError(
           error.message ||
             '로그인 중 오류가 발생했습니다. 나중에 다시 시도해주세요.'
