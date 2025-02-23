@@ -16,17 +16,18 @@
 }
 
 .hotel-settings-page {
-  width: 2200px;
+  width: 100%; /* 부모 크기에 맞춤 */
+  max-width: 2200px; /* 최대 너비 제한 */
   margin: 0 auto;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-y: auto;
-  height: 100vh;
+  height: 100vh; /* 뷰포트 높이 유지 */
   box-sizing: border-box;
   background-color: var(--light-gray);
   display: flex;
   flex-direction: column;
-  min-width: 600px; /* 최소 너비 설정 */
+  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
+  overflow: hidden; /* 수평 및 수직 스크롤 제거 */
 }
 
 h1 {
@@ -122,6 +123,7 @@ section {
   border-radius: 8px;
   background-color: var(--white);
   box-shadow: 0 2px 4px var(--shadow-gray);
+  min-width: 0; /* 섹션 크기 유연성 */
 }
 
 h2 {
@@ -133,12 +135,14 @@ h2 {
 .hotel-info-section .info-columns {
   display: flex;
   gap: 40px;
+  min-width: 0; /* 유연성 유지 */
 }
 
 .basic-info,
 .account-info {
   flex: 1;
   padding: 10px;
+  min-width: 0; /* 유연성 유지 */
 }
 
 .basic-info label,
@@ -158,19 +162,21 @@ h2 {
   border: 1px solid var(--input-border);
   border-radius: 6px;
   background-color: #fafafa;
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
 .room-types-section {
   padding: 20px;
+  min-width: 0; /* 유연성 유지 */
 }
 
 .room-types-section .room-types-container {
   display: flex;
   flex-wrap: nowrap; /* 포개짐 방지, 한 줄로 유지 */
   gap: 3px; /* 카드 간 간격 3px로 유지 */
-  max-width: 100%;
-  min-width: 600px; /* 최소 너비 설정 */
-  overflow-x: auto; /* 가로 스크롤 추가 */
+  width: 100%; /* 부모 크기에 맞춤 */
+  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
+  overflow: hidden; /* 수평 및 수직 스크롤 제거 */
 }
 
 .room-type-item {
@@ -184,6 +190,9 @@ h2 {
   padding: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin: 2px; /* 마진 2px */
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
+  height: 394px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) + 40 (헤더 높이) */
+  min-height: 394px; /* 최소 높이 유지 */
 }
 
 .room-type-header {
@@ -239,6 +248,7 @@ h2 {
   border-radius: 4px;
   background-color: #fafafa;
   flex: 1;
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
 .room-type-fields .name-kor,
@@ -310,7 +320,9 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  min-width: 600px; /* 최소 너비 설정 */
+  width: 100%; /* 부모 크기에 맞춤 */
+  min-width: 300px; /* 최소 너비 설정 */
+  overflow: hidden; /* 스크롤 제거 */
 }
 
 .layout-editor-section .floor-row {
@@ -321,7 +333,11 @@ h2 {
   padding: 15px;
   border-radius: 8px;
   border: 1px solid #e8ecef;
-  min-width: 600px; /* 최소 너비 설정 */
+  width: 100%; /* 부모 크기에 맞춤 */
+  min-width: 300px; /* 최소 너비 설정 */
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
+  height: auto; /* 자동 높이 조정 */
+  min-height: 0; /* 최소 높이 제거 */
 }
 
 .floor-header {
@@ -379,36 +395,64 @@ h2 {
   visibility: visible;
 }
 
-.containers {
-  display: flex;
-  flex-wrap: nowrap; /* 포개짐 방지, 한 줄로 유지 */
-  gap: 3px; /* 카드 간 간격 3px로 유지 */
-  position: relative;
-  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
-  overflow-x: auto; /* 가로 스크롤 추가 */
-}
-
+/* 객실 컨테이너 */
 .container-box {
   display: flex;
   flex-direction: column;
-  padding: 2px; /* 패딩 2px로 유지 */
+  padding: 2px; /* 패딩 2px로 수정 */
   border: 1px solid #d0d0d0;
   border-radius: 6px;
   width: 284px; /* 280 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
-  height: 354px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
+  height: 394px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) + 40 (헤더 높이) */
   background-color: var(--white);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
-  margin: 2px; /* 마진 2px로 유지 */
-  min-width: 284px; /* 최소 너비 유지 (객실 카드 크기 + 패딩 + 마진) */
+  margin: 2px; /* 마진 2px로 수정 */
+  min-width: 284px; /* 최소 너비 유지 */
+  min-height: 394px; /* 최소 높이 유지 */
   flex: 0 0 auto; /* 고정 크기로 유지, 자동 확장 방지 */
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
+/* 컨테이너 헤더 (룸 번호와 타입) */
+.container-box .container-label {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 중앙 정렬 */
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text-dark);
+  background-color: #f0f0f0;
+  padding: 5px 10px;
+  border-bottom: 1px solid #ddd;
+  border-radius: 6px 6px 0 0;
+  text-align: center;
+  height: 40px; /* 고정 높이로 헤더 크기 제한 */
+  width: 100%; /* 전체 너비 차지 */
+  overflow: hidden; /* 텍스트 넘침 방지 */
+}
+
+/* 컨테이너 본문 (예약 카드 또는 빈 상태) */
+.container-box .reservation-list {
+  flex: 1; /* 본문이 남은 공간을 채움 (350px) */
+  width: 280px; /* 본문 폭을 객실 카드 폭과 일치 */
+  height: 350px; /* 본문 높이를 객실 카드 높이와 일치 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 세로 중앙 정렬 */
+  align-items: center; /* 가로 중앙 정렬 */
+  overflow: hidden; /* 수직 스크롤 제거 */
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
+}
+
+/* 빈 컨테이너 */
 .container-box.empty {
   background-color: #f8f8f8;
   border: 2px dashed #aaa;
   opacity: 0.6;
   color: #999;
+  min-width: 284px; /* 최소 너비 유지 */
+  min-height: 394px; /* 최소 높이 유지 */
 }
 
 .container-box select,
@@ -420,6 +464,7 @@ h2 {
   margin-bottom: 8px;
   background-color: #fafafa;
   width: 100%; /* 입력 필드 너비 100%로 설정 */
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
 .container-box .delete-btn {

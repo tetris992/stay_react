@@ -438,11 +438,8 @@ html {
    (E) 메모 영역 (카드 뒷면 내부)
    - 메모 영역은 헤더와 바디로 구성되며, flex 컬럼 방향으로 배치됩니다.
 =============================== */
-/* 예약랜더링되는 카드 크기 */
 .reservation-list {
   position: relative;
-  height: 335px;
-  width: 280px;
 }
 
 .memo-header {
@@ -547,19 +544,4 @@ html {
   border-radius: 5px;
   font-weight: 500;
   background-color: #f4cd33;
-}
-
-/* 빈 그리드 셀 스타일 */
-.grid-cell.empty {
-  background-color: #f8f8f8;
-  border: 2px dashed #aaa;
-  opacity: 0.6;
-  color: #999;
-  pointer-events: none; /* 드래그 앤 드롭 비활성화 */
-  min-width: 280px;
-}
-
-.grid-cell.empty .container-label {
-  color: #bbb;
-  font-style: italic;
 }
