@@ -1,198 +1,25 @@
-/* HotelSettingsPage.css */
-
-/* 기본 설정 */
-:root {
-  --primary-blue: #3498db;
-  --primary-green: #28a745;
-  --primary-gray: #6c757d;
-  --danger-red: #dc3545;
-  --light-gray: #f5f6f5;
-  --white: #ffffff;
-  --border-gray: #e0e0e0;
-  --shadow-gray: rgba(0, 0, 0, 0.05);
-  --input-border: #d0d0d0;
-  --text-dark: #2c3e50;
-  --text-gray: #7f8c8d;
-}
-
-.hotel-settings-page {
-  width: 100%; /* 부모 크기에 맞춤 */
-  max-width: 2200px; /* 최대 너비 제한 */
-  margin: 0 auto;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  height: 100vh; /* 뷰포트 높이 유지 */
-  box-sizing: border-box;
-  background-color: var(--light-gray);
-  display: flex;
-  flex-direction: column;
-  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
-  overflow: hidden; /* 수평 및 수직 스크롤 제거 */
-}
-
-h1 {
-  font-size: 32px;
-  margin-bottom: 20px;
-  text-align: center;
-  color: var(--text-dark);
-}
-
-.button-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 25px;
-}
-
-.action-btn {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: var(--primary-blue);
-  color: var(--white);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.action-btn:hover {
-  background-color: #2980b9;
-}
-
-.action-btn.add-btn {
-  background-color: var(--primary-green);
-}
-
-.action-btn.add-btn:hover {
-  background-color: #218838;
-}
-
-.action-btn.generate-btn {
-  background-color: #17a2b8;
-}
-
-.action-btn.generate-btn:hover {
-  background-color: #138496;
-}
-
-.action-btn.add-room-btn {
-  background-color: var(--primary-green);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.action-btn.add-room-btn:hover {
-  background-color: #218838;
-}
-
-.action-btn.change-pw-btn {
-  background-color: var(--primary-gray);
-  margin-top: 10px;
-}
-
-.action-btn.change-pw-btn:hover {
-  background-color: #5a6268;
-}
-
-.action-btn.undo-btn {
-  background-color: var(--primary-gray);
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  color: var(--white);
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.action-btn.undo-btn:hover {
-  background-color: #5a6268;
-}
-
-.error-message {
-  color: var(--danger-red);
-  font-size: 16px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-section {
-  margin-bottom: 30px;
-  padding: 20px;
-  border: 1px solid var(--border-gray);
-  border-radius: 8px;
-  background-color: var(--white);
-  box-shadow: 0 2px 4px var(--shadow-gray);
-  min-width: 0; /* 섹션 크기 유연성 */
-}
-
-h2 {
-  font-size: 24px;
-  margin-bottom: 15px;
-  color: #34495e;
-}
-
-.hotel-info-section .info-columns {
-  display: flex;
-  gap: 40px;
-  min-width: 0; /* 유연성 유지 */
-}
-
-.basic-info,
-.account-info {
-  flex: 1;
-  padding: 10px;
-  min-width: 0; /* 유연성 유지 */
-}
-
-.basic-info label,
-.account-info label {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 18px;
-  color: var(--text-dark);
-}
-
-.basic-info input,
-.account-info input {
-  width: 100%;
-  max-width: 300px;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid var(--input-border);
-  border-radius: 6px;
-  background-color: #fafafa;
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
-}
-
+/* HotelSettingsPage.css (수정된 부분) */
 .room-types-section {
   padding: 20px;
-  min-width: 0; /* 유연성 유지 */
 }
 
 .room-types-section .room-types-container {
   display: flex;
-  flex-wrap: nowrap; /* 포개짐 방지, 한 줄로 유지 */
-  gap: 3px; /* 카드 간 간격 3px로 유지 */
-  width: 100%; /* 부모 크기에 맞춤 */
-  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
-  overflow: hidden; /* 수평 및 수직 스크롤 제거 */
+  flex-wrap: wrap;
+  gap: 20px;
+  max-width: 100%;
 }
 
 .room-type-item {
-  flex: 0 0 auto; /* 고정 크기로 유지, 자동 확장 방지 */
-  width: 284px; /* 280 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
-  min-width: 284px; /* 최소 크기 유지 (객실 카드 크기 + 패딩 + 마진) */
-  max-width: 500px;
+  flex: 0 0 calc(33.33% - 13.33px);
+  width: calc(33.33% - 13.33px);
+  min-width: 250px;
+  max-width: 400px;
   background-color: #fdfdfd;
   border: 1px solid #e8ecef;
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin: 2px; /* 마진 2px */
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
-  height: 394px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) + 40 (헤더 높이) */
-  min-height: 394px; /* 최소 높이 유지 */
 }
 
 .room-type-header {
@@ -202,30 +29,10 @@ h2 {
   font-weight: 600;
   color: #2980b9;
   margin-bottom: 10px;
-  gap: 10px;
 }
 
 .room-type-header svg {
-  margin-right: 5px;
-}
-
-.remove-btn {
-  padding: 4px;
-  background-color: var(--danger-red);
-  color: var(--white);
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.remove-btn:hover {
-  background-color: #c82333;
+  margin-right: 10px;
 }
 
 .room-type-fields {
@@ -244,18 +51,32 @@ h2 {
 .room-type-aliases input {
   padding: 8px;
   font-size: 14px;
-  border: 1px solid var(--input-border);
+  border: 1px solid #d0d0d0;
   border-radius: 4px;
   background-color: #fafafa;
-  flex: 1;
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
+  flex: 1; /* 입력 필드 크기 균등화 */
 }
 
 .room-type-fields .name-kor,
 .room-type-fields .name-eng,
 .room-type-fields .price,
 .room-type-fields .stock {
-  flex: 1;
+  flex: 1; /* 각 입력 필드 크기 동일 */
+}
+
+.room-type-fields .remove-btn {
+  padding: 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex: 0; /* 삭제 버튼 크기 고정 */
+}
+
+.room-type-fields .remove-btn:hover {
+  background-color: #c82333;
 }
 
 .room-type-aliases {
@@ -265,19 +86,20 @@ h2 {
   margin-top: 10px;
 }
 
+/* 나머지 스타일 유지 */
 .room-numbers {
   margin-top: 10px;
 }
 
 .room-numbers h4 {
   font-size: 14px;
-  color: var(--text-gray);
+  color: #7f8c8d;
   margin-bottom: 5px;
 }
 
 .room-numbers div {
   font-size: 12px;
-  color: var(--text-dark);
+  color: #2c3e50;
   padding: 6px;
   background-color: #ecf0f1;
   border-radius: 4px;
@@ -292,7 +114,7 @@ h2 {
 .layout-editor-section .layout-header {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 10px; /* 버튼과 텍스트 간 간격 줄임 */
   margin-bottom: 15px;
 }
 
@@ -303,11 +125,11 @@ h2 {
 }
 
 .layout-editor-section .undo-btn {
-  background-color: var(--primary-gray);
+  background-color: #6c757d;
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  color: var(--white);
+  color: white;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
@@ -320,9 +142,6 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  width: 100%; /* 부모 크기에 맞춤 */
-  min-width: 300px; /* 최소 너비 설정 */
-  overflow: hidden; /* 스크롤 제거 */
 }
 
 .layout-editor-section .floor-row {
@@ -333,11 +152,6 @@ h2 {
   padding: 15px;
   border-radius: 8px;
   border: 1px solid #e8ecef;
-  width: 100%; /* 부모 크기에 맞춤 */
-  min-width: 300px; /* 최소 너비 설정 */
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
-  height: auto; /* 자동 높이 조정 */
-  min-height: 0; /* 최소 높이 제거 */
 }
 
 .floor-header {
@@ -358,7 +172,7 @@ h2 {
 
 .floor-row .remove-icon {
   cursor: pointer;
-  color: var(--danger-red);
+  color: #dc3545;
   transition: color 0.3s ease;
 }
 
@@ -379,7 +193,7 @@ h2 {
   left: 50%;
   transform: translateX(-50%);
   background-color: #333;
-  color: var(--white);
+  color: white;
   padding: 5px 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -395,84 +209,48 @@ h2 {
   visibility: visible;
 }
 
-/* 객실 컨테이너 */
+.containers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: relative; /* 컨테이너 내 버튼 위치 조정용 */
+}
+
 .container-box {
   display: flex;
   flex-direction: column;
-  padding: 2px; /* 패딩 2px로 수정 */
+  padding: 10px;
   border: 1px solid #d0d0d0;
   border-radius: 6px;
-  width: 284px; /* 280 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
-  height: 394px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) + 40 (헤더 높이) */
-  background-color: var(--white);
+  width: 160px;
+  background-color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
-  margin: 2px; /* 마진 2px로 수정 */
-  min-width: 284px; /* 최소 너비 유지 */
-  min-height: 394px; /* 최소 높이 유지 */
-  flex: 0 0 auto; /* 고정 크기로 유지, 자동 확장 방지 */
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
-/* 컨테이너 헤더 (룸 번호와 타입) */
-.container-box .container-label {
-  display: flex;
-  align-items: center;
-  justify-content: center; /* 중앙 정렬 */
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: var(--text-dark);
-  background-color: #f0f0f0;
-  padding: 5px 10px;
-  border-bottom: 1px solid #ddd;
-  border-radius: 6px 6px 0 0;
-  text-align: center;
-  height: 40px; /* 고정 높이로 헤더 크기 제한 */
-  width: 100%; /* 전체 너비 차지 */
-  overflow: hidden; /* 텍스트 넘침 방지 */
-}
-
-/* 컨테이너 본문 (예약 카드 또는 빈 상태) */
-.container-box .reservation-list {
-  flex: 1; /* 본문이 남은 공간을 채움 (350px) */
-  width: 280px; /* 본문 폭을 객실 카드 폭과 일치 */
-  height: 350px; /* 본문 높이를 객실 카드 높이와 일치 */
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* 세로 중앙 정렬 */
-  align-items: center; /* 가로 중앙 정렬 */
-  overflow: hidden; /* 수직 스크롤 제거 */
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
-}
-
-/* 빈 컨테이너 */
 .container-box.empty {
   background-color: #f8f8f8;
   border: 2px dashed #aaa;
   opacity: 0.6;
   color: #999;
-  min-width: 284px; /* 최소 너비 유지 */
-  min-height: 394px; /* 최소 높이 유지 */
 }
 
 .container-box select,
 .container-box input {
   padding: 8px;
   font-size: 14px;
-  border: 1px solid var(--input-border);
+  border: 1px solid #d0d0d0;
   border-radius: 4px;
   margin-bottom: 8px;
   background-color: #fafafa;
-  width: 100%; /* 입력 필드 너비 100%로 설정 */
-  box-sizing: border-box; /* 패딩 포함 크기 계산 */
 }
 
 .container-box .delete-btn {
   position: absolute;
   top: 5px;
   right: 5px;
-  background-color: var(--danger-red);
-  color: var(--white);
+  background-color: #dc3545;
+  color: white;
   border: none;
   border-radius: 4px;
   padding: 4px;
@@ -487,4 +265,132 @@ h2 {
 .save-section {
   text-align: center;
   margin-top: 30px;
+}
+
+.hotel-settings-page {
+  width: 2200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-y: auto;
+  height: 100vh;
+  box-sizing: border-box;
+  background-color: #f5f6f5;
+}
+
+h1 {
+  font-size: 32px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #2c3e50;
+}
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.action-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #2980b9;
+}
+
+.action-btn.add-btn {
+  background-color: #28a745;
+}
+
+.action-btn.add-btn:hover {
+  background-color: #218838;
+}
+
+.action-btn.generate-btn {
+  background-color: #17a2b8;
+}
+
+.action-btn.generate-btn:hover {
+  background-color: #138496;
+}
+
+.action-btn.add-room-btn {
+  background-color: #28a745;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.action-btn.add-room-btn:hover {
+  background-color: #218838;
+}
+
+.action-btn.change-pw-btn {
+  background-color: #6c757d;
+  margin-top: 10px;
+}
+
+.action-btn.change-pw-btn:hover {
+  background-color: #5a6268;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #34495e;
+}
+
+.hotel-info-section .info-columns {
+  display: flex;
+  gap: 40px;
+}
+
+.basic-info,
+.account-info {
+  flex: 1;
+  padding: 10px;
+}
+
+.basic-info label,
+.account-info label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.basic-info input,
+.account-info input {
+  width: 100%;
+  max-width: 300px;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  background-color: #fafafa;
 }
