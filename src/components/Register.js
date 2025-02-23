@@ -9,6 +9,7 @@ const Register = () => {
   const [hotelId, setHotelId] = useState('');
   const [hotelName, setHotelName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -16,44 +17,57 @@ const Register = () => {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
-  const [hotelIdError, setHotelIdError] = useState('');
-  const [phoneNumberError, setPhoneNumberError] = useState('');
+  const [errors, setErrors] = useState({
+    hotelId: '',
+    hotelName: '',
+    password: '',
+    confirmPassword: '',
+    email: '',
+    address: '',
+    phoneNumber: '',
+    consent: '',
+  });
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!hotelId || hotelId.length < 5 || hotelId.length > 20) {
+      newErrors.hotelId = '호텔 ID는 5자 이상 20자 이하여야 합니다.';
+    }
+    if (!hotelName) {
+      newErrors.hotelName = '호텔 이름은 필수입니다.';
+    }
+    if (!password || password.length < 8) {
+      newErrors.password = '비밀번호는 최소 8자 이상이어야 합니다.';
+    }
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.';
+    }
+    if (!email || !/.+@.+\..+/.test(email)) { // 백슬래시 제거
+      newErrors.email = '유효한 이메일을 입력하세요.';
+    }
+    if (!address) {
+      newErrors.address = '호텔 주소는 필수입니다.';
+    }
+    const phoneRegex = /^(\+82|0)\s?([0-9]{2,4})\s?-?\s?([0-9]{3,4})\s?-?\s?([0-9]{4})$/;
+    if (!phoneNumber || !phoneRegex.test(phoneNumber)) {
+      newErrors.phoneNumber = '전화번호는 올바른 형식이어야 합니다 (예: 010-1234-5678).';
+    }
+    if (!consentChecked) {
+      newErrors.consent = '개인정보 동의가 필요합니다.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-
-    if (password.length < 8) {
-      setPasswordError('비밀번호는 최소 8자 이상이어야 합니다.');
-      return;
-    } else {
-      setPasswordError('');
-    }
-
-    if (hotelId.length < 5 || hotelId.length > 20) {
-      setHotelIdError('호텔 ID는 최소 5자 이상, 최대 20자 이하이어야 합니다.');
-      return;
-    } else {
-      setHotelIdError('');
-    }
-
-    const phoneRegex = /^(\+82|0)\s?([0-9]{2,4})\s?-?\s?([0-9]{3,4})\s?-?\s?([0-9]{4})$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      setPhoneNumberError('전화번호는 올바른 형식이어야 합니다 (예: 010-2224-4444).');
-      return;
-    } else {
-      setPhoneNumberError('');
-    }
-
-    if (!consentChecked) {
-      const errMsg = '회원가입을 위해 개인정보 동의가 필요합니다.';
-      setError(errMsg);
-      alert(errMsg);
-      return;
-    }
-
-    setIsProcessing(true);
     setError('');
+    setIsProcessing(true);
+
+    if (!validateForm()) {
+      setIsProcessing(false);
+      return;
+    }
 
     try {
       const normalizedHotelId = hotelId.trim().toLowerCase();
@@ -74,7 +88,27 @@ const Register = () => {
       if (error.status === 403) {
         message = 'CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.';
       } else if (error.status === 409) {
-        message = error.message || '이미 존재하는 호텔 ID, 이메일 또는 전화번호입니다.';
+        if (error.message && error.message.includes('phoneNumber')) {
+          setErrors((prev) => ({
+            ...prev,
+            phoneNumber: '이미 등록된 전화번호입니다.',
+          }));
+          message = '이미 등록된 전화번호입니다.';
+        } else if (error.message && error.message.includes('email')) {
+          setErrors((prev) => ({
+            ...prev,
+            email: '이미 등록된 이메일입니다.',
+          }));
+          message = '이미 등록된 이메일입니다.';
+        } else if (error.message && error.message.includes('hotelId')) {
+          setErrors((prev) => ({
+            ...prev,
+            hotelId: '이미 존재하는 호텔 ID입니다.',
+          }));
+          message = '이미 존재하는 호텔 ID입니다.';
+        } else {
+          message = '이미 존재하는 호텔 ID, 이메일 또는 전화번호입니다.';
+        }
       } else if (error.message) {
         message = error.message;
       }
@@ -88,6 +122,7 @@ const Register = () => {
   const handleConsentComplete = () => {
     setConsentChecked(true);
     setShowConsentModal(false);
+    setErrors((prev) => ({ ...prev, consent: '' }));
   };
 
   return (
@@ -95,58 +130,90 @@ const Register = () => {
       <form onSubmit={handleRegister} className="register-form">
         <h2>회원가입</h2>
         {error && <p className="error">{error}</p>}
-        <input
-          type="text"
-          placeholder="호텔 이름"
-          value={hotelName}
-          onChange={(e) => setHotelName(e.target.value)}
-          required
-          aria-label="호텔 이름"
-        />
-        <input
-          type="text"
-          placeholder="호텔 ID"
-          value={hotelId}
-          onChange={(e) => setHotelId(e.target.value)}
-          required
-          aria-label="호텔 ID"
-        />
-        {hotelIdError && <p className="error">{hotelIdError}</p>}
-        <input
-          type="password"
-          placeholder="비밀번호(8자이상)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          aria-label="비밀번호"
-        />
-        {passwordError && <p className="error">{passwordError}</p>}
-        <input
-          type="email"
-          placeholder="이메일"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          aria-label="이메일"
-        />
-        <input
-          type="text"
-          placeholder="호텔 주소"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          required
-          aria-label="호텔 주소"
-        />
-        <input
-          type="text"
-          placeholder="전화번호 (예: 0507-1388-6901)"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
-          required
-          aria-label="전화번호"
-        />
-        {phoneNumberError && <p className="error">{phoneNumberError}</p>}
-
+        <label>
+          호텔 ID:
+          <input
+            type="text"
+            placeholder="호텔 ID (5~20자)"
+            value={hotelId}
+            onChange={(e) => setHotelId(e.target.value)}
+            required
+            aria-label="호텔 ID"
+          />
+          {errors.hotelId && <p className="error">{errors.hotelId}</p>}
+        </label>
+        <label>
+          호텔 이름:
+          <input
+            type="text"
+            placeholder="호텔 이름"
+            value={hotelName}
+            onChange={(e) => setHotelName(e.target.value)}
+            required
+            aria-label="호텔 이름"
+          />
+          {errors.hotelName && <p className="error">{errors.hotelName}</p>}
+        </label>
+        <label>
+          비밀번호:
+          <input
+            type="password"
+            placeholder="비밀번호 (8자 이상)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            aria-label="비밀번호"
+          />
+          {errors.password && <p className="error">{errors.password}</p>}
+        </label>
+        <label>
+          비밀번호 확인:
+          <input
+            type="password"
+            placeholder="비밀번호 확인"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            aria-label="비밀번호 확인"
+          />
+          {errors.confirmPassword && <p className="error">{errors.confirmPassword}</p>}
+        </label>
+        <label>
+          이메일:
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            aria-label="이메일"
+          />
+          {errors.email && <p className="error">{errors.email}</p>}
+        </label>
+        <label>
+          호텔 주소:
+          <input
+            type="text"
+            placeholder="호텔 주소"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            required
+            aria-label="호텔 주소"
+          />
+          {errors.address && <p className="error">{errors.address}</p>}
+        </label>
+        <label>
+          전화번호:
+          <input
+            type="text"
+            placeholder="전화번호 (예: 010-1234-5678)"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            required
+            aria-label="전화번호"
+          />
+          {errors.phoneNumber && <p className="error">{errors.phoneNumber}</p>}
+        </label>
         <div className="consent-container">
           {!consentChecked ? (
             <button
@@ -157,23 +224,20 @@ const Register = () => {
               개인정보 사용 및 서비스 약관 동의하기
             </button>
           ) : (
-            <p>개인정보 사용 및 서비스 약관에 동의하셨습니다.</p>
+            <p>개인정보 사용 및 서비스 약관에 동의하셨습니다。</p>
           )}
+          {errors.consent && <p className="error">{errors.consent}</p>}
         </div>
-
         <button type="submit" disabled={isProcessing}>
           {isProcessing ? '처리 중...' : '회원가입'}
         </button>
       </form>
       <div className="register-footer">
         이미 계정이 있으신가요?{' '}
-        <div>
-          <Link to="/login" className="login-link">
-            로그인
-          </Link>
-        </div>
+        <Link to="/login" className="login-link">
+          로그인
+        </Link>
       </div>
-
       {showConsentModal && (
         <PrivacyConsentModal
           hotelId={hotelId}

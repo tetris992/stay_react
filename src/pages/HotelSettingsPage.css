@@ -1,440 +1,445 @@
-/* ===============================
-   [기본 구조] HotelSettings (기본정보/타입 설정) + LayoutEditor + DailyBoard
-   =============================== */
+/* HotelSettingsPage.css */
 
-/* 전역 폰트 크기: 18px 이상 */
-body,
-html {
-  height: 100%;
-  margin: 0;
-  font-size: 18px;
-  font-family: 'Helvetica', 'Arial', sans-serif;
-  box-sizing: border-box;
+/* 기본 설정 */
+:root {
+  --primary-blue: #3498db;
+  --primary-green: #28a745;
+  --primary-gray: #6c757d;
+  --danger-red: #dc3545;
+  --light-gray: #f5f6f5;
+  --white: #ffffff;
+  --border-gray: #e0e0e0;
+  --shadow-gray: rgba(0, 0, 0, 0.05);
+  --input-border: #d0d0d0;
+  --text-dark: #2c3e50;
+  --text-gray: #7f8c8d;
 }
 
-/* 메인 컨테이너 (hotel-settings-page) */
 .hotel-settings-page {
-  min-height: 100vh;
-  overflow-y: auto;
+  width: 2200px;
+  margin: 0 auto;
   padding: 20px;
-  box-sizing: border-box;
-  height: calc(100vh - 60px);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow-y: auto;
-}
-
-/* -------------------------------
-   타이틀, 섹션 헤더, 에러/정보
-------------------------------- */
-.hotel-settings-page h1 {
-  margin-bottom: 1.5rem;
-  font-size: 2rem;
-  font-weight: bold;
-  line-height: 1.2;
-}
-.section h3,
-.hotel-info-section h2,
-.room-types-section h2,
-.layout-section h2,
-.preview-section h2 {
-  margin-bottom: 0.5rem;
-  font-size: 1.67rem;
-  font-weight: bold;
-  line-height: 1.2;
-}
-
-.error {
-  color: red;
-  margin: 0.5rem 0;
-  font-size: 1rem;
-}
-.info {
-  color: #333;
-  margin-bottom: 1rem;
-  font-size: 1rem;
-}
-
-/* -------------------------------
-   섹션 레이아웃 공통
-------------------------------- */
-.section,
-.hotel-info-section,
-.room-types-section,
-.layout-section,
-.preview-section {
-  margin-bottom: 2rem;
-}
-
-/* -------------------------------
-   객실 타입 설정 부분
-------------------------------- */
-.room-type_setting {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 10px;
-  font-size: 1rem;
-}
-
-.room-type_setting input {
-  margin-right: 8px;
-  margin-bottom: 4px;
-  font-size: 1rem;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-/* 한 줄에 여러 필드 (한글,영어,가격,재고) */
-.horizontal-fields {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.alias-inputs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-/* -------------------------------
-   버튼들
-------------------------------- */
-.add_button,
-.save-button,
-.cancel-button,
-.delete-roomType {
-  background-color: #007bff;
-  color: #fff;
-  border: none;
-  padding: 0.6rem 1rem;
-  margin-right: 0.5rem;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.add_button:hover,
-.save-button:hover,
-.cancel-button:hover,
-.delete-roomType:hover {
-  background-color: #0056b3;
-}
-
-.cancel-button {
-  background-color: #6c757d;
-}
-.cancel-button:hover {
-  background-color: #495057;
-}
-
-.delete-roomType {
-  background-color: #dc3545;
-}
-.delete-roomType:hover {
-  background-color: #b02a37;
-}
-
-.buttons_container {
-  margin-top: 1rem;
-}
-.buttons_container .buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* ===============================
-   [2] LayoutEditor (레이아웃 편집) 스타일
-   =============================== */
-.layout-editor-section {
-  border: 1px solid #ccc;
-  padding: 1rem;
-  margin-bottom: 2rem;
-  font-size: 1rem;
-}
-
-.layout-editor-section .layout-control {
-  margin-bottom: 0.5rem;
-}
-
-.layout-inputs label {
-  margin-right: 8px;
-  font-size: 1rem;
-}
-.layout-inputs input {
-  font-size: 1rem;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-
-/* -------------------------------
-   Grid 미리보기 및 실제 그리드
-------------------------------- */
-
-/* 공통 grid container: 미리보기와 DailyBoard 모두에 적용 */
-.grid-preview,
-.grid-area {
-  display: grid;
-  gap: 12px; /* 간격을 12px로 통일 */
-  margin-top: 1rem;
-}
-
-/* grid-cell: 각 그리드 항목 */
-.grid-cell {
-  position: relative;
-  height: 420px;
-  width: 100%;
-  min-width: 330px; /* 최소 너비 조정 */
-  max-width: 600px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #fafafa;
-  padding: 0;
+  height: 100vh;
   box-sizing: border-box;
-}
-
-/* 내부 요소 (라벨 및 입력들) */
-.grid-cell .cell-label {
-  font-size: 1rem;
-  margin-bottom: 4px;
-}
-.grid-cell .cell-inputs {
+  background-color: var(--light-gray);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-.grid-cell .cell-inputs input,
-.grid-cell .cell-inputs select {
-  font-size: 1rem;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-}
-.grid-cell .cell-inputs input::placeholder {
-  font-size: 0.8rem;
-  color: #aaa;
+  min-width: 600px; /* 최소 너비 설정 */
 }
 
-/* -------------------------------
-   [3] DailyBoard (드래그&드롭) 스타일
-------------------------------- */
-.daily-board-container {
+h1 {
+  font-size: 32px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: var(--text-dark);
+}
+
+.button-group {
   display: flex;
-  gap: 20px;
-  padding: 10px;
-  margin-top: 1rem;
-  font-size: 1rem;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 25px;
 }
 
-.unassigned-area {
-  width: 220px;
-  background-color: #f8f9fa;
-  border: 1px solid #ccc;
-  padding: 10px;
-  flex-shrink: 0;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.grid-area {
-  display: grid;
-  gap: 12px; /* 동일 gap 적용 */
-  flex: 1;
-  min-height: 330px;
-  border: 1px solid #ccc;
-  background-color: #fff;
-  padding: 12px; /* 약간의 내부 여백 추가 */
-  max-height: 400px;
-  overflow-y: auto;
-  font-size: 1rem;
-}
-
-/* 컨테이너 박스 (각 객실 칸) */
-.container-box {
-  border: 2px dashed #ccc;
-  border-radius: 4px;
-  min-height: 60px;
-  background-color: #fff;
-  padding: 8px; /* 패딩을 약간 늘림 */
-  transition: background-color 0.3s;
-  display: flex;
-  flex-direction: column;
-  font-size: 1rem;
-}
-.container-box.hovered {
-  background-color: #d1f7c4;
-}
-
-/* 예약 카드 목록 */
-.reservation-list {
-  flex: 1;
-  max-height: 370px;
-}
-
-/* 예약 카드 */
-.reservation-card {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: #fff;
-  margin-bottom: 6px;
-  padding: 6px;
-  cursor: move;
-  font-size: 1rem;
-}
-
-/* 모달 백드롭 */
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 999;
-}
-
-/* close-button */
-.close-button {
-  background: transparent;
+.action-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: var(--primary-blue);
+  color: var(--white);
   border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  position: absolute;
-  right: 1rem;
-  top: 1rem;
-}
-
-/* layout-editor-modal */
-.layout-editor-modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 700px;
-  max-width: 90%;
-  transform: translate(-50%, -50%);
-  background: #fff;
-  border: 1px solid #ccc;
-  z-index: 1000;
   border-radius: 6px;
-  overflow: hidden;
-  font-size: 1rem;
-}
-.layout-editor-content {
-  padding: 1rem;
-  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
-/* 추가 섹션 */
-.hotel-basicinfo-section,
-.hotel-info-section {
-  padding: 1rem;
-  border: 1px solid #ddd;
-  margin-bottom: 1rem;
-  font-size: 1rem;
-}
-.room-types-section {
-  padding: 1rem;
-  border: 1px solid #ddd;
-  margin-bottom: 1rem;
-  font-size: 1rem;
+.action-btn:hover {
+  background-color: #2980b9;
 }
 
-/* ===============================
-   [3] RoomCard 내부 (예약 카드) 스타일
-=============================== */
-.room-card {
-  padding: 15px;
-  border: 3px solid var(--color-border-default);
-  border-radius: 12px;
-  margin: 1px; /* 여기서 margin이 겹쳐 보일 수 있으므로 조정 가능 */
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background: var(--room-card-background-color);
-  color: var(--room-card-text-color);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.4s ease;
-  min-height: 330px;
+.action-btn.add-btn {
+  background-color: var(--primary-green);
 }
 
-.room-card h3 {
-  font-size: 1.3rem;
-  margin: 2px 0 8px;
-  font-family: 'Poppins', sans-serif;
-  color: var(--room-card-text-color);
-  font-weight: 500;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.action-btn.add-btn:hover {
+  background-color: #218838;
 }
 
-.room-card p {
-  margin: 2px 0;
-  font-size: 0.95rem;
-  color: var(--room-card-text-color);
-  font-weight: 500;
+.action-btn.generate-btn {
+  background-color: #17a2b8;
 }
 
-/* 카드 앞/뒤 */
-.room-card-front,
-.room-card-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 12px;
-}
-.room-card-back {
-  transform: rotateY(180deg);
-  background-color: var(--room-card-background-color);
-  color: var(--room-card-text-color);
-  padding: 15px;
-  box-sizing: border-box;
+.action-btn.generate-btn:hover {
+  background-color: #138496;
 }
 
-/* 카드 내용 구조: 본문과 풋터 분리 */
-.content-footer-wrapper {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: space-between; /* 본문과 풋터를 양쪽 끝에 배치 */
-  gap: 10px; /* 내용과 풋터 사이 여백 */
-}
-
-.card-content {
-  flex: 1;
-}
-
-.site-info-footer {
-  flex-shrink: 0; /* 풋터가 줄어들지 않도록 */
-  padding-top: 5px;
-  border-top: 1px solid #ddd;
-}
-
-/* site-info-wrapper */
-.site-info-wrapper {
+.action-btn.add-room-btn {
+  background-color: var(--primary-green);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-/* 기타 RoomCard 관련 스타일은 그대로 유지 */
-.custom-btn {
-  font-size: 20px;
-  margin-left: 20px;
-  background-color: #999;
-  color: #fff;
-  cursor: pointer;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 30px;
-  transition: background-color 0.3s ease, transform 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.action-btn.add-room-btn:hover {
+  background-color: #218838;
 }
 
-.custom-btn:hover {
-  background-color: #555; /* 마우스 올렸을 때 색상 변경 */
-  transform: translateY(-2px);
+.action-btn.change-pw-btn {
+  background-color: var(--primary-gray);
+  margin-top: 10px;
+}
+
+.action-btn.change-pw-btn:hover {
+  background-color: #5a6268;
+}
+
+.action-btn.undo-btn {
+  background-color: var(--primary-gray);
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: var(--white);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.action-btn.undo-btn:hover {
+  background-color: #5a6268;
+}
+
+.error-message {
+  color: var(--danger-red);
+  font-size: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+section {
+  margin-bottom: 30px;
+  padding: 20px;
+  border: 1px solid var(--border-gray);
+  border-radius: 8px;
+  background-color: var(--white);
+  box-shadow: 0 2px 4px var(--shadow-gray);
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #34495e;
+}
+
+.hotel-info-section .info-columns {
+  display: flex;
+  gap: 40px;
+}
+
+.basic-info,
+.account-info {
+  flex: 1;
+  padding: 10px;
+}
+
+.basic-info label,
+.account-info label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: var(--text-dark);
+}
+
+.basic-info input,
+.account-info input {
+  width: 100%;
+  max-width: 300px;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+.room-types-section {
+  padding: 20px;
+}
+
+.room-types-section .room-types-container {
+  display: flex;
+  flex-wrap: nowrap; /* 포개짐 방지, 한 줄로 유지 */
+  gap: 3px; /* 카드 간 간격 3px로 유지 */
+  max-width: 100%;
+  min-width: 600px; /* 최소 너비 설정 */
+  overflow-x: auto; /* 가로 스크롤 추가 */
+}
+
+.room-type-item {
+  flex: 0 0 auto; /* 고정 크기로 유지, 자동 확장 방지 */
+  width: 284px; /* 280 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
+  min-width: 284px; /* 최소 크기 유지 (객실 카드 크기 + 패딩 + 마진) */
+  max-width: 500px;
+  background-color: #fdfdfd;
+  border: 1px solid #e8ecef;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 2px; /* 마진 2px */
+}
+
+.room-type-header {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2980b9;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.room-type-header svg {
+  margin-right: 5px;
+}
+
+.remove-btn {
+  padding: 4px;
+  background-color: var(--danger-red);
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.remove-btn:hover {
+  background-color: #c82333;
+}
+
+.room-type-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.room-type-fields input,
+.room-type-aliases input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  background-color: #fafafa;
+  flex: 1;
+}
+
+.room-type-fields .name-kor,
+.room-type-fields .name-eng,
+.room-type-fields .price,
+.room-type-fields .stock {
+  flex: 1;
+}
+
+.room-type-aliases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.room-numbers {
+  margin-top: 10px;
+}
+
+.room-numbers h4 {
+  font-size: 14px;
+  color: var(--text-gray);
+  margin-bottom: 5px;
+}
+
+.room-numbers div {
+  font-size: 12px;
+  color: var(--text-dark);
+  padding: 6px;
+  background-color: #ecf0f1;
+  border-radius: 4px;
+}
+
+.room-type-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.layout-editor-section .layout-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 15px;
+}
+
+.layout-editor-section h2 {
+  font-size: 24px;
+  color: #34495e;
+  margin: 0;
+}
+
+.layout-editor-section .undo-btn {
+  background-color: var(--primary-gray);
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: var(--white);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.layout-editor-section .undo-btn:hover {
+  background-color: #5a6268;
+}
+
+.layout-editor-section .floor-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 600px; /* 최소 너비 설정 */
+}
+
+.layout-editor-section .floor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #fafafa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #e8ecef;
+  min-width: 600px; /* 최소 너비 설정 */
+}
+
+.floor-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+.floor-row h3 {
+  font-size: 18px;
+  color: #34495e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.floor-row .remove-icon {
+  cursor: pointer;
+  color: var(--danger-red);
+  transition: color 0.3s ease;
+}
+
+.floor-row .remove-icon:hover {
+  color: #c82333;
+}
+
+.action-btn.add-room-btn,
+.action-btn.generate-btn {
+  position: relative;
+}
+
+.action-btn.add-room-btn::after,
+.action-btn.generate-btn::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: var(--white);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+}
+
+.action-btn.add-room-btn:hover::after,
+.action-btn.generate-btn:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.containers {
+  display: flex;
+  flex-wrap: nowrap; /* 포개짐 방지, 한 줄로 유지 */
+  gap: 3px; /* 카드 간 간격 3px로 유지 */
+  position: relative;
+  min-width: 300px; /* 최소 너비 설정 (객실 카드 크기 + 마진 + 간격 고려) */
+  overflow-x: auto; /* 가로 스크롤 추가 */
+}
+
+.container-box {
+  display: flex;
+  flex-direction: column;
+  padding: 2px; /* 패딩 2px로 유지 */
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  width: 284px; /* 280 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
+  height: 354px; /* 350 + 2 + 2 (객실 카드 크기 + 패딩 + 마진) */
+  background-color: var(--white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  margin: 2px; /* 마진 2px로 유지 */
+  min-width: 284px; /* 최소 너비 유지 (객실 카드 크기 + 패딩 + 마진) */
+  flex: 0 0 auto; /* 고정 크기로 유지, 자동 확장 방지 */
+}
+
+.container-box.empty {
+  background-color: #f8f8f8;
+  border: 2px dashed #aaa;
+  opacity: 0.6;
+  color: #999;
+}
+
+.container-box select,
+.container-box input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background-color: #fafafa;
+  width: 100%; /* 입력 필드 너비 100%로 설정 */
+}
+
+.container-box .delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: var(--danger-red);
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.container-box .delete-btn:hover {
+  background-color: #c82333;
+}
+
+.save-section {
+  text-align: center;
+  margin-top: 30px;
 }

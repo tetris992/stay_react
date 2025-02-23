@@ -1,794 +1,746 @@
-/* src/pages/HotelSettingsPage.js */
-
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  fetchHotelSettings,
-  updateHotelSettings,
-  registerHotel,
-} from '../api/api';
+import { fetchHotelSettings, updateHotelSettings, registerHotel, fetchUserInfo } from '../api/api';
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
-import { getColorForRoomType } from '../utils/getColorForRoomType'; // 색상 함수 (roomInfo 값에 따라 색상 결정)
-import './HotelSettingsPage.css'; // 통합 스타일 (Layout+DailyBoard+RoomTypes)
-import { FaBed } from 'react-icons/fa';
-/* === DnD 관련 === */
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { getColorForRoomType } from '../utils/getColorForRoomType';
+import './HotelSettingsPage.css';
+import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo } from 'react-icons/fa';
+import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Link } from 'react-router-dom';
 
-/** **************************************
- * (A) DailyBoard (예약 배정)
- ***************************************/
-function ReservationCard({ reservation }) {
-  const [{ isDragging }, dragRef] = useDrag({
-    type: 'RESERVATION',
-    item: { reservation },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-  return (
-    <div
-      ref={dragRef}
-      className="reservation-card"
-      style={{ opacity: isDragging ? 0.5 : 1 }}
-    >
-      <div>{reservation.customerName}</div>
-      <div>
-        {reservation.roomInfo} / {reservation.roomNumber}
-      </div>
-    </div>
-  );
-}
+const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
 
-function ContainerBox({
-  container,
-  roomIndex,
-  reservations,
-  onUpdateReservation,
-}) {
-  const [{ isOver }, dropRef] = useDrop({
-    accept: 'RESERVATION',
-    drop: (item) => {
-      const { reservation } = item;
-      onUpdateReservation(reservation._id, {
-        roomInfo: container.roomInfo,
-        roomNumber: container.roomNumber,
-      });
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
+const initializedDefaultRoomTypes = defaultRoomTypes.map(rt => ({
+  ...rt,
+  aliases: [], // 빈 배열로 초기화
+  roomNumbers:
+    rt.startRoomNumbers && Object.keys(rt.floorSettings).length > 0
+      ? Array.from(
+          { length: rt.stock },
+          (_, i) => `${parseInt(rt.startRoomNumbers[Object.keys(rt.floorSettings)[0]]) + i}`
+        )
+      : [],
+}));
+
+function buildRoomTypesWithNumbers(roomTypes, containers) {
+  const cloned = roomTypes.map((rt) => ({
+    ...rt,
+    roomNumbers: [],
+  }));
+
+  containers.forEach((cont) => {
+    const tKey = (cont.roomInfo || '').toLowerCase();
+    const found = cloned.find((rt) => (rt.roomInfo || '').toLowerCase() === tKey);
+    if (found && cont.roomNumber) {
+      found.roomNumbers.push(cont.roomNumber);
+    }
   });
 
-  const headerText = `객실 ${roomIndex}: ${container.roomInfo || '미설정'} / ${
-    container.roomNumber || '미설정'
-  }`;
-
-  return (
-    <div
-      className={`container-box ${isOver ? 'hovered' : ''}`}
-      ref={dropRef}
-      style={{
-        backgroundColor: getColorForRoomType(container.roomInfo),
-      }}
-    >
-      <div className="container-label">{headerText}</div>
-      <div className="reservation-list">
-        {reservations.map((res) => (
-          <ReservationCard key={res._id} reservation={res} />
-        ))}
-      </div>
-    </div>
-  );
+  return cloned;
 }
 
-function DailyBoard({ gridSettings, reservations, onUpdateReservation }) {
-  // eslint-disable-next-line no-unused-vars
-  const { rows, cols, containers } = gridSettings || {
-    rows: 0,
-    cols: 0,
-    containers: [],
+function RoomTypeEditor({ roomTypes, setRoomTypes }) {
+  const addRoomType = () => {
+    setRoomTypes((prev) => [
+      ...prev,
+      {
+        roomInfo: '',
+        nameKor: '',
+        nameEng: '',
+        price: 0,
+        stock: 0,
+        aliases: [], // 빈 배열로 초기화
+        roomNumbers: [],
+        floorSettings: {},
+        startRoomNumbers: {},
+      },
+    ]);
   };
 
-  const isMatching = useCallback((res, cont) => {
-    const rInfo = (res.roomInfo || '').toLowerCase();
-    const cInfo = (cont.roomInfo || '').toLowerCase();
-    return rInfo === cInfo && res.roomNumber === cont.roomNumber;
-  }, []);
-
-  // 컨테이너별 예약 매핑
-  const containerMap = {};
-  containers.forEach((c) => {
-    containerMap[c.containerId] = [];
-  });
-  reservations.forEach((res) => {
-    const matched = containers.find((cont) => isMatching(res, cont));
-    if (matched) {
-      containerMap[matched.containerId].push(res);
-    }
-  });
-
-  // 미배정 예약
-  const unassigned = reservations.filter(
-    (res) => !containers.some((c) => isMatching(res, c))
-  );
-
-  return (
-    <div className="daily-board-container">
-      <div className="unassigned-area">
-        <h3>미배정 예약</h3>
-        {unassigned.map((res) => (
-          <ReservationCard key={res._id} reservation={res} />
-        ))}
-      </div>
-      <div
-        className="grid-area"
-        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
-      >
-        {containers.map((cont, index) => (
-          <ContainerBox
-            key={cont.containerId}
-            container={cont}
-            roomIndex={index + 1} // <-- 여기서 번호 전달
-            reservations={containerMap[cont.containerId] || []}
-            onUpdateReservation={onUpdateReservation}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** **************************************
- * (B) LayoutEditor
- ***************************************/
-function LayoutEditor({
-  hotelRoomTypes,
-  initialGridSettings,
-  onChangeGridSettings,
-}) {
-  // 기본 그리드 사이즈: 최대 10 x 10 (초기값)
-  const defaultRows =
-    initialGridSettings?.rows && initialGridSettings.rows > 0
-      ? initialGridSettings.rows
-      : 10;
-  const defaultCols =
-    initialGridSettings?.cols && initialGridSettings.cols > 0
-      ? initialGridSettings.cols
-      : 10;
-
-  const [rows, setRows] = useState(defaultRows);
-  const [cols, setCols] = useState(defaultCols);
-  const [containers, setContainers] = useState(
-    initialGridSettings?.containers || []
-  );
-
-  // 빈 그리드 생성 (roomType -> roomInfo 변경)
-  const generateContainers = useCallback(() => {
-    const fresh = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        fresh.push({
-          containerId: `${r}-${c}-${Date.now()}`,
-          row: r,
-          col: c,
-          roomInfo: '',
-          roomNumber: '',
-          price: 0,
-        });
+  const updateRoomType = (index, field, value, aliasIndex = null) => {
+    setRoomTypes((prev) => {
+      const updated = [...prev];
+      if (field === 'price') {
+        updated[index][field] = Number(value);
+      } else if (field === 'nameKor' || field === 'nameEng') {
+        updated[index][field] = value;
+        updated[index].roomInfo = (
+          field === 'nameEng' ? value : updated[index].nameEng || updated[index].nameKor
+        ).toLowerCase();
+      } else if (field === 'aliases' && aliasIndex !== null) {
+        updated[index].aliases[aliasIndex] = value;
       }
-    }
-    setContainers(fresh);
-  }, [rows, cols]);
-
-  // rows/cols 변경 시 빈 그리드 생성
-  useEffect(() => {
-    if (!containers || containers.length === 0) {
-      generateContainers();
-    }
-  }, [rows, cols, containers, generateContainers]);
-
-  // “자동 배치”: 각 행은 hotelRoomTypes 배열의 해당 타입으로 채움
-  const autoLayout = useCallback(() => {
-    const newContainers = [];
-    // 새로운 행의 수: hotelRoomTypes.length (없으면 10)
-    const newRows = hotelRoomTypes.length < 1 ? 10 : hotelRoomTypes.length;
-    const newCols = cols < 1 ? 10 : cols; // 현재 cols 사용
-
-    hotelRoomTypes.forEach((rt, rowIndex) => {
-      for (let c = 0; c < newCols; c++) {
-        // 예시: 방번호는 (층 * 100 + col+1)
-        const roomNo = ((2 + rowIndex) * 100 + (c + 1)).toString();
-        newContainers.push({
-          containerId: `${rowIndex}-${c}-${Date.now()}`,
-          row: rowIndex,
-          col: c,
-          roomInfo: rt.roomInfo || 'standard', // 변경: roomType -> roomInfo
-          roomNumber: roomNo,
-          price: rt.price ?? 0,
-        });
-      }
+      return updated;
     });
-
-    // 나머지 행은 빈 컨테이너로 처리
-    for (let r = hotelRoomTypes.length; r < newRows; r++) {
-      for (let c = 0; c < newCols; c++) {
-        newContainers.push({
-          containerId: `${r}-${c}-${Date.now()}`,
-          row: r,
-          col: c,
-          roomInfo: '', // 변경
-          roomNumber: '',
-          price: 0,
-        });
-      }
-    }
-
-    setRows(newRows);
-    setCols(newCols);
-    setContainers(newContainers);
-  }, [cols, hotelRoomTypes]);
-
-  const handleChangeCell = (id, field, val) => {
-    setContainers((prev) =>
-      prev.map((c) => (c.containerId === id ? { ...c, [field]: val } : c))
-    );
   };
 
-  const handlePriceChange = (id, val) => {
-    let parsed = parseInt(val, 10);
-    if (Number.isNaN(parsed) || parsed < 1) parsed = 1;
-    setContainers((prev) =>
-      prev.map((c) =>
-        c.containerId === id ? { ...c, price: parsed * 1000 } : c
-      )
-    );
+  const removeRoomType = (index) => {
+    setRoomTypes((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const prevGridSettingsRef = useRef(initialGridSettings);
-  useEffect(() => {
-    const newGridSettings = { rows, cols, containers };
-    if (
-      JSON.stringify(newGridSettings) !==
-      JSON.stringify(prevGridSettingsRef.current)
-    ) {
-      onChangeGridSettings(newGridSettings);
-      prevGridSettingsRef.current = newGridSettings;
-    }
-  }, [rows, cols, containers, onChangeGridSettings]);
+  const generateAllRoomNumbers = () => {
+    setRoomTypes((prev) =>
+      prev.map((rt, idx) => {
+        const floorNum = DEFAULT_FLOORS[idx % DEFAULT_FLOORS.length];
+        const startNum = parseInt(`${floorNum}01`, 10);
+        const roomCount = rt.stock || 7;
+        const newRoomNumbers = Array.from(
+          { length: roomCount },
+          (_, i) => `${startNum + i}`
+        );
+        return {
+          ...rt,
+          roomNumbers: newRoomNumbers,
+          stock: newRoomNumbers.length,
+          floorSettings: { [floorNum]: newRoomNumbers.length },
+          startRoomNumbers: { [floorNum]: `${startNum}` },
+        };
+      })
+    );
+  };
 
   return (
-    <div className="layout-editor-section">
-      <h3>객실 레이아웃 편집</h3>
-      <div className="layout-inputs">
-        <label style={{ fontSize: '18px' }}>
-          Rows:
-          <input
-            type="number"
-            value={rows}
-            onChange={(e) => setRows(Number(e.target.value))}
-            style={{ marginLeft: '6px', fontSize: '18px', width: '80px' }}
-          />
-        </label>
-        <label style={{ fontSize: '18px', marginLeft: '20px' }}>
-          Cols:
-          <input
-            type="number"
-            value={cols}
-            onChange={(e) => setCols(Number(e.target.value))}
-            style={{ marginLeft: '6px', fontSize: '18px', width: '80px' }}
-          />
-        </label>
-        <button onClick={generateContainers} style={{ fontSize: '18px' }}>
-          빈 그리드
-        </button>
-        <button onClick={autoLayout} style={{ fontSize: '18px' }}>
-          자동 배치
-        </button>
-      </div>
-
-      <div
-        className="grid-preview"
-        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
-      >
-        {containers.map((cont) => (
-          <div
-            key={cont.containerId}
-            className="grid-cell"
-            style={{
-              backgroundColor: getColorForRoomType(cont.roomInfo),
-              minHeight: '120px',
-            }}
-          >
-            <div className="cell-label" style={{ fontSize: '18px' }}>
-              [{cont.row}, {cont.col}]
+    <section className="room-types-section">
+      <h2>객실 타입 설정</h2>
+      <div className="room-types-container">
+        {roomTypes.map((rt, idx) => (
+          <div key={idx} className="room-type-item">
+            <div className="room-type-header">
+              <FaBed /> 객실 타입 {idx + 1}
+              <button className="remove-btn" onClick={() => removeRoomType(idx)} title="객실 타입 삭제">
+                <FaTrash />
+              </button>
             </div>
-            <div className="cell-inputs">
-              <select
-                value={cont.roomInfo}
-                onChange={(e) =>
-                  handleChangeCell(cont.containerId, 'roomInfo', e.target.value)
-                }
-                style={{ fontSize: '18px' }}
-              >
-                <option value="">--타입--</option>
-                {hotelRoomTypes.map((rt, index) => (
-                  <option key={`${rt.roomInfo}-${index}`} value={rt.roomInfo}>
-                    {rt.roomInfo}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="객실번호"
-                value={cont.roomNumber}
-                onChange={(e) =>
-                  handleChangeCell(
-                    cont.containerId,
-                    'roomNumber',
-                    e.target.value
-                  )
-                }
-                style={{ fontSize: '18px' }}
-              />
-              <input
-                type="number"
-                placeholder="가격(천원)"
-                value={cont.price > 0 ? cont.price / 1000 : ''}
-                onChange={(e) =>
-                  handlePriceChange(cont.containerId, e.target.value)
-                }
-                style={{ fontSize: '18px' }}
-              />
+            <div className="room-type-fields">
+              <div className="field-row">
+                <input
+                  className="name-kor"
+                  type="text"
+                  placeholder="한글 이름"
+                  value={rt.nameKor || ''}
+                  onChange={(e) => updateRoomType(idx, 'nameKor', e.target.value)}
+                />
+                <input
+                  className="name-eng"
+                  type="text"
+                  placeholder="영어 이름"
+                  value={rt.nameEng || ''}
+                  onChange={(e) => updateRoomType(idx, 'nameEng', e.target.value)}
+                />
+              </div>
+              <div className="field-row">
+                <input
+                  className="price"
+                  type="number"
+                  placeholder="가격"
+                  value={rt.price || 0}
+                  onChange={(e) => updateRoomType(idx, 'price', e.target.value)}
+                />
+                <input
+                  className="stock"
+                  type="number"
+                  placeholder="객실 수"
+                  value={rt.stock || 0}
+                  readOnly
+                />
+              </div>
+            </div>
+            <div className="room-type-aliases">
+              <div className="field-row">
+                <input
+                  type="text"
+                  placeholder="별칭 1"
+                  value={rt.aliases[0] || ''} // 빈 값 유지, 플레이스홀더로만 표시
+                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 0)}
+                />
+                <input
+                  type="text"
+                  placeholder="별칭 2"
+                  value={rt.aliases[1] || ''}
+                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 1)}
+                />
+              </div>
+              <div className="field-row">
+                <input
+                  type="text"
+                  placeholder="별칭 3"
+                  value={rt.aliases[2] || ''}
+                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 2)}
+                />
+                <input
+                  type="text"
+                  placeholder="별칭 4"
+                  value={rt.aliases[3] || ''}
+                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 3)}
+                />
+              </div>
+            </div>
+            <div className="room-numbers">
+              <h4>객실 번호 배열</h4>
+              <div>{rt.roomNumbers?.length > 0 ? rt.roomNumbers.join(', ') : '아직 생성되지 않음'}</div>
             </div>
           </div>
         ))}
       </div>
-    </div>
+      <div className="room-type-actions">
+        <button className="action-btn add-btn" onClick={addRoomType}>
+          + 타입 추가
+        </button>
+        <button className="action-btn generate-btn" onClick={generateAllRoomNumbers}>
+          객실 번호 생성
+        </button>
+      </div>
+    </section>
   );
 }
 
-/** **************************************
- * (C) HotelSettingsPage (최종)
- ***************************************/
+function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
+  const maxRoomsPerFloor = Math.max(...roomTypes.map((rt) => rt.stock || 7), 7);
+  const previousFloorsRef = useRef([]); // 이전 floors 상태 저장
+
+  const updateContainer = (floorNum, containerId, field, value) => {
+    setFloors((prev) => {
+      const updated = [...prev];
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
+      if (floorIdx === -1) return prev;
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
+      if (containerIdx === -1) return prev;
+      const oldRoomInfo = updated[floorIdx].containers[containerIdx].roomInfo;
+      updated[floorIdx].containers[containerIdx][field] =
+        field === 'price' ? Number(value) : value;
+
+      if (field === 'roomInfo') {
+        const newRoomInfo = value;
+        const roomNum = updated[floorIdx].containers[containerIdx].roomNumber;
+        setRoomTypes((prevTypes) => {
+          const updatedTypes = [...prevTypes];
+          if (oldRoomInfo !== 'none') {
+            const oldIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === oldRoomInfo
+            );
+            if (oldIdx !== -1) {
+              updatedTypes[oldIdx].roomNumbers = updatedTypes[oldIdx].roomNumbers.filter(
+                (num) => num !== roomNum
+              );
+              updatedTypes[oldIdx].stock = updatedTypes[oldIdx].roomNumbers.length;
+            }
+          }
+          if (newRoomInfo !== 'none') {
+            const newIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === newRoomInfo
+            );
+            if (newIdx !== -1) {
+              updatedTypes[newIdx].roomNumbers.push(roomNum);
+              updatedTypes[newIdx].stock = updatedTypes[newIdx].roomNumbers.length;
+              // 객실 타입 변경 시 가격 동기화 (사용자 입력값 우선)
+              const roomType = updatedTypes[newIdx];
+              updated[floorIdx].containers[containerIdx].price = Number(roomType.price) || 0;
+            }
+          }
+          return updatedTypes;
+        });
+      }
+      return updated;
+    });
+  };
+
+  const removeFloor = (floorNum) => {
+    setFloors((prev) => {
+      if (!prev || !Array.isArray(prev)) return prev;
+      previousFloorsRef.current = [...prev]; // 삭제 전 상태 저장
+      const updated = prev.filter((f) => f.floorNum !== floorNum);
+      setRoomTypes((prevTypes) => {
+        const updatedTypes = [...prevTypes];
+        updatedTypes.forEach((rt) => {
+          rt.roomNumbers = (rt.roomNumbers || []).filter(
+            (num) => !num.startsWith(String(floorNum))
+          );
+          rt.stock = rt.roomNumbers.length;
+        });
+        return updatedTypes;
+      });
+      return updated;
+    });
+  };
+
+  const undoRemoveFloor = () => {
+    if (previousFloorsRef.current.length > 0) {
+      setFloors([...previousFloorsRef.current]);
+      setRoomTypes((prevTypes) => {
+        const updatedTypes = [...prevTypes];
+        updatedTypes.forEach((rt) => {
+          rt.roomNumbers = (rt.roomNumbers || []).map(num => num); // 원래 상태 복원
+          rt.stock = rt.roomNumbers.length;
+        });
+        return updatedTypes;
+      });
+      previousFloorsRef.current = []; // 되돌리기 후 상태 초기화
+    } else {
+      alert('되돌릴 삭제가 없습니다.');
+    }
+  };
+
+  const addRoomToFloor = (floorNum) => {
+    setFloors((prev) => {
+      const updated = [...prev];
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
+      if (floorIdx === -1) return prev;
+      const floor = updated[floorIdx];
+      const lastRoomNum = floor.containers.length > 0
+        ? parseInt(floor.containers[floor.containers.length - 1].roomNumber, 10)
+        : parseInt(`${floorNum}01`, 10) - 1;
+      const newRoomNum = `${lastRoomNum + 1}`;
+      const newContainer = {
+        containerId: `${floorNum}-none-${newRoomNum}-${Date.now()}`,
+        roomInfo: 'none',
+        roomNumber: newRoomNum,
+        price: 0,
+        isActive: false,
+      };
+      updated[floorIdx].containers.push(newContainer);
+      return updated;
+    });
+  };
+
+  const removeContainer = (floorNum, containerId) => {
+    setFloors((prev) => {
+      const updated = [...prev];
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
+      if (floorIdx === -1) return prev;
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
+      if (containerIdx === -1) return prev;
+      const removedRoomInfo = updated[floorIdx].containers[containerIdx].roomInfo;
+      const removedRoomNum = updated[floorIdx].containers[containerIdx].roomNumber;
+      updated[floorIdx].containers.splice(containerIdx, 1);
+
+      if (removedRoomInfo !== 'none') {
+        setRoomTypes((prevTypes) => {
+          const updatedTypes = [...prevTypes];
+          const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === removedRoomInfo);
+          if (typeIdx !== -1) {
+            updatedTypes[typeIdx].roomNumbers = updatedTypes[typeIdx].roomNumbers.filter(
+              (num) => num !== removedRoomNum
+            );
+            updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
+          }
+          return updatedTypes;
+        });
+      }
+      return updated;
+    });
+  };
+
+  const generateInitialLayout = () => {
+    const newFloors = DEFAULT_FLOORS.map((floorNum) => {
+      const containers = [];
+      const startNum = parseInt(`${floorNum}01`, 10);
+      const endNum = startNum + maxRoomsPerFloor - 1;
+
+      for (let roomNum = startNum; roomNum <= endNum; roomNum++) {
+        let found = false;
+        const roomNumberStr = roomNum.toString();
+        roomTypes.forEach((rt) => {
+          const roomNumbers = rt.roomNumbers || [];
+          if (roomNumbers.includes(roomNumberStr)) {
+            containers.push({
+              containerId: `${floorNum}-${rt.roomInfo}-${roomNumberStr}-${Date.now()}`,
+              roomInfo: rt.roomInfo,
+              roomNumber: roomNumberStr,
+              price: rt.price,
+              isActive: true,
+            });
+            found = true;
+          }
+        });
+        if (!found) {
+          containers.push({
+            containerId: `${floorNum}-none-${roomNum}-${Date.now()}`,
+            roomInfo: 'none',
+            roomNumber: roomNumberStr,
+            price: 0,
+            isActive: false,
+          });
+        }
+      }
+      return { floorNum, containers };
+    });
+    setFloors(newFloors);
+  };
+
+  return (
+    <section className="layout-editor-section">
+      <div className="layout-header">
+        <h2>객실 레이아웃 편집</h2>
+        <button
+          className="action-btn generate-btn"
+          onClick={generateInitialLayout}
+          title="레이아웃 생성"
+        >
+          레이아웃 생성
+        </button>
+        <button
+          className="action-btn undo-btn"
+          onClick={undoRemoveFloor}
+          title="되돌리기"
+        >
+          <FaUndo />
+        </button>
+      </div>
+      <div className="floor-grid">
+        {floors
+          .slice()
+          .reverse()
+          .map((floor) => (
+            <div key={floor.floorNum} className="floor-row">
+              <div className="floor-header">
+                <h3>
+                  {floor.floorNum}층
+                  <FaMinus
+                    onClick={() => removeFloor(floor.floorNum)}
+                    className="remove-icon"
+                    title="객실 층 삭제"
+                  />
+                </h3>
+              </div>
+              <div className="containers">
+                {floor.containers.map((cont, index) => (
+                  <React.Fragment key={cont.containerId}>
+                    <div
+                      className={`container-box ${cont.roomInfo === 'none' ? 'empty' : ''}`}
+                      style={{
+                        backgroundColor:
+                          cont.roomInfo !== 'none'
+                            ? getColorForRoomType(cont.roomInfo)
+                            : undefined,
+                      }}
+                    >
+                      <select
+                        value={cont.roomInfo}
+                        onChange={(e) =>
+                          updateContainer(floor.floorNum, cont.containerId, 'roomInfo', e.target.value)
+                        }
+                      >
+                        <option value="none">객실없음/사용불가</option>
+                        {roomTypes.map((rt) => (
+                          <option key={rt.roomInfo} value={rt.roomInfo}>
+                            {rt.roomInfo}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={cont.roomNumber}
+                        onChange={(e) =>
+                          updateContainer(floor.floorNum, cont.containerId, 'roomNumber', e.target.value)
+                        }
+                        placeholder="객실 번호"
+                      />
+                      <input
+                        type="number"
+                        value={cont.price || 0}
+                        onChange={(e) =>
+                          updateContainer(floor.floorNum, cont.containerId, 'price', e.target.value)
+                        }
+                        placeholder="가격"
+                      />
+                      <button
+                        className="delete-btn"
+                        onClick={() => removeContainer(floor.floorNum, cont.containerId)}
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                    {index === floor.containers.length - 1 && ( // 마지막 객실 컨테이너 옆에 버튼 배치
+                      <button
+                        className="action-btn add-room-btn"
+                        onClick={() => addRoomToFloor(floor.floorNum)}
+                        title="객실 추가"
+                      >
+                        <FaPlus />
+                      </button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    </section>
+  );
+}
+
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
-
-  // 원복(취소) 시 사용하기 위한 originalData 저장
   const originalDataRef = useRef(null);
 
-  // 호텔 기본정보
   const [hotelId, setHotelId] = useState(localStorage.getItem('hotelId') || '');
   const [isExisting, setIsExisting] = useState(false);
   const [error, setError] = useState('');
-  const [totalRooms, setTotalRooms] = useState(0);
+  const [totalRooms, setTotalRooms] = useState(
+    initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
+  );
+  const [roomTypes, setRoomTypes] = useState([...initializedDefaultRoomTypes]);
+  const [floors, setFloors] = useState([]);
+  const [hotelAddress, setHotelAddress] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [hotelName, setHotelName] = useState('');
+  const [adminName, setAdminName] = useState('');
 
-  // 객실 타입 설정 (여기서는 그대로 roomTypes 배열의 구조는 변경하지 않음)
-  const [roomTypes, setRoomTypes] = useState(defaultRoomTypes);
-
-  // 레이아웃 (gridSettings: { rows, cols, containers })
-  const [gridSettings, setGridSettings] = useState({
-    rows: 7,
-    cols: 7,
-    containers: [],
-  });
-
-  // 예시 예약 – roomType 속성을 roomInfo로 변경
-  const [reservations, setReservations] = useState([
-    {
-      _id: 'r1',
-      customerName: '홍길동',
-      roomInfo: 'standard',
-      roomNumber: '201',
-    },
-    {
-      _id: 'r2',
-      customerName: '김영희',
-      roomInfo: 'premium',
-      roomNumber: '301',
-    },
-    { _id: 'r3', customerName: '미배정-장보고', roomInfo: '', roomNumber: '' },
-  ]);
-
-  // 1) 로딩 시 서버에서 hotelSettings 불러오기
   useEffect(() => {
     async function loadData() {
       if (!hotelId) {
+        setFloors(DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] })));
+        setTotalRooms(initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0));
         return;
       }
       try {
-        const data = await fetchHotelSettings(hotelId);
+        const [hotelData, userData] = await Promise.all([
+          fetchHotelSettings(hotelId),
+          fetchUserInfo(hotelId),
+        ]);
 
-        if (data?.gridSettings?.containers) {
-          // DB에서 roomType가 넘어올 수 있으므로, roomInfo로 변환
-          const convertedContainers = data.gridSettings.containers.map((c) => {
-            return {
-              ...c,
-              // roomInfo가 이미 있으면 그대로 두고, 없으면 roomType 복사
-              roomInfo: c.roomInfo ?? c.roomType ?? '',
-            };
-          });
-          setGridSettings({
-            ...data.gridSettings,
-            containers: convertedContainers,
-          });
-        } else {
-          setGridSettings({ rows: 10, cols: 10, containers: [] });
-        }
-
-        // 나머지 hotel info나 roomTypes도 설정
-        if (data && data._id) {
+        if (hotelData && hotelData._id) {
           setIsExisting(true);
-          setTotalRooms(data.totalRooms || 0);
-          // roomTypes 객체에서 roomInfo가 없으면 type을 사용하도록 변환
-          setRoomTypes(
-            (data.roomTypes || defaultRoomTypes).map((rt) => ({
-              ...rt,
-              roomInfo: rt.roomInfo || rt.type || '',
-            }))
+          setTotalRooms(
+            hotelData.totalRooms || initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
           );
+          const containers = hotelData.gridSettings?.floors?.flatMap(floor => floor.containers) || [];
+          const updatedRoomTypes = buildRoomTypesWithNumbers(
+            hotelData.roomTypes.map(rt => ({
+              ...rt,
+              aliases: [],
+            })) || initializedDefaultRoomTypes,
+            containers
+          );
+          setRoomTypes(updatedRoomTypes);
+          setFloors(hotelData.gridSettings?.floors || DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] })));
+          setHotelAddress(hotelData.address || '');
+          setEmail(hotelData.email || '');
+          setPhoneNumber(hotelData.phoneNumber || '');
+          setHotelName(hotelData.hotelName || '');
         } else {
           setIsExisting(false);
-          setRoomTypes(defaultRoomTypes);
+          setRoomTypes([...initializedDefaultRoomTypes]);
+          setFloors(DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] })));
+          setTotalRooms(initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0));
+        }
+
+        if (userData) {
+          setHotelName(userData.hotelName || hotelName);
+          setAdminName(userData.adminName || '');
+          setHotelAddress(userData.address || hotelAddress);
+          setEmail(userData.email || email);
+          setPhoneNumber(userData.phoneNumber || phoneNumber);
         }
       } catch (err) {
         console.error(err);
-        setError('호텔 설정 로딩 실패: ' + err.message);
+        setError('호텔 설정 또는 사용자 정보 로딩 실패: ' + err.message);
       }
     }
     loadData();
   }, [hotelId]);
 
-  // 2) gridSettings 기반으로 총 객실 수 재계산 및 roomTypes의 stock 업데이트
   useEffect(() => {
-    const computedTotalRooms = gridSettings.containers.length;
-    setTotalRooms(computedTotalRooms);
-  }, [gridSettings]);
-
-  // 3) 객실 타입 변경 (roomTypes 변경)
-  const handleRoomTypeChange = (idx, field, val) => {
-    setRoomTypes((prev) => {
-      const arr = [...prev];
-      if (field === 'price') {
-        arr[idx].price = Number(val);
-      } else if (field === 'nameKor' || field === 'nameEng') {
-        arr[idx][field] = val;
-        const eng = field === 'nameEng' ? val.trim() : arr[idx].nameEng?.trim();
-        const kor = field === 'nameKor' ? val.trim() : arr[idx].nameKor?.trim();
-        arr[idx].roomInfo = eng ? eng.toLowerCase() : kor;
-      } else if (field === 'aliases') {
-        arr[idx].aliases = val;
-      }
-      return arr;
-    });
-  };
-  const addRoomType = () => {
-    setRoomTypes((prev) => [
-      ...prev,
-      {
-        roomInfo: `custom-type-${prev.length + 1}`,
-        nameKor: '',
-        nameEng: '',
-        price: 0,
-        stock: 0,
-        aliases: [],
-      },
-    ]);
-  };
-  const removeRoomType = (index) => {
-    setRoomTypes((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // 4) LayoutEditor -> gridSettings 변경 시
-  const handleChangeGridSettings = (gs) => {
-    setGridSettings(gs);
-  };
-
-  // 5) DailyBoard - 예약 드롭 업데이트 (roomType -> roomInfo)
-  const handleReservationUpdate = (resId, updateData) => {
-    setReservations((prev) =>
-      prev.map((r) =>
-        r._id === resId
-          ? {
-              ...r,
-              roomInfo: updateData.roomInfo,
-              roomNumber: updateData.roomNumber,
-            }
-          : r
-      )
+    const newTotal = floors.reduce(
+      (sum, f) => sum + (f.containers || []).filter((c) => c.roomInfo !== 'none').length,
+      0
     );
+    setTotalRooms(newTotal);
+    originalDataRef.current = {
+      hotelId,
+      isExisting,
+      totalRooms: newTotal,
+      roomTypes,
+      floors,
+      hotelAddress,
+      email,
+      phoneNumber,
+      hotelName,
+    };
+  }, [hotelId, isExisting, roomTypes, floors, hotelAddress, email, phoneNumber, hotelName]);
+
+  const handleLoadDefault = () => {
+    setRoomTypes([...initializedDefaultRoomTypes]);
+    setFloors(DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] })));
+    setTotalRooms(initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0));
+    alert('디폴트 설정이 불러와졌습니다.');
   };
 
-  // 6) 전체 저장: gridSettings 기반으로 총 객실 수와 각 roomTypes의 stock 재계산 후 백엔드 전송
   const handleSaveAll = async () => {
     if (!hotelId) {
       alert('호텔 ID는 필수입니다.');
       return;
     }
-
-    const computedTotalRooms = gridSettings.containers.length;
-
-    const updatedRoomTypes = roomTypes.map((rt) => {
-      const count = gridSettings.containers.filter(
-        (cell) => cell.roomInfo === rt.roomInfo
-      ).length;
-      return { ...rt, stock: count };
-    });
-
+    const allHaveRoomNumbers = roomTypes.every((rt) => rt.roomNumbers && rt.roomNumbers.length > 0);
+    if (!allHaveRoomNumbers) {
+      alert('모든 객실 타입에 대해 객실 번호를 생성해야 저장할 수 있습니다.');
+      return;
+    }
     const payload = {
       hotelId,
-      totalRooms: computedTotalRooms,
-      roomTypes: updatedRoomTypes,
-      gridSettings: {
-        ...gridSettings,
-        containers: gridSettings.containers.map((c) => ({
-          ...c,
-          // 만약 이미 roomType 필드가 있다면 그대로 두고, 없으면 roomInfo 값을 복사
-          roomInfo: c.roomInfo?.trim() || 'standard',
-        })),
-      },
+      totalRooms,
+      roomTypes: roomTypes.map((rt) => ({
+        ...rt,
+        aliases: rt.aliases.filter(Boolean), // 빈 문자열 제거
+        stock: rt.roomNumbers.length,
+        floorSettings: DEFAULT_FLOORS.reduce((acc, floorNum) => {
+          const count = (rt.roomNumbers || []).filter((num) =>
+            num.startsWith(String(floorNum))
+          ).length;
+          if (count > 0) acc[floorNum] = count;
+          return acc;
+        }, {}),
+        startRoomNumbers: DEFAULT_FLOORS.reduce((acc, floorNum) => {
+          const nums = (rt.roomNumbers || []).filter((num) =>
+            num.startsWith(String(floorNum))
+          );
+          if (nums.length > 0) acc[floorNum] = nums[0];
+          return acc;
+        }, {}),
+      })),
+      gridSettings: { floors },
+      address: hotelAddress,
+      email,
+      phoneNumber,
+      hotelName,
     };
-
     try {
       if (isExisting) {
         await updateHotelSettings(hotelId, payload);
-        alert('전체 업데이트 완료');
+        alert('업데이트 완료');
       } else {
         await registerHotel(payload);
-        alert('호텔 등록 완료');
+        alert('등록 완료');
         setIsExisting(true);
       }
+      navigate('/');
     } catch (err) {
-      console.error('전체 저장 실패:', err);
-      alert('전체 저장 실패: ' + err.message);
+      console.error('저장 실패:', err);
+      alert('저장 실패: ' + err.message);
     }
   };
 
-  // 7) 취소 (원복)
   const handleCancel = () => {
     if (!originalDataRef.current) return;
     const orig = originalDataRef.current;
-
     setHotelId(orig.hotelId);
     setIsExisting(orig.isExisting);
     setTotalRooms(orig.totalRooms);
-    setRoomTypes(JSON.parse(JSON.stringify(orig.roomTypes)));
-    setGridSettings(JSON.parse(JSON.stringify(orig.gridSettings)));
-
-    alert('변경 사항이 취소되었습니다. (원복됨)');
+    setRoomTypes(orig.roomTypes);
+    setFloors(orig.floors);
+    setHotelAddress(orig.hotelAddress);
+    setEmail(orig.email);
+    setPhoneNumber(orig.phoneNumber);
+    setHotelName(orig.hotelName);
+    alert('변경 사항이 취소되었습니다.');
   };
 
-  // 로딩된 데이터를 원복용으로 저장
-  useEffect(() => {
-    originalDataRef.current = {
-      hotelId,
-      isExisting,
-      totalRooms,
-      roomTypes: JSON.parse(JSON.stringify(roomTypes)),
-      gridSettings: JSON.parse(JSON.stringify(gridSettings)),
-    };
-  }, [hotelId, isExisting, totalRooms, roomTypes, gridSettings]);
-
   return (
-    <div className="hotel-settings-page" style={{ fontSize: '18px' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>
-        호텔 설정 통합 페이지 (HotelSettingsPage)
-      </h1>
-
-      <div style={{ marginBottom: '1rem' }}>
-        <button
-          style={{
-            fontSize: '18px',
-            marginLeft: '10px',
-            color: '#007bff',
-            textDecoration: 'none',
-            padding: '10px',
-            border: '1px solid #007bff',
-            borderRadius: '5px',
-          }}
-          onClick={() => navigate('/')}
-        >
-          메인화면으로 돌아가기
+    <div className="hotel-settings-page">
+      <h1>호텔 설정</h1>
+      <div className="button-group">
+        <button className="action-btn" onClick={() => navigate('/')}>
+          메인으로
         </button>
-        <button
-          style={{
-            fontSize: '18px',
-            marginLeft: '10px',
-            color: '#007bff',
-            textDecoration: 'none',
-            padding: '10px',
-            border: '1px solid #007bff',
-            borderRadius: '5px',
-          }}
-          onClick={handleCancel}
-        >
-          취소 (원복)
+        <button className="action-btn" onClick={handleLoadDefault}>
+          디폴트 불러오기
         </button>
-        {/* 새로운 링크 버튼 추가 */}
-        <Link
-          to="https://chromewebstore.google.com/detail/ota-scraper-extension/cnoicicjafgmfcnjclhlehfpojfaelag?authuser=0&hl=ko&pli=1"
-          target="_blank"
-          style={{
-            fontSize: '18px',
-            marginLeft: '10px',
-            color: '#007bff',
-            textDecoration: 'none',
-            padding: '10px',
-            border: '1px solid #007bff',
-            borderRadius: '5px',
-          }}
-        >
-          OTA Scraper Extension
-        </Link>
+        <button className="action-btn" onClick={handleCancel}>
+          취소
+        </button>
       </div>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {/* (1) 기본정보 */}
+      {error && <p className="error-message">{error}</p>}
       <section className="hotel-info-section">
-        <h2 style={{ fontSize: '24px' }}>1. 호텔 기본정보</h2>
-        <div>
-          <label>호텔 ID</label>
-          <input
-            type="text"
-            value={hotelId}
-            onChange={(e) => setHotelId(e.target.value)}
-            disabled={isExisting}
-            style={{ fontSize: '18px', width: '240px' }}
-          />
-        </div>
-        <div>
-          <label>총 객실 수</label>
-          <input
-            type="number"
-            value={totalRooms}
-            readOnly
-            style={{
-              fontSize: '18px',
-              width: '120px',
-              backgroundColor: '#eee',
-            }}
-          />
-        </div>
-      </section>
-
-      {/* (2) 객실 타입 설정을 그냥 객실설정으로 바꾸고 필드값이 룸인포가 되어야함. */}
-      <section className="room-types-section">
-        <h2 style={{ fontSize: '24px' }}>2. 객실 설정</h2>
-        {roomTypes.map((rt, idx) => (
-          <div key={idx} className="room-type_setting">
-            {/* 객실 번호 라벨에 아이콘 추가 (푸른색) */}
-            <div
-              className="room-type-header"
-              style={{
-                fontSize: '25px',
-                fontWeight: 'bold',
-                marginBottom: '8px',
-                color: '#007bff',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <FaBed style={{ marginRight: '8px' }} />
-              객실 {idx + 1}
-            </div>
-            {/* 첫 줄: 한글 이름, 영어 이름, 가격, 재고 */}
-            <div className="horizontal-fields">
+        <div className="info-columns">
+          <div className="basic-info">
+            <h2>호텔 기본 정보</h2>
+            <label>
+              호텔 ID:
               <input
-                type="text"
-                placeholder="한글 이름"
-                value={rt.nameKor}
-                onChange={(e) =>
-                  handleRoomTypeChange(idx, 'nameKor', e.target.value)
-                }
-                style={{ fontSize: '18px' }}
+                value={hotelId}
+                onChange={(e) => setHotelId(e.target.value)}
+                disabled={isExisting}
               />
+            </label>
+            <label>
+              총 객실 수:
+              <input value={totalRooms} readOnly />
+            </label>
+            <label>
+              호텔 주소:
               <input
-                type="text"
-                placeholder="영어 이름"
-                value={rt.nameEng}
-                onChange={(e) =>
-                  handleRoomTypeChange(idx, 'nameEng', e.target.value)
-                }
-                style={{ fontSize: '18px' }}
+                value={hotelAddress}
+                onChange={(e) => setHotelAddress(e.target.value)}
+                placeholder="호텔 주소를 입력하세요"
               />
+            </label>
+            <label>
+              이메일:
               <input
-                type="number"
-                placeholder="가격"
-                value={rt.price}
-                onChange={(e) =>
-                  handleRoomTypeChange(idx, 'price', e.target.value)
-                }
-                style={{ fontSize: '18px' }}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="이메일을 입력하세요"
               />
-              {/* stock은 LayoutEditor에서 자동 업데이트되므로 readOnly */}
+            </label>
+            <label>
+              전화번호:
               <input
-                type="number"
-                placeholder="재고"
-                value={rt.stock}
-                readOnly
-                style={{
-                  fontSize: '18px',
-                  backgroundColor: '#eaeaea',
-                  width: '100px',
-                }}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="전화번호를 입력하세요"
               />
-            </div>
-            {/* 둘째 줄: 별칭 4칸 */}
-            <div className="horizontal-fields">
-              {Array.from({ length: 4 }).map((_, aliasIndex) => {
-                const aliasVal =
-                  rt.aliases && rt.aliases[aliasIndex]
-                    ? rt.aliases[aliasIndex]
-                    : '';
-                return (
-                  <input
-                    key={aliasIndex}
-                    type="text"
-                    placeholder={`별칭 ${aliasIndex + 1}`}
-                    value={aliasVal}
-                    onChange={(e) => {
-                      const newAliases = rt.aliases ? [...rt.aliases] : [];
-                      newAliases[aliasIndex] = e.target.value;
-                      handleRoomTypeChange(idx, 'aliases', newAliases);
-                    }}
-                    style={{ fontSize: '18px' }}
-                  />
-                );
-              })}
-            </div>
-            <button
-              onClick={() => removeRoomType(idx)}
-              style={{ fontSize: '18px', marginTop: '4px' }}
-            >
-              삭제
-            </button>
+            </label>
           </div>
-        ))}
-        <button
-          onClick={addRoomType}
-          style={{ fontSize: '18px', marginTop: '8px' }}
-        >
-          객실 타입 추가
-        </button>
+          <div className="account-info">
+            <h2>회원가입 정보</h2>
+            <label>
+              호텔 이름:
+              <input
+                value={hotelName}
+                onChange={(e) => setHotelName(e.target.value)}
+                placeholder="호텔 이름을 입력하세요"
+              />
+            </label>
+            <label>
+              관리자 이름:
+              <input
+                value={adminName}
+                onChange={(e) => setAdminName(e.target.value)}
+                placeholder="관리자 이름을 입력하세요"
+              />
+            </label>
+            <label>
+              비밀번호:
+              <input
+                type="password"
+                value="********"
+                readOnly
+                placeholder="비밀번호 변경은 별도 처리"
+              />
+              <button className="action-btn change-pw-btn" disabled>
+                비밀번호 변경 (미구현)
+              </button>
+            </label>
+          </div>
+        </div>
       </section>
-
-      {/* (3) 레이아웃 편집 */}
-      <section className="layout-section">
-        <h2 style={{ fontSize: '24px' }}>3. 객실 레이아웃 편집</h2>
+      <RoomTypeEditor roomTypes={roomTypes} setRoomTypes={setRoomTypes} />
+      <DndProvider backend={HTML5Backend}>
         <LayoutEditor
-          hotelRoomTypes={roomTypes}
-          initialGridSettings={gridSettings}
-          onChangeGridSettings={handleChangeGridSettings}
+          roomTypes={roomTypes}
+          setRoomTypes={setRoomTypes}
+          floors={floors}
+          setFloors={setFloors}
         />
-      </section>
-
-      {/* (4) DailyBoard 미리보기 */}
-      <section className="preview-section">
-        <h2 style={{ fontSize: '24px' }}>4. 예약 배정 미리보기</h2>
-        <DndProvider backend={HTML5Backend}>
-          <DailyBoard
-            gridSettings={gridSettings}
-            reservations={reservations}
-            onUpdateReservation={handleReservationUpdate}
-          />
-        </DndProvider>
-      </section>
-
-      {/* (5) 전체 저장 & 취소 */}
-      <div style={{ marginTop: '2rem' }}>
-        <button onClick={handleSaveAll} className="custom-btn">
+      </DndProvider>
+      <div className="save-section">
+        <button className="action-btn save-btn" onClick={handleSaveAll}>
           전체 저장
-        </button>
-        <button onClick={handleCancel} className="custom-btn">
-          취소 (원복)
-        </button>
-        <button
-          className="custom-btn footer-btn" /* footer-btn 등 추가 클래스를 사용해도 됨 */
-          onClick={() => navigate('/')}
-        >
-          메인으로 돌아가기
         </button>
       </div>
     </div>

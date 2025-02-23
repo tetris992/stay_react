@@ -131,29 +131,25 @@ export const loginUser = async (credentials) => {
 export const logoutUser = async () => {
   try {
     const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) throw new Error('로그인 상태가 아닙니다.');
-
-    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
-    const csrfToken = csrfResponse.data.csrfToken;
-
-    const response = await api.post(
-      '/api/auth/logout',
-      {},
-      {
+    if (!accessToken) {
+      console.warn('로그인 상태가 아닙니다.');
+    } else {
+      const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+      const csrfToken = csrfResponse.data.csrfToken;
+      await api.post('/api/auth/logout', {}, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'X-CSRF-Token': csrfToken,
         },
-      }
-    );
+      });
+    }
+  } catch (error) {
+    console.error('로그아웃 실패:', error);
+  } finally {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
     localStorage.removeItem('csrfToken');
     window.location.href = '/login';
-    return response.data;
-  } catch (error) {
-    console.error('로그아웃 실패:', error);
-    throw error.response?.data || error;
   }
 };
 

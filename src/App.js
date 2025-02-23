@@ -1095,6 +1095,7 @@ const App = () => {
     [filterReservationsByDate, allReservations]
   );
 
+  // App.js 내 handleSaveSettings 수정
   const handleSaveSettings = useCallback(
     async (newSettings) => {
       console.log('Saving settings. isNewSetup:', isNewSetup);
@@ -1102,27 +1103,45 @@ const App = () => {
         const {
           hotelId: newHotelId,
           hotelName,
-          totalRooms,
+          totalRooms, // 백엔드에서 사용하므로 그대로 전달
           roomTypes,
           email: newEmail,
           address,
           phoneNumber: newPhoneNumber,
           otas,
-          _id, // 서버에서 받은 _id가 있을 수 있음
+          gridSettings,
+          _id,
         } = newSettings;
+
+        // 'none' 객실 제외한 roomTypes 필터링 (백엔드에 전달 전에 처리)
+        const filteredRoomTypes = roomTypes.filter(
+          (rt) => rt.roomInfo.toLowerCase() !== 'none'
+        );
+
+        // 층별 객실 정보에서 'none' 제외
+        const filteredFloors = gridSettings.floors.map((floor) => ({
+          floorNum: floor.floorNum,
+          containers: floor.containers.filter(
+            (cont) => cont.roomInfo.toLowerCase() !== 'none'
+          ),
+        }));
 
         const hotelSettingsData = {
           hotelId: newHotelId,
           hotelName,
-          totalRooms,
-          roomTypes,
+          totalRooms, // 백엔드에서 계산하지 않으므로 프론트에서 전달된 값 사용
+          roomTypes: filteredRoomTypes,
+          gridSettings: { floors: filteredFloors },
           otas:
             otas && Array.isArray(otas)
               ? otas
               : availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+          address,
+          phoneNumber: newPhoneNumber,
+          email: newEmail,
         };
 
-        // 분기 처리: _id가 있거나 isNewSetup이 false이면 업데이트(PATCH), 아니면 등록(POST)
+        // 백엔드 API 호출
         if (_id) {
           console.log('We have _id => Using updateHotelSettings (PATCH)');
           await updateHotelSettings(newHotelId, hotelSettingsData);
@@ -1136,17 +1155,24 @@ const App = () => {
           await updateHotelSettings(newHotelId, hotelSettingsData);
         }
 
-        setHotelSettings(hotelSettingsData);
+        // 상태 업데이트 (totalRooms 포함)
+        setHotelSettings({
+          ...hotelSettingsData,
+          totalRooms:
+            totalRooms ||
+            filteredRoomTypes.reduce(
+              (sum, rt) => sum + (rt.roomNumbers?.length || 0),
+              0
+            ),
+        });
         setHotelAddress(address || '주소 정보 없음');
         setPhoneNumber(newPhoneNumber || '전화번호 정보 없음');
         setEmail(newEmail || '이메일 정보 없음');
         setHotelId(newHotelId);
         setIsNewSetup(false);
-        console.log('Hotel Settings and User Info Saved:', {
-          ...hotelSettingsData,
-        });
+        console.log('Hotel Settings Saved:', hotelSettingsData);
       } catch (error) {
-        console.error('Failed to save hotel settings or user info:', error);
+        console.error('Failed to save hotel settings:', error);
       }
     },
     [isNewSetup]
@@ -1165,7 +1191,8 @@ const App = () => {
     localStorage.removeItem('csrfToken'); // CSRF 토큰 삭제 활성화
     // 쿠키 정리 (클라이언트에서 직접 삭제 불가, 백엔드 의존)
     document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; // 만료 설정
-    document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    document.cookie =
+      'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
     setIsAuthenticated(false);
     setHotelId('');
     setHotelSettings(null);
@@ -1205,52 +1232,57 @@ const App = () => {
     }
   }, [isAuthenticated, handleLogout]);
 
-useEffect(() => {
-  const initializeAuth = async () => {
-    const storedToken = localStorage.getItem('accessToken');
-    const storedHotelId = localStorage.getItem('hotelId');
-    if (storedToken && storedHotelId) {
-      try {
-        // 토큰 유효성 검증 (간단한 GET 요청)
-        await api.get('/api/auth/validate', { headers: { Authorization: `Bearer ${storedToken}` } });
-        console.log('Initializing auth with hotelId:', storedHotelId);
-        setIsAuthenticated(true);
-        setHotelId(storedHotelId);
-        await loadHotelSettings(storedHotelId);
-        await loadReservations();
-      } catch (error) {
-        console.error('토큰 유효성 검증 실패:', error);
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          // 유효하지 않은 토큰 처리
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('hotelId');
-          localStorage.removeItem('csrfToken');
-          document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-          document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-          setIsAuthenticated(false);
-          navigate('/login');
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem('accessToken');
+      const storedHotelId = localStorage.getItem('hotelId');
+      if (storedToken && storedHotelId) {
+        try {
+          // 토큰 유효성 검증 (간단한 GET 요청)
+          await api.get('/api/auth/validate', {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+          console.log('Initializing auth with hotelId:', storedHotelId);
+          setIsAuthenticated(true);
+          setHotelId(storedHotelId);
+          await loadHotelSettings(storedHotelId);
+          await loadReservations();
+        } catch (error) {
+          console.error('토큰 유효성 검증 실패:', error);
+          if (
+            error.response?.status === 401 ||
+            error.response?.status === 403
+          ) {
+            // 유효하지 않은 토큰 처리
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('hotelId');
+            localStorage.removeItem('csrfToken');
+            document.cookie =
+              '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            document.cookie =
+              'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+            setIsAuthenticated(false);
+            navigate('/login');
+          }
         }
+        setIsLoading(false);
+      } else {
+        console.log('저장된 세션이 없습니다. 로그인 해주세요.');
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    } else {
-      console.log('저장된 세션이 없습니다. 로그인 해주세요.');
-      setIsLoading(false);
-    }
-  };
-  initializeAuth();
-}, [loadHotelSettings, loadReservations, navigate]);
+    };
+    initializeAuth();
+  }, [loadHotelSettings, loadReservations, navigate]);
 
-  // (★) roomTypes를 구성할 때, gridSettings.containers로부터 roomNumbers를 채워넣음
-  //     MonthlyCalendar에 주입하기 직전에 최종 가공
+  // finalRoomTypes에서 'none' 제외
   const finalRoomTypes = useMemo(() => {
-    // hotelSettings가 null인 경우 {}를 사용하도록 함
     const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
-    const containers = gridSettings.containers || [];
-
+    const containers = gridSettings.floors
+      ? gridSettings.floors.flatMap((floor) => floor.containers || [])
+      : [];
     if (!roomTypes.length) return [];
-
     const merged = buildRoomTypesWithNumbers(roomTypes, containers);
-    return merged;
+    return merged.filter((rt) => rt.roomInfo.toLowerCase() !== 'none');
   }, [hotelSettings]);
 
   useEffect(() => {
@@ -1442,7 +1474,7 @@ useEffect(() => {
     setNeedsConsent(false);
   }, []);
 
-  // 아래에 guestAvailability를 선언합니다.
+  // guestAvailability 계산 시 'none' 제외
   const guestAvailability = useMemo(() => {
     if (!guestFormData) return {};
     const checkIn = parseDate(
@@ -1454,12 +1486,12 @@ useEffect(() => {
     if (!checkIn || !checkOut) return {};
     return computeDailyAvailability(
       allReservations,
-      roomTypes,
+      finalRoomTypes,
       checkIn,
       checkOut,
       hotelSettings?.gridSettings
     );
-  }, [guestFormData, allReservations, roomTypes, hotelSettings]);
+  }, [guestFormData, allReservations, finalRoomTypes, hotelSettings]);
 
   return (
     <div

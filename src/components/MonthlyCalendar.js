@@ -1,6 +1,5 @@
 // src/components/MonthlyCalendar.js
 import React, { useMemo, useState } from 'react';
-// eslint-disable-next-line no-unused-vars
 import {
   format,
   endOfMonth,
@@ -10,12 +9,10 @@ import {
   eachDayOfInterval,
   startOfWeek,
   endOfWeek,
-  // differenceInCalendarDays,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
 import './MonthlyCalendar.css';
-// computeDailyAvailability 함수를 utils에서 import
 import { computeDailyAvailability } from '../utils/availability';
 
 function getDetailedAvailabilityMessage(
@@ -46,6 +43,12 @@ const MonthlyCalendar = ({
   onReturnView,
   onDateNavigate,
 }) => {
+  // 'none' 객실 제외
+  const filteredRoomTypes = useMemo(
+    () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
+    [roomTypes]
+  );
+
   // 1) 달력 범위: 오늘부터 6개월 뒤 말일까지
   const calendarStart = startOfDay(new Date());
   const calendarEnd = endOfMonth(addMonths(new Date(), 6));
@@ -69,12 +72,18 @@ const MonthlyCalendar = ({
   const availabilityByDate = useMemo(() => {
     return computeDailyAvailability(
       reservations,
-      roomTypes,
+      filteredRoomTypes, // 'none' 제외된 roomTypes 사용
       calendarStart,
       calendarEnd,
-      gridSettings // gridSettings를 전달하여 fallback으로 활용
+      gridSettings
     );
-  }, [reservations, roomTypes, calendarStart, calendarEnd, gridSettings]);
+  }, [
+    reservations,
+    filteredRoomTypes,
+    calendarStart,
+    calendarEnd,
+    gridSettings,
+  ]);
 
   // 5) 월간 요약: 미배정 예약이 있는 날짜(체크인 날짜 기준) 추출
   const unassignedDates = useMemo(() => {
@@ -100,32 +109,26 @@ const MonthlyCalendar = ({
   };
 
   const handleRoomTypeMouseEnter = (day, roomInfo) => {
-    if (!selectedRange) return;
-    if (day < today) return;
-    if (selectedRange.roomInfo === roomInfo) {
-      setSelectedRange((prev) => ({ ...prev, end: day }));
-    }
+    if (!selectedRange || day < today || selectedRange.roomInfo !== roomInfo)
+      return;
+    setSelectedRange((prev) => ({ ...prev, end: day }));
   };
 
   const handleRoomTypeMouseUp = () => {
     if (!selectedRange) return;
     const { roomInfo, start, end } = selectedRange;
     const [rangeStart, rangeEnd] = [start, end].sort((a, b) => a - b);
+    const tKey = roomInfo.toLowerCase();
 
     // (1) 선택한 날짜 범위 내 각 날짜의 남은 재고(remain) 검사
     let cursor = rangeStart;
     const shortageDays = [];
     while (cursor <= rangeEnd) {
       const ds = format(cursor, 'yyyy-MM-dd');
-      const tKey = (roomInfo || 'standard').toLowerCase();
       const data = availabilityByDate[ds]?.[tKey];
       let remainVal = 0;
-      if (data == null) {
-        remainVal = 0;
-      } else if (typeof data === 'object' && data.remain >= 0) {
+      if (data && typeof data === 'object' && data.remain >= 0) {
         remainVal = data.remain;
-      } else if (typeof data === 'number') {
-        remainVal = data;
       }
       if (remainVal <= 0) {
         shortageDays.push(format(cursor, 'yyyy-MM-dd(EEE)', { locale: ko }));
@@ -140,7 +143,6 @@ const MonthlyCalendar = ({
 
     // (2) 선택한 날짜 범위의 각 날짜에서 남은 객실번호(leftoverRooms) 교집합 계산
     cursor = rangeStart;
-    const tKey = (roomInfo || 'standard').toLowerCase();
     let commonRooms = null;
     while (cursor <= rangeEnd) {
       const ds = format(cursor, 'yyyy-MM-dd');
@@ -165,16 +167,15 @@ const MonthlyCalendar = ({
       setSelectedRange(null);
       return;
     }
-    // (3) 교집합에 남은 번호 중 하나를 선택 (예: 가장 작은 번호)
+
+    // (3) 교집합에 남은 번호 중 가장 작은 번호 선택
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
 
+    // (4) 사용자 확인 후 예약 생성
     const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(
       rangeEnd,
       'MM/dd'
-    )} (${roomInfo})
-  공통 객실 번호: ${selectedRoomNumber}
-  예약 생성하시겠습니까?`;
-
+    )} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
     if (window.confirm(msg)) {
       onRangeSelect?.(rangeStart, rangeEnd, roomInfo, selectedRoomNumber);
       onReturnView?.();
@@ -183,8 +184,7 @@ const MonthlyCalendar = ({
   };
 
   const isRoomTypeSelected = (day, roomInfo) => {
-    if (!selectedRange) return false;
-    if (selectedRange.roomInfo !== roomInfo) return false;
+    if (!selectedRange || selectedRange.roomInfo !== roomInfo) return false;
     const [rs, re] = [selectedRange.start, selectedRange.end].sort(
       (a, b) => a - b
     );
@@ -245,17 +245,11 @@ const MonthlyCalendar = ({
           </div>
         </div>
         <div className="cell-content">
-          {roomTypes.map((rt) => {
-            const typeKey = (rt.roomInfo || 'standard').toLowerCase();
-            const data = dayAvailability[typeKey];
-            let remain = 0;
-            let leftoverRooms = [];
-            if (typeof data === 'object' && data.remain >= 0) {
-              remain = data.remain;
-              leftoverRooms = data.leftoverRooms || [];
-            } else if (typeof data === 'number') {
-              remain = data;
-            }
+          {filteredRoomTypes.map((rt) => {
+            const typeKey = rt.roomInfo.toLowerCase();
+            const data = dayAvailability[typeKey] || {};
+            const remain = data.remain >= 0 ? data.remain : 0;
+            const leftoverRooms = data.leftoverRooms || [];
             const selected = isRoomTypeSelected(day, rt.roomInfo);
             const isAll = remain === rt.stock;
             const remainLabel = isAll ? '(All)' : remain;

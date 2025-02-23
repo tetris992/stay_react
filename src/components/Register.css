@@ -1,122 +1,99 @@
-/* src/components/Register.css */
-
 .register-container {
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 100vh; /* 전체 화면 높이 사용 */
-  width: 500px;
-  background: #f5f5f5;
+  height: 100vh;
+  background-color: #f5f6f5;
 }
 
 .register-form {
-  background: #fff;
-  padding: 2rem;
+  background-color: white;
+  padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px; /* 폼의 최대 너비 설정 */
-  box-sizing: border-box;
-  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 400px;
 }
 
 .register-form h2 {
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: steelblue;
+  margin-bottom: 20px;
+  color: #2c3e50;
 }
 
-.error {
-  color: red;
-  text-align: center;
-  margin-bottom: 1rem;
-  font-weight: bold; /* 텍스트 굵기 추가 */
-  font-size: 1rem; /* 폰트 크기 조절 */
+.register-form label {
+  display: block;
+  margin-bottom: 15px;
 }
 
 .register-form input {
   width: 100%;
-  padding: 0.75rem 0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ccc;
+  padding: 8px;
+  margin-top: 5px;
+  border: 1px solid #d0d0d0;
   border-radius: 4px;
-  box-sizing: border-box;
+  font-size: 14px;
 }
 
-.register-form input:focus {
-  border-color: #3498db; /* 포커스 시 테두리 색상 변경 */
-  outline: none;
-  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); /* 포커스 시 그림자 추가 */
-}
-
-.register-form button {
-  width: 100%;
-  padding: 0.75rem;
-  background: #2ecc71;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-top: 0.5rem;
-  transition: background 0.3s ease; /* 트랜지션 추가 */
-}
-
-.register-form button:hover {
-  background: #27ae60;
-}
-
-.register-footer {
-  margin-top: 1rem;
-  text-align: center;
-  color: rgb(241, 33, 33);
-}
-
-.login-link {
-  color: #3498db;
-  text-decoration: none;
-  transition: text-decoration 0.3s ease; /* 트랜지션 추가 */
-}
-
-.login-link:hover {
-  text-decoration: underline;
+.error {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
 }
 
 .consent-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
+  margin: 15px 0;
+  text-align: center;
 }
 
-/* 기존 체크박스 및 라벨 관련 스타일은 제거 */
- /*
-.consent-container input[type="checkbox"] {
-  margin-right: 0.5rem;
-}
-.consent-container label {
-  font-size: 0.9rem;
-  color: #333;
-}
-*/
-
-/* 모달 호출 버튼 스타일 */
 .consent-container button {
-  padding: 0.5rem 1rem;
-  background: #3498db;
-  color: #fff;
+  padding: 8px 16px;
+  /* background-color: #3498db; */
+  color: rgb(196, 38, 38);
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.3s ease;
+}
+
+.consent-container button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
 }
 
 .consent-container button:hover {
-  background: #2980b9;
+  background-color: silver;
 }
 
-/* 동의 완료 시 표시되는 문구 스타일 */
-.consent-container p {
-  font-size: 0.9rem;
-  color: #333;
-  margin: 0;
+.register-form button[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.register-form button[type="submit"]:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.register-footer {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.login-link {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #3498db;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.login-link:hover {
+  background-color: #2980b9;
 }
