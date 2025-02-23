@@ -1180,14 +1180,16 @@ const App = () => {
 
   const handleLogout = useCallback(async () => {
     try {
-      await logoutUser(); // 백엔드 로그아웃 요청 (/api/auth/logout)
+      const response = await logoutUser(); // 백엔드 응답을 받음
+      if (response && response.redirect) {
+        navigate(response.redirect); // 백엔드에서 제공한 리디렉션 경로로 이동
+      }
     } catch (error) {
       console.error('백엔드 로그아웃 실패:', error);
     }
     // 로컬 스토리지 정리
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
-    localStorage.removeItem('hotelSettings');
     localStorage.removeItem('csrfToken'); // CSRF 토큰 삭제 활성화
     // 쿠키 정리 (클라이언트에서 직접 삭제 불가, 백엔드 의존)
     document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; // 만료 설정
@@ -1209,28 +1211,7 @@ const App = () => {
     sendOtaTogglesToExtension(
       availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
     );
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      async function fetchCsrf() {
-        try {
-          const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-          localStorage.setItem('csrfToken', data.csrfToken);
-        } catch (e) {
-          console.error('CSRF 토큰 요청 실패:', e);
-          if (e.code === 'ERR_NETWORK') {
-            setTimeout(fetchCsrf, 1000); // 네트워크 오류 시 1초 후 재시도
-          } else if (e.response?.status === 403) {
-            console.warn('CSRF 토큰 요청이 권한 문제로 실패했습니다.');
-            // 인증 문제라면 로그아웃 처리 고려
-            handleLogout();
-          }
-        }
-      }
-      fetchCsrf();
-    }
-  }, [isAuthenticated, handleLogout]);
+  }, [navigate]);
 
   useEffect(() => {
     const initializeAuth = async () => {
