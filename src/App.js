@@ -1180,19 +1180,26 @@ const App = () => {
 
   const handleLogout = useCallback(async () => {
     try {
-      const response = await logoutUser(); // 백엔드 응답을 받음
+      const response = await logoutUser();
+      console.log('Logout response:', response);
       if (response && response.redirect) {
-        navigate(response.redirect); // 백엔드에서 제공한 리디렉션 경로로 이동
+        // GitHub Pages에서 클라이언트 사이드 라우팅을 지원하기 위해 루트 경로로 이동
+        window.location.href = 'https://staysync.me/'; // GitHub Pages 기본 경로로 이동
+        setTimeout(() => navigate(response.redirect), 0); // 클라이언트 라우팅으로 전환
+      } else {
+        window.location.href = 'https://staysync.me/';
+        setTimeout(() => navigate('/login'), 0); // 기본적으로 /login으로 이동
       }
     } catch (error) {
       console.error('백엔드 로그아웃 실패:', error);
+      window.location.href = 'https://staysync.me/';
+      setTimeout(() => navigate('/login'), 0); // 오류 발생 시 강제 리디렉션
     }
-    // 로컬 스토리지 정리
+    // 로컬 스토리지 및 쿠키 정리 유지
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
-    localStorage.removeItem('csrfToken'); // CSRF 토큰 삭제 활성화
-    // 쿠키 정리 (클라이언트에서 직접 삭제 불가, 백엔드 의존)
-    document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; // 만료 설정
+    localStorage.removeItem('csrfToken');
+    document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
     document.cookie =
       'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
     setIsAuthenticated(false);
