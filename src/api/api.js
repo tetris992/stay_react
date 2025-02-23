@@ -290,7 +290,7 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {
-    const response = await api.post('/api/reservations', {
+    const response = await api.post('/reservations', {
       ...reservationData,
       customerName: reservationData.customerName, // 명시적으로 customerName 포함
       phoneNumber: reservationData.phoneNumber, // 명시적으로 phoneNumber 포함
@@ -305,7 +305,7 @@ export const saveOnSiteReservation = async (reservationData) => {
 export const fetchCanceledReservations = async (hotelId) => {
   console.log('fetchCanceledReservations called with hotelId:', hotelId);
   try {
-    const response = await api.get('/api/reservations/canceled', {
+    const response = await api.get('/reservations/canceled', {
       params: { hotelId },
     });
     console.log('fetchCanceledReservations response:', response.data);
@@ -319,7 +319,7 @@ export const fetchCanceledReservations = async (hotelId) => {
 // ============== 사용자 정보 ==============
 export const fetchUserInfo = async (hotelId) => {
   try {
-    const response = await api.get(`/api/auth/users/${hotelId}`);
+    const response = await api.get(`/auth/users/${hotelId}`);
     return response.data.data;
   } catch (error) {
     console.error('사용자 정보 불러오기 실패:', error);
@@ -329,7 +329,7 @@ export const fetchUserInfo = async (hotelId) => {
 
 export const updateUser = async (hotelId, userData) => {
   try {
-    const response = await api.patch(`/api/auth/users/${hotelId}`, userData);
+    const response = await api.patch(`/auth/users/${hotelId}`, userData);
     return response.data.data;
   } catch (error) {
     console.error('사용자 정보 업데이트 실패:', error);
@@ -340,7 +340,7 @@ export const updateUser = async (hotelId, userData) => {
 // ============== 그 외 유틸 API ==============
 export const enqueueScrapeTasks = async (hotelId, otaNames) => {
   try {
-    const response = await api.post('/api/scrape/instant', {
+    const response = await api.post('/scrape/instant', {
       hotelId,
       otaNames,
     });
@@ -353,7 +353,7 @@ export const enqueueScrapeTasks = async (hotelId, otaNames) => {
 
 export const fetchDebuggerStatus = async () => {
   try {
-    const response = await api.get('/api/status/debugger');
+    const response = await api.get('/status/debugger');
     return response.data;
   } catch (error) {
     console.error('디버깅 상태 가져오기 실패:', error);
@@ -363,7 +363,7 @@ export const fetchDebuggerStatus = async () => {
 
 export const fetchOTAStatus = async (hotelId) => {
   try {
-    const response = await api.get('/api/status/ota', {
+    const response = await api.get('/status/ota', {
       params: { hotelId },
     });
     return response.data;
@@ -376,7 +376,7 @@ export const fetchOTAStatus = async (hotelId) => {
 // ============== 비밀번호 재설정 ==============
 export const resetPasswordRequest = async (email) => {
   try {
-    const response = await api.post('/api/auth/reset-password-request', {
+    const response = await api.post('/auth/reset-password-request', {
       email,
     });
     return response.data;
@@ -389,7 +389,7 @@ export const resetPasswordRequest = async (email) => {
 
 export const resetPassword = async (token, newPassword) => {
   try {
-    const response = await api.post(`/api/auth/reset-password/${token}`, {
+    const response = await api.post(`/auth/reset-password/${token}`, {
       newPassword,
     });
     return response.data;
@@ -402,7 +402,7 @@ export const resetPassword = async (token, newPassword) => {
 
 export const consentUser = async (hotelId) => {
   try {
-    const response = await api.post(`/api/auth/consent?hotelId=${hotelId}`, {});
+    const response = await api.post(`/auth/consent?hotelId=${hotelId}`, {});
     return response.data;
   } catch (error) {
     console.error('개인정보 동의 실패:', error);
