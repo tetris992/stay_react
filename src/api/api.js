@@ -2,7 +2,7 @@
 import axios from 'axios';
 import ApiError from '../utils/ApiError.js';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL; // 개발/프로덕션 모두 .env에서 가져옴
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003'; // 기본값 설정, /api 제거
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -25,7 +25,7 @@ api.interceptors.request.use(
 api.interceptors.request.use(
   async (config) => {
     const isGetRequest = config.method === 'get';
-    const isCsrfTokenRequest = config.url === '/api/csrf-token';
+    const isCsrfTokenRequest = config.url === '/csrf-token';
     const isRefreshTokenRequest = config.url === '/auth/refresh-token';
     const skipCsrf = config.skipCsrf || false;
 
@@ -106,7 +106,7 @@ api.interceptors.response.use(
 // ============== Auth ==============
 export const loginUser = async (credentials) => {
   try {
-    const response = await api.post('/api/auth/login', credentials);
+    const response = await api.post('/auth/login', credentials);
     const { accessToken, isRegistered } = response.data;
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
@@ -134,10 +134,10 @@ export const logoutUser = async () => {
     if (!accessToken) {
       console.warn('로그인 상태가 아닙니다.');
     } else {
-      const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+      const csrfResponse = await api.get('/csrf-token', { skipCsrf: true });
       const csrfToken = csrfResponse.data.csrfToken;
       await api.post(
-        '/api/auth/logout',
+        '/auth/logout',
         {},
         {
           headers: {
@@ -159,9 +159,9 @@ export const logoutUser = async () => {
 
 export const registerUser = async (userData) => {
   try {
-    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+    const csrfResponse = await api.get('/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
-    const response = await api.post('/api/auth/register', userData, {
+    const response = await api.post('/auth/register', userData, {
       headers: { 'X-CSRF-Token': csrfToken },
     });
     return response.data;
@@ -184,7 +184,7 @@ export const registerUser = async (userData) => {
 // ============== 호텔 설정 관련 API ==============
 export const fetchHotelSettings = async (hotelId) => {
   try {
-    const response = await api.get('/api/hotel-settings', {
+    const response = await api.get('/hotel-settings', {
       params: { hotelId },
     });
     return response.data.data;
@@ -196,10 +196,7 @@ export const fetchHotelSettings = async (hotelId) => {
 
 export const updateHotelSettings = async (hotelId, settings) => {
   try {
-    const response = await api.patch(
-      `/api/hotel-settings/${hotelId}`,
-      settings
-    );
+    const response = await api.patch(`/hotel-settings/${hotelId}`, settings);
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 업데이트 실패:', error);
@@ -209,7 +206,7 @@ export const updateHotelSettings = async (hotelId, settings) => {
 
 export const saveHotelSettings = async (settings) => {
   try {
-    const response = await api.post('/api/hotel-settings', settings);
+    const response = await api.post('/hotel-settings', settings);
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 저장 실패:', error);
@@ -219,7 +216,7 @@ export const saveHotelSettings = async (settings) => {
 
 export const registerHotel = async (hotelData) => {
   try {
-    const response = await api.post('/api/hotel-settings', hotelData);
+    const response = await api.post('/hotel-settings', hotelData);
     return response.data;
   } catch (error) {
     console.error('호텔 계정 등록 실패:', error);
@@ -230,7 +227,7 @@ export const registerHotel = async (hotelData) => {
 // ============== 예약 관련 API ==============
 export const fetchReservations = async (hotelId) => {
   try {
-    const response = await api.get('/api/reservations', {
+    const response = await api.get('/reservations', {
       params: { hotelId },
     });
     return Array.isArray(response.data) ? response.data : [];
@@ -246,7 +243,7 @@ export const fetchReservations = async (hotelId) => {
 export const deleteReservation = async (reservationId, hotelId, siteName) => {
   try {
     const response = await api.delete(
-      `/api/reservations/${encodeURIComponent(reservationId)}`,
+      `/reservations/${encodeURIComponent(reservationId)}`,
       { params: { hotelId, siteName } }
     );
     return response.data;
@@ -261,7 +258,7 @@ export const confirmReservation = async (reservationId, hotelId) => {
     const encodedReservationId = encodeURIComponent(reservationId);
     console.log(`Confirming reservation with ID: ${encodedReservationId}`);
     const response = await api.post(
-      `/api/reservations/${encodedReservationId}/confirm`,
+      `/reservations/${encodedReservationId}/confirm`,
       { hotelId }
     );
     return response.data;
@@ -276,7 +273,7 @@ export const confirmReservation = async (reservationId, hotelId) => {
 export const updateReservation = async (reservationId, updateData, hotelId) => {
   try {
     const response = await api.patch(
-      `/api/reservations/${encodeURIComponent(reservationId)}`,
+      `/reservations/${encodeURIComponent(reservationId)}`,
       {
         ...updateData,
         hotelId,
