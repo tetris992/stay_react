@@ -28,7 +28,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          REACT_APP_API_BASE_URL: https://staysync.me/
+          REACT_APP_API_BASE_URL: https://ztoone.kr
           NODE_ENV: production
           CORS_ORIGIN: https://staysync.me,http://localhost:3000
 
