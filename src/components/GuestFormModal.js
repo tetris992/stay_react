@@ -1,5 +1,5 @@
 // src/components/GuestFormModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import './GuestFormModal.css';
 import { parseDate } from '../utils/dateParser';
@@ -29,19 +29,21 @@ const GuestFormModal = ({
     specialRequests: '',
   });
 
-  const filteredRoomTypes = roomTypes.filter(
-    (rt) => rt.roomInfo.toLowerCase() !== 'none'
+  // filteredRoomTypes를 useMemo로 캐싱
+  const filteredRoomTypes = useMemo(
+    () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
+    [roomTypes]
   );
 
-  // 수정 모드: initialData가 있으면 폼 데이터 초기화
+  // 수정 모드: initialData가 있으면 폼 데이터 초기화 (한 번만 실행)
   useEffect(() => {
     if (initialData) {
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
       setFormData({
         reservationNo: initialData.reservationNo || '',
-        customerName: initialData.customerName || '',
-        phoneNumber: initialData.phoneNumber || '',
+        customerName: initialData.customerName || '', // 빈 문자열로 초기화, 수정 가능
+        phoneNumber: initialData.phoneNumber || '', // 빈 문자열로 초기화, 수정 가능
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
         checkInTime: format(checkInDateObj, 'HH:mm'),
         checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
@@ -65,7 +67,7 @@ const GuestFormModal = ({
     }
   }, [initialData, filteredRoomTypes]);
 
-  // 생성 모드: 초기 데이터가 없으면 기본값 설정
+  // 생성 모드: 초기 데이터가 없으면 기본값 설정 (한 번만 실행)
   useEffect(() => {
     if (!initialData) {
       const now = new Date();
@@ -76,8 +78,8 @@ const GuestFormModal = ({
 
       setFormData({
         reservationNo: `${Date.now()}`,
-        customerName: '',
-        phoneNumber: '',
+        customerName: '', // 기본값 빈 문자열, 수정 가능
+        phoneNumber: '', // 기본값 빈 문자열, 수정 가능
         checkInDate,
         checkInTime: '16:00',
         checkOutDate,
@@ -91,7 +93,9 @@ const GuestFormModal = ({
     }
   }, [initialData, filteredRoomTypes]);
 
-  // 숙박일수에 따른 가격 재계산 (자동으로만 변경)
+  // 가격 재계산 (의존성 최적화, price만 별도 상태로 관리)
+  const [price, setPrice] = useState('0');
+
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
       const checkInDateObj = new Date(
@@ -108,7 +112,7 @@ const GuestFormModal = ({
       );
       const nightlyPrice = selectedRoom?.price || 0;
       const totalPrice = nightlyPrice * nightsStayed;
-      setFormData((prev) => ({ ...prev, price: totalPrice.toString() }));
+      setPrice(totalPrice.toString());
     }
   }, [
     formData.checkInDate,
@@ -137,18 +141,11 @@ const GuestFormModal = ({
           (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
         );
         const totalPrice = nightlyPrice * nightsStayed;
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value,
-          price: totalPrice.toString(),
-        }));
+        setPrice(totalPrice.toString());
       } else {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value,
-          price: nightlyPrice.toString(),
-        }));
+        setPrice(nightlyPrice.toString());
       }
+      setFormData((prev) => ({ ...prev, [name]: value }));
     } else if (name !== 'price') {
       // 가격은 수동 변경 불가
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -175,9 +172,7 @@ const GuestFormModal = ({
     const checkInDateObj = new Date(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
-    const checkOutDateObj = new Date(
-      `${selectedDate}T${formData.checkOutTime}:00`
-    );
+    const checkOutDateObj = new Date(`${selectedDate}T${formData.checkOutTime}:00`);
     const nightsStayed = Math.ceil(
       (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
     );
@@ -186,22 +181,18 @@ const GuestFormModal = ({
     );
     const nightlyPrice = selectedRoom?.price || 0;
     const totalPrice = nightlyPrice * nightsStayed;
+    setPrice(totalPrice.toString());
     setFormData((prev) => ({
       ...prev,
       checkOutDate: selectedDate,
-      price: totalPrice.toString(),
     }));
   };
 
   const isRoomTypeUnavailable = (roomInfo) => {
     if (!availabilityByDate || !formData.checkInDate || !formData.checkOutDate)
       return false;
-    const start = new Date(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-    const end = new Date(
-      `${formData.checkOutDate}T${formData.checkOutTime}:00`
-    );
+    const start = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const end = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
     let cursor = start;
     while (cursor < end) {
       const ds = format(cursor, 'yyyy-MM-dd');
@@ -216,19 +207,16 @@ const GuestFormModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form Data:', formData); // 디버깅 로그 추가
 
-    const numericPrice = parseFloat(formData.price);
+    const numericPrice = parseFloat(price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
       return;
     }
 
-    const checkInDateTime = parseDate(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-    const checkOutDateTime = parseDate(
-      `${formData.checkOutDate}T${formData.checkOutTime}:00`
-    );
+    const checkInDateTime = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkOutDateTime = parseDate(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
       return;
@@ -239,14 +227,8 @@ const GuestFormModal = ({
     }
     const now = new Date();
     const todayStart = startOfDay(now);
-    if (
-      !initialData &&
-      formData.customerName.includes('현장') &&
-      checkInDateTime < todayStart
-    ) {
-      alert(
-        '현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.'
-      );
+    if (!initialData && formData.customerName.includes('현장') && checkInDateTime < todayStart) {
+      alert('현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.');
       return;
     }
 
@@ -264,21 +246,14 @@ const GuestFormModal = ({
         if (commonRooms === null) {
           commonRooms = new Set(freeRooms);
         } else {
-          commonRooms = new Set(
-            [...commonRooms].filter((room) => freeRooms.includes(room))
-          );
+          commonRooms = new Set([...commonRooms].filter((room) => freeRooms.includes(room)));
         }
       }
       cursor = addDays(cursor, 1);
     }
 
     if (missingDates.length > 0 || !commonRooms || commonRooms.size === 0) {
-      const detailedMsg = getDetailedAvailabilityMessage(
-        startOfDay(checkInDateTime),
-        addDays(startOfDay(checkOutDateTime), -1),
-        tKey,
-        availabilityByDate
-      );
+      const detailedMsg = getDetailedAvailabilityMessage(startOfDay(checkInDateTime), addDays(startOfDay(checkOutDateTime), -1), tKey, availabilityByDate);
       alert(detailedMsg);
       return;
     }
@@ -303,12 +278,9 @@ const GuestFormModal = ({
       }
       onClose();
     } catch (error) {
-      const errorMessage =
-        error.status === 403
-          ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-          : error.response?.data?.message ||
-            error.message ||
-            '예약 저장에 실패했습니다. 다시 시도해주세요.';
+      const errorMessage = error.status === 403
+        ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
+        : error.response?.data?.message || error.message || '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
       console.error('예약 저장 오류:', error);
     }
@@ -351,6 +323,7 @@ const GuestFormModal = ({
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleInputChange}
+              required // 필수 입력으로 설정
             />
           </label>
           <label htmlFor="checkInDate">
@@ -420,7 +393,7 @@ const GuestFormModal = ({
               id="price"
               type="number"
               name="price"
-              value={formData.price}
+              value={price}
               readOnly // 수동 수정 불가
               min="0"
               step="1000"

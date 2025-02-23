@@ -25,7 +25,7 @@ api.interceptors.request.use(
 api.interceptors.request.use(
   async (config) => {
     const isGetRequest = config.method === 'get';
-    const isCsrfTokenRequest = config.url === '/api/csrf-token'; // 수정
+    const isCsrfTokenRequest = config.url === '/api/csrf-token';
     const isRefreshTokenRequest = config.url === '/auth/refresh-token';
     const skipCsrf = config.skipCsrf || false;
 
@@ -35,7 +35,7 @@ api.interceptors.request.use(
       !isRefreshTokenRequest &&
       !skipCsrf
     ) {
-      const { data } = await api.get('/api/csrf-token', { skipCsrf: true }); // 수정
+      const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
       config.headers['X-CSRF-Token'] = data.csrfToken;
       localStorage.setItem('csrfToken', data.csrfToken);
     }
@@ -43,6 +43,7 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
 // ============== 응답 인터셉터 (토큰 만료 시 갱신 및 자동 로그아웃) ==============
 let isRefreshing = false;
 let failedQueue = [];
@@ -91,7 +92,7 @@ api.interceptors.response.use(
         // 자동 로그아웃: 로컬 인증정보 삭제 후 로그인 페이지로 리디렉션
         localStorage.removeItem('accessToken');
         localStorage.removeItem('hotelId');
-        localStorage.removeItem('csrfToken'); // 추가된 부분
+        localStorage.removeItem('csrfToken');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -101,10 +102,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 // ============== Auth ==============
 export const loginUser = async (credentials) => {
   try {
-    const response = await api.post('/api/auth/login', credentials); // 수정
+    const response = await api.post('/api/auth/login', credentials);
     const { accessToken, isRegistered } = response.data;
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
@@ -126,8 +128,6 @@ export const loginUser = async (credentials) => {
   }
 };
 
-// ============== CSRF 토큰 갱신 함수 ==============
-
 export const logoutUser = async () => {
   try {
     const accessToken = localStorage.getItem('accessToken');
@@ -136,12 +136,16 @@ export const logoutUser = async () => {
     } else {
       const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
       const csrfToken = csrfResponse.data.csrfToken;
-      await api.post('/api/auth/logout', {}, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'X-CSRF-Token': csrfToken,
-        },
-      });
+      await api.post(
+        '/api/auth/logout',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-CSRF-Token': csrfToken,
+          },
+        }
+      );
     }
   } catch (error) {
     console.error('로그아웃 실패:', error);
@@ -182,7 +186,7 @@ export const fetchHotelSettings = async (hotelId) => {
   try {
     const response = await api.get('/api/hotel-settings', {
       params: { hotelId },
-    }); // 수정
+    });
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 불러오기 실패:', error);
@@ -195,7 +199,7 @@ export const updateHotelSettings = async (hotelId, settings) => {
     const response = await api.patch(
       `/api/hotel-settings/${hotelId}`,
       settings
-    ); // 수정
+    );
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 업데이트 실패:', error);
@@ -205,7 +209,7 @@ export const updateHotelSettings = async (hotelId, settings) => {
 
 export const saveHotelSettings = async (settings) => {
   try {
-    const response = await api.post('/api/hotel-settings', settings); // 수정
+    const response = await api.post('/api/hotel-settings', settings);
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 저장 실패:', error);
@@ -215,7 +219,7 @@ export const saveHotelSettings = async (settings) => {
 
 export const registerHotel = async (hotelData) => {
   try {
-    const response = await api.post('/api/hotel-settings', hotelData); // 수정
+    const response = await api.post('/api/hotel-settings', hotelData);
     return response.data;
   } catch (error) {
     console.error('호텔 계정 등록 실패:', error);
@@ -242,7 +246,7 @@ export const fetchReservations = async (hotelId) => {
 export const deleteReservation = async (reservationId, hotelId, siteName) => {
   try {
     const response = await api.delete(
-      `/api/reservations/${encodeURIComponent(reservationId)}`, // 수정
+      `/api/reservations/${encodeURIComponent(reservationId)}`,
       { params: { hotelId, siteName } }
     );
     return response.data;
@@ -257,7 +261,7 @@ export const confirmReservation = async (reservationId, hotelId) => {
     const encodedReservationId = encodeURIComponent(reservationId);
     console.log(`Confirming reservation with ID: ${encodedReservationId}`);
     const response = await api.post(
-      `/api/reservations/${encodedReservationId}/confirm`, // 수정
+      `/api/reservations/${encodedReservationId}/confirm`,
       { hotelId }
     );
     return response.data;
@@ -272,8 +276,13 @@ export const confirmReservation = async (reservationId, hotelId) => {
 export const updateReservation = async (reservationId, updateData, hotelId) => {
   try {
     const response = await api.patch(
-      `/api/reservations/${encodeURIComponent(reservationId)}`, // 수정
-      { ...updateData, hotelId }
+      `/api/reservations/${encodeURIComponent(reservationId)}`,
+      {
+        ...updateData,
+        hotelId,
+        customerName: updateData.customerName,
+        phoneNumber: updateData.phoneNumber,
+      } // 명시적으로 customerName과 phoneNumber 포함
     );
     return response.data;
   } catch (error) {
@@ -284,7 +293,11 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {
-    const response = await api.post('/api/reservations', reservationData);
+    const response = await api.post('/api/reservations', {
+      ...reservationData,
+      customerName: reservationData.customerName, // 명시적으로 customerName 포함
+      phoneNumber: reservationData.phoneNumber, // 명시적으로 phoneNumber 포함
+    });
     return response.data;
   } catch (error) {
     console.error('현장 예약 저장 실패:', error);
@@ -296,7 +309,6 @@ export const fetchCanceledReservations = async (hotelId) => {
   console.log('fetchCanceledReservations called with hotelId:', hotelId);
   try {
     const response = await api.get('/api/reservations/canceled', {
-      // 수정
       params: { hotelId },
     });
     console.log('fetchCanceledReservations response:', response.data);
@@ -310,7 +322,7 @@ export const fetchCanceledReservations = async (hotelId) => {
 // ============== 사용자 정보 ==============
 export const fetchUserInfo = async (hotelId) => {
   try {
-    const response = await api.get(`/api/auth/users/${hotelId}`); // 수정
+    const response = await api.get(`/api/auth/users/${hotelId}`);
     return response.data.data;
   } catch (error) {
     console.error('사용자 정보 불러오기 실패:', error);
@@ -320,7 +332,7 @@ export const fetchUserInfo = async (hotelId) => {
 
 export const updateUser = async (hotelId, userData) => {
   try {
-    const response = await api.patch(`/api/auth/users/${hotelId}`, userData); // 수정
+    const response = await api.patch(`/api/auth/users/${hotelId}`, userData);
     return response.data.data;
   } catch (error) {
     console.error('사용자 정보 업데이트 실패:', error);
@@ -344,7 +356,7 @@ export const enqueueScrapeTasks = async (hotelId, otaNames) => {
 
 export const fetchDebuggerStatus = async () => {
   try {
-    const response = await api.get('/api/status/debugger'); // 수정
+    const response = await api.get('/api/status/debugger');
     return response.data;
   } catch (error) {
     console.error('디버깅 상태 가져오기 실패:', error);
@@ -355,7 +367,6 @@ export const fetchDebuggerStatus = async () => {
 export const fetchOTAStatus = async (hotelId) => {
   try {
     const response = await api.get('/api/status/ota', {
-      // 수정
       params: { hotelId },
     });
     return response.data;
@@ -370,7 +381,7 @@ export const resetPasswordRequest = async (email) => {
   try {
     const response = await api.post('/api/auth/reset-password-request', {
       email,
-    }); // 수정
+    });
     return response.data;
   } catch (error) {
     const errorMessage =
@@ -382,7 +393,6 @@ export const resetPasswordRequest = async (email) => {
 export const resetPassword = async (token, newPassword) => {
   try {
     const response = await api.post(`/api/auth/reset-password/${token}`, {
-      // 수정
       newPassword,
     });
     return response.data;
@@ -395,7 +405,7 @@ export const resetPassword = async (token, newPassword) => {
 
 export const consentUser = async (hotelId) => {
   try {
-    const response = await api.post(`/api/auth/consent?hotelId=${hotelId}`, {}); // 수정
+    const response = await api.post(`/api/auth/consent?hotelId=${hotelId}`, {});
     return response.data;
   } catch (error) {
     console.error('개인정보 동의 실패:', error);
