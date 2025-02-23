@@ -27,9 +27,19 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          REACT_APP_API_BASE_URL: https://staysync.me/api
+          NODE_ENV: production
+          CORS_ORIGIN: https://staysync.me,http://localhost:3000
+
+      - name: Create 404.html
+        run: |
+          cp build/index.html build/404.html
+          echo "<base href=\"/\" />" >> build/404.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
+          cname: staysync.me 
