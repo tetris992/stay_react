@@ -35,7 +35,7 @@ api.interceptors.request.use(
       !isRefreshTokenRequest &&
       !skipCsrf
     ) {
-      const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+      const { data } = await api.get('/csrf-token', { skipCsrf: true });
       config.headers['X-CSRF-Token'] = data.csrfToken;
       localStorage.setItem('csrfToken', data.csrfToken);
     }
