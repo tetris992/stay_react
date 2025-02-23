@@ -543,7 +543,7 @@ export default function HotelSettingsPage() {
       }
     }
     loadData();
-  }, [hotelId]);
+  }, [hotelId, hotelAddress, hotelName, phoneNumber, email]);
 
   useEffect(() => {
     const newTotal = floors.reduce(
