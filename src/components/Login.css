@@ -1,146 +1,315 @@
-/* src/components/Login.css */
-
+/* 전체 컨테이너 */
 .login-container {
   display: flex;
-  width: 500px;
-  min-width: 300px;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background: #3c3c3c;
+  min-height: 100vh;
+  width: 550px;
+  background: linear-gradient(135deg, #ece9e6, #ffffff);
+  padding: 20px;
 }
 
+/* 로그인 폼 */
 .login-form {
-  background: #ffffff;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(147, 147, 147, 0.1);
+  background: #fff;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 500px;
+  text-align: center;
   position: relative;
-  margin: 10px;
 }
 
-.login-form h2 {
-  margin-bottom: 1rem;
-  text-align: center;
-  font-size: 1.5rem;
-  color: #333;
+/* 타이틀 */
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a237e;
+  margin-bottom: 20px;
 }
 
-.register-link {
+/* 에러 메시지 */
+.login-error-message {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+/* 입력 그룹 */
+.login-input-group {
+  margin-bottom: 20px;
+  text-align: left;
+  position: relative; /* 레이블과 입력창의 상대적 위치를 명확히 */
+  font-size: 24px;
+
+}
+
+.login-input-group.login-no-margin-bottom {
+  margin-bottom: 16px; /* 비밀번호 입력창 하단 마진을 16px로 설정 */
+}
+
+.login-input-label {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 8px;
   display: block;
-  text-align: right;
-  margin-bottom: 1rem;
-  color: #3498db;
-  text-decoration: none;
-  font-size: 0.9rem;
+  position: relative; /* 레이블 위치 고정 */
+  top: 0; /* 레이블 상단 고정 */
 }
 
-.register-link:hover {
-  text-decoration: underline;
-}
-
-.error {
-  color: #e74c3c;
-  background-color: #fdecea;
-  border: 1px solid #e74c3c;
-  padding: 0.5rem;
-  border-radius: 4px;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.password-error {
-  color: #f39c12;
-  background-color: #fdf2e9;
-  border: 1px solid #f39c12;
-  padding: 0.5rem;
-  border-radius: 4px;
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-input[type='text'],
-input[type='password'],
-input[type='email'] {
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 2px solid #809dfa;
+  border-radius: 6px;
+  background: #f5f5f5;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  height: 54px;
+  outline: none;
   box-sizing: border-box;
 }
 
-.password-input-container {
-  position: relative;
+.login-input-wrapper:hover {
+  border-color: #999;
+  box-sizing: border-box;
 }
 
-.password-toggle-icon {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  cursor: pointer;
-  color: #7f8c8d;
-}
-
-.password-toggle-icon:hover {
-  color: #2c3e50;
-}
-
-button[type='submit'],
-.forgot-password-button {
-  width: 100%;
-  padding: 0.75rem;
+.login-input-field {
+  width: 80%;
+  padding: 12px 16px;
+  font-size: 24px;
   border: none;
-  border-radius: 4px;
-  background: #2ecc71;
-  color: #fff;
-  font-size: 1rem;
+  border-radius: 6px;
+  outline: none;
+  background: transparent;
+  transition: background-color 0.3s ease;
+  box-sizing: border-box; /* 입력창 크기 일치 보장 */
+  height: 48px; /* 고정 높이 설정 */
+  line-height: 29px; /* 텍스트 중앙 정렬, 줄 높이 조정 */
+  margin: 0; /* 마진 제거 */
+  font-family: inherit; /* 폰트 일관성 유지 */
+}
+
+/* type="password"와 type="text"에서 동일한 높이 유지 */
+.login-input-field[type='text'],
+.login-input-field[type='password'] {
+  width: 80%;
+  height: 18px; /* 고정 높이 */
+  margin-bottom: 0px;
+  padding: 12px 16px; /* 패딩 고정 */
+  line-height: 20px; /* 텍스트 줄 간격 고정 */
+  font-size: 16px; /* 폰트 크기 고정 */
+  border: none;
+  box-sizing: border-box;
+}
+.password.login-input-field {
+  margin: 0px;
+  box-sizing: border-box;
+  font-size: 24px;
+
+}
+
+/* 브라우저별 폰트 크기 및 높이 문제 해결 */
+.login-input-field::-ms-clear,
+.login-input-field::-ms-reveal {
+  display: none;
+}
+
+.login-input-field:focus {
+  background-color: #fff;
+  border-color: #1a237e;
+  box-shadow: 0 0 8px rgba(26, 35, 126, 0.2);
+}
+
+/* 비밀번호 토글 아이콘 */
+.login-password-toggle-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #555;
   cursor: pointer;
-  transition: background 0.3s ease;
+  font-size: 18px;
+  transition: color 0.3s ease;
+  height: 48px; /* 아이콘 높이 입력창과 일치 */
+  line-height: 48px; /* 아이콘 수직 중앙 정렬 */
 }
 
-button[type='submit']:hover,
-.forgot-password-button:hover {
-  background: #27ae60;
+.login-password-toggle-icon:hover {
+  color: #333;
 }
 
-.forgot-password-button {
-  margin-top: 0.5rem;
-  background: #8886866b;
-  transition: background 0.3s ease, transform 0.3s ease;
+/* 옵션 영역 */
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
-.forgot-password-button:hover {
-  background: #c0392b;
+.login-checkbox-label {
+  font-size: 14px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
 }
 
-.forgot-password-button.highlight {
-  animation: shake 0.5s;
-  background: #e74c3c;
+.login-checkbox-text {
+  margin-left: 5px;
+}
+
+.login-ip-security {
+  font-size: 14px;
+  color: #1a237e;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.login-ip-security:hover {
+  color: #142a6b;
+}
+
+/* 로그인 버튼 */
+.login-login-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #c9c9c9 !important; /* 연한 회색으로 변경 */
+  color: #5a5858 !important; 
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.9s ease, transform 0.9s ease, color 0.9s ease;
+  margin-bottom: 20px;
+}
+
+.login-login-button:hover:not(:disabled) {
+  background-color: #bbbbbb !important; /* 호버 시 더 연한 회색으로 변경 */
+  transform: translateY(-2px);
+  color: #ffffff !important; 
+}
+
+.login-login-button:disabled {
+  background-color: #f0f0f0; /* 비활성화 상태에서 더 연한 회색 */
+  cursor: not-allowed;
+transform: translate();
+  color: #999;
+}
+
+/* 인증 옵션 (Passkey 및 QR) */
+.login-auth-options-bottom {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.login-passkey-button,
+.login-qr-button {
+  width: 48%;
+  padding: 12px;
+  background: #e0e0e0;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.login-passkey-button:hover,
+.login-qr-button:hover {
+  background: #d5d5d5;
+  transform: translateY(-2px);
+}
+
+.login-qr-button svg {
+  width: 24px;
+  height: 24px;
+  fill: #1a237e;
+}
+
+/* 하단 링크 */
+.login-forgot-or-signup {
+  font-size: 14px;
+  color: #555;
+}
+
+.login-forgot-link,
+.login-signup-link {
+  color: #1a237e;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+.login-forgot-link:hover,
+.login-signup-link:hover {
+  color: #142a6b;
+  text-decoration: underline;
+}
+
+.login-signup-link {
+  opacity: 0.6; /* 희미하게 표시 */
+}
+
+.login-signup-link:hover {
+  opacity: 1; /* 호버 시 진하게 */
+}
+
+/* QR 모달 스타일 */
+.login-qr-modal {
+  text-align: center;
+}
+
+.login-qr-modal h3 {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.login-qr-code-image {
+  margin-bottom: 20px;
+}
+
+.login-qr-modal p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+.login-qr-instruction {
+  font-size: 12px;
+  color: #777;
+  line-height: 1.5;
+}
+
+.login-qr-valid-time {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.login-close-modal {
+  padding: 10px 20px;
+  background: #1a237e;
   color: #fff;
-  transform: scale(1.05);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s ease;
 }
 
-@keyframes shake {
-  0% {
-    transform: translateX(0) scale(1.05);
-  }
-  25% {
-    transform: translateX(-5px) scale(1.05);
-  }
-  50% {
-    transform: translateX(5px) scale(1.05);
-  }
-  75% {
-    transform: translateX(-5px) scale(1.05);
-  }
-  100% {
-    transform: translateX(0) scale(1.05);
-  }
+.login-close-modal:hover {
+  background: #142a6b;
+  transform: translateY(-2px);
 }
