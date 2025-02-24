@@ -197,7 +197,11 @@ const App = () => {
     hotelAddress: '',
     phoneNumber: '',
     email: '',
+    totalRooms: 0, // 필요 시 추가
+    roomTypes: [], // 필요 시 추가
+    gridSettings: {}, // 필요 시 추가
   });
+
   const [isNewSetup, setIsNewSetup] = useState(true);
   const [roomsSold, setRoomsSold] = useState(0);
   const [monthlySoldRooms, setMonthlySoldRooms] = useState(0);
@@ -206,9 +210,9 @@ const App = () => {
     roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
-  const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
-  const [email, setEmail] = useState('이메일 정보 없음');
+  // const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
+  // const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
+  // const [email, setEmail] = useState('이메일 정보 없음');
   const totalRooms = hotelSettings?.totalRooms || 0;
   const remainingRooms = totalRooms - roomsSold;
   // Use useMemo to memoize it:
@@ -277,18 +281,6 @@ const App = () => {
   const handleMemoButtonClick = useCallback(() => {
     setFlipAllMemos((prev) => !prev);
   }, []);
-
-  useEffect(() => {
-    if (hotelSettings && hotelSettings.address) {
-      console.log(
-        'Setting hotelAddress from hotelSettings:',
-        hotelSettings.address
-      );
-      setHotelAddress(hotelSettings.address);
-    } else {
-      setHotelAddress('주소 정보 없음');
-    }
-  }, [hotelSettings]);
 
   const calculatePerNightPrice = useCallback(
     (reservation, totalPrice, nights) => {
@@ -589,7 +581,19 @@ const App = () => {
           setIsNewSetup(true);
         }
 
-        setHotelSettings(settings);
+        // hotelSettings 상태로 통합하여 업데이트, 기본값 보장
+        setHotelSettings({
+          ...settings,
+          hotelAddress: settings.address || '주소 정보 없음',
+          phoneNumber: settings.phoneNumber || '전화번호 정보 없음',
+          email: settings.email || '이메일 정보 없음',
+          totalRooms:
+            settings.totalRooms ||
+            defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+          roomTypes: settings.roomTypes || defaultRoomTypes,
+          gridSettings: settings.gridSettings || {},
+        });
+
         const initialOTAToggles = settings.otas.reduce((acc, ota) => {
           acc[ota.name] = ota.isActive;
           return acc;
@@ -601,10 +605,7 @@ const App = () => {
         });
         console.log('Initial OTA Toggles:', initialOTAToggles);
         setOtaToggles(initialOTAToggles);
-        setHotelAddress(settings.address || '주소 정보 없음');
-        setPhoneNumber(settings.phoneNumber || '전화번호 정보 없음');
-        setEmail(settings.email || '이메일 정보 없음');
-        return settings; // 반환값 추가
+        return settings; // 반환값 유지
       } else {
         const defaultOTAToggles = availableOTAs.reduce(
           (acc, ota) => ({ ...acc, [ota]: false }),
@@ -615,13 +616,14 @@ const App = () => {
           roomTypes: defaultRoomTypes,
           totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
           otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+          hotelAddress: '주소 정보 없음', // 기본값 설정
+          phoneNumber: '전화번호 정보 없음', // 기본값 설정
+          email: '이메일 정보 없음', // 기본값 설정
+          gridSettings: {}, // 기본값 설정
         };
         setHotelSettings(defaultSettings);
         setIsNewSetup(true);
         setOtaToggles(defaultOTAToggles);
-        setHotelAddress('주소 정보 없음');
-        setPhoneNumber('전화번호 정보 없음');
-        setEmail('이메일 정보 없음');
         return defaultSettings;
       }
     } catch (error) {
@@ -635,13 +637,14 @@ const App = () => {
         roomTypes: defaultRoomTypes,
         totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
         otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+        hotelAddress: '주소 정보 없음', // 기본값 설정
+        phoneNumber: '전화번호 정보 없음', // 기본값 설정
+        email: '이메일 정보 없음', // 기본값 설정
+        gridSettings: {}, // 기본값 설정
       };
       setIsNewSetup(true);
       setHotelSettings(defaultSettings);
       setOtaToggles(defaultOTAToggles);
-      setHotelAddress('주소 정보 없음');
-      setPhoneNumber('전화번호 정보 없음');
-      setEmail('이메일 정보 없음');
       return defaultSettings;
     }
   }, []);
@@ -1158,6 +1161,9 @@ const App = () => {
         // 상태 업데이트 (totalRooms 포함)
         setHotelSettings({
           ...hotelSettingsData,
+          hotelAddress: address || '주소 정보 없음',
+          phoneNumber: newPhoneNumber || '전화번호 정보 없음',
+          email: newEmail || '이메일 정보 없음',
           totalRooms:
             totalRooms ||
             filteredRoomTypes.reduce(
@@ -1165,9 +1171,6 @@ const App = () => {
               0
             ),
         });
-        setHotelAddress(address || '주소 정보 없음');
-        setPhoneNumber(newPhoneNumber || '전화번호 정보 없음');
-        setEmail(newEmail || '이메일 정보 없음');
         setHotelId(newHotelId);
         setIsNewSetup(false);
         console.log('Hotel Settings Saved:', hotelSettingsData);
@@ -1591,10 +1594,7 @@ const App = () => {
                       monthlySoldRooms={monthlySoldRooms}
                       avgMonthlyRoomPrice={avgMonthlyRoomPrice}
                       onLogout={handleLogout}
-                      // openSettingsModal={openSettingsModal}
                       dailyBreakdown={dailyBreakdown}
-                      phoneNumber={phoneNumber}
-                      email={email}
                       openSalesModal={openSalesModal}
                       onToggleOTA={handleToggleOTA}
                       otaToggles={otaToggles}
@@ -1631,10 +1631,6 @@ const App = () => {
                               loadedReservations={loadedReservations}
                               hotelId={hotelId}
                               hotelSettings={hotelSettings}
-                              highlightFirstCard={true}
-                              hotelAddress={hotelAddress}
-                              phoneNumber={phoneNumber}
-                              email={email}
                               roomTypes={finalRoomTypes}
                               memos={memos}
                               setMemos={setMemos}

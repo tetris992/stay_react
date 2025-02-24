@@ -1,6 +1,7 @@
 // src/components/SideBar.js
 
 import React, { useState } from 'react';
+import PropTypes from 'prop-types'; // 추가
 import AccountingInfo from './AccountingInfo';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
@@ -19,7 +20,6 @@ import {
   FaCircleNotch,
   FaClipboardCheck,
   FaTimesCircle,
-  // FaTh,
 } from 'react-icons/fa';
 
 // import { defaultRoomTypes } from '../config/defaultRoomTypes';
@@ -38,18 +38,16 @@ function SideBar({
   occupancyRate,
   selectedDate,
   onDateChange,
-  // handleSaveSettings,
   totalRooms,
   remainingRooms,
-  // roomTypes,
   monthlySoldRooms,
   avgMonthlyRoomPrice,
   onLogout,
   dailyBreakdown,
   monthlyDailyBreakdown,
   openSalesModal,
-  // hotelSettings,
   hotelId,
+  hotelSettings,
   otaToggles,
   onToggleOTA,
   searchCriteria,
@@ -64,10 +62,8 @@ function SideBar({
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false); // 그래프 모달 열림 여부
-  // ★ 새로 추가: OTA 설정 토글 상태 (기본적으로 닫힘)
-  const [isOtaSettingsOpen, setIsOtaSettingsOpen] = useState(false);
+  const [isOtaSettingsOpen, setIsOtaSettingsOpen] = useState(false); // OTA 설정 토글 상태
 
-  // ★ 추가: react-router-dom의 useNavigate 훅
   const navigate = useNavigate();
 
   // 1) Sync 버튼 클릭 핸들러
@@ -79,7 +75,7 @@ function SideBar({
 
   // 2) 호텔 설정 버튼 클릭 핸들러
   const handleSettingsClick = () => {
-    navigate('/hotel-settings'); // ← 페이지 전환
+    navigate('/hotel-settings');
   };
 
   // 4) 날짜 변경
@@ -120,15 +116,8 @@ function SideBar({
   const handleCloseGraphModal = () => setIsGraphModalOpen(false);
 
   // 그래프에 쓸 데이터 구성
-  const dailySales = {
-    labels: labelsForOTA,
-    values: [],
-  };
-
-  const monthlySales = {
-    labels: ['현재월'],
-    values: [monthlyTotal],
-  };
+  const dailySales = { labels: labelsForOTA, values: [] };
+  const monthlySales = { labels: ['현재월'], values: [monthlyTotal] };
 
   return (
     <div
@@ -152,6 +141,7 @@ function SideBar({
         searchCriteria={searchCriteria}
         setSearchCriteria={setSearchCriteria}
         handleSearchSubmit={handleSearchSubmit}
+        className="sidebar-search-input"
       />
       <VoiceSearch
         onResult={handleVoiceResult}
@@ -226,11 +216,11 @@ function SideBar({
         avgMonthlyRoomPrice={avgMonthlyRoomPrice}
         dailyBreakdown={dailyBreakdown}
         monthlyDailyBreakdown={monthlyDailyBreakdown}
-        openSalesModal={openSalesModal} // 기존 상세 보기 모달
-        openGraphModal={handleOpenGraphModal} // 추가: 새 그래프 모달 열기
+        openSalesModal={openSalesModal}
+        openGraphModal={handleOpenGraphModal}
       />
 
-      {/* ★ OTA 설정 섹션 (토글 가능하게 변경) */}
+      {/* OTA 설정 섹션 (토글 가능하게 변경) */}
       <div className="ota-settings-section">
         <div
           className="ota-settings-header"
@@ -255,7 +245,7 @@ function SideBar({
         )}
       </div>
 
-      {/* 추가: 매출 그래프 모달 (SalesGraphModal) */}
+      {/* 매출 그래프 모달 (SalesGraphModal) */}
       <SalesGraphModal
         isOpen={isGraphModalOpen}
         onRequestClose={handleCloseGraphModal}
@@ -297,5 +287,38 @@ function SideBar({
     </div>
   );
 }
+
+SideBar.propTypes = {
+  loading: PropTypes.bool.isRequired,
+  onSync: PropTypes.func.isRequired,
+  setIsShining: PropTypes.func.isRequired,
+  dailyTotal: PropTypes.number.isRequired,
+  monthlyTotal: PropTypes.number.isRequired,
+  roomsSold: PropTypes.number.isRequired,
+  occupancyRate: PropTypes.number.isRequired,
+  selectedDate: PropTypes.instanceOf(Date).isRequired,
+  onDateChange: PropTypes.func.isRequired,
+  totalRooms: PropTypes.number.isRequired,
+  remainingRooms: PropTypes.number.isRequired,
+  monthlySoldRooms: PropTypes.number.isRequired,
+  avgMonthlyRoomPrice: PropTypes.number.isRequired,
+  onLogout: PropTypes.func.isRequired,
+  dailyBreakdown: PropTypes.array.isRequired,
+  monthlyDailyBreakdown: PropTypes.array.isRequired,
+  openSalesModal: PropTypes.func.isRequired,
+  hotelId: PropTypes.string.isRequired,
+  hotelSettings: PropTypes.object.isRequired,
+  otaToggles: PropTypes.object.isRequired,
+  onToggleOTA: PropTypes.func.isRequired,
+  searchCriteria: PropTypes.object.isRequired,
+  setSearchCriteria: PropTypes.func.isRequired,
+  executeSearch: PropTypes.func.isRequired,
+  onShowCanceledModal: PropTypes.func.isRequired,
+  onOnsiteReservationClick: PropTypes.func.isRequired,
+  needsConsent: PropTypes.bool.isRequired,
+  dailySalesByOTA: PropTypes.object.isRequired,
+  labelsForOTA: PropTypes.array.isRequired,
+  activeReservations: PropTypes.array.isRequired,
+};
 
 export default SideBar;

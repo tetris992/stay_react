@@ -3,15 +3,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  min-height: 130vh;
   width: 550px;
   background: linear-gradient(135deg, #ece9e6, #ffffff);
   padding: 20px;
+  background-color: transparent;
 }
 
 /* 로그인 폼 */
 .login-form {
-  background: #fff;
+  background-color: transparent;
   padding: 40px;
   border-radius: 10px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
@@ -19,6 +20,7 @@
   max-width: 500px;
   text-align: center;
   position: relative;
+  border: 1px solid rgb(207, 207, 207);
 }
 
 /* 타이틀 */
@@ -43,7 +45,6 @@
   text-align: left;
   position: relative; /* 레이블과 입력창의 상대적 위치를 명확히 */
   font-size: 24px;
-
 }
 
 .login-input-group.login-no-margin-bottom {
@@ -104,12 +105,7 @@
   font-size: 16px; /* 폰트 크기 고정 */
   border: none;
   box-sizing: border-box;
-}
-.password.login-input-field {
-  margin: 0px;
-  box-sizing: border-box;
-  font-size: 24px;
-
+  background-color: transparent;
 }
 
 /* 브라우저별 폰트 크기 및 높이 문제 해결 */
@@ -181,7 +177,7 @@
   width: 100%;
   padding: 12px;
   background-color: #c9c9c9 !important; /* 연한 회색으로 변경 */
-  color: #5a5858 !important; 
+  color: #5a5858 !important;
   border: none;
   border-radius: 6px;
   font-size: 16px;
@@ -193,13 +189,13 @@
 .login-login-button:hover:not(:disabled) {
   background-color: #bbbbbb !important; /* 호버 시 더 연한 회색으로 변경 */
   transform: translateY(-2px);
-  color: #ffffff !important; 
+  color: #ffffff !important;
 }
 
 .login-login-button:disabled {
   background-color: #f0f0f0; /* 비활성화 상태에서 더 연한 회색 */
   cursor: not-allowed;
-transform: translate();
+  transform: translate();
   color: #999;
 }
 

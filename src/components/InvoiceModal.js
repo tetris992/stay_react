@@ -1,5 +1,3 @@
-// src/components/InvoiceModal.js
-
 import React, { useState } from 'react';
 import Modal from 'react-modal';
 import PropTypes from 'prop-types';
@@ -10,7 +8,6 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
-
 
 const InvoiceModal = ({
   isOpen,
@@ -28,16 +25,20 @@ const InvoiceModal = ({
     ...reservation,
   });
 
-  // 인보이스 다운로드 핸들러
+  // 인보이스 다운로드 핸들러 (A4 크기 맞춤)
   const handleDownload = async () => {
     try {
       const input = invoiceRef.current;
-      const canvas = await html2canvas(input);
+      const canvas = await html2canvas(input, { scale: 2, useCORS: true }); // 높은 해상도로 캡처
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF();
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: 'a4', // A4 크기 (210mm × 297mm)
+        orientation: 'portrait',
+      });
 
-      const imgWidth = 210; 
-      const pageHeight = 295; 
+      const imgWidth = 210; // A4 폭 (mm)
+      const pageHeight = 297; // A4 높이 (mm)
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
@@ -65,20 +66,63 @@ const InvoiceModal = ({
       onRequestClose();
     } catch (error) {
       console.error('인보이스 다운로드 실패:', error);
-      alert(t('invoice.downloadFailed')); 
+      alert(t('invoice.downloadFailed'));
     }
   };
 
-  // 인보이스 프린트 핸들러
+  // 인보이스 프린트 핸들러 (A4 크기 맞춤 및 정상 인쇄 보장)
   const handlePrint = () => {
     const input = invoiceRef.current;
-    const printContents = input.innerHTML;
-    const originalContents = document.body.innerHTML;
+    const printWindow = window.open('', '_blank');
+    const printContents = `
+      <html>
+        <head>
+          <title>Print Invoice</title>
+          <style>
+            @media print {
+              @page {
+                size: A4;
+                margin: 0;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                width: 210mm;
+                height: 297mm;
+              }
+              .invoice-template {
+                width: 100%;
+                height: 100%;
+                font-family: Arial, sans-serif;
+              }
+              .invoice-header, .invoice-details, .invoice-nightly-rates, .invoice-single-rate, .invoice-footer {
+                margin: 0;
+                padding: 10px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+              }
+              th, td {
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+              }
+            }
+          </style>
+        </head>
+        <body>${input.innerHTML}</body>
+      </html>
+    `;
 
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload(); 
+    printWindow.document.open();
+    printWindow.document.write(printContents);
+    printWindow.document.close();
+
+    printWindow.print();
+    printWindow.close(); // 인쇄 후 새 창 닫기
+    // 페이지 새로고침은 필요 없음, 모달만 닫기
+    onRequestClose();
   };
 
   // 수정 모드 토글 핸들러
@@ -117,7 +161,7 @@ const InvoiceModal = ({
     <Modal
       isOpen={isOpen}
       onRequestClose={() => {
-        setIsEditing(false); 
+        setIsEditing(false);
         onRequestClose();
       }}
       contentLabel={t('invoice.modalTitle')}
@@ -125,15 +169,13 @@ const InvoiceModal = ({
       overlayClassName="invoice-modal-overlay"
     >
       <div className="modal-header">
-        <h2>{t('')}</h2>
+        <h2>{t('invoice.invoice')}</h2>
         <div className="modal-language-switcher">
-          {' '}
-          {/* 추가된 라인 */}
           <LanguageSwitcher /> {/* 기존 LanguageSwitcher 재사용 */}
         </div>
         <button
           onClick={() => {
-            setIsEditing(false); 
+            setIsEditing(false);
             onRequestClose();
           }}
           className="close-button"
@@ -146,13 +188,13 @@ const InvoiceModal = ({
         <div ref={invoiceRef} className="invoice-content">
           <InvoiceTemplate
             reservation={editedReservation}
-            hotelAddress={hotelAddress || t('invoice.infoUnavailable')} 
-            phoneNumber={phoneNumber || t('invoice.infoUnavailable')} 
-            email={email || t('invoice.infoUnavailable')} 
+            hotelAddress={hotelAddress || t('invoice.infoUnavailable')}
+            phoneNumber={phoneNumber || t('invoice.infoUnavailable')}
+            email={email || t('invoice.infoUnavailable')}
             isEditing={isEditing}
             toggleEditMode={toggleEditMode}
             handleSave={handleSave}
-            handleChange={handleChange} 
+            handleChange={handleChange}
           />
         </div>
       </div>
@@ -191,9 +233,9 @@ InvoiceModal.propTypes = {
   invoiceRef: PropTypes.object.isRequired,
   reservationNo: PropTypes.string.isRequired,
   reservation: PropTypes.object.isRequired,
-  hotelAddress: PropTypes.string.isRequired, 
-  phoneNumber: PropTypes.string.isRequired, 
-  email: PropTypes.string.isRequired, 
+  hotelAddress: PropTypes.string.isRequired,
+  phoneNumber: PropTypes.string.isRequired,
+  email: PropTypes.string.isRequired,
 };
 
 export default InvoiceModal;

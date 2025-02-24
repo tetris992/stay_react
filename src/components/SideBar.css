@@ -511,3 +511,13 @@ h4 {
   font-size: 1.2rem;
   margin-left: 0.3rem;
 }
+
+.search-input {
+  width: 100% !important; /* 다른 스타일의 영향을 차단 */
+  max-width: 100% !important; /* 최대 너비 설정 */
+  box-sizing: border-box !important; /* 패딩과 보더를 포함한 너비 계산 */
+  padding: 8px !important; /* 입력창 패딩 조정 */
+  font-size: 16px !important; /* 폰트 크기 조정 */
+  margin-bottom: 20px;
+  border-radius: 5px;
+}

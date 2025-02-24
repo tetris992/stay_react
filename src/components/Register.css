@@ -1,99 +1,211 @@
-.register-container {
+.reg-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: #f5f6f5;
-}
-
-.register-form {
-  background-color: white;
+  height: 130vh;
+  width: 550px; /* Login과 동일한 너비 공유 */
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 400px;
+  background: #ffffff; /* 배경 제거 */
 }
 
-.register-form h2 {
+.reg-card {
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  animation: reg-fadeIn 0.5s ease-in;
+}
+
+@keyframes reg-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reg-brand {
   text-align: center;
   margin-bottom: 20px;
-  color: #2c3e50;
+  color: #262626;
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: 'Arial', sans-serif;
+  letter-spacing: -0.5px;
+  margin-bottom: 50px;
 }
 
-.register-form label {
-  display: block;
+.reg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reg-form-group {
+  position: relative;
   margin-bottom: 15px;
+  width: 100%; /* 모든 입력 필드를 100% 너비로 설정 */
 }
 
-.register-form input {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  border: 1px solid #d0d0d0;
+.reg-floating-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  color: #8e8e8e;
+  font-size: 0.875rem;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  z-index: 1;
+}
+
+.reg-input-field {
+  width: 93.3%; /* 모든 입력 필드를 동일한 100% 너비로 설정 */
+  padding: 12px;
+  border: 1px solid #dbdbdb;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 1rem;
+  background: #ffffff;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.error {
-  color: #dc3545;
-  font-size: 12px;
+.reg-input-field:focus {
+  border-color: #4caf50;
+  outline: none;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+/* 플레이스홀더와 라벨 오버랩 문제 해결 */
+.reg-input-field:placeholder-shown:not(:focus) + .reg-floating-label {
+  top: 12px;
+  font-size: 0.875rem;
+  color: #8e8e8e;
+  opacity: 1; /* 플레이스홀더가 보일 때 라벨 표시 */
+}
+
+.reg-input-field:not(:placeholder-shown) + .reg-floating-label,
+.reg-input-field:focus + .reg-floating-label {
+  top: -8px;
+  font-size: 0.75rem;
+  color: #262626;
+  background: #ffffff;
+  padding: 0 4px;
+  opacity: 1; /* 입력값이 있을 때 라벨 표시 */
+}
+
+/* 플레이스홀더 스타일 수정 */
+.reg-input-field::placeholder {
+  color: transparent; /* 플레이스홀더 텍스트를 투명하게 설정 */
+  opacity: 0; /* 플레이스홀더가 표시되지 않도록 */
+}
+
+/* 입력값이 없을 때 플레이스홀더 대신 라벨 표시 */
+.reg-input-field:placeholder-shown {
+  color: #8e8e8e; /* 기본 텍스트 색상 */
+}
+
+/* 입력값이 있을 때 플레이스홀더 제거 */
+.reg-input-field:not(:placeholder-shown):not(:focus) {
+  color: #262626; /* 입력값 색상 */
+}
+
+.reg-error-message {
+  color: #f44336;
+  font-size: 0.875rem;
   margin-top: 5px;
+  font-weight: 500;
+  animation: reg-fadeIn 0.3s ease-in;
 }
 
-.consent-container {
+.reg-consent-text {
+  text-align: center;
   margin: 15px 0;
-  text-align: center;
 }
 
-.consent-container button {
-  padding: 8px 16px;
-  /* background-color: #3498db; */
-  color: rgb(196, 38, 38);
-  border: none;
-  border-radius: 4px;
+.reg-consent-link {
+  color: #676967;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.3s ease;
 }
 
-.consent-container button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
+.reg-consent-link:hover {
+  color: #45a049;
 }
 
-.consent-container button:hover {
-  background-color: silver;
+.reg-consent-confirmed {
+  color: #262626;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-top: 10px;
+  transition: color 0.2s ease;
 }
 
-.register-form button[type="submit"] {
+.reg-submit-icon {
   width: 100%;
-  padding: 10px;
-  background-color: #28a745;
-  color: white;
+  padding: 12px;
+  background: transparent;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 1.5rem;
+  color: #4caf50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: color 0.3s ease, transform 0.2s ease;
 }
 
-.register-form button[type="submit"]:disabled {
-  background-color: #6c757d;
+.reg-submit-icon:hover:not(:disabled) {
+  color: #45a049;
+  transform: translateY(-1px);
+}
+
+.reg-submit-icon:disabled {
+  color: #b0bec5;
   cursor: not-allowed;
 }
 
-.register-footer {
-  text-align: center;
-  margin-top: 15px;
+.reg-submit-icon span {
+  margin-left: 8px;
+  font-size: 1rem;
+  color: #4caf50;
 }
 
-.login-link {
+.reg-icon {
+  font-size: 1.5rem;
+}
+
+.reg-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.875rem;
+  color: #262626;
+}
+
+.reg-login-button {
+  margin-left: 40px;
   display: inline-block;
   padding: 8px 16px;
-  background-color: #3498db;
-  color: white;
+  /* background: #4CAF50; */
+  color: #fa0c0c;
   text-decoration: none;
   border-radius: 4px;
-  font-size: 14px;
-  transition: background-color 0.3s ease;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.login-link:hover {
-  background-color: #2980b9;
+.reg-login-button:hover {
+  background: #80f786;
+  transform: translateY(-1px);
 }

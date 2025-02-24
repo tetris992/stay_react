@@ -1,5 +1,3 @@
-// src/components/InvoiceTemplate.js
-
 import React from 'react';
 import PropTypes from 'prop-types';
 import './InvoiceTemplate.css'; // 스타일링 추가

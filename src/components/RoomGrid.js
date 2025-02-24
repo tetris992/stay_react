@@ -1582,9 +1582,13 @@ function RoomGrid({
               selectedReservation.reservationNo || selectedReservation._id
             }
             reservation={selectedReservation}
-            hotelAddress={hotelAddress}
-            phoneNumber={phoneNumber}
-            email={email}
+            hotelAddress={
+              hotelAddress || hotelSettings?.hotelAddress || '주소 정보 없음'
+            }
+            phoneNumber={
+              phoneNumber || hotelSettings?.phoneNumber || '전화번호 정보 없음'
+            }
+            email={email || hotelSettings?.email || '이메일 정보 없음'}
           />
         )}
       </div>
