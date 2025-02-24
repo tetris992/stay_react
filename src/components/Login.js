@@ -182,7 +182,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
             </div>
           </div>
 
-          <div className="login-input-group login-no-margin-bottom">
+          <div className="login-input-group">
             <label className="login-input-label" htmlFor="password">비밀번호</label>
             <div className="login-input-wrapper">
               <input
