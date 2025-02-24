@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // useCallback 추가
 import { loginUser, fetchHotelSettings /*, logoutUser */ } from '../api/api';
 import ForgotPassword from './ForgotPassword';
 import HotelSettings from './HotelSettings';
@@ -21,94 +21,79 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
   const [showPassword, setShowPassword] = useState(false); // 기본값을 false로 설정 (숨김 상태)
   const [isLoading, setIsLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [staySignedIn, setStaySignedIn] = useState(false);
 
-  useEffect(() => {
-    // 로컬 스토리지에서 로그인 상태 복원
-    const savedHotelId = localStorage.getItem('hotelId');
-    const savedPassword = localStorage.getItem('password');
-    const savedStaySignedIn = localStorage.getItem('staySignedIn') === 'true';
-
-    if (savedHotelId) {
-      setHotelId(savedHotelId);
-      if (savedStaySignedIn && savedPassword) {
-        setPassword(savedPassword);
-        setStaySignedIn(true);
-      } else {
-        setPassword(''); // 비밀번호 초기화
-        setStaySignedIn(false);
-      }
-    }
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const normalizedHotelId = hotelId.trim().toLowerCase();
-
-      const { accessToken, isRegistered } = await loginUser({
-        hotelId: normalizedHotelId,
-        password,
-      });
-
-      console.log('로그인 성공:', accessToken, isRegistered);
-      onLogin(accessToken, normalizedHotelId);
-
-      if (staySignedIn) {
-        localStorage.setItem('hotelId', normalizedHotelId);
-        localStorage.setItem('password', password);
-        localStorage.setItem('staySignedIn', 'true');
-      } else {
-        localStorage.removeItem('password');
-        localStorage.setItem('hotelId', normalizedHotelId);
-        localStorage.setItem('staySignedIn', 'false');
-      }
-
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setIsLoading(true);
       setError('');
 
       try {
-        await fetchHotelSettings(normalizedHotelId);
-      } catch (fetchError) {
-        if (fetchError.status === 404) {
-          setShowHotelSettings(true);
-        } else {
-          setError('호텔 설정을 불러오는 중 오류가 발생했습니다.');
+        const normalizedHotelId = hotelId.trim().toLowerCase();
+
+        const { accessToken, isRegistered } = await loginUser({
+          hotelId: normalizedHotelId,
+          password,
+        });
+
+        console.log('로그인 성공:', accessToken, isRegistered);
+        onLogin(accessToken, normalizedHotelId);
+
+        // 로그인 성공 후 사용자에게 브라우저에 자격 증명 저장 여부 묻기
+        const saveCredentials = window.confirm(
+          '브라우저에 로그인 정보를 저장하시겠습니까? (로그아웃 후에도 유지됩니다)'
+        );
+
+        if (saveCredentials) {
+          localStorage.setItem('hotelId', normalizedHotelId);
+          localStorage.setItem('password', password);
         }
+
+        setError('');
+
+        try {
+          await fetchHotelSettings(normalizedHotelId);
+        } catch (fetchError) {
+          if (fetchError.status === 404) {
+            setShowHotelSettings(true);
+          } else {
+            setError('호텔 설정을 불러오는 중 오류가 발생했습니다.');
+          }
+        }
+      } catch (error) {
+        if (error.status === 401) {
+          setIsFormDisabled(true);
+          setShowForgotPassword(true);
+          setError('로그인 실패: 유효하지 않은 호텔 ID 또는 비밀번호입니다.');
+        } else if (error.status === 403) {
+          setError('CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.');
+        } else {
+          setError(error.message || '로그인 중 오류가 발생했습니다.');
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      if (error.status === 401) {
-        setIsFormDisabled(true);
-        setShowForgotPassword(true);
-        setError('로그인 실패: 유효하지 않은 호텔 ID 또는 비밀번호입니다.');
-      } else if (error.status === 403) {
-        setError('CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.');
-      } else {
-        setError(error.message || '로그인 중 오류가 발생했습니다.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [hotelId, password, onLogin] // fetchHotelSettings 제거
+  );
 
   // Eslint 경고 무시: handleLogout는 부모 컴포넌트에서 사용될 수 있음
   // eslint-disable-next-line no-unused-vars
   const handleLogout = () => {
     onLogout(); // 부모 컴포넌트에서 logoutUser 호출
-    setPassword(''); // 비밀번호 초기화
-    if (staySignedIn) {
-      // 로그인 상태 유지 체크 시 아이디 유지, 비밀번호 숨김 유지, 버튼으로 바로 로그인 가능
-      setHotelId(localStorage.getItem('hotelId') || '');
-      setPassword(''); // 비밀번호는 숨김 상태로 유지
+    if (localStorage.getItem('hotelId') && localStorage.getItem('password')) {
+      // 저장된 자격 증명이 있으면 유지, isAuthenticated만 초기화
+      setHotelId(localStorage.getItem('hotelId'));
+      setPassword(localStorage.getItem('password'));
       setShowPassword(false); // 비밀번호 숨김 상태로 설정
     } else {
-      setHotelId(''); // 로그인 상태 유지 해제 시 아이디도 초기화
+      setHotelId(''); // 저장된 자격 증명 없으면 초기화
+      setPassword('');
       localStorage.clear();
     }
     setIsFormDisabled(false);
     setError('');
+    // isAuthenticated를 초기화하지 않음 (App.js에서 처리)
   };
 
   const toggleShowPassword = () => {
@@ -123,37 +108,20 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
     setShowQRModal(false);
   };
 
-  const handleStaySignedInChange = (e) => {
-    const checked = e.target.checked;
-    setStaySignedIn(checked);
-    if (checked) {
-      localStorage.setItem('staySignedIn', 'true');
-      if (hotelId && password) {
-        localStorage.setItem('hotelId', hotelId);
-        localStorage.setItem('password', password);
-      }
-    } else {
-      localStorage.removeItem('staySignedIn');
-      if (!isLoggedIn) {
-        localStorage.removeItem('password');
-      }
-    }
-  };
-
-  const handleHotelIdClick = () => {
+  useEffect(() => {
+    // 로컬 스토리지에서 저장된 자격 증명 복원
     const savedHotelId = localStorage.getItem('hotelId');
     const savedPassword = localStorage.getItem('password');
-    const savedStaySignedIn = localStorage.getItem('staySignedIn') === 'true';
 
-    if (savedHotelId) {
+    console.log('useEffect - Local Storage:', { savedHotelId, savedPassword });
+
+    if (savedHotelId && savedPassword) {
       setHotelId(savedHotelId);
-      if (savedStaySignedIn && savedPassword) {
-        setPassword(savedPassword);
-        setStaySignedIn(true);
-        handleSubmit({ preventDefault: () => {} }); // 자동 로그인 시도
-      }
+      setPassword(savedPassword);
+      // 저장된 자격 증명으로 자동 로그인 시도
+      handleSubmit({ preventDefault: () => {} });
     }
-  };
+  }, [handleSubmit]); // handleSubmit 의존성 유지
 
   return (
     <div className="login-container">
@@ -173,7 +141,6 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
                 placeholder="740630"
                 value={hotelId}
                 onChange={(e) => setHotelId(e.target.value)}
-                onClick={handleHotelIdClick} // 아이디 클릭 시 로컬 저장값 자동 입력 및 로그인
                 required
                 aria-label="호텔 ID"
                 disabled={isFormDisabled}
@@ -182,7 +149,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
             </div>
           </div>
 
-          <div className="login-input-group">
+          <div className="login-input-group login-no-margin-bottom">
             <label className="login-input-label" htmlFor="password">비밀번호</label>
             <div className="login-input-wrapper">
               <input
@@ -217,20 +184,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
           </div>
         </div>
 
-        <div className="login-options">
-          <label className="login-checkbox-label">
-            <input
-              type="checkbox"
-              name="staySignedIn"
-              checked={staySignedIn}
-              onChange={handleStaySignedInChange}
-              disabled={isFormDisabled}
-            />
-            <span className="login-checkbox-text">로그인 상태 유지</span>
-          </label>
-          <span className="login-ip-security">IP 보안 ON</span>
-        </div>
-
+        {/* "로그인 상태 유지" 체크박스 제거 */}
         <button type="submit" disabled={isFormDisabled || isLoading} className="login-login-button">
           {isLoading ? '로그인 중...' : '로그인'}
         </button>
