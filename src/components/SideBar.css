@@ -52,7 +52,7 @@
 /* 기본 h4 스타일 (섹션 타이틀) */
 .sidebar h4 {
   padding: 12px;
-  background-color: rgba(154, 154, 154, 0.42); /* #9a9a9a6a */
+  background-color: rgba(154, 154, 154, 0.42);
   border: 1px solid #ddd;
   border-radius: 8px;
   display: flex;
@@ -61,6 +61,26 @@
   font-size: 16px;
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 섹션 제목: 아이콘 + 텍스트 */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background-color: rgba(154, 154, 154, 0.42);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.section-icon {
+  font-size: 18px;
+}
+.section-text {
+  flex: 1;
 }
 
 /* Action Buttons */
@@ -131,9 +151,26 @@
   color: rgb(242, 80, 80);
 }
 
+/* Search Input */
+.search-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 8px !important;
+  font-size: 16px !important;
+  margin-bottom: 20px;
+  border-radius: 5px;
+}
+
 /* Date Picker Section */
 .date-picker-section {
   margin-top: 24px;
+}
+
+/* Date Picker Row */
+.date-picker-row {
+  display: flex;
+  justify-content: center;
 }
 
 /* Room Status Chart */
@@ -198,23 +235,13 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Date Picker Row */
-.date-picker-row {
-  display: flex;
-  justify-content: center;
-}
-
 /* Spinning Animation */
 .spinning {
   animation: spin 2s linear infinite;
 }
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Sales Button */
@@ -262,12 +289,8 @@
   animation: highlightPulse 2s infinite;
 }
 @keyframes highlightPulse {
-  0% {
-    box-shadow: 0 0 50px #1b1b1b;
-  }
-  100% {
-    box-shadow: 0 0 0 #c4f4c3;
-  }
+  0% { box-shadow: 0 0 50px #1b1b1b; }
+  100% { box-shadow: 0 0 0 #c4f4c3; }
 }
 
 .blink-button {
@@ -276,13 +299,8 @@
   border-radius: 5px;
 }
 @keyframes blinkAnimation {
-  0%,
-  100% {
-    background-color: #f0f0f0;
-  }
-  50% {
-    background-color: #ffd700;
-  }
+  0%, 100% { background-color: #f0f0f0; }
+  50% { background-color: #ffd700; }
 }
 
 /* OTA Settings Section */
@@ -293,9 +311,10 @@
 }
 .ota-settings-header {
   display: flex;
-  justify-content: start;
+  justify-content: space-between;
   align-items: center;
   cursor: pointer;
+  padding: 0;
   margin-bottom: 20px;
   background-color: rgba(150, 150, 150, 0.42);
   border-radius: 8px;
@@ -313,36 +332,33 @@
   background-color: transparent;
 }
 
-.ota-toggles {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
-}
-
-/* Low Stock Warning */
-.low-stock-warning {
-  font-size: 1.2rem;
-  margin-left: 0.3rem;
-}
-
-/* Search Input */
-.search-input {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 8px !important;
-  font-size: 16px !important;
-  margin-bottom: 20px;
-  border-radius: 5px;
+/* 미디어 쿼리: 사이드바가 좁아지면 텍스트 숨김 */
+@media (max-width: 350px) {
+  .sidebar {
+    width: 60px;
+  }
+  .section-text,
+  .btn-text {
+    display: none;
+  }
+  .section-title {
+    justify-content: center;
+  }
+  .sidebar-actions button,
+  .settings-button,
+  .sync-button,
+  .onsite-button,
+  .logout-button,
+  .layout-settings-button {
+    justify-content: center;
+  }
 }
 
 /* Footer: 항상 맨 아래 배치 */
 .sidebar-footer {
   background-color: #f8f9fa;
   border-radius: 10px;
-  padding: 5px;
+  padding: 5px 10px;
   font-size: 12px;
   color: #6c757d;
   text-align: center;

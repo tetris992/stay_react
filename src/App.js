@@ -1067,6 +1067,15 @@ const App = () => {
           setSelectedDate(checkInDate);
           filterReservationsByDate(allReservations, checkInDate);
         }
+        // 스크롤하여 첫 번째 결과를 보여줌
+        setTimeout(() => {
+          const card = document.querySelector(
+            `.room-card[data-id="${firstResult._id}"]`
+          );
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
         if (highlightTimeoutRef.current) {
           clearTimeout(highlightTimeoutRef.current);
         }
