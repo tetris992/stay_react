@@ -40,10 +40,17 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
       const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
       const action =
         ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
+      const accessToken = localStorage.getItem('accessToken');
+      const csrfToken = localStorage.getItem('csrfToken');
+
+      if (!accessToken || !csrfToken) {
+        reject(new Error('Token is missing or expired'));
+        return;
+      }
 
       chrome.runtime.sendMessage(
         EXTENSION_ID,
-        { action, hotelId },
+        { action, hotelId, accessToken, csrfToken },
         (response) => {
           if (chrome.runtime.lastError) {
             console.error(

@@ -1,6 +1,10 @@
 // src/api/api.js
+
+/* global chrome */
+
 import axios from 'axios';
 import ApiError from '../utils/ApiError.js';
+
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003'; // 기본값 설정, /api 제거
 
 const api = axios.create({
@@ -110,6 +114,19 @@ export const loginUser = async (credentials) => {
     if (accessToken) {
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('hotelId', credentials.hotelId);
+      // CSRF 토큰 가져오기
+      const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+      const csrfToken = csrfResponse.data.csrfToken;
+      localStorage.setItem('csrfToken', csrfToken);
+      // Chrome 확장 프로그램에 토큰 전달
+      if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          { action: 'SET_TOKEN', token: accessToken, refreshToken: response.data.refreshToken, csrfToken },
+          (response) => console.log('Token set in extension:', response)
+        );
+      }
       return { accessToken, isRegistered };
     } else {
       throw new ApiError(500, '로그인에 실패했습니다.');
@@ -124,6 +141,31 @@ export const loginUser = async (credentials) => {
       errorMessage = '서버 응답이 없습니다. 네트워크 상태를 확인해주세요.';
     }
     throw new ApiError(statusCode, errorMessage);
+  }
+};
+
+// refreshToken 함수 추가
+export const refreshToken = async () => {
+  try {
+    const response = await api.post('/api/auth/refresh-token');
+    const { accessToken } = response.data;
+    localStorage.setItem('accessToken', accessToken);
+    // CSRF 토큰 갱신
+    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+    const csrfToken = csrfResponse.data.csrfToken;
+    localStorage.setItem('csrfToken', csrfToken);
+    // Chrome 확장 프로그램에 토큰 전달
+    if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+      const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
+      chrome.runtime.sendMessage(
+        EXTENSION_ID,
+        { action: 'SET_TOKEN', token: accessToken, refreshToken: response.data.refreshToken, csrfToken },
+        (response) => console.log('Token refreshed in extension:', response)
+      );
+    }
+    return response.data;
+  } catch (error) {
+    throw new ApiError(401, '토큰 갱신 실패');
   }
 };
 
@@ -179,6 +221,8 @@ export const registerUser = async (userData) => {
     throw standardError;
   }
 };
+
+// ... (나머지 API 함수는 동일)
 
 // ============== 호텔 설정 관련 API ==============
 export const fetchHotelSettings = async (hotelId) => {

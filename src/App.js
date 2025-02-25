@@ -700,11 +700,19 @@ const App = () => {
       try {
         if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
           const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
+          const refreshToken = localStorage.getItem('refreshToken'); // refreshToken 가져오기
+          const csrfToken = localStorage.getItem('csrfToken'); // csrfToken 가져오기
+
           chrome.runtime.sendMessage(
             EXTENSION_ID,
-            { action: 'SET_TOKEN', token: accessToken },
+            {
+              action: 'SET_TOKEN',
+              token: accessToken,
+              refreshToken,
+              csrfToken,
+            },
             (response) => {
-              console.log('[handleLogin] Sent token to extension:', response);
+              console.log('[handleLogin] Sent tokens to extension:', response);
             }
           );
           chrome.runtime.sendMessage(
