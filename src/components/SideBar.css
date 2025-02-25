@@ -1,3 +1,4 @@
+/* Sidebar Container */
 .sidebar {
   position: fixed;
   top: 0;
@@ -12,112 +13,130 @@
   font-family: 'Arial', sans-serif;
   border-right: 1px solid #ddd;
   z-index: 900;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
 }
 
-h4 {
+.sidebar::-webkit-scrollbar {
+  width: 2px;
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+  background-color: #ebe9e9;
+  border-radius: 2px;
+}
+
+.sidebar:hover::-webkit-scrollbar-track {
+  background: #d9d8d8;
+}
+
+/* Header */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sidebar-logo {
+  width: auto;
+  height: 42px;
+  margin: 27px 30px;
+}
+
+/* 기본 h4 스타일 (섹션 타이틀) */
+.sidebar h4 {
   padding: 12px;
-  background-color: #9a9a9a6a;
+  background-color: rgba(154, 154, 154, 0.42); /* #9a9a9a6a */
   border: 1px solid #ddd;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  justify-content: left;
   gap: 10px;
   font-size: 16px;
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.cancelSearch-button {
-  padding: 12px;
-  width: 100%;
-  color: rgb(94, 93, 93);
-  background-color: #eae9e97d;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: left;
-  gap: 10px;
-  font-size: 14px;
-  /* font-weight: bold; */
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.cancelSearch-button:hover {
-  background-color: #c7c6c67d;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-.cancel-icon:hover {
-  color: rgb(242, 80, 80);
-}
+/* Action Buttons */
+.sidebar-actions,
 .sync-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  align-items: stretch;
-  padding: 0;
-  margin: 0;
+  margin-bottom: 20px;
 }
 
+.sidebar-actions button,
 .settings-button,
 .sync-button,
 .onsite-button,
-.logout-button {
+.logout-button,
+.layout-settings-button {
   padding: 12px;
+  width: 100%;
   background-color: #ffffff;
   border: 1px solid #ddd;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: left;
   gap: 10px;
   font-size: 16px;
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
+
 .sync-button {
   color: green;
 }
-.scrape-now-button svg {
-  margin-right: 0 !important;
-}
 
+.sidebar-actions button:hover,
 .settings-button:hover,
 .sync-button:hover,
 .onsite-button:hover,
-.logout-button:hover {
-  background-color: #c7c6c67d;
+.logout-button:hover,
+.layout-settings-button:hover {
+  background-color: rgba(199, 198, 198, 0.49);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Cancel Search Button */
+.cancelSearch-button {
+  padding: 12px;
+  width: 100%;
+  color: rgb(94, 93, 93);
+  background-color: rgba(234, 233, 233, 0.49);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cancelSearch-button:hover {
+  background-color: rgba(199, 198, 198, 0.49);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cancel-icon:hover {
+  color: rgb(242, 80, 80);
+}
+
+/* Date Picker Section */
 .date-picker-section {
   margin-top: 24px;
 }
 
-/* [MODIFIED] 레이아웃 설정 버튼 추가: 호텔설정 버튼과 동일한 스타일 적용 */
-.layout-settings-button {
-  padding: 12px;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: left;
-  gap: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-.layout-settings-button:hover {
-  background-color: #c7c6c67d;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Room Status Chart 스타일 */
+/* Room Status Chart */
 .room-status-chart-container {
   position: relative;
   width: 180px;
@@ -140,6 +159,7 @@ h4 {
   font-weight: bold;
 }
 
+/* Toggle Room Types Button */
 .toggle-room-types-button {
   margin-top: 12px;
   padding: 10px;
@@ -153,7 +173,7 @@ h4 {
 }
 
 .toggle-room-types-button:hover {
-  background-color: #c7c6c67d;
+  background-color: rgba(199, 198, 198, 0.49);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -178,15 +198,16 @@ h4 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Date Picker Row */
 .date-picker-row {
   display: flex;
-  justify-content: center; /* 수평 가운데 정렬 */
-  /* align-items: center;  */ /* 수직 정렬 필요 시 주석 해제 */
+  justify-content: center;
 }
+
+/* Spinning Animation */
 .spinning {
   animation: spin 2s linear infinite;
 }
-
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -196,6 +217,7 @@ h4 {
   }
 }
 
+/* Sales Button */
 .sales-button {
   display: flex;
   align-items: center;
@@ -203,241 +225,42 @@ h4 {
   border: none;
   color: #333;
   cursor: pointer;
-  width: auto;
   font-size: 16px;
 }
-
-.sales-button:hover {
-  background-color: transparent;
-}
-
 .sales-icon {
   margin-right: 8px;
   display: inline-block;
 }
-
 .sales-icon:hover {
-  scale: 1.5;
+  transform: scale(1.5);
   color: rgb(228, 173, 20);
 }
 
+/* OTA Toggles */
 .ota-toggles {
   margin-left: 20px;
   display: flex;
   flex-direction: column;
-  align-items: start;
-  justify-content: space-between;
-  font-size: 16px;
-}
-.ota-toggles label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-.ota-toggles input[type='checkbox']:checked {
-  accent-color: #007bff; /* 원하는 색상으로 변경 */
-  display: inline-block;
-}
-
-.highlight-blink {
-  animation: blinkAnimation 1s infinite;
-}
-
-@keyframes blinkAnimation {
-  0%,
-  100% {
-    border-color: var(--color-accent-gold);
-  }
-  50% {
-    border-color: var(--color-primary-deep-blue);
-  }
-}
-
-.footer-divider {
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
-  margin: 10px 0;
-}
-
-.sidebar-footer {
-  margin-top: 50px;
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  padding: 5px;
-  font-size: 12px;
-  color: #6c757d;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-footer span {
-  color: #007bff;
-  cursor: pointer;
-}
-
-.sidebar-footer span:hover {
-  text-decoration: underline;
-}
-
-.accounting-info {
-  width: 100%;
-  height: 300px;
-
-  font-size: 1rem;
-  border: none;
-}
-
-.accounting-title {
-  font-size: 16px;
-}
-
-.accounting-detail {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  margin-bottom: 12px;
-  gap: 10px;
-}
-
-/* 파이어폭스 전용: 얇은 스크롤바로 표시 */
-.sidebar {
-  scrollbar-width: thin;
-}
-
-/* WebKit(크롬/사파리) 전용: 기본 상태에서 스크롤바 track은 얇은 폭을 차지하지만 투명(또는 미묘한 색) */
-.sidebar::-webkit-scrollbar {
-  width: 2px; /* 항상 6px 폭으로 공간 차지 */
-  background: transparent;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background-color: transparent;
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* 호버 시 thumb에만 색상 표시 */
-.sidebar:hover::-webkit-scrollbar-thumb {
-  background-color: #ebe9e9; /* thumb 색상 */
-  border-radius: 2px;
-}
-
-.sidebar:hover::-webkit-scrollbar-track {
-  background: #d9d8d8; /* 트랙 색상 */
-}
-/* 헤더 섹션 스타일 */
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-self: start;
-  margin-bottom: 0px; /* 필요에 따라 조절 */
-}
-
-.sidebar-logo {
-  width: 24px; /* 아이콘의 너비 */
-  height: 24px; /* 아이콘의 높이 */
-  margin-left: 10px; /* 아이콘과 텍스트 간의 간격 */
-  margin-right: 10px;
-}
-
-.sidebar-title {
-  font-size: 18px; /* 필요에 따라 폰트 크기 조절 */
-  display: flex;
-  align-items: center;
-  color: rgb(147, 147, 147);
-  margin-top: 20px;
-}
-
-.sidebar-title .red {
-  color: rgb(158, 156, 156); /* 기존 클래스 유지 */
-}
-
-/* OTA 설정 섹션 */
-.ota-settings-section {
-  margin-top: 24px;
-}
-
-.ota-settings-section h4 {
-  padding: 12px;
-  background-color: #9a9a9a6a;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: left;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: bold;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.ota-toggles {
-  margin-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ota-toggles label {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  font-size: 14px;
-  cursor: pointer;
+  font-size: 16px;
 }
-
+.ota-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #007bff;
+}
 .ota-toggles input[type='checkbox'] {
   width: 16px;
   height: 16px;
   cursor: pointer;
 }
 
-/* 체크박스 호버 효과 */
-.ota-toggles label:hover {
-  background-color: #eaeaea;
-  border-radius: 4px;
-}
-
-/* 체크박스 색상 변경 */
-.ota-toggles input[type='checkbox']:checked {
-  accent-color: #007bff; /* 원하는 색상으로 변경 */
-}
-
-.sidebar-logo {
-  align-items: center;
-  width: auto;
-  height: 42px;
-  margin: 27px 30px;
-}
-
-/* 호텔 설정 버튼 깜빡임 애니메이션 */
-@keyframes blinkAnimation {
-  0% {
-    background-color: #f0f0f0;
-  }
-  50% {
-    background-color: #ffd700; /* 노란색으로 변경 */
-  }
-  100% {
-    background-color: #f0f0f0;
-  }
-}
-
-.blink-button {
-  animation: blinkAnimation 1s infinite;
-  border: 2px solid #ffd700; /* 노란색 테두리 추가 */
-  border-radius: 5px;
-}
-
-/* 기존 'highlight-blink' 클래스 유지 */
+/* Highlight Effects */
 .highlight-blink {
   animation: highlightPulse 2s infinite;
 }
-
 @keyframes highlightPulse {
   0% {
     box-shadow: 0 0 50px #1b1b1b;
@@ -447,77 +270,108 @@ h4 {
   }
 }
 
-/* OTA 설정 섹션 */
-.ota-settings-section {
-  margin-top: 24px;
-  border-top: 1px solid #ffffff6a;
-  padding-top: 12px;
+.blink-button {
+  animation: blinkAnimation 1s infinite;
+  border: 2px solid #ffd700;
+  border-radius: 5px;
+}
+@keyframes blinkAnimation {
+  0%,
+  100% {
+    background-color: #f0f0f0;
+  }
+  50% {
+    background-color: #ffd700;
+  }
 }
 
+/* OTA Settings Section */
+.ota-settings-section {
+  margin-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  padding-top: 12px;
+}
 .ota-settings-header {
   display: flex;
   justify-content: start;
   align-items: center;
   cursor: pointer;
-  padding: 0px;
   margin-bottom: 20px;
-  background-color: #9696966a;
+  background-color: rgba(150, 150, 150, 0.42);
   border-radius: 8px;
   transition: background-color 0.2s ease;
 }
-
 .ota-settings-header:hover {
-  background-color: #f645456a;
+  background-color: rgba(246, 69, 86, 0.42);
 }
-
 .ota-settings-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: bold;
   margin-right: 50px;
   width: 50%;
-  border: 1px solid transparent;
   background-color: transparent;
 }
 
 .ota-toggles {
   margin-top: 8px;
-  padding-left: 0px;
   display: flex;
   flex-direction: column;
-  font-size: 14px;
-  gap: 8px;
-}
-
-.ota-toggles label {
-  display: flex;
-  align-items: center;
   gap: 8px;
   font-size: 14px;
-  cursor: pointer;
-  color: rgb(0, 102, 255);
 }
 
-.ota-toggles input[type='checkbox'] {
-  margin: 5px;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #007bff;
-}
-
-/** 잔여재고 알림 */
+/* Low Stock Warning */
 .low-stock-warning {
   font-size: 1.2rem;
   margin-left: 0.3rem;
 }
 
+/* Search Input */
 .search-input {
-  width: 100% !important; /* 다른 스타일의 영향을 차단 */
-  max-width: 100% !important; /* 최대 너비 설정 */
-  box-sizing: border-box !important; /* 패딩과 보더를 포함한 너비 계산 */
-  padding: 8px !important; /* 입력창 패딩 조정 */
-  font-size: 16px !important; /* 폰트 크기 조정 */
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 8px !important;
+  font-size: 16px !important;
   margin-bottom: 20px;
   border-radius: 5px;
+}
+
+/* Footer: 항상 맨 아래 배치 */
+.sidebar-footer {
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 5px;
+  font-size: 12px;
+  color: #6c757d;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.sidebar-footer span {
+  color: #007bff;
+  cursor: pointer;
+}
+.sidebar-footer span:hover {
+  text-decoration: underline;
+}
+
+/* Accounting Info */
+.accounting-info {
+  width: 100%;
+  height: 300px;
+  font-size: 1rem;
+  border: none;
+}
+.accounting-title {
+  font-size: 16px;
+}
+.accounting-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
 }
