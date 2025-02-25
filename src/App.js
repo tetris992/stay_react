@@ -1193,18 +1193,23 @@ const App = () => {
     try {
       const response = await logoutUser();
       console.log('Logout response:', response);
+      // 현재 환경이 GitHub Pages 또는 로컬인지 확인
+      const isGitHubPages = window.location.hostname === 'staysync.me';
+      const basePath = isGitHubPages ? '/login' : '/login';
+
       if (response && response.redirect) {
-        // GitHub Pages에서 클라이언트 사이드 라우팅을 지원하기 위해 루트 경로로 이동
-        window.location.href = 'https://staysync.me/'; // GitHub Pages 기본 경로로 이동
-        setTimeout(() => navigate(response.redirect), 0); // 클라이언트 라우팅으로 전환
+        // 클라이언트 사이드 라우팅으로만 이동
+        navigate(response.redirect || basePath, { replace: true });
       } else {
-        window.location.href = 'https://staysync.me/';
-        setTimeout(() => navigate('/login'), 0); // 기본적으로 /login으로 이동
+        // 기본적으로 /login으로 이동 (현재 도메인 내에서만)
+        navigate(basePath, { replace: true });
       }
     } catch (error) {
       console.error('백엔드 로그아웃 실패:', error);
-      window.location.href = 'https://staysync.me/';
-      setTimeout(() => navigate('/login'), 0); // 오류 발생 시 강제 리디렉션
+      // 오류 발생 시도 현재 도메인 내에서만 /login으로 이동
+      const isGitHubPages = window.location.hostname === 'staysync.me';
+      const basePath = isGitHubPages ? '/login' : '/login';
+      navigate(basePath, { replace: true });
     }
     // 로컬 스토리지 및 쿠키 정리 유지
     localStorage.removeItem('accessToken');

@@ -118,15 +118,7 @@ export const loginUser = async (credentials) => {
       const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
       const csrfToken = csrfResponse.data.csrfToken;
       localStorage.setItem('csrfToken', csrfToken);
-      // Chrome 확장 프로그램에 토큰 전달
-      if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-        const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
-        chrome.runtime.sendMessage(
-          EXTENSION_ID,
-          { action: 'SET_TOKEN', token: accessToken, refreshToken: response.data.refreshToken, csrfToken },
-          (response) => console.log('Token set in extension:', response)
-        );
-      }
+      // Chrome 확장 프로그램 관련 처리는 생략
       return { accessToken, isRegistered };
     } else {
       throw new ApiError(500, '로그인에 실패했습니다.');
@@ -134,9 +126,18 @@ export const loginUser = async (credentials) => {
   } catch (error) {
     let errorMessage = '로그인에 실패했습니다.';
     let statusCode = 500;
+
     if (error.response) {
       statusCode = error.response.status;
       errorMessage = error.response.data?.message || errorMessage;
+      if (statusCode === 401) {
+        const remainingAttempts = error.response.data.remainingAttempts || 0;
+        const err = new ApiError(statusCode, errorMessage);
+        err.remainingAttempts = remainingAttempts;
+        // userNotFound 플래그를 추가
+        err.userNotFound = error.response.data.userNotFound || false;
+        throw err;
+      }
     } else if (error.request) {
       errorMessage = '서버 응답이 없습니다. 네트워크 상태를 확인해주세요.';
     }
@@ -159,7 +160,12 @@ export const refreshToken = async () => {
       const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
       chrome.runtime.sendMessage(
         EXTENSION_ID,
-        { action: 'SET_TOKEN', token: accessToken, refreshToken: response.data.refreshToken, csrfToken },
+        {
+          action: 'SET_TOKEN',
+          token: accessToken,
+          refreshToken: response.data.refreshToken,
+          csrfToken,
+        },
         (response) => console.log('Token refreshed in extension:', response)
       );
     }
@@ -174,27 +180,30 @@ export const logoutUser = async () => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
       console.warn('로그인 상태가 아닙니다.');
-    } else {
-      const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
-      const csrfToken = csrfResponse.data.csrfToken;
-      await api.post(
-        '/api/auth/logout',
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'X-CSRF-Token': csrfToken,
-          },
-        }
-      );
+      return { redirect: '/login' }; // 로그인 상태가 없으면 클라이언트에 리다이렉션 경로 반환
     }
+
+    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+    const csrfToken = csrfResponse.data.csrfToken;
+    const response = await api.post(
+      '/api/auth/logout',
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'X-CSRF-Token': csrfToken,
+        },
+      }
+    );
+    return { redirect: '/login', ...response.data }; // 백엔드 응답과 함께 리다이렉션 경로 반환
   } catch (error) {
     console.error('로그아웃 실패:', error);
+    return { error: error.message, redirect: '/login' }; // 오류 발생 시도 리다이렉션 경로 반환
   } finally {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
     localStorage.removeItem('csrfToken');
-    window.location.href = '/login';
+    // window.location.href 제거, 클라이언트에서 처리하도록 변경
   }
 };
 

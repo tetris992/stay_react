@@ -15,10 +15,41 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
   const [error, setError] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showHotelSettings, setShowHotelSettings] = useState(false);
-  const [isFormDisabled, setIsFormDisabled] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0); // 로그인 실패 횟수
+
+  useEffect(() => {
+    const savedHotelId = localStorage.getItem('hotelId');
+    const savedAttempts = localStorage.getItem('loginAttempts') || '0';
+    console.log(
+      'Login.js - Local Storage:',
+      { savedHotelId, savedAttempts },
+      ' - Once'
+    );
+
+    if (savedHotelId) {
+      setHotelId(savedHotelId); // 저장된 hotelId만 복원
+      setPassword(''); // 비밀번호는 빈 상태로 유지
+    }
+    // 백엔드에서 loginAttempts를 가져와 초기화 (로컬 스토리지 우선)
+    const initializeLoginAttempts = async () => {
+      try {
+        const response = await loginUser(
+          { hotelId: savedHotelId, password: '' },
+          true
+        ); // 초기화용 호출
+        if (response.remainingAttempts !== undefined) {
+          setLoginAttempts(5 - response.remainingAttempts); // 백엔드에서 받은 남은 시도를 기반으로 계산
+        }
+      } catch (error) {
+        console.error('Login attempts initialization failed:', error);
+        setLoginAttempts(parseInt(savedAttempts, 10) || 0); // 로컬 스토리지에서 복원
+      }
+    };
+    if (savedHotelId) initializeLoginAttempts();
+  }, []); // 의존성 배열 비우기
 
   const handleSubmit = useCallback(
     async (e) => {
@@ -28,38 +59,63 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
       try {
         const normalizedHotelId = hotelId.trim().toLowerCase();
-        const { accessToken, isRegistered } = await loginUser({
+        const result = await loginUser({
           hotelId: normalizedHotelId,
           password,
         });
 
-        console.log('로그인 성공:', accessToken, isRegistered);
-        onLogin(accessToken, normalizedHotelId);
+        if (result.accessToken) {
+          const { accessToken, isRegistered } = result;
+          console.log('로그인 성공:', accessToken, isRegistered);
+          onLogin(accessToken, normalizedHotelId);
 
-        // window.confirm 대신 콘솔에만 출력
-        console.log(
-          '브라우저에 로그인 정보를 저장하시겠습니까? (로그아웃 후에도 유지됩니다)'
-        );
-        // 기본적으로 저장한다고 가정하고 진행 (사용자 입력 없이)
-        localStorage.setItem('hotelId', normalizedHotelId);
-        localStorage.setItem('password', password);
+          // 로그인 성공 시 실패 횟수 초기화
+          setLoginAttempts(0);
+          localStorage.setItem('hotelId', normalizedHotelId);
+          localStorage.setItem('password', password);
+          localStorage.setItem('loginAttempts', '0');
+          setError('');
 
-        setError('');
-
-        try {
-          await fetchHotelSettings(normalizedHotelId);
-        } catch (fetchError) {
-          if (fetchError.status === 404) {
-            setShowHotelSettings(true);
-          } else {
-            setError('호텔 설정을 불러오는 중 오류가 발생했습니다.');
+          try {
+            await fetchHotelSettings(normalizedHotelId);
+          } catch (fetchError) {
+            if (fetchError.status === 404) {
+              setShowHotelSettings(true);
+            } else {
+              setError('호텔 설정을 불러오는 중 오류가 발생했습니다.');
+            }
           }
+        } else {
+          // accessToken이 없으면 에러 발생 (예외 처리)
+          throw new Error('로그인에 실패했습니다.');
         }
       } catch (error) {
         if (error.status === 401) {
-          setIsFormDisabled(true);
-          setShowForgotPassword(true);
-          setError('로그인 실패: 유효하지 않은 호텔 ID 또는 비밀번호입니다.');
+          // 만약 백엔드에서 userNotFound 플래그가 전달되면, 아이디가 존재하지 않는 경우이므로
+          // 로그인 시도 횟수를 업데이트하지 않고 에러 메시지만 표시합니다.
+          if (error.userNotFound) {
+            setError(error.message);
+          } else {
+            // 비밀번호 오류 등: 실패 횟수를 업데이트합니다.
+            const newAttempts = (loginAttempts || 0) + 1;
+            setLoginAttempts(newAttempts);
+            localStorage.setItem('loginAttempts', newAttempts.toString());
+            const remainingAttempts = 5 - newAttempts;
+
+            if (remainingAttempts > 0) {
+              setError(
+                `로그인 실패: ${newAttempts}번 실패했습니다. 남은 시도 횟수: ${remainingAttempts}번`
+              );
+            } else {
+              setError(
+                '로그인 실패: 최대 시도 횟수를 초과했습니다. 비밀번호 재설정을 요청하세요.'
+              );
+              setShowForgotPassword(true);
+              // 최대 실패 횟수 도달 후 횟수 초기화
+              setLoginAttempts(0);
+              localStorage.setItem('loginAttempts', '0');
+            }
+          }
         } else if (error.status === 403) {
           setError('CSRF 토큰 오류: 페이지 새로고침 후 다시 시도해주세요.');
         } else {
@@ -69,25 +125,8 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         setIsLoading(false);
       }
     },
-    [hotelId, password, onLogin]
+    [hotelId, password, onLogin, loginAttempts]
   );
-
-  // eslint-disable-next-line no-unused-vars
-  const handleLogout = () => {
-    onLogout();
-    const savedHotelId = localStorage.getItem('hotelId');
-    if (savedHotelId) {
-      setHotelId(savedHotelId); // hotelId는 유지
-      setPassword(''); // 비밀번호는 초기화
-      localStorage.removeItem('password'); // 로컬 스토리지에서 비밀번호 제거
-    } else {
-      setHotelId('');
-      setPassword('');
-      localStorage.clear();
-    }
-    setIsFormDisabled(false);
-    setError('');
-  };
 
   const toggleShowPassword = () => {
     setShowPassword((prev) => !prev);
@@ -101,21 +140,21 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
     setShowQRModal(false);
   };
 
-  useEffect(() => {
-    const savedHotelId = localStorage.getItem('hotelId');
-    console.log('useEffect - Local Storage:', { savedHotelId });
-
-    if (savedHotelId) {
-      setHotelId(savedHotelId); // 저장된 hotelId만 복원
-      setPassword(''); // 비밀번호는 빈 상태로 유지
-    }
-  }, []);
-
   return (
     <div className="login-container">
       <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
         <h2 className="login-title">HOTEL CHECKIN</h2>
-        {error && <p className="login-error-message">{error}</p>}
+        {error && (
+          <p
+            className={
+              typeof error === 'string'
+                ? 'login-error-message'
+                : error.className || 'login-error-message'
+            }
+          >
+            {typeof error === 'string' ? error : error.message}
+          </p>
+        )}
 
         <div className="login-login-block">
           <div className="login-input-group">
@@ -133,7 +172,6 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
                 onChange={(e) => setHotelId(e.target.value)}
                 required
                 aria-label="호텔 ID"
-                disabled={isFormDisabled}
                 className="login-input-field"
               />
             </div>
@@ -147,14 +185,13 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
-                name="current-password"
-                autoComplete="current-password"
+                name="password"
+                autoComplete="off"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 aria-label="비밀번호"
-                disabled={isFormDisabled}
                 className="login-input-field"
                 style={{
                   height: '48px',
@@ -182,7 +219,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
         <button
           type="submit"
-          disabled={isFormDisabled || isLoading}
+          disabled={isLoading}
           className="login-login-button"
         >
           {isLoading ? '로그인 중...' : '로그인'}
@@ -222,7 +259,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         </p>
       </form>
 
-      {/* QR 코드 모달 (디자인만) */}
+      {/* QR 코드 모달 */}
       <Modal
         isOpen={showQRModal}
         onRequestClose={closeQRModal}
@@ -265,8 +302,12 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         </div>
       </Modal>
 
+      {/* 비밀번호 재설정 모달 */}
       {showForgotPassword && (
-        <ForgotPassword onClose={() => setShowForgotPassword(false)} />
+        <ForgotPassword
+          onClose={() => setShowForgotPassword(false)}
+          isCritical={loginAttempts >= 5}
+        />
       )}
 
       {showHotelSettings && (

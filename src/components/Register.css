@@ -3,9 +3,9 @@
   justify-content: center;
   align-items: center;
   height: 130vh;
-  width: 550px; /* Login과 동일한 너비 공유 */
+  width: 550px;
   padding: 20px;
-  background: #ffffff; /* 배경 제거 */
+  background: #dadada;
 }
 
 .reg-card {
@@ -18,6 +18,7 @@
   max-width: 400px;
   position: relative;
   animation: reg-fadeIn 0.5s ease-in;
+  border: 1px solid lightslategray;
 }
 
 @keyframes reg-fadeIn {
@@ -33,13 +34,12 @@
 
 .reg-brand {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 50px;
   color: #262626;
   font-size: 2.5rem;
   font-weight: 700;
   font-family: 'Arial', sans-serif;
   letter-spacing: -0.5px;
-  margin-bottom: 50px;
 }
 
 .reg-form {
@@ -51,23 +51,12 @@
 .reg-form-group {
   position: relative;
   margin-bottom: 15px;
-  width: 100%; /* 모든 입력 필드를 100% 너비로 설정 */
+  width: 100%;
 }
 
-.reg-floating-label {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  color: #8e8e8e;
-  font-size: 0.875rem;
-  pointer-events: none;
-  transition: all 0.3s ease;
-  font-weight: 500;
-  z-index: 1;
-}
-
+/* input 필드 */
 .reg-input-field {
-  width: 93.3%; /* 모든 입력 필드를 동일한 100% 너비로 설정 */
+  width: 100%;
   padding: 12px;
   border: 1px solid #dbdbdb;
   border-radius: 4px;
@@ -82,14 +71,21 @@
   box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
 }
 
-/* 플레이스홀더와 라벨 오버랩 문제 해결 */
+/* placeholder는 투명하게 */
+.reg-input-field::placeholder {
+  color: transparent;
+  opacity: 0;
+}
+
+/* 기본 상태: 입력 필드가 비어있을 때 label은 input 바로 뒤에 표시 */
 .reg-input-field:placeholder-shown:not(:focus) + .reg-floating-label {
   top: 12px;
   font-size: 0.875rem;
   color: #8e8e8e;
-  opacity: 1; /* 플레이스홀더가 보일 때 라벨 표시 */
+  opacity: 1;
 }
 
+/* 입력이 있거나 포커스 되었을 때 label이 위로 이동 */
 .reg-input-field:not(:placeholder-shown) + .reg-floating-label,
 .reg-input-field:focus + .reg-floating-label {
   top: -8px;
@@ -97,25 +93,19 @@
   color: #262626;
   background: #ffffff;
   padding: 0 4px;
-  opacity: 1; /* 입력값이 있을 때 라벨 표시 */
+  opacity: 1;
 }
 
-/* 플레이스홀더 스타일 수정 */
-.reg-input-field::placeholder {
-  color: transparent; /* 플레이스홀더 텍스트를 투명하게 설정 */
-  opacity: 0; /* 플레이스홀더가 표시되지 않도록 */
+/* 라벨 기본 스타일 */
+.reg-floating-label {
+  position: absolute;
+  left: 12px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  z-index: 1;
 }
 
-/* 입력값이 없을 때 플레이스홀더 대신 라벨 표시 */
-.reg-input-field:placeholder-shown {
-  color: #8e8e8e; /* 기본 텍스트 색상 */
-}
-
-/* 입력값이 있을 때 플레이스홀더 제거 */
-.reg-input-field:not(:placeholder-shown):not(:focus) {
-  color: #262626; /* 입력값 색상 */
-}
-
+/* 오류 메시지 */
 .reg-error-message {
   color: #f44336;
   font-size: 0.875rem;
@@ -124,6 +114,7 @@
   animation: reg-fadeIn 0.3s ease-in;
 }
 
+/* 개인정보 동의 텍스트 */
 .reg-consent-text {
   text-align: center;
   margin: 15px 0;
@@ -150,6 +141,7 @@
   transition: color 0.2s ease;
 }
 
+/* 제출 버튼 */
 .reg-submit-icon {
   width: 100%;
   padding: 12px;
@@ -175,12 +167,6 @@
   cursor: not-allowed;
 }
 
-.reg-submit-icon span {
-  margin-left: 8px;
-  font-size: 1rem;
-  color: #4caf50;
-}
-
 .reg-icon {
   font-size: 1.5rem;
 }
@@ -196,7 +182,6 @@
   margin-left: 40px;
   display: inline-block;
   padding: 8px 16px;
-  /* background: #4CAF50; */
   color: #fa0c0c;
   text-decoration: none;
   border-radius: 4px;

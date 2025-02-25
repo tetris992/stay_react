@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // useEffect 추가
+import React, { useState, useEffect } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
 import { Link, useNavigate } from 'react-router-dom';
@@ -7,13 +7,13 @@ import { FaCheck } from 'react-icons/fa';
 
 const Register = () => {
   const navigate = useNavigate();
-  const [hotelId, setHotelId] = useState(''); // 초기값 빈 문자열
-  const [hotelName, setHotelName] = useState(''); // 초기값 빈 문자열
-  const [password, setPassword] = useState(''); // 초기값 빈 문자열
-  const [confirmPassword, setConfirmPassword] = useState(''); // 초기값 빈 문자열
-  const [email, setEmail] = useState(''); // 초기값 빈 문자열
-  const [address, setAddress] = useState(''); // 초기값 빈 문자열
-  const [phoneNumber, setPhoneNumber] = useState(''); // 초기값 빈 문자열
+  const [hotelId, setHotelId] = useState('');
+  const [hotelName, setHotelName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,12 +26,11 @@ const Register = () => {
     address: '',
     phoneNumber: '',
     consent: '',
-    general: '', // 일반 오류 메시지 추가
+    general: '',
   });
 
-  // 로컬 스토리지 초기화 및 입력값 초기화
   useEffect(() => {
-    // 로컬 스토리지에서 모든 관련 데이터 제거
+    // 로컬 스토리지에서 관련 데이터 제거
     localStorage.removeItem('hotelId');
     localStorage.removeItem('hotelName');
     localStorage.removeItem('password');
@@ -145,10 +144,8 @@ const Register = () => {
       <div className="reg-card">
         <h1 className="reg-brand">StaySync</h1>
         <form onSubmit={handleRegister} className="reg-form">
+          {/* 순서를 변경하여 input 뒤에 label이 오도록 수정 */}
           <div className="reg-form-group">
-            <label htmlFor="hotelName" className="reg-floating-label">
-              호텔 이름
-            </label>
             <input
               id="hotelName"
               type="text"
@@ -159,14 +156,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="hotelName" className="reg-floating-label">
+              호텔 이름
+            </label>
             {errors.hotelName && (
               <p className="reg-error-message">{errors.hotelName}</p>
             )}
           </div>
+
           <div className="reg-form-group">
-            <label htmlFor="hotelId" className="reg-floating-label">
-              호텔 ID
-            </label>
             <input
               id="hotelId"
               type="text"
@@ -177,15 +175,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="hotelId" className="reg-floating-label">
+              호텔 ID
+            </label>
             {errors.hotelId && (
               <p className="reg-error-message">{errors.hotelId}</p>
             )}
           </div>
 
           <div className="reg-form-group">
-            <label htmlFor="password" className="reg-floating-label">
-              비밀번호
-            </label>
             <input
               id="password"
               type="password"
@@ -196,14 +194,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="password" className="reg-floating-label">
+              비밀번호
+            </label>
             {errors.password && (
               <p className="reg-error-message">{errors.password}</p>
             )}
           </div>
+
           <div className="reg-form-group">
-            <label htmlFor="confirmPassword" className="reg-floating-label">
-              비밀번호 확인
-            </label>
             <input
               id="confirmPassword"
               type="password"
@@ -214,15 +213,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="confirmPassword" className="reg-floating-label">
+              비밀번호 확인
+            </label>
             {errors.confirmPassword && (
               <p className="reg-error-message">{errors.confirmPassword}</p>
             )}
           </div>
 
           <div className="reg-form-group">
-            <label htmlFor="email" className="reg-floating-label">
-              이메일
-            </label>
             <input
               id="email"
               type="email"
@@ -233,14 +232,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="email" className="reg-floating-label">
+              이메일
+            </label>
             {errors.email && (
               <p className="reg-error-message">{errors.email}</p>
             )}
           </div>
+
           <div className="reg-form-group">
-            <label htmlFor="address" className="reg-floating-label">
-              호텔 주소
-            </label>
             <input
               id="address"
               type="text"
@@ -251,14 +251,15 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="address" className="reg-floating-label">
+              호텔 주소
+            </label>
             {errors.address && (
               <p className="reg-error-message">{errors.address}</p>
             )}
           </div>
+
           <div className="reg-form-group">
-            <label htmlFor="phoneNumber" className="reg-floating-label">
-              전화번호
-            </label>
             <input
               id="phoneNumber"
               type="text"
@@ -269,10 +270,14 @@ const Register = () => {
               className="reg-input-field"
               placeholder=" "
             />
+            <label htmlFor="phoneNumber" className="reg-floating-label">
+              전화번호
+            </label>
             {errors.phoneNumber && (
               <p className="reg-error-message">{errors.phoneNumber}</p>
             )}
           </div>
+
           <div className="reg-form-group">
             <div className="reg-consent-text">
               {!consentChecked ? (
@@ -291,7 +296,7 @@ const Register = () => {
                 </span>
               ) : (
                 <p className="reg-consent-confirmed">
-                  개인정보 사용 및 서비스 약관에 동의하셨습니다。
+                  개인정보 사용 및 서비스 약관에 동의하셨습니다.
                 </p>
               )}
               {errors.consent && (

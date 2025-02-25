@@ -309,3 +309,67 @@
   background: #142a6b;
   transform: translateY(-2px);
 }
+/* 기본 에러 메시지 스타일 유지 */
+.login-error-message {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: left;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 0, 0, 0.1); /* 연한 빨간색 배경 */
+  transition: all 0.3s ease; /* 애니메이션 효과 */
+}
+
+/* 실패 횟수별 스타일 */
+.login-error-attempt-1 {
+  border-left: 4px solid #ff9800; /* 주황색 경계 */
+}
+
+.login-error-attempt-2 {
+  border-left: 4px solid #f44336; /* 밝은 빨간색 경계 */
+}
+
+.login-error-attempt-3 {
+  border-left: 4px solid #d32f2f; /* 진한 빨간색 경계 */
+  animation: shake 0.5s ease-in-out; /* 흔들림 애니메이션 */
+}
+
+.login-error-attempt-4 {
+  border-left: 4px solid #b71c1c; /* 매우 진한 빨간색 경계 */
+  animation: shake 0.5s ease-in-out;
+  background-color: rgba(255, 0, 0, 0.15); /* 더 진한 배경 */
+}
+
+.login-error-attempt-5 {
+  border-left: 4px solid #880e4f; /* 자주색 경계 (위험 신호) */
+  animation: shake 0.5s ease-in-out;
+  background-color: rgba(255, 0, 0, 0.2); /* 가장 진한 배경 */
+  font-weight: bold; /* 글자 굵게 */
+}
+
+/* 흔들림 애니메이션 */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+/* 재설정 요청 시 에러 메시지 강조 (선택 사항) */
+.login-error-reset-required {
+  color: #880e4f;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: rgba(136, 14, 79, 0.1);
+  border-left: 4px solid #880e4f;
+  animation: pulse 1s infinite; /* 깜빡임 애니메이션 */
+}
+
+/* 깜빡임 애니메이션 */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
