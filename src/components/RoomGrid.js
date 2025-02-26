@@ -36,20 +36,21 @@ import {
 /* ===============================
    HELPER FUNCTIONS
 =============================== */
-// OTA 예약 판별
+
+// OTA 예약 판별: siteName이 undefined일 경우 빈 문자열로 처리
 function isOtaReservation(reservation) {
-  return availableOTAs.includes(reservation.siteName);
+  return availableOTAs.includes(reservation.siteName || '');
 }
 
-// 컨테이너 배열 정렬 (숫자 우선)
+// 컨테이너 배열 정렬: roomNumber가 undefined일 경우 빈 문자열('')로 처리
 function sortContainers(containers) {
   return containers.sort((a, b) => {
-    const aNum = parseInt(a.roomNumber, 10);
-    const bNum = parseInt(b.roomNumber, 10);
+    const aNum = parseInt(a.roomNumber || '', 10);
+    const bNum = parseInt(b.roomNumber || '', 10);
     if (!isNaN(aNum) && !isNaN(bNum)) {
       return aNum - bNum;
     }
-    return a.roomNumber.localeCompare(b.roomNumber);
+    return (a.roomNumber || '').localeCompare(b.roomNumber || '');
   });
 }
 
@@ -595,7 +596,6 @@ function RoomGrid({
   const [selectedReservation, setSelectedReservation] = useState(null);
 
   // <-- 미배정 예약 패널 토글 상태 추가
-  const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
 
   const invoiceRef = useRef();
   const gridRef = useRef();
@@ -605,39 +605,16 @@ function RoomGrid({
   // eslint-disable-next-line no-unused-vars
   const [autoAssigning, setAutoAssigning] = useState(false);
 
-  // floors 데이터 추출 (기본값 설정 제거)
+  const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
+
   const floors = useMemo(() => {
-    return hotelSettings?.gridSettings?.floors || [];
+    const loadedFloors = hotelSettings?.gridSettings?.floors || [];
+    console.log('[RoomGrid] Loaded floors:', loadedFloors);
+    return loadedFloors.map((floor) => ({
+      ...floor,
+      containers: sortContainers([...(floor.containers || [])]), // 정렬만 수행
+    }));
   }, [hotelSettings]);
-
-  // 각 층의 객실 번호를 401~407로 정렬하고, 누락된 번호는 "none"으로 채우는 함수
-  const getSortedContainersWithGaps = (containers, floorNum) => {
-    const roomNumbers = Array.from(
-      { length: 7 },
-      (_, i) => `${floorNum}0${i + 1}`
-    ); // 401, 402, ..., 407
-    const existingContainers = containers.filter(
-      (cont) => cont.roomInfo !== 'none'
-    );
-    const sortedContainers = sortContainers(existingContainers);
-
-    return roomNumbers.map((roomNumber) => {
-      const existingContainer = sortedContainers.find(
-        (cont) => cont.roomNumber === roomNumber
-      );
-      if (existingContainer) {
-        return existingContainer;
-      } else {
-        return {
-          containerId: `${floorNum}-none-${roomNumber}-${Date.now()}`,
-          roomInfo: 'none',
-          roomNumber: roomNumber,
-          price: 0,
-          isActive: false,
-        };
-      }
-    });
-  };
 
   // 모든 컨테이너 추출 (최상위 레벨로 이동)
   const allContainers = useMemo(() => {
@@ -1185,10 +1162,17 @@ function RoomGrid({
         return [...list].sort((a, b) => {
           const aMatch = matchRoomType(a.roomInfo, roomTypes);
           const bMatch = matchRoomType(b.roomInfo, roomTypes);
+          // getKey 함수 수정: info가 undefined인 경우 안전하게 처리
           const getKey = (mObj, info) => {
-            if (!mObj || !info || info.toLowerCase().includes('대실'))
+            const infoStr = info || '';
+            if (
+              !mObj ||
+              !infoStr ||
+              (infoStr.toLowerCase && infoStr.toLowerCase().includes('대실'))
+            ) {
               return 'zzz';
-            return mObj.roomInfo.toLowerCase();
+            }
+            return mObj.roomInfo ? mObj.roomInfo.toLowerCase() : '';
           };
           const keyA = getKey(aMatch, a.roomInfo);
           const keyB = getKey(bMatch, b.roomInfo);
@@ -1449,7 +1433,22 @@ function RoomGrid({
                 {sortReservations(unassignedReservations).map((res) => (
                   <DraggableReservationCard
                     key={res._id}
-                    reservation={res} /* props 유지 */
+                    reservation={res}
+                    hotelId={hotelId}
+                    highlightedReservationIds={highlightedReservationIds || []} // 기본값 제공
+                    isSearching={isSearching || false} // 기본값 제공
+                    flippedReservationIds={flippedReservationIds}
+                    memos={memos || {}} // 기본값 제공
+                    memoRefs={memoRefs}
+                    handleCardFlip={handleCardFlip}
+                    toggleMemoEdit={toggleMemoEditHandler}
+                    handleMemoChange={handleMemoChangeHandler}
+                    handleMemoSave={handleMemoSaveHandler}
+                    handleMemoCancel={handleMemoCancelHandler}
+                    openInvoiceModal={openInvoiceModalHandler}
+                    getPaymentMethodIcon={getPaymentMethodIcon}
+                    renderActionButtons={renderActionButtons}
+                    loadedReservations={loadedReservations || []} // 기본값 제공
                   />
                 ))}
               </div>
@@ -1459,7 +1458,11 @@ function RoomGrid({
               <button
                 className="unassigned-header-title-button"
                 onClick={() => setShowUnassignedPanel(true)}
-                style={{ cursor: 'pointer', marginBottom: '10px' }}
+                style={{
+                  cursor: 'pointer',
+                  marginLeft: '50px',
+                  marginBottom: '15px',
+                }}
               >
                 미배정 열기
               </button>
@@ -1472,12 +1475,11 @@ function RoomGrid({
             .reverse()
             .map((floor) => (
               <div key={floor.floorNum} className="floor-section">
-                {/* <h3>{floor.floorNum}층</h3>  <-- 제거 */}
+                <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
+                  {floor.floorNum}_Floor
+                </h3>
                 <div className="layout-grid">
-                  {getSortedContainersWithGaps(
-                    floor.containers,
-                    floor.floorNum
-                  ).map((cont) => {
+                  {(floor.containers || []).map((cont) => {
                     const arr = floorReservations[cont.containerId] || [];
                     const sortedArr = sortReservations(arr);
                     return (
@@ -1494,7 +1496,7 @@ function RoomGrid({
                         <div
                           className="container-label"
                           style={{
-                            marginLeft: '10px',
+                            marginLeft: '5px',
                             marginBottom: '5px',
                             borderBottom: '1px solid #ddd',
                             display: 'flex',
@@ -1515,7 +1517,7 @@ function RoomGrid({
                             style={{
                               fontSize: '1rem',
                               color: 'gray',
-                              marginLeft: '30px',
+                              marginLeft: '15%',
                             }}
                           >
                             {cont.roomInfo || '미설정'}
