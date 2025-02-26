@@ -154,12 +154,13 @@
   align-items: center;
   justify-content: space-between;
   white-space: nowrap;
-  margin: 0;
+  margin-bottom: 5px;
+  z-index: 1000;
 }
 
 .button-group-wrapper {
   display: flex;
-  gap: 6px;
+  /* gap: 6px; */
 }
 
 /* ==========================================================================
@@ -273,7 +274,7 @@
 }
 .room-card-inner {
   min-width: 280px;
-  max-height: 350px;
+  max-height: 360px;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;
@@ -319,60 +320,164 @@
 /* ==========================================================================
    [Miscellaneous: Action Buttons, Labels, Memo, etc.]
 ========================================================================== */
+/* ==========================================================================
+   [Miscellaneous: Action Buttons, Labels, Memo, etc.]
+========================================================================== */
 .button-group {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  margin-bottom: 10px;
   box-sizing: border-box;
+  width: 120px; /* 고정 너비: 버튼 3개 크기 합산 (약 40px * 3) */
+  position: relative;
+  height: 28px;
+  overflow: hidden;
 }
+
 .button-group-wrapper {
   display: flex;
   gap: 6px;
   margin: 0px 5px;
 }
+
 .action-button {
   font-size: 0.8rem;
   border: none;
-  /* border-radius: 3px; */
   cursor: pointer;
+  padding: 6px 10px;
+  height: 28px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.3s ease, background-color 0.3s ease; /* 너비와 배경색만 전환 */
+  border-radius: 4px;
+  font-weight: 600;
+  position: relative;
+  overflow: hidden;
+  width: 40px; /* 기본 너비 */
+  z-index: 2;
 }
+
+.action-button span {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+/* 배경 채우기 애니메이션 */
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0; /* 초기 상태: 채워지지 않음 */
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3); /* 밝은 반투명 배경 */
+  transition: width 0.3s ease; /* 왼쪽에서 오른쪽으로 채워짐 */
+  z-index: -1; /* 텍스트 뒤에 */
+}
+
 .delete-button {
   background-color: var(--color-accent-coral);
   color: #f00d0d;
 }
+
 .delete-button:hover {
-  border-bottom: 2px solid black;
+  background-color: #e57373;
+  width: 120px; /* 3칸 차지 */
 }
+
+.delete-button:hover::before {
+  width: 100%; /* 배경 전체 채움 */
+}
+
+.delete-button:hover span {
+  transform: translateY(-2px);
+}
+
 .confirm-button {
   background-color: var(--color-primary-deep-blue);
   color: #1018f9;
 }
+
 .confirm-button:hover {
-  border-bottom: 2px solid black;
+  background-color: #3f51b5;
+  width: 120px; /* 3칸 차지 */
 }
+
+.confirm-button:hover::before {
+  width: 100%; /* 배경 전체 채움 */
+}
+
+.confirm-button:hover span {
+  transform: translateY(-2px);
+}
+
 .edit-button {
   background-color: var(--color-primary-soft-green);
-  color: #13f544;
+  color: #383938;
 }
+
 .edit-button:hover {
-  border-bottom: 2px solid black;
+  background-color: #81c784;
+  width: 120px; /* 3칸 차지 */
 }
+
+.edit-button:hover::before {
+  width: 100%; /* 배경 전체 채움 */
+}
+
+.edit-button:hover span {
+  transform: translateY(-2px);
+}
+
+/* 호버 시 다른 버튼 숨기기 */
+.button-group:hover .action-button:not(:hover) {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
 .small-button {
   opacity: 0.95;
   font-size: 0.95rem;
-  padding: 6px 6px;
+  padding: 6px 8px;
 }
+
 .small-button:hover {
   opacity: 1;
 }
-.confirmed-label {
-  background-color: var(--color-primary-soft-green);
-  color: #fff;
-  border-radius: 3px;
-  font-size: 0.75rem;
-  margin-left: 5px;
-  font-weight: bold;
+
+/* 추가: 호버 시 미세한 빛 효과 (선택 사항) */
+.action-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3); /* 반투명 빛 효과 */
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+  pointer-events: none; /* 클릭 방해 방지 */
+}
+
+.action-button:hover::after {
+  width: 200%;
+  height: 200%;
+}
+
+/* 기존 .no-break 수정 */
+.no-break {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap;
+  margin-bottom: 5px;
+  z-index: 1000;
+  height: 28px; /* 버튼과 일치하는 고정 높이 */
 }
 .invoice-icon-button-back {
   background: transparent;
@@ -554,14 +659,18 @@
   width: 90%;
 }
 
-
-
 .room-card.highlighted {
   border: 3px solid #00ff2f; /* 빨간 테두리 */
   animation: highlightBlink 1s infinite;
 }
 @keyframes highlightBlink {
-  0% { box-shadow: 0 0 10px #ff0000; }
-  50% { box-shadow: 0 0 20px #ff0000; }
-  100% { box-shadow: 0 0 10px #ff0000; }
+  0% {
+    box-shadow: 0 0 10px #ff0000;
+  }
+  50% {
+    box-shadow: 0 0 20px #ff0000;
+  }
+  100% {
+    box-shadow: 0 0 10px #ff0000;
+  }
 }
