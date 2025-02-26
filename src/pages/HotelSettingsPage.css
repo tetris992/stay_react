@@ -48,9 +48,8 @@ html {
    2. ROOM GRID CONTAINER
 ========================================================================== */
 .layout-grid {
-  /* 사용 가능한 공간에 따라 카드가 400px까지 확장됨 */
-  grid-template-columns: repeat(auto-fit, minmax(280px, 400px));
-  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+  width: auto;
   display: grid;
   gap: 10px;
   box-sizing: border-box;
@@ -66,6 +65,7 @@ html {
   border: 1px solid var(--cell-border);
   border-radius: 8px;
   overflow: hidden;
+  width: 100%;
   min-width: var(--card-width);
   min-height: var(--card-height);
 }
@@ -159,6 +159,13 @@ html {
   min-width: var(--card-width);
   min-height: var(--card-height);
   box-sizing: border-box;
+}
+
+.card-content {   
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  gap: 2px;
 }
 
 /* ==========================================================================

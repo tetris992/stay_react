@@ -24,7 +24,7 @@
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(280px, 1fr)
+    minmax(280px, 320px 1fr)
   ); /* 280px에서 화면 크기에 따라 확장 */
   gap: 10px;
   width: 100%;
@@ -32,6 +32,9 @@
   border: none;
 }
 
+.floor-section {
+  gap: 10px;
+}
 /* ==========================================================================
    [Room Cell Container]
 ========================================================================== */
@@ -43,7 +46,7 @@
   border-radius: 8px;
   overflow: hidden;
   min-width: 280px; /* 최소 너비 유지 */
-  max-width: 400px; /* 최대 너비 설정 */
+  max-width: 320px; /* 최대 너비 설정 */
   min-height: var(--card-height);
 }
 
@@ -389,6 +392,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  max-width: 320px;
   height: 100%;
   gap: 10px;
   padding: 8px;
