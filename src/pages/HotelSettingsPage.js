@@ -120,6 +120,12 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
           <div key={idx} className="room-type-item">
             <div className="room-type-header">
               <FaBed /> 객실 타입 {idx + 1}
+              <button
+                className="remove-btn"
+                onClick={() => removeRoomType(idx)}
+              >
+                <FaTrash />
+              </button>
             </div>
             <div className="room-type-fields">
               <div className="field-row">
@@ -158,12 +164,6 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   readOnly
                 />
               </div>
-              <button
-                className="remove-btn"
-                onClick={() => removeRoomType(idx)}
-              >
-                <FaTrash />
-              </button>
             </div>
             <div className="room-type-aliases">
               <div className="field-row">

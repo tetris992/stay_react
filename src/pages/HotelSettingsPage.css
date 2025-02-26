@@ -204,7 +204,7 @@ html {
 /* 호텔 정보 섹션 */
 .hotel-info-section {
   margin-bottom: 30px;
-  padding: 20px;
+  padding: 30px;
   background-color: var(--room-card-background-color);
   border: 1px solid var(--cell-border);
   border-radius: 8px;
@@ -272,6 +272,8 @@ html {
 .room-type-header {
   display: flex;
   align-items: center;
+  gap: 22px;
+  justify-content: flex-start; /* 추가 */
   font-size: 18px;
   font-weight: 600;
   color: #2980b9;
@@ -310,6 +312,16 @@ html {
 }
 .room-type-fields .remove-btn:hover {
   background-color: #c82333;
+}
+.remove-btn {
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.remove-btn :hover {
+  color: red;
+  font-size: 1.2rem;
 }
 .room-type-aliases {
   display: flex;
@@ -482,6 +494,8 @@ html {
   display: flex;
   justify-content: center;
   gap: 20px;
+  padding: 10px;
+  margin: 10px;
 }
 
 .hotel-settings-btn {
