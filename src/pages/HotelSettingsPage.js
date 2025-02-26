@@ -229,11 +229,10 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
   );
 }
 
-
 // LayoutEditor: 객실 레이아웃 편집 컴포넌트
 function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   // 각 층의 최대 객실 수 (연속 번호 할당 기준)
-  // const maxRoomsPerFloor = Math.max(...roomTypes.map(rt => rt.stock || 7), 7); //이부분은 설정되지 않았을때 디폴트 값으로 사용하는 용도, 사용자 설정이 무조건 우선함. 
+  // const maxRoomsPerFloor = Math.max(...roomTypes.map(rt => rt.stock || 7), 7); //이부분은 설정되지 않았을때 디폴트 값으로 사용하는 용도, 사용자 설정이 무조건 우선함.
   const previousFloorsRef = useRef([]);
 
   /* --------------------------------------------------------------------------
@@ -244,46 +243,67 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
      - 변경된 정보는 roomTypes에도 반영
   -------------------------------------------------------------------------- */
   const updateContainer = (floorNum, containerId, field, value) => {
-    setFloors(prev => {
+    setFloors((prev) => {
       const updated = [...prev];
-      const floorIdx = updated.findIndex(f => f.floorNum === floorNum);
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
-      const containerIdx = updated[floorIdx].containers.findIndex(c => c.containerId === containerId);
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) return prev;
       const container = updated[floorIdx].containers[containerIdx];
       const oldRoomInfo = container.roomInfo;
       container[field] = field === 'price' ? Number(value) : value;
-  
+
       if (field === 'roomInfo') {
         if (value === 'none') {
           container.roomNumber = '';
           container.price = 0;
         } else if (!container.roomNumber) {
-          const activeContainers = updated[floorIdx].containers.filter(c => c.roomInfo !== 'none' && c.roomNumber);
+          const activeContainers = updated[floorIdx].containers.filter(
+            (c) => c.roomInfo !== 'none' && c.roomNumber
+          );
           const lastNum = activeContainers.length
-            ? Math.max(...activeContainers.map(c => parseInt(c.roomNumber, 10)))
+            ? Math.max(
+                ...activeContainers.map((c) => parseInt(c.roomNumber, 10))
+              )
             : parseInt(`${floorNum}01`, 10) - 1;
-          const newSuffix = (lastNum + 1 - floorNum * 100).toString().padStart(2, '0');
+          const newSuffix = (lastNum + 1 - floorNum * 100)
+            .toString()
+            .padStart(2, '0');
           container.roomNumber = `${floorNum}${newSuffix}`;
-          const matchingType = roomTypes.find(rt => rt.roomInfo === value);
+          const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
           container.price = matchingType ? matchingType.price : 0;
         }
-  
-        setRoomTypes(prevTypes => {
+
+        setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           if (oldRoomInfo !== 'none' && container.roomNumber) {
-            const oldIdx = updatedTypes.findIndex(rt => rt.roomInfo === oldRoomInfo);
+            const oldIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === oldRoomInfo
+            );
             if (oldIdx !== -1) {
-              updatedTypes[oldIdx].roomNumbers = updatedTypes[oldIdx].roomNumbers.filter(num => num !== container.roomNumber);
-              updatedTypes[oldIdx].stock = updatedTypes[oldIdx].roomNumbers.length;
+              updatedTypes[oldIdx].roomNumbers = updatedTypes[
+                oldIdx
+              ].roomNumbers.filter((num) => num !== container.roomNumber);
+              updatedTypes[oldIdx].stock =
+                updatedTypes[oldIdx].roomNumbers.length;
             }
           }
           if (value !== 'none' && container.roomNumber) {
-            const newIdx = updatedTypes.findIndex(rt => rt.roomInfo === value);
-            if (newIdx !== -1 && !updatedTypes[newIdx].roomNumbers.includes(container.roomNumber)) {
+            const newIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === value
+            );
+            if (
+              newIdx !== -1 &&
+              !updatedTypes[newIdx].roomNumbers.includes(container.roomNumber)
+            ) {
               updatedTypes[newIdx].roomNumbers.push(container.roomNumber);
-              updatedTypes[newIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-              updatedTypes[newIdx].stock = updatedTypes[newIdx].roomNumbers.length;
+              updatedTypes[newIdx].roomNumbers.sort(
+                (a, b) => parseInt(a, 10) - parseInt(b, 10)
+              );
+              updatedTypes[newIdx].stock =
+                updatedTypes[newIdx].roomNumbers.length;
             }
           }
           return updatedTypes;
@@ -299,15 +319,19 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
      - 해당 층에 해당하는 roomNumbers는 roomTypes에서 제거
   -------------------------------------------------------------------------- */
   const removeFloor = (floorNum) => {
-    setFloors(prev => {
+    setFloors((prev) => {
       if (!prev) return prev;
       previousFloorsRef.current = [...prev];
-      const updated = prev.filter(f => f.floorNum !== floorNum);
-      setRoomTypes(prevTypes =>
-        prevTypes.map(rt => ({
+      const updated = prev.filter((f) => f.floorNum !== floorNum);
+      setRoomTypes((prevTypes) =>
+        prevTypes.map((rt) => ({
           ...rt,
-          roomNumbers: rt.roomNumbers.filter(num => !num.startsWith(String(floorNum))),
-          stock: rt.roomNumbers.filter(num => !num.startsWith(String(floorNum))).length,
+          roomNumbers: rt.roomNumbers.filter(
+            (num) => !num.startsWith(String(floorNum))
+          ),
+          stock: rt.roomNumbers.filter(
+            (num) => !num.startsWith(String(floorNum))
+          ).length,
         }))
       );
       return updated;
@@ -334,20 +358,27 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   -------------------------------------------------------------------------- */
   const addRoomToFloor = (floorNum) => {
     const defaultRoomType = initializedDefaultRoomTypes[0];
-    setFloors(prev => {
+    setFloors((prev) => {
       const updated = [...prev];
-      const floorIdx = updated.findIndex(f => f.floorNum === floorNum);
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
       let newRoomNumber = '';
       if (defaultRoomType.roomInfo !== 'none') {
-        const activeRooms = updated[floorIdx].containers.filter(c => c.roomInfo !== 'none' && c.roomNumber);
-        const lastNum = activeRooms.length > 0
-          ? Math.max(...activeRooms.map(c => parseInt(c.roomNumber, 10)))
-          : parseInt(`${floorNum}01`, 10) - 1;
-        newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100).toString().padStart(2, '0')}`;
+        const activeRooms = updated[floorIdx].containers.filter(
+          (c) => c.roomInfo !== 'none' && c.roomNumber
+        );
+        const lastNum =
+          activeRooms.length > 0
+            ? Math.max(...activeRooms.map((c) => parseInt(c.roomNumber, 10)))
+            : parseInt(`${floorNum}01`, 10) - 1;
+        newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100)
+          .toString()
+          .padStart(2, '0')}`;
       }
       const newContainer = {
-        containerId: `${floorNum}-${defaultRoomType.roomInfo}-${newRoomNumber || Date.now()}-${Date.now()}`,
+        containerId: `${floorNum}-${defaultRoomType.roomInfo}-${
+          newRoomNumber || Date.now()
+        }-${Date.now()}`,
         roomInfo: defaultRoomType.roomInfo,
         roomNumber: newRoomNumber,
         price: defaultRoomType.roomInfo === 'none' ? 0 : defaultRoomType.price,
@@ -356,20 +387,33 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       updated[floorIdx].containers.push(newContainer);
       return updated;
     });
-  
+
     if (defaultRoomType.roomInfo !== 'none') {
-      setRoomTypes(prevTypes => {
+      setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
-        const typeIdx = updatedTypes.findIndex(rt => rt.roomInfo === defaultRoomType.roomInfo);
+        const typeIdx = updatedTypes.findIndex(
+          (rt) => rt.roomInfo === defaultRoomType.roomInfo
+        );
         if (typeIdx !== -1) {
-          const activeRooms = floors.find(f => f.floorNum === floorNum)?.containers.filter(c => c.roomInfo !== 'none' && c.roomNumber) || [];
-          const lastNum = activeRooms.length > 0
-            ? Math.max(...activeRooms.map(c => parseInt(c.roomNumber, 10)))
-            : parseInt(`${floorNum}01`, 10) - 1;
-          const newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100).toString().padStart(2, '0')}`;
+          const activeRooms =
+            floors
+              .find((f) => f.floorNum === floorNum)
+              ?.containers.filter(
+                (c) => c.roomInfo !== 'none' && c.roomNumber
+              ) || [];
+          const lastNum =
+            activeRooms.length > 0
+              ? Math.max(...activeRooms.map((c) => parseInt(c.roomNumber, 10)))
+              : parseInt(`${floorNum}01`, 10) - 1;
+          const newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100)
+            .toString()
+            .padStart(2, '0')}`;
           updatedTypes[typeIdx].roomNumbers.push(newRoomNumber);
-          updatedTypes[typeIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-          updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
+          updatedTypes[typeIdx].roomNumbers.sort(
+            (a, b) => parseInt(a, 10) - parseInt(b, 10)
+          );
+          updatedTypes[typeIdx].stock =
+            updatedTypes[typeIdx].roomNumbers.length;
         }
         return updatedTypes;
       });
@@ -382,34 +426,49 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
      - 삭제 후 활성 컨테이너의 번호를 재정렬
   -------------------------------------------------------------------------- */
   const removeContainer = (floorNum, containerId) => {
-    setFloors(prev => {
+    setFloors((prev) => {
       const updated = [...prev];
-      const floorIdx = updated.findIndex(f => f.floorNum === floorNum);
+      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
-      const containerIdx = updated[floorIdx].containers.findIndex(c => c.containerId === containerId);
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) return prev;
       const removed = updated[floorIdx].containers[containerIdx];
       updated[floorIdx].containers.splice(containerIdx, 1);
       if (removed.roomInfo !== 'none' && removed.roomNumber) {
-        setRoomTypes(prevTypes => {
+        setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
-          const typeIdx = updatedTypes.findIndex(rt => rt.roomInfo === removed.roomInfo);
+          const typeIdx = updatedTypes.findIndex(
+            (rt) => rt.roomInfo === removed.roomInfo
+          );
           if (typeIdx !== -1) {
-            updatedTypes[typeIdx].roomNumbers = updatedTypes[typeIdx].roomNumbers.filter(num => num !== removed.roomNumber);
-            updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
+            updatedTypes[typeIdx].roomNumbers = updatedTypes[
+              typeIdx
+            ].roomNumbers.filter((num) => num !== removed.roomNumber);
+            updatedTypes[typeIdx].stock =
+              updatedTypes[typeIdx].roomNumbers.length;
           }
           return updatedTypes;
         });
       }
       const activeContainers = updated[floorIdx].containers
-        .filter(c => c.roomInfo !== 'none' && c.roomNumber)
-        .sort((a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10));
+        .filter((c) => c.roomInfo !== 'none' && c.roomNumber)
+        .sort(
+          (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+        );
       activeContainers.forEach((container, idx) => {
-        const newRoomNumber = `${floorNum}${(idx + 1).toString().padStart(2, '0')}`;
+        const newRoomNumber = `${floorNum}${(idx + 1)
+          .toString()
+          .padStart(2, '0')}`;
         container.roomNumber = newRoomNumber;
-        container.containerId = `${floorNum}-${container.roomInfo}-${newRoomNumber}-${Date.now()}`;
+        container.containerId = `${floorNum}-${
+          container.roomInfo
+        }-${newRoomNumber}-${Date.now()}`;
       });
-      const noneContainers = updated[floorIdx].containers.filter(c => c.roomInfo === 'none' || !c.roomNumber);
+      const noneContainers = updated[floorIdx].containers.filter(
+        (c) => c.roomInfo === 'none' || !c.roomNumber
+      );
       updated[floorIdx].containers = [...noneContainers, ...activeContainers];
       return updated;
     });
@@ -420,11 +479,13 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
      - roomInfo이 'none'이면 roomNumber는 빈 문자열로 처리
   -------------------------------------------------------------------------- */
   const generateInitialLayout = () => {
-    const newFloors = DEFAULT_FLOORS.map(floorNum => {
+    const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
-      roomTypes.forEach(rt => {
-        const matchingNumbers = rt.roomNumbers.filter(num => num.startsWith(String(floorNum)));
-        matchingNumbers.forEach(num => {
+      roomTypes.forEach((rt) => {
+        const matchingNumbers = rt.roomNumbers.filter((num) =>
+          num.startsWith(String(floorNum))
+        );
+        matchingNumbers.forEach((num) => {
           containers.push({
             containerId: `${floorNum}-${rt.roomInfo}-${num}-${Date.now()}`,
             roomInfo: rt.roomInfo,
@@ -441,15 +502,21 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       return { floorNum, containers };
     });
     setFloors(newFloors);
-    setRoomTypes(prevTypes => {
+    setRoomTypes((prevTypes) => {
       const updatedTypes = [...prevTypes];
-      newFloors.forEach(floor => {
-        floor.containers.forEach(cont => {
+      newFloors.forEach((floor) => {
+        floor.containers.forEach((cont) => {
           if (cont.roomInfo !== 'none' && cont.roomNumber) {
-            const typeIdx = updatedTypes.findIndex(rt => rt.roomInfo === cont.roomInfo);
-            if (typeIdx !== -1 && !updatedTypes[typeIdx].roomNumbers.includes(cont.roomNumber)) {
+            const typeIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === cont.roomInfo
+            );
+            if (
+              typeIdx !== -1 &&
+              !updatedTypes[typeIdx].roomNumbers.includes(cont.roomNumber)
+            ) {
               updatedTypes[typeIdx].roomNumbers.push(cont.roomNumber);
-              updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
+              updatedTypes[typeIdx].stock =
+                updatedTypes[typeIdx].roomNumbers.length;
             }
           }
         });
@@ -462,74 +529,120 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
     <section className="layout-editor-section">
       <div className="layout-header">
         <h2>객실 레이아웃 편집</h2>
-        <button className="action-btn generate-btn" onClick={generateInitialLayout} title="레이아웃 생성">
+        <button
+          className="action-btn generate-btn"
+          onClick={generateInitialLayout}
+          title="레이아웃 생성"
+        >
           레이아웃 생성
         </button>
-        <button className="action-btn undo-btn" onClick={undoRemoveFloor} title="되돌리기">
+        <button
+          className="action-btn undo-btn"
+          onClick={undoRemoveFloor}
+          title="되돌리기"
+        >
           <FaUndo />
         </button>
       </div>
       <div className="floor-grid">
-        {floors.slice().reverse().map(floor => (
-          <div key={floor.floorNum} className="floor-row">
-            <div className="floor-header">
-              <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                {floor.floorNum}_Floor
-                <FaMinus onClick={() => removeFloor(floor.floorNum)} className="remove-icon" title="객실 층 삭제" />
-              </h3>
-            </div>
-            <div className="containers">
-              {floor.containers.map((cont, index) => (
-                <React.Fragment key={cont.containerId}>
-                  <div
-                    className={`container-box ${cont.roomInfo === 'none' ? 'empty' : ''}`}
-                    style={{
-                      backgroundColor: cont.roomInfo !== 'none'
-                        ? getColorForRoomType(cont.roomInfo)
-                        : undefined,
-                    }}
-                  >
-                    <select
-                      value={cont.roomInfo}
-                      onChange={(e) => updateContainer(floor.floorNum, cont.containerId, 'roomInfo', e.target.value)}
+        {floors
+          .slice()
+          .reverse()
+          .map((floor) => (
+            <div key={floor.floorNum} className="floor-row">
+              <div className="floor-header">
+                <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
+                  {floor.floorNum}_Floor
+                  <FaMinus
+                    onClick={() => removeFloor(floor.floorNum)}
+                    className="remove-icon"
+                    title="객실 층 삭제"
+                  />
+                </h3>
+              </div>
+              <div className="containers">
+                {floor.containers.map((cont, index) => (
+                  <React.Fragment key={cont.containerId}>
+                    <div
+                      className={`container-box ${
+                        cont.roomInfo === 'none' ? 'empty' : ''
+                      }`}
+                      style={{
+                        backgroundColor:
+                          cont.roomInfo !== 'none'
+                            ? getColorForRoomType(cont.roomInfo)
+                            : undefined,
+                      }}
                     >
-                      <option value="none">객실없음</option>
-                      {roomTypes.map(rt => (
-                        <option key={rt.roomInfo} value={rt.roomInfo}>{rt.roomInfo}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={cont.roomNumber}
-                      onChange={(e) => updateContainer(floor.floorNum, cont.containerId, 'roomNumber', e.target.value)}
-                      placeholder="객실 번호"
-                      disabled={cont.roomInfo === 'none'}
-                    />
-                    <input
-                      type="number"
-                      value={cont.price || 0}
-                      onChange={(e) => updateContainer(floor.floorNum, cont.containerId, 'price', e.target.value)}
-                      placeholder="가격"
-                      disabled={cont.roomInfo === 'none'}
-                    />
-                    <button className="delete-btn" onClick={() => removeContainer(floor.floorNum, cont.containerId)}>
-                      <FaTrash />
-                    </button>
-                  </div>
-                  {index === floor.containers.length - 1 && (
-                    <button
-                      className="action-btn add-room-btn"
-                      onClick={() => addRoomToFloor(floor.floorNum)}
-                      title="객실 추가"
-                    >
-                      <FaPlus />
-                    </button>
-                  )}
-                </React.Fragment>
-              ))}
+                      <select
+                        value={cont.roomInfo}
+                        onChange={(e) =>
+                          updateContainer(
+                            floor.floorNum,
+                            cont.containerId,
+                            'roomInfo',
+                            e.target.value
+                          )
+                        }
+                      >
+                        <option value="none">객실없음</option>
+                        {roomTypes.map((rt) => (
+                          <option key={rt.roomInfo} value={rt.roomInfo}>
+                            {rt.roomInfo}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={cont.roomNumber}
+                        onChange={(e) =>
+                          updateContainer(
+                            floor.floorNum,
+                            cont.containerId,
+                            'roomNumber',
+                            e.target.value
+                          )
+                        }
+                        placeholder="객실 번호"
+                        disabled={cont.roomInfo === 'none'}
+                      />
+                      <input
+                        type="number"
+                        value={cont.price || 0}
+                        onChange={(e) =>
+                          updateContainer(
+                            floor.floorNum,
+                            cont.containerId,
+                            'price',
+                            e.target.value
+                          )
+                        }
+                        placeholder="가격"
+                        disabled={cont.roomInfo === 'none'}
+                      />
+                      <button
+                        className="delete-btn"
+                        onClick={() =>
+                          removeContainer(floor.floorNum, cont.containerId)
+                        }
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                    {index === floor.containers.length - 1 && (
+                      <button
+                        className="action-btn add-room-btn"
+                        onClick={() => addRoomToFloor(floor.floorNum)}
+                        title="객실 추가"
+                      >
+                        <FaPlus />
+                      </button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
     </section>
   );
@@ -720,7 +833,7 @@ export default function HotelSettingsPage() {
       totalRooms,
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
-        aliases: rt.aliases.filter(Boolean), // 빈 문자열 제거
+        aliases: rt.aliases.filter(Boolean),
         stock: rt.roomNumbers.length,
         floorSettings: DEFAULT_FLOORS.reduce((acc, floorNum) => {
           const count = (rt.roomNumbers || []).filter((num) =>
@@ -754,10 +867,22 @@ export default function HotelSettingsPage() {
         alert('등록 완료');
         setIsExisting(true);
       }
-      // 저장 후 App.js에서 새 설정을 로드하도록 페이지 새로고침
-      console.log('Navigating to main page and reloading...');
+      console.log(
+        '[HotelSettingsPage] Saved gridSettings.floors:',
+        payload.gridSettings.floors
+      );
+      payload.gridSettings.floors.forEach((floor) => {
+        console.log(
+          `[HotelSettingsPage] Floor ${floor.floorNum} containers:`,
+          floor.containers
+        );
+      });
+      console.log(
+        '[HotelSettingsPage] Total containers saved:',
+        payload.gridSettings.floors.flatMap((f) => f.containers).length
+      );
       navigate('/');
-      window.location.reload(); // 새 설정을 즉시 반영하기 위해 페이지 새로고침
+      window.location.reload();
     } catch (err) {
       console.error('저장 실패:', err);
       alert('저장 실패: ' + err.message);
