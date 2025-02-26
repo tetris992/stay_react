@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchHotelSettings,
@@ -12,6 +12,7 @@ import './HotelSettingsPage.css';
 import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo } from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
 
@@ -170,7 +171,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                 <input
                   type="text"
                   placeholder="별칭 1"
-                  value={rt.aliases[0] || ''} // 빈 값 유지, 플레이스홀더로만 표시
+                  value={rt.aliases[0] || ''}
                   onChange={(e) =>
                     updateRoomType(idx, 'aliases', e.target.value, 0)
                   }
@@ -231,16 +232,13 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
 
 // LayoutEditor: 객실 레이아웃 편집 컴포넌트
 function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
-  // 각 층의 최대 객실 수 (연속 번호 할당 기준)
-  // const maxRoomsPerFloor = Math.max(...roomTypes.map(rt => rt.stock || 7), 7); //이부분은 설정되지 않았을때 디폴트 값으로 사용하는 용도, 사용자 설정이 무조건 우선함.
   const previousFloorsRef = useRef([]);
+  const [isAdding, setIsAdding] = useState(false); // 로딩 상태 추가
 
   /* --------------------------------------------------------------------------
      updateContainer:
      - 특정 층의 컨테이너 필드 업데이트
-     - roomInfo가 'none'으로 변경되면 roomNumber를 빈 문자열로 설정
-     - roomInfo가 'none'에서 다른 타입으로 변경 시 새 번호를 할당
-     - 변경된 정보는 roomTypes에도 반영
+     - 고유 `containerId` 생성 및 중복 방지
   -------------------------------------------------------------------------- */
   const updateContainer = (floorNum, containerId, field, value) => {
     setFloors((prev) => {
@@ -256,29 +254,48 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       container[field] = field === 'price' ? Number(value) : value;
 
       if (field === 'roomInfo') {
-        if (value === 'none') {
-          container.roomNumber = '';
-          container.price = 0;
-        } else if (!container.roomNumber) {
-          const activeContainers = updated[floorIdx].containers.filter(
-            (c) => c.roomInfo !== 'none' && c.roomNumber
-          );
-          const lastNum = activeContainers.length
-            ? Math.max(
-                ...activeContainers.map((c) => parseInt(c.roomNumber, 10))
-              )
-            : parseInt(`${floorNum}01`, 10) - 1;
-          const newSuffix = (lastNum + 1 - floorNum * 100)
-            .toString()
-            .padStart(2, '0');
-          container.roomNumber = `${floorNum}${newSuffix}`;
-          const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
-          container.price = matchingType ? matchingType.price : 0;
+        if (!value || value === '') {
+          return prev;
         }
+        if (!container.roomNumber) {
+          const allRooms = updated.flatMap((f) =>
+            f.containers.filter((c) => c.roomInfo && c.roomNumber)
+          );
+          const existingNumbers = new Set(allRooms.map((c) => c.roomNumber));
+          let lastNum = parseInt(`${floorNum}01`, 10) - 1;
+          const floorRooms = allRooms.filter((c) =>
+            c.roomNumber.startsWith(floorNum.toString())
+          );
+          if (floorRooms.length > 0) {
+            lastNum = Math.max(
+              ...floorRooms.map((c) => parseInt(c.roomNumber, 10))
+            );
+          }
+          let nextNum = lastNum + 1;
+          while (
+            existingNumbers.has(
+              `${floorNum}${(nextNum - floorNum * 100)
+                .toString()
+                .padStart(2, '0')}`
+            )
+          ) {
+            nextNum++;
+          }
+          container.roomNumber = `${floorNum}${(nextNum - floorNum * 100)
+            .toString()
+            .padStart(2, '0')}`;
+        }
+
+        const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
+        container.price = matchingType ? matchingType.price : 0;
+
+        // 고유한 containerId 생성 (UUID 사용)
+        const uniqueId = uuidv4();
+        container.containerId = `${floorNum}-${value}-${container.roomNumber}-${uniqueId}`;
 
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
-          if (oldRoomInfo !== 'none' && container.roomNumber) {
+          if (oldRoomInfo && container.roomNumber) {
             const oldIdx = updatedTypes.findIndex(
               (rt) => rt.roomInfo === oldRoomInfo
             );
@@ -290,7 +307,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 updatedTypes[oldIdx].roomNumbers.length;
             }
           }
-          if (value !== 'none' && container.roomNumber) {
+          if (container.roomNumber) {
             const newIdx = updatedTypes.findIndex(
               (rt) => rt.roomInfo === value
             );
@@ -308,6 +325,11 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           }
           return updatedTypes;
         });
+
+        // 층 내 컨테이너 정렬
+        updated[floorIdx].containers.sort(
+          (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+        );
       }
       return updated;
     });
@@ -352,63 +374,83 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   };
 
   /* --------------------------------------------------------------------------
-     addRoomToFloor:
-     - 특정 층에 새 객실(컨테이너) 추가
-     - 만약 기본 객실 타입이 'none'이면 번호는 부여하지 않음
-  -------------------------------------------------------------------------- */
-  const addRoomToFloor = (floorNum) => {
-    const defaultRoomType = initializedDefaultRoomTypes[0];
-    setFloors((prev) => {
-      const updated = [...prev];
-      const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
-      if (floorIdx === -1) return prev;
-      let newRoomNumber = '';
-      if (defaultRoomType.roomInfo !== 'none') {
+   addRoomToFloor:
+   - 실시간 상태 업데이트 보장 및 중복 방지 강화
+--------------------------------------------------------------------------- */
+  const addRoomToFloor = async (floorNum) => {
+    if (isAdding) return;
+    setIsAdding(true);
+    try {
+      const defaultRoomType = initializedDefaultRoomTypes[0]; // "none" 제거 후 첫 번째 타입
+
+      let newRoomNumber;
+      setFloors((prev) => {
+        const updated = [...prev];
+        const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
+        if (floorIdx === -1) return prev;
+
         const activeRooms = updated[floorIdx].containers.filter(
-          (c) => c.roomInfo !== 'none' && c.roomNumber
+          (c) => c.roomInfo && c.roomNumber
         );
-        const lastNum =
-          activeRooms.length > 0
-            ? Math.max(...activeRooms.map((c) => parseInt(c.roomNumber, 10)))
-            : parseInt(`${floorNum}01`, 10) - 1;
-        newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100)
+        const allRooms = updated.flatMap((f) =>
+          f.containers.filter((c) => c.roomInfo && c.roomNumber)
+        );
+        const existingNumbers = new Set(allRooms.map((c) => c.roomNumber));
+        let lastNum = parseInt(`${floorNum}01`, 10) - 1;
+        if (activeRooms.length > 0) {
+          const floorRooms = allRooms.filter((c) =>
+            c.roomNumber.startsWith(floorNum.toString())
+          );
+          if (floorRooms.length > 0) {
+            lastNum = Math.max(
+              ...floorRooms.map((c) => parseInt(c.roomNumber, 10))
+            );
+          }
+        }
+        let nextNum = lastNum + 1;
+        while (
+          existingNumbers.has(
+            `${floorNum}${(nextNum - floorNum * 100)
+              .toString()
+              .padStart(2, '0')}`
+          )
+        ) {
+          nextNum++;
+        }
+        newRoomNumber = `${floorNum}${(nextNum - floorNum * 100)
           .toString()
           .padStart(2, '0')}`;
-      }
-      const newContainer = {
-        containerId: `${floorNum}-${defaultRoomType.roomInfo}-${
-          newRoomNumber || Date.now()
-        }-${Date.now()}`,
-        roomInfo: defaultRoomType.roomInfo,
-        roomNumber: newRoomNumber,
-        price: defaultRoomType.roomInfo === 'none' ? 0 : defaultRoomType.price,
-        isActive: true,
-      };
-      updated[floorIdx].containers.push(newContainer);
-      return updated;
-    });
 
-    if (defaultRoomType.roomInfo !== 'none') {
+        const uniqueId = uuidv4();
+        const newContainer = {
+          containerId: `${floorNum}-${defaultRoomType.roomInfo}-${newRoomNumber}-${uniqueId}`,
+          roomInfo: defaultRoomType.roomInfo,
+          roomNumber: newRoomNumber,
+          price: defaultRoomType.price,
+          isActive: true,
+        };
+        if (!existingNumbers.has(newRoomNumber)) {
+          updated[floorIdx].containers.push(newContainer);
+          updated[floorIdx].containers.sort(
+            (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+          );
+        }
+        return updated;
+      });
+
+      // 실시간 상태 업데이트 보장
       setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
         const typeIdx = updatedTypes.findIndex(
           (rt) => rt.roomInfo === defaultRoomType.roomInfo
         );
-        if (typeIdx !== -1) {
-          const activeRooms =
-            floors
-              .find((f) => f.floorNum === floorNum)
-              ?.containers.filter(
-                (c) => c.roomInfo !== 'none' && c.roomNumber
-              ) || [];
-          const lastNum =
-            activeRooms.length > 0
-              ? Math.max(...activeRooms.map((c) => parseInt(c.roomNumber, 10)))
-              : parseInt(`${floorNum}01`, 10) - 1;
-          const newRoomNumber = `${floorNum}${(lastNum + 1 - floorNum * 100)
-            .toString()
-            .padStart(2, '0')}`;
-          updatedTypes[typeIdx].roomNumbers.push(newRoomNumber);
+        if (
+          typeIdx !== -1 &&
+          !updatedTypes[typeIdx].roomNumbers.includes(newRoomNumber)
+        ) {
+          updatedTypes[typeIdx].roomNumbers = (
+            updatedTypes[typeIdx].roomNumbers || []
+          ).concat([newRoomNumber]);
           updatedTypes[typeIdx].roomNumbers.sort(
             (a, b) => parseInt(a, 10) - parseInt(b, 10)
           );
@@ -417,26 +459,30 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         }
         return updatedTypes;
       });
+    } finally {
+      setIsAdding(false);
     }
   };
 
   /* --------------------------------------------------------------------------
-     removeContainer:
-     - 특정 컨테이너 삭제 후, roomTypes 업데이트(삭제 대상이 'none'이 아닐 경우)
-     - 삭제 후 활성 컨테이너의 번호를 재정렬
-  -------------------------------------------------------------------------- */
+   removeContainer:
+   - 특정 컨테이너 삭제 후, roomTypes 업데이트 및 중복 제거
+--------------------------------------------------------------------------- */
   const removeContainer = (floorNum, containerId) => {
     setFloors((prev) => {
       const updated = [...prev];
       const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
-      const containerIdx = updated[floorIdx].containers.findIndex(
+      const containers = updated[floorIdx].containers;
+      const containerIdx = containers.findIndex(
         (c) => c.containerId === containerId
       );
       if (containerIdx === -1) return prev;
-      const removed = updated[floorIdx].containers[containerIdx];
-      updated[floorIdx].containers.splice(containerIdx, 1);
-      if (removed.roomInfo !== 'none' && removed.roomNumber) {
+
+      const removed = containers[containerIdx];
+      containers.splice(containerIdx, 1);
+
+      if (removed.roomInfo && removed.roomNumber) {
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           const typeIdx = updatedTypes.findIndex(
@@ -446,38 +492,57 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             updatedTypes[typeIdx].roomNumbers = updatedTypes[
               typeIdx
             ].roomNumbers.filter((num) => num !== removed.roomNumber);
+            updatedTypes[typeIdx].roomNumbers = [
+              ...new Set(updatedTypes[typeIdx].roomNumbers),
+            ]; // 중복 제거
+            updatedTypes[typeIdx].roomNumbers.sort(
+              (a, b) => parseInt(a, 10) - parseInt(b, 10)
+            );
             updatedTypes[typeIdx].stock =
               updatedTypes[typeIdx].roomNumbers.length;
           }
           return updatedTypes;
         });
       }
-      const activeContainers = updated[floorIdx].containers
-        .filter((c) => c.roomInfo !== 'none' && c.roomNumber)
-        .sort(
-          (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
-        );
-      activeContainers.forEach((container, idx) => {
+
+      // 중복 번호 제거 후 재정렬
+      const uniqueContainers = [];
+      const seenNumbers = new Set();
+      containers.forEach((container) => {
+        if (
+          container.roomInfo &&
+          container.roomNumber &&
+          !seenNumbers.has(container.roomNumber)
+        ) {
+          seenNumbers.add(container.roomNumber);
+          uniqueContainers.push(container);
+        }
+      });
+
+      uniqueContainers.sort(
+        (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+      );
+      uniqueContainers.forEach((container, idx) => {
         const newRoomNumber = `${floorNum}${(idx + 1)
           .toString()
           .padStart(2, '0')}`;
         container.roomNumber = newRoomNumber;
         container.containerId = `${floorNum}-${
           container.roomInfo
-        }-${newRoomNumber}-${Date.now()}`;
+        }-${newRoomNumber}-${Date.now()}-${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
       });
-      const noneContainers = updated[floorIdx].containers.filter(
-        (c) => c.roomInfo === 'none' || !c.roomNumber
-      );
-      updated[floorIdx].containers = [...noneContainers, ...activeContainers];
+
+      updated[floorIdx].containers = uniqueContainers;
       return updated;
     });
   };
+
   /* --------------------------------------------------------------------------
-     generateInitialLayout:
-     - 각 층에 대해 roomTypes의 roomNumbers에 따라 컨테이너를 생성
-     - roomInfo이 'none'이면 roomNumber는 빈 문자열로 처리
-  -------------------------------------------------------------------------- */
+   generateInitialLayout:
+   - "none" 옵션 제거, 유효한 객실 타입만 컨테이너 생성
+--------------------------------------------------------------------------- */
   const generateInitialLayout = () => {
     const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
@@ -489,16 +554,15 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           containers.push({
             containerId: `${floorNum}-${rt.roomInfo}-${num}-${Date.now()}`,
             roomInfo: rt.roomInfo,
-            roomNumber: rt.roomInfo === 'none' ? '' : num,
-            price: rt.roomInfo === 'none' ? 0 : rt.price,
+            roomNumber: num,
+            price: rt.price,
             isActive: true,
           });
         });
       });
-      containers.sort((a, b) => {
-        if (!a.roomNumber || !b.roomNumber) return 0;
-        return parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10);
-      });
+      containers.sort(
+        (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+      );
       return { floorNum, containers };
     });
     setFloors(newFloors);
@@ -506,7 +570,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       const updatedTypes = [...prevTypes];
       newFloors.forEach((floor) => {
         floor.containers.forEach((cont) => {
-          if (cont.roomInfo !== 'none' && cont.roomNumber) {
+          if (cont.roomInfo && cont.roomNumber) {
             const typeIdx = updatedTypes.findIndex(
               (rt) => rt.roomInfo === cont.roomInfo
             );
@@ -564,14 +628,9 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 {floor.containers.map((cont, index) => (
                   <React.Fragment key={cont.containerId}>
                     <div
-                      className={`container-box ${
-                        cont.roomInfo === 'none' ? 'empty' : ''
-                      }`}
+                      className={`container-box`}
                       style={{
-                        backgroundColor:
-                          cont.roomInfo !== 'none'
-                            ? getColorForRoomType(cont.roomInfo)
-                            : undefined,
+                        backgroundColor: getColorForRoomType(cont.roomInfo),
                       }}
                     >
                       <select
@@ -585,7 +644,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                           )
                         }
                       >
-                        <option value="none">객실없음</option>
                         {roomTypes.map((rt) => (
                           <option key={rt.roomInfo} value={rt.roomInfo}>
                             {rt.roomInfo}
@@ -604,7 +662,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                           )
                         }
                         placeholder="객실 번호"
-                        disabled={cont.roomInfo === 'none'}
                       />
                       <input
                         type="number"
@@ -618,7 +675,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                           )
                         }
                         placeholder="가격"
-                        disabled={cont.roomInfo === 'none'}
                       />
                       <button
                         className="delete-btn"
@@ -629,17 +685,16 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                         <FaTrash />
                       </button>
                     </div>
-                    {index === floor.containers.length - 1 && (
-                      <button
-                        className="action-btn add-room-btn"
-                        onClick={() => addRoomToFloor(floor.floorNum)}
-                        title="객실 추가"
-                      >
-                        <FaPlus />
-                      </button>
-                    )}
                   </React.Fragment>
                 ))}
+                <button
+                  className="action-btn add-room-btn"
+                  onClick={() => addRoomToFloor(floor.floorNum)}
+                  disabled={isAdding}
+                  title="객실 추가"
+                >
+                  <FaPlus />
+                </button>
               </div>
             </div>
           ))}
@@ -675,6 +730,7 @@ export default function HotelSettingsPage() {
         setTotalRooms(
           initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
         );
+        setRoomTypes([...initializedDefaultRoomTypes]);
         return;
       }
       try {
@@ -700,6 +756,13 @@ export default function HotelSettingsPage() {
             })) || initializedDefaultRoomTypes,
             containers
           );
+          // 실시간 상태 동기화
+          updatedRoomTypes.forEach((rt) => {
+            rt.roomNumbers = (rt.roomNumbers || []).sort(
+              (a, b) => parseInt(a, 10) - parseInt(b, 10)
+            );
+            rt.stock = rt.roomNumbers.length;
+          });
           setRoomTypes(updatedRoomTypes);
           setFloors(
             hotelData.gridSettings?.floors ||
@@ -735,18 +798,60 @@ export default function HotelSettingsPage() {
     loadData();
   }, [hotelId, email, phoneNumber, hotelAddress, hotelName]);
 
+  // roomTypes 업데이트를 최적화: floors 변경 시만 실행, roomTypes가 실제로 변경되었는지 확인
+  // useMemo로 updatedRoomTypes 정의 (HotelSettingsPage 상단에 추가)
+  const updatedRoomTypes = useMemo(() => {
+    const newRoomTypes = [...roomTypes];
+    let hasChanges = false;
+    floors.forEach((floor) => {
+      floor.containers.forEach((cont) => {
+        if (cont.roomInfo && cont.roomNumber) {
+          const typeIdx = newRoomTypes.findIndex(
+            (rt) => rt.roomInfo === cont.roomInfo
+          );
+          if (typeIdx !== -1) {
+            const currentRoomNumbers = newRoomTypes[typeIdx].roomNumbers || [];
+            if (!currentRoomNumbers.includes(cont.roomNumber)) {
+              newRoomTypes[typeIdx].roomNumbers = (
+                currentRoomNumbers || []
+              ).concat([cont.roomNumber]);
+              newRoomTypes[typeIdx].roomNumbers.sort(
+                (a, b) => parseInt(a, 10) - parseInt(b, 10)
+              );
+              newRoomTypes[typeIdx].stock =
+                newRoomTypes[typeIdx].roomNumbers.length;
+              hasChanges = true;
+            }
+          }
+        }
+      });
+    });
+    return { roomTypes: hasChanges ? newRoomTypes : roomTypes, hasChanges };
+  }, [floors, roomTypes]);
+
+  // useEffect 수정 (HotelSettingsPage 내에서)
   useEffect(() => {
     const newTotal = floors.reduce(
       (sum, f) =>
-        sum + (f.containers || []).filter((c) => c.roomInfo !== 'none').length,
+        sum +
+        (f.containers || []).filter((c) => c.roomInfo && c.roomNumber).length,
       0
     );
     setTotalRooms(newTotal);
+
+    // updatedRoomTypes가 실제로 변경되었을 때만 업데이트
+    if (updatedRoomTypes.hasChanges) {
+      setRoomTypes(updatedRoomTypes.roomTypes);
+    }
+
+    // originalDataRef 업데이트
     originalDataRef.current = {
       hotelId,
       isExisting,
       totalRooms: newTotal,
-      roomTypes,
+      roomTypes: updatedRoomTypes.hasChanges
+        ? updatedRoomTypes.roomTypes
+        : roomTypes,
       floors,
       hotelAddress,
       email,
@@ -754,65 +859,68 @@ export default function HotelSettingsPage() {
       hotelName,
     };
   }, [
+    floors,
     hotelId,
     isExisting,
-    roomTypes,
-    floors,
     hotelAddress,
     email,
     phoneNumber,
     hotelName,
+    updatedRoomTypes.hasChanges,
+    roomTypes,
+    updatedRoomTypes.roomTypes,
   ]);
 
   const handleLoadDefault = () => {
-    // 디폴트 roomTypes 초기화 (stock 및 roomNumbers 초기화)
+    // 디폴트 roomTypes 초기화 (stock 및 roomNumbers 유지, 중복 제거)
     const defaultRoomTypes = initializedDefaultRoomTypes.map((rt) => ({
       ...rt,
-      stock: rt.stock, // 각 타입의 기본 stock 유지 (예: 스탠다드 7, 프리미엄 6 등)
-      roomNumbers: [], // roomNumbers 초기화
-      aliases: [], // 빈 배열로 초기화
+      aliases: [],
+      roomNumbers: [], // 초기화
     }));
 
-    // 기본 floors 설정 (각 층에 "객실없음"과 실제 객실 번호 순차적으로 배치)
-    const newFloors = DEFAULT_FLOORS.map((floorNum, floorIdx) => {
+    // 기본 floors 설정 (각 층에 해당 타입의 객실만 순차적으로 배치)
+    const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
-      // "객실없음"을 맨 앞에 빈 공간으로 추가 (번호 없이)
-      containers.push({
-        containerId: `${floorNum}-none-${Date.now()}`,
-        roomInfo: 'none',
-        roomNumber: '',
-        price: 0,
-        isActive: false,
-      });
-
-      // 해당 층에 맞는 객실 타입 선택 (floorIdx로 순환)
-      const roomType = defaultRoomTypes[floorIdx % defaultRoomTypes.length];
-      const roomCount = roomType.stock || 7; // 각 타입의 stock 사용
-
-      // 층별 순차 번호 부여 (예: 2층 201~207, 3층 301~306 등)
-      for (let i = 0; i < roomCount; i++) {
-        const roomNum = `${floorNum}${(i + 1).toString().padStart(2, '0')}`; // 2자리 숫자로 패딩 (예: 201, 202, ...)
-        containers.push({
-          containerId: `${floorNum}-${
-            roomType.roomInfo
-          }-${roomNum}-${Date.now()}`,
-          roomInfo: roomType.roomInfo,
-          roomNumber: roomNum,
-          price: roomType.price,
-          isActive: true,
-        });
-        // roomTypes에 roomNumbers와 stock 업데이트
-        roomType.roomNumbers.push(roomNum);
+      const roomType = defaultRoomTypes.find(
+        (rt) => rt.floorSettings[floorNum] > 0
+      );
+      if (roomType) {
+        const stock = roomType.floorSettings[floorNum] || 0;
+        const startNum = parseInt(
+          roomType.startRoomNumbers[floorNum] || `${floorNum}01`,
+          10
+        );
+        for (let i = 0; i < stock; i++) {
+          const roomNum = `${startNum + i}`;
+          containers.push({
+            containerId: `${floorNum}-${
+              roomType.roomInfo
+            }-${roomNum}-${Date.now()}`,
+            roomInfo: roomType.roomInfo,
+            roomNumber: roomNum,
+            price: roomType.price,
+            isActive: true,
+          });
+          roomType.roomNumbers.push(roomNum);
+        }
       }
-
+      containers.sort(
+        (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+      );
       return { floorNum, containers };
+    });
+
+    // roomNumbers 정렬 및 stock 업데이트
+    defaultRoomTypes.forEach((rt) => {
+      rt.roomNumbers = [...new Set(rt.roomNumbers)]; // 중복 제거
+      rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      rt.stock = rt.roomNumbers.length;
     });
 
     setRoomTypes(defaultRoomTypes); // roomTypes 업데이트
     setFloors(newFloors); // floors 업데이트
-    setTotalRooms(
-      defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0) // 총 객실 수 계산
-    );
+    setTotalRooms(defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)); // 총 객실 수 계산
     alert('디폴트 설정이 불러와졌습니다.');
   };
 
@@ -822,7 +930,7 @@ export default function HotelSettingsPage() {
       return;
     }
     const allHaveRoomNumbers = roomTypes.every(
-      (rt) => rt.roomNumbers && rt.roomNumbers.length > 0
+      (rt) => (rt.roomNumbers || []).length > 0
     );
     if (!allHaveRoomNumbers) {
       alert('모든 객실 타입에 대해 객실 번호를 생성해야 저장할 수 있습니다.');
@@ -833,24 +941,35 @@ export default function HotelSettingsPage() {
       totalRooms,
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
-        aliases: rt.aliases.filter(Boolean),
-        stock: rt.roomNumbers.length,
+        aliases: (rt.aliases || []).filter(Boolean),
+        stock: (rt.roomNumbers || []).length,
         floorSettings: DEFAULT_FLOORS.reduce((acc, floorNum) => {
           const count = (rt.roomNumbers || []).filter((num) =>
-            num.startsWith(String(floorNum))
+            num?.startsWith?.(String(floorNum))
           ).length;
           if (count > 0) acc[floorNum] = count;
           return acc;
         }, {}),
         startRoomNumbers: DEFAULT_FLOORS.reduce((acc, floorNum) => {
           const nums = (rt.roomNumbers || []).filter((num) =>
-            num.startsWith(String(floorNum))
+            num?.startsWith?.(String(floorNum))
           );
           if (nums.length > 0) acc[floorNum] = nums[0];
           return acc;
         }, {}),
       })),
-      gridSettings: { floors },
+      gridSettings: {
+        floors: floors.map((floor) => ({
+          floorNum: floor.floorNum,
+          containers: floor.containers.map((cont) => ({
+            containerId: cont.containerId,
+            roomInfo: cont.roomInfo,
+            roomNumber: cont.roomNumber,
+            price: cont.price,
+            isActive: cont.isActive,
+          })),
+        })),
+      },
       address: hotelAddress,
       email,
       phoneNumber,
@@ -888,7 +1007,6 @@ export default function HotelSettingsPage() {
       alert('저장 실패: ' + err.message);
     }
   };
-
   const handleCancel = () => {
     if (!originalDataRef.current) return;
     const orig = originalDataRef.current;

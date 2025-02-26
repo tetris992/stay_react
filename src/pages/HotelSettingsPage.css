@@ -315,8 +315,10 @@ html {
 }
 .remove-btn {
   border: none;
+  background-color: transparent;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  color: lightsteelblue;
 }
 
 .remove-btn :hover {
