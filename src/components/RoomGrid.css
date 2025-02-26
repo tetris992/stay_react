@@ -21,15 +21,11 @@
 ========================================================================== */
 .layout-grid {
   margin-left: 30px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 400px));
-  width: 100%;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 280px에서 화면 크기에 따라 확장 */
   gap: 10px;
+  width: 100%;
   box-sizing: border-box;
-}
-
-.floor-section {
-  margin-bottom: 10px;
 }
 
 /* ==========================================================================
@@ -42,7 +38,8 @@
   border: 1px solid #dddddd;
   border-radius: 8px;
   overflow: hidden;
-  min-width: var(--card-width);
+  min-width: 280px; /* 최소 너비 유지 */
+  max-width: 400px; /* 최대 너비 설정 */
   min-height: var(--card-height);
 }
 
@@ -268,7 +265,7 @@
 }
 .room-card-inner {
   min-width: 280px;
-  max-height: 310px;
+  max-height: 320px;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;
@@ -389,6 +386,9 @@
   flex-direction: column;
   height: 100%;
   gap: 10px;
+  padding: 5px;
+  border: 2px solid var(--room-card-border);
+  border-radius: 8px;
 }
 .card-content {
   flex: 1;
@@ -403,6 +403,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  padding: 5px 5px;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 .payment-method {
   display: flex;
