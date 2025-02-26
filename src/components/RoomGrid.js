@@ -120,23 +120,20 @@ const DraggableReservationCard = React.memo(
     renderActionButtons,
     newlyCreatedId,
     isNewlyCreatedHighlighted,
-    onPartialUpdate, // 추가: 수정 저장을 위해 상위에서 전달
-    roomTypes, // 추가: 객실 타입 선택을 위해 전달
+    onPartialUpdate,
+    roomTypes,
   }) => {
     const [{ isDragging }, dragRef] = useDrag({
       type: 'RESERVATION',
-      item: {
-        reservationId: reservation._id,
-        reservationData: reservation,
-      },
-      canDrag: () => !isEditingMemo && !isEditingCard, // 수정 중에는 드래그 불가
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
+      item: { reservationId: reservation._id, reservationData: reservation },
+      canDrag: () => !isEditingMemo && !isEditingCard,
+      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
     });
 
-    const [isEditingCard, setIsEditingCard] = useState(false); // 카드 수정 모드 상태
-    const [editedValues, setEditedValues] = useState({}); // 수정 중인 데이터
+    // 전역 상태로 수정 모드 관리 (RoomGrid에서 단일 수정 모드 관리)
+    const [isEditingCard, setIsEditingCard] = useState(false);
+    const [editedValues, setEditedValues] = useState({});
+    const [isOpen, setIsOpen] = useState(false); // 팝업 열림 상태
 
     const isHighlighted =
       highlightedReservationIds.includes(reservation._id) && isSearching;
@@ -177,12 +174,21 @@ const DraggableReservationCard = React.memo(
       isCancelled ? 'cancelled' : '',
       isHighlighted ? 'highlighted' : '',
       isNewlyCreated ? 'onsite-created' : '',
-      isEditingCard ? 'edit-mode' : '', // 수정 모드 클래스 추가
+      isEditingCard ? 'edit-mode' : '',
     ]
       .filter(Boolean)
       .join(' ');
 
+    const calcNights = (checkIn, checkOut) => {
+      const d1 = new Date(checkIn);
+      const d2 = new Date(checkOut);
+      return Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+    };
+
     const handleEditStart = () => {
+      if (isOpen) return; // 이미 열려 있으면 새로 열지 않음
+      setIsOpen(true); // 팝업 열림 상태 설정
+      // 기존 reservation 객체의 모든 필드를 그대로 사용
       const ci = reservation.checkIn
         ? new Date(reservation.checkIn)
         : new Date();
@@ -194,7 +200,16 @@ const DraggableReservationCard = React.memo(
       const resDate = reservation.reservationDate
         ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd HH:mm')
         : format(new Date(), 'yyyy-MM-dd HH:mm');
-      const priceVal = extractPrice(reservation.price);
+      // 가격을 reservation.price에서 직접 가져오고, extractPrice로 처리
+      const priceVal = reservation.price ? extractPrice(reservation.price) : 0;
+      // roomTypes에서 현재 roomInfo에 해당하는 가격을 찾아 기본값으로 설정
+      const selectedRoom = roomTypes.find(
+        (r) => r.roomInfo === reservation.roomInfo
+      );
+      const basePrice = selectedRoom ? selectedRoom.price : 0;
+      const nights = calcNights(ciDate, coDate);
+      const calculatedPrice = reservation.price ? priceVal : basePrice * nights;
+
       setEditedValues({
         customerName: reservation.customerName || '',
         phoneNumber: reservation.phoneNumber || '',
@@ -202,9 +217,10 @@ const DraggableReservationCard = React.memo(
         checkOutDate: coDate,
         reservationDate: resDate,
         roomInfo: reservation.roomInfo || roomTypes[0]?.type || '',
-        price: priceVal || 0,
+        price: calculatedPrice, // 기존 가격 또는 roomTypes 기반 가격
         paymentMethod: reservation.paymentMethod || 'Pending',
         specialRequests: reservation.specialRequests || '',
+        manualPriceOverride: !!reservation.price, // 기존 가격이 있으면 수동 오버라이드 플래그 설정
       });
       setIsEditingCard(true);
     };
@@ -212,6 +228,7 @@ const DraggableReservationCard = React.memo(
     const handleEditCancel = () => {
       setIsEditingCard(false);
       setEditedValues({});
+      setIsOpen(false); // 팝업 닫기
     };
 
     const handleEditSave = (e) => {
@@ -228,10 +245,34 @@ const DraggableReservationCard = React.memo(
       onPartialUpdate(reservation._id, updatedData);
       setIsEditingCard(false);
       setEditedValues({});
+      setIsOpen(false); // 팝업 닫기
     };
 
     const handleFieldChange = (field, value) => {
-      setEditedValues((prev) => ({ ...prev, [field]: value }));
+      /**
+       * @param {Object} prev - The previous state of editedValues
+       * @returns {Object} - The updated editedValues state
+       */
+      setEditedValues((prev) => {
+        const updated = { ...prev, [field]: value };
+        if (
+          ['checkInDate', 'checkOutDate', 'roomInfo'].includes(field) &&
+          !prev.manualPriceOverride
+        ) {
+          const selectedRoom = roomTypes.find(
+            (r) => r.roomInfo === (prev.roomInfo || roomTypes[0]?.type)
+          );
+          if (selectedRoom) {
+            const nights = calcNights(
+              prev.checkInDate || new Date(),
+              prev.checkOutDate || addDays(new Date(), 1)
+            );
+            const newPrice = selectedRoom.price * nights;
+            return { ...updated, price: newPrice };
+          }
+        }
+        return updated;
+      });
     };
 
     return (
@@ -275,118 +316,130 @@ const DraggableReservationCard = React.memo(
                       닫기
                     </button>
                   </div>
-                  <label>
-                    예약자:
-                    <input
-                      type="text"
-                      value={editedValues.customerName}
-                      onChange={(e) =>
-                        handleFieldChange('customerName', e.target.value)
-                      }
-                      required
-                    />
-                  </label>
-                  <label>
-                    전화번호:
-                    <input
-                      type="text"
-                      value={editedValues.phoneNumber}
-                      onChange={(e) =>
-                        handleFieldChange('phoneNumber', e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    체크인 날짜:
-                    <input
-                      type="date"
-                      value={editedValues.checkInDate}
-                      onChange={(e) =>
-                        handleFieldChange('checkInDate', e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    체크아웃 날짜:
-                    <input
-                      type="date"
-                      value={editedValues.checkOutDate}
-                      onChange={(e) =>
-                        handleFieldChange('checkOutDate', e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    객실타입:
-                    <select
-                      value={editedValues.roomInfo}
-                      onChange={(e) =>
-                        handleFieldChange('roomInfo', e.target.value)
-                      }
-                    >
-                      {roomTypes.map((r, i) => (
-                        <option key={i} value={r.roomInfo}>
-                          {r.roomInfo}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    가격 (KRW):
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={editedValues.price}
-                      onChange={(e) =>
-                        handleFieldChange('price', e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    결제방법/상태:
-                    {availableOTAs.includes(reservation.siteName) ? (
+                  <div className="edit-card-row">
+                    <label>
+                      예약자:
                       <input
                         type="text"
-                        disabled
-                        style={{ backgroundColor: '#eee' }}
-                        value={editedValues.paymentMethod || 'OTA'}
+                        value={editedValues.customerName}
+                        onChange={(e) =>
+                          handleFieldChange('customerName', e.target.value)
+                        }
+                        required
                       />
-                    ) : reservation.siteName === '현장예약' ? (
-                      <select
-                        value={editedValues.paymentMethod || 'Pending'}
+                    </label>
+                    <label>
+                      전화번호:
+                      <input
+                        type="text"
+                        value={editedValues.phoneNumber}
                         onChange={(e) =>
-                          handleFieldChange('paymentMethod', e.target.value)
+                          handleFieldChange('phoneNumber', e.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="edit-card-row">
+                    <label>
+                      체크인 날짜:
+                      <input
+                        type="date"
+                        value={editedValues.checkInDate}
+                        onChange={(e) =>
+                          handleFieldChange('checkInDate', e.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      체크아웃 날짜:
+                      <input
+                        type="date"
+                        value={editedValues.checkOutDate}
+                        onChange={(e) =>
+                          handleFieldChange('checkOutDate', e.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="edit-card-row">
+                    <label>
+                      객실타입:
+                      <select
+                        value={editedValues.roomInfo}
+                        onChange={(e) =>
+                          handleFieldChange('roomInfo', e.target.value)
                         }
                       >
-                        <option value="Card">Card</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Account Transfer">
-                          Account Transfer
-                        </option>
-                        <option value="Pending">Pending</option>
+                        {roomTypes.map((r, i) => (
+                          <option key={i} value={r.roomInfo}>
+                            {r.roomInfo} - {r.price.toLocaleString()} KRW/박
+                          </option>
+                        ))}
                       </select>
-                    ) : (
-                      <select
-                        value={editedValues.paymentMethod || 'Pending'}
+                    </label>
+                    <label>
+                      가격 (KRW):
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editedValues.price}
+                        onChange={(e) => {
+                          handleFieldChange('price', e.target.value);
+                          setEditedValues((prev) => ({
+                            ...prev,
+                            manualPriceOverride: true,
+                          }));
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="edit-card-row">
+                    <label>
+                      결제방법/상태:
+                      {availableOTAs.includes(reservation.siteName) ? (
+                        <input
+                          type="text"
+                          disabled
+                          style={{ backgroundColor: '#eee' }}
+                          value={editedValues.paymentMethod || 'OTA'}
+                        />
+                      ) : reservation.siteName === '현장예약' ? (
+                        <select
+                          value={editedValues.paymentMethod || 'Pending'}
+                          onChange={(e) =>
+                            handleFieldChange('paymentMethod', e.target.value)
+                          }
+                        >
+                          <option value="Card">Card</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Account Transfer">
+                            Account Transfer
+                          </option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={editedValues.paymentMethod || 'Pending'}
+                          onChange={(e) =>
+                            handleFieldChange('paymentMethod', e.target.value)
+                          }
+                        >
+                          <option value="Pending">Pending</option>
+                        </select>
+                      )}
+                    </label>
+                    <label>
+                      고객요청:
+                      <input
+                        type="text"
+                        value={editedValues.specialRequests}
                         onChange={(e) =>
-                          handleFieldChange('paymentMethod', e.target.value)
+                          handleFieldChange('specialRequests', e.target.value)
                         }
-                      >
-                        <option value="Pending">Pending</option>
-                      </select>
-                    )}
-                  </label>
-                  <label>
-                    고객요청:
-                    <input
-                      type="text"
-                      value={editedValues.specialRequests}
-                      onChange={(e) =>
-                        handleFieldChange('specialRequests', e.target.value)
-                      }
-                    />
-                  </label>
+                      />
+                    </label>
+                  </div>
                   <div className="edit-card-actions">
                     <button type="submit" className="save-button">
                       저장
@@ -402,7 +455,7 @@ const DraggableReservationCard = React.memo(
                 </form>
               </div>
             ) : (
-              // 기본 보기 모드
+              // 기본 보기 모드 (기존 코드 유지)
               <>
                 <div className="room-card-front">
                   <div className="content-footer-wrapper">
@@ -411,8 +464,7 @@ const DraggableReservationCard = React.memo(
                         <h3 className="no-break">
                           <span className="stay-label">{stayLabel}</span>
                           <span className="button-group-wrapper">
-                            {renderActionButtons(reservation, handleEditStart)}{' '}
-                            {/* 수정 시작 함수 전달 */}
+                            {renderActionButtons(reservation, handleEditStart)}
                           </span>
                         </h3>
                       </div>
@@ -586,10 +638,9 @@ DraggableReservationCard.propTypes = {
   loadedReservations: PropTypes.array,
   newlyCreatedId: PropTypes.string,
   isNewlyCreatedHighlighted: PropTypes.bool,
-  onPartialUpdate: PropTypes.func.isRequired, // 추가
-  roomTypes: PropTypes.array.isRequired, // 추가
+  onPartialUpdate: PropTypes.func.isRequired,
+  roomTypes: PropTypes.array.isRequired,
 };
-
 /* ===============================
    [B] ContainerCell
 =============================== */
@@ -603,7 +654,7 @@ const ContainerCell = React.memo(
     fullReservations,
     roomTypes,
     gridSettings,
-    handleEditExtended, // props로 추가
+    handleEditExtended,
   }) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
@@ -615,9 +666,8 @@ const ContainerCell = React.memo(
           if (
             draggedReservation.roomInfo === cont.roomInfo &&
             draggedReservation.roomNumber === cont.roomNumber
-          ) {
+          )
             return;
-          }
 
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
@@ -740,9 +790,8 @@ ContainerCell.propTypes = {
   fullReservations: PropTypes.array.isRequired,
   roomTypes: PropTypes.array.isRequired,
   gridSettings: PropTypes.object,
-  handleEditExtended: PropTypes.func.isRequired, // 추가
+  handleEditExtended: PropTypes.func.isRequired,
 };
-
 /* ===============================
    RoomGrid 컴포넌트
 =============================== */
@@ -963,6 +1012,10 @@ function RoomGrid({
 
   const toggleMemoEditHandler = useCallback(
     (reservationId) => {
+      /**
+       * @param {Object} prev - The previous state of memos
+       * @returns {Object} - The updated memos state
+       */
       setMemos((prev) => {
         const cur = prev[reservationId] || { text: '', isEditing: false };
         const nextEditing = !cur.isEditing;

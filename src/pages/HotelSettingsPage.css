@@ -463,3 +463,112 @@ html {
   text-align: center;
   margin-top: 30px;
 }
+.hotelsetting-all-save {
+  width: 200px;
+  height: 50px;
+  font-size: 1.5rem;
+  border-radius: 10px;
+  background-color: steelblue;
+  color: white;
+  font-weight: 1200;
+  border: none;
+  cursor: pointer;
+}
+
+.hotelsetting-all-save:hover {
+  background-color: goldenrod;
+}
+.hotel-settings-button-group {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.hotel-settings-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: var(--action-btn-bg, #16a34a); /* 업데이트: 변수 사용 */
+  color: var(--action-btn-color, #ffffff); /* 업데이트: 변수 사용 */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease; /* 애니메이션 추가 */
+}
+
+.hotel-settings-btn:hover {
+  background-color: #14532d; /* 더 어두운 초록색으로 호버 효과 */
+  transform: scale(1.05); /* 호버 시 확대 효과 추가 */
+}
+
+/* 특정 버튼 변형 스타일 통일 */
+.hotel-settings-btn.remove-btn,
+.hotel-settings-btn.delete-btn {
+  padding: 8px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.hotel-settings-btn.remove-btn:hover,
+.hotel-settings-btn.delete-btn:hover {
+  background-color: #c82333;
+  transform: scale(1.05);
+}
+
+.hotel-settings-btn.add-btn,
+.hotel-settings-btn.generate-btn,
+.hotel-settings-btn.undo-btn,
+.hotel-settings-btn.add-room-btn,
+.hotel-settings-btn.save-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: var(--action-btn-bg, #16a34a);
+  color: var(--action-btn-color, #ffffff);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.hotel-settings-btn.add-btn:hover,
+.hotel-settings-btn.generate-btn:hover,
+.hotel-settings-btn.add-room-btn:hover,
+.hotel-settings-btn.save-btn:hover {
+  background-color: #14532d;
+  transform: scale(1.05);
+}
+
+.hotel-settings-btn.undo-btn {
+  background-color: #6c757d;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.hotel-settings-btn.undo-btn:hover {
+  background-color: #5a6268;
+  transform: scale(1.05);
+}
+
+.hotel-settings-btn.change-pw-btn {
+  background-color: #6c757d;
+  opacity: 0.7;
+  cursor: not-allowed;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  transition: opacity 0.3s ease;
+}
+
+.hotel-settings-btn.change-pw-btn:hover {
+  background-color: #6c757d;
+  opacity: 0.9;
+}

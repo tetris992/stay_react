@@ -1,4 +1,3 @@
-// src/components/GuestFormModal.js
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import './GuestFormModal.css';
@@ -147,7 +146,6 @@ const GuestFormModal = ({
       }
       setFormData((prev) => ({ ...prev, [name]: value }));
     } else if (name !== 'price') {
-      // 가격은 수동 변경 불가
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
@@ -172,7 +170,9 @@ const GuestFormModal = ({
     const checkInDateObj = new Date(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
-    const checkOutDateObj = new Date(`${selectedDate}T${formData.checkOutTime}:00`);
+    const checkOutDateObj = new Date(
+      `${selectedDate}T${formData.checkOutTime}:00`
+    );
     const nightsStayed = Math.ceil(
       (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
     );
@@ -191,8 +191,12 @@ const GuestFormModal = ({
   const isRoomTypeUnavailable = (roomInfo) => {
     if (!availabilityByDate || !formData.checkInDate || !formData.checkOutDate)
       return false;
-    const start = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const end = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+    const start = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const end = new Date(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
     let cursor = start;
     while (cursor < end) {
       const ds = format(cursor, 'yyyy-MM-dd');
@@ -215,8 +219,12 @@ const GuestFormModal = ({
       return;
     }
 
-    const checkInDateTime = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateTime = parseDate(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+    const checkInDateTime = parseDate(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = parseDate(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
       return;
@@ -227,8 +235,14 @@ const GuestFormModal = ({
     }
     const now = new Date();
     const todayStart = startOfDay(now);
-    if (!initialData && formData.customerName.includes('현장') && checkInDateTime < todayStart) {
-      alert('현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.');
+    if (
+      !initialData &&
+      formData.customerName.includes('현장') &&
+      checkInDateTime < todayStart
+    ) {
+      alert(
+        '현장예약은 과거 예약으로 생성할 수 없습니다. 체크인 날짜를 수정해주세요.'
+      );
       return;
     }
 
@@ -246,14 +260,21 @@ const GuestFormModal = ({
         if (commonRooms === null) {
           commonRooms = new Set(freeRooms);
         } else {
-          commonRooms = new Set([...commonRooms].filter((room) => freeRooms.includes(room)));
+          commonRooms = new Set(
+            [...commonRooms].filter((room) => freeRooms.includes(room))
+          );
         }
       }
       cursor = addDays(cursor, 1);
     }
 
     if (missingDates.length > 0 || !commonRooms || commonRooms.size === 0) {
-      const detailedMsg = getDetailedAvailabilityMessage(startOfDay(checkInDateTime), addDays(startOfDay(checkOutDateTime), -1), tKey, availabilityByDate);
+      const detailedMsg = getDetailedAvailabilityMessage(
+        startOfDay(checkInDateTime),
+        addDays(startOfDay(checkOutDateTime), -1),
+        tKey,
+        availabilityByDate
+      );
       alert(detailedMsg);
       return;
     }
@@ -278,9 +299,12 @@ const GuestFormModal = ({
       }
       onClose();
     } catch (error) {
-      const errorMessage = error.status === 403
-        ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-        : error.response?.data?.message || error.message || '예약 저장에 실패했습니다. 다시 시도해주세요.';
+      const errorMessage =
+        error.status === 403
+          ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
+          : error.response?.data?.message ||
+            error.message ||
+            '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
       console.error('예약 저장 오류:', error);
     }
@@ -294,142 +318,158 @@ const GuestFormModal = ({
         </span>
         <h2>현장 예약 입력</h2>
         <form onSubmit={handleSubmit}>
-          <label htmlFor="reservationNo">
-            예약번호:
-            <input
-              id="reservationNo"
-              type="text"
-              name="reservationNo"
-              value={formData.reservationNo || ''}
-              readOnly
-            />
-          </label>
-          <label htmlFor="customerName">
-            예약자:
-            <input
-              id="customerName"
-              type="text"
-              name="customerName"
-              value={formData.customerName}
-              onChange={handleInputChange}
-              required
-            />
-          </label>
-          <label htmlFor="phoneNumber">
-            연락처:
-            <input
-              id="phoneNumber"
-              type="text"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleInputChange}
-              required // 필수 입력으로 설정
-            />
-          </label>
-          <label htmlFor="checkInDate">
-            체크인 (오후 4시):
-            <input
-              id="checkInDate"
-              type="date"
-              name="checkInDate"
-              value={formData.checkInDate}
-              onChange={handleCheckInDateChange}
-              required
-            />
-          </label>
-          <label htmlFor="checkOutDate">
-            체크아웃 (오전 11시):
-            <input
-              id="checkOutDate"
-              type="date"
-              name="checkOutDate"
-              value={formData.checkOutDate}
-              onChange={handleCheckOutDateChange}
-              required
-            />
-          </label>
-          <label htmlFor="reservationDate">
-            예약시간:
-            <input
-              id="reservationDate"
-              type="text"
-              name="reservationDate"
-              value={formData.reservationDate || ''}
-              readOnly
-            />
-          </label>
-          <label htmlFor="roomInfo">
-            객실타입:
-            <select
-              id="roomInfo"
-              name="roomInfo"
-              value={formData.roomInfo}
-              onChange={handleInputChange}
-              required
+          <div className="modal-row">
+            <label htmlFor="reservationNo">
+              예약번호:
+              <input
+                id="reservationNo"
+                type="text"
+                name="reservationNo"
+                value={formData.reservationNo || ''}
+                readOnly
+              />
+            </label>
+            <label htmlFor="customerName">
+              예약자:
+              <input
+                id="customerName"
+                type="text"
+                name="customerName"
+                value={formData.customerName}
+                onChange={handleInputChange}
+                required
+              />
+            </label>
+          </div>
+          <div className="modal-row">
+            <label htmlFor="phoneNumber">
+              연락처:
+              <input
+                id="phoneNumber"
+                type="text"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleInputChange}
+                required
+              />
+            </label>
+            <label htmlFor="checkInDate">
+              체크인 (오후 4시):
+              <input
+                id="checkInDate"
+                type="date"
+                name="checkInDate"
+                value={formData.checkInDate}
+                onChange={handleCheckInDateChange}
+                required
+              />
+            </label>
+          </div>
+          <div className="modal-row">
+            <label htmlFor="checkOutDate">
+              체크아웃 (오전 11시):
+              <input
+                id="checkOutDate"
+                type="date"
+                name="checkOutDate"
+                value={formData.checkOutDate}
+                onChange={handleCheckOutDateChange}
+                required
+              />
+            </label>
+            <label htmlFor="reservationDate">
+              예약시간:
+              <input
+                id="reservationDate"
+                type="text"
+                name="reservationDate"
+                value={formData.reservationDate || ''}
+                readOnly
+              />
+            </label>
+          </div>
+          <div className="modal-row">
+            <label htmlFor="roomInfo">
+              객실타입:
+              <select
+                id="roomInfo"
+                name="roomInfo"
+                value={formData.roomInfo}
+                onChange={handleInputChange}
+                required
+              >
+                {filteredRoomTypes.length > 0 ? (
+                  filteredRoomTypes.map((room, index) => (
+                    <option
+                      key={index}
+                      value={room.roomInfo}
+                      style={{
+                        color: isRoomTypeUnavailable(room.roomInfo)
+                          ? 'red'
+                          : 'inherit',
+                      }}
+                    >
+                      {room.roomInfo.charAt(0).toUpperCase() +
+                        room.roomInfo.slice(1)}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">객실 타입 없음</option>
+                )}
+              </select>
+            </label>
+            <label htmlFor="price">
+              가격 (KRW):
+              <input
+                id="price"
+                type="number"
+                name="price"
+                value={price}
+                readOnly
+                min="0"
+                step="1000"
+                required
+              />
+            </label>
+          </div>
+          <div className="modal-row">
+            <label htmlFor="paymentMethod">
+              결제방법/상태:
+              <select
+                id="paymentMethod"
+                name="paymentMethod"
+                value={formData.paymentMethod}
+                onChange={handleInputChange}
+                required
+              >
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Account Transfer">Account Transfer</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </label>
+            <label htmlFor="specialRequests">
+              고객요청:
+              <input
+                id="specialRequests"
+                type="text"
+                name="specialRequests"
+                value={formData.specialRequests}
+                onChange={handleInputChange}
+              />
+            </label>
+          </div>
+          <div className="guest-form-actions">
+            <button
+              type="button"
+              onClick={onClose}
+              className="guest-form-button guest-form-cancel"
             >
-              {filteredRoomTypes.length > 0 ? (
-                filteredRoomTypes.map((room, index) => (
-                  <option
-                    key={index}
-                    value={room.roomInfo}
-                    style={{
-                      color: isRoomTypeUnavailable(room.roomInfo)
-                        ? 'red'
-                        : 'inherit',
-                    }}
-                  >
-                    {room.roomInfo.charAt(0).toUpperCase() +
-                      room.roomInfo.slice(1)}
-                  </option>
-                ))
-              ) : (
-                <option value="">객실 타입 없음</option>
-              )}
-            </select>
-          </label>
-          <label htmlFor="price">
-            가격 (KRW):
-            <input
-              id="price"
-              type="number"
-              name="price"
-              value={price}
-              readOnly // 수동 수정 불가
-              min="0"
-              step="1000"
-              required
-            />
-          </label>
-          <label htmlFor="paymentMethod">
-            결제방법/상태:
-            <select
-              id="paymentMethod"
-              name="paymentMethod"
-              value={formData.paymentMethod}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="Card">Card</option>
-              <option value="Cash">Cash</option>
-              <option value="Account Transfer">Account Transfer</option>
-              <option value="Pending">Pending</option>
-            </select>
-          </label>
-          <label htmlFor="specialRequests">
-            고객요청:
-            <input
-              id="specialRequests"
-              type="text"
-              name="specialRequests"
-              value={formData.specialRequests}
-              onChange={handleInputChange}
-            />
-          </label>
-          <div className="modal-actions">
-            <button type="button" onClick={onClose}>
               취소
             </button>
-            <button type="submit">저장</button>
+            <button type="submit" className="guest-form-button guest-form-save">
+              저장
+            </button>
           </div>
         </form>
       </div>

@@ -907,14 +907,14 @@ export default function HotelSettingsPage() {
   return (
     <div className="hotel-settings-page">
       <h1>호텔 설정</h1>
-      <div className="button-group">
-        <button className="action-btn" onClick={() => navigate('/')}>
+      <div className="hotel-settings-button-group">
+        <button className="hotel-settings-btn" onClick={() => navigate('/')}>
           메인으로
         </button>
-        <button className="action-btn" onClick={handleLoadDefault}>
+        <button className="hotel-settings-btn" onClick={handleLoadDefault}>
           디폴트 불러오기
         </button>
-        <button className="action-btn" onClick={handleCancel}>
+        <button className="hotel-settings-btn" onClick={handleCancel}>
           취소
         </button>
       </div>
@@ -1003,7 +1003,7 @@ export default function HotelSettingsPage() {
         />
       </DndProvider>
       <div className="save-section">
-        <button className="action-btn save-btn" onClick={handleSaveAll}>
+        <button className="hotelsetting-all-save" onClick={handleSaveAll}>
           전체 저장
         </button>
       </div>
