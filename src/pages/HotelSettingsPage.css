@@ -410,7 +410,7 @@ html {
   display: flex;
   flex-direction: column;
   padding: 10px;
-  border: 1px solid #d0d0d0;
+  border: 1px solid #f9f8f8;
   border-radius: 6px;
   width: 160px;
   background-color: var(--container-bg);
@@ -419,7 +419,7 @@ html {
 }
 .container-box.empty {
   background-color: #f8f8f8;
-  border: 2px dashed #aaa;
+  border: 2px dashed #ffffff;
   opacity: 0.6;
   color: #999;
 }
