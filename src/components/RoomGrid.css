@@ -266,6 +266,7 @@
    [Flip Effect & Other Card Styles]
    (플립 및 드래그 관련 스타일은 기존 그대로 유지)
 ========================================================================== */
+
 .flip-container {
   perspective: 1000px;
   height: 100%;
@@ -402,6 +403,10 @@
   box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px,
     rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
 }
+.content-footer-wrapper:hover {
+  background-color: rgb(194, 221, 238);
+}
+
 .card-content {
   padding: 8px;
   flex: 1;
@@ -547,4 +552,16 @@
   justify-content: space-between; /* 좌우 배치 */
   gap: 10px; /* 사이트이름과 버튼 사이 여백 */
   width: 90%;
+}
+
+
+
+.room-card.highlighted {
+  border: 3px solid #00ff2f; /* 빨간 테두리 */
+  animation: highlightBlink 1s infinite;
+}
+@keyframes highlightBlink {
+  0% { box-shadow: 0 0 10px #ff0000; }
+  50% { box-shadow: 0 0 20px #ff0000; }
+  100% { box-shadow: 0 0 10px #ff0000; }
 }
