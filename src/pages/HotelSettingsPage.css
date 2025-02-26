@@ -1,381 +1,215 @@
-/* HotelSettingsPage.css (수정된 부분) */
-.room-types-section {
-  padding: 20px;
+/* ==========================================================================
+   1. GLOBAL VARIABLES & RESET
+========================================================================== */
+:root {
+  /* 예약 카드 기본 크기 */
+  --card-width: 280px;
+  --card-height: 360px;
+  --card-header-height: 40px;
+  --card-footer-height: 30px;
+  --card-body-height: calc(var(--card-height) - var(--card-header-height) - var(--card-footer-height));
+
+  /* 색상 및 기타 스타일 */
+  --room-card-background-color: #ffffff;
+  --room-card-border: #cccccc;
+  --room-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+  --cell-bg: #ffffff;
+  --cell-border: #dddddd;
+
+  --header-bg: #f8f9fa;
+  --footer-bg: #f3f3f3;
+
+  --action-btn-bg: #27ae60;
+  --action-btn-color: #ffffff;
+
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --min-gap: 16px;
 }
 
-.room-types-section .room-types-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  max-width: 100%;
-}
-
-.room-type-item {
-  flex: 0 0 calc(33.33% - 13.33px);
-  width: calc(33.33% - 13.33px);
-  min-width: 250px;
-  max-width: 400px;
-  background-color: #fdfdfd;
-  border: 1px solid #e8ecef;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.room-type-header {
-  display: flex;
-  align-items: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #2980b9;
-  margin-bottom: 10px;
-}
-
-.room-type-header svg {
-  margin-right: 10px;
-}
-
-.room-type-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.field-row {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-}
-
-.room-type-fields input,
-.room-type-aliases input {
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  background-color: #fafafa;
-  flex: 1; /* 입력 필드 크기 균등화 */
-}
-
-.room-type-fields .name-kor,
-.room-type-fields .name-eng,
-.room-type-fields .price,
-.room-type-fields .stock {
-  flex: 1; /* 각 입력 필드 크기 동일 */
-}
-
-.room-type-fields .remove-btn {
-  padding: 8px;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  flex: 0; /* 삭제 버튼 크기 고정 */
-}
-
-.room-type-fields .remove-btn:hover {
-  background-color: #c82333;
-}
-
-.room-type-aliases {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-/* 나머지 스타일 유지 */
-.room-numbers {
-  margin-top: 10px;
-}
-
-.room-numbers h4 {
-  font-size: 14px;
-  color: #7f8c8d;
-  margin-bottom: 5px;
-}
-
-.room-numbers div {
-  font-size: 12px;
-  color: #2c3e50;
-  padding: 6px;
-  background-color: #ecf0f1;
-  border-radius: 4px;
-}
-
-.room-type-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.layout-editor-section .layout-header {
-  display: flex;
-  align-items: center;
-  gap: 10px; /* 버튼과 텍스트 간 간격 줄임 */
-  margin-bottom: 15px;
-}
-
-.layout-editor-section h2 {
-  font-size: 24px;
-  color: #34495e;
-  margin: 0;
-}
-
-.layout-editor-section .undo-btn {
-  background-color: #6c757d;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.layout-editor-section .undo-btn:hover {
-  background-color: #5a6268;
-}
-
-.layout-editor-section .floor-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.layout-editor-section .floor-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background-color: #fafafa;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #e8ecef;
-}
-
-.floor-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 20px;
-}
-
-.floor-row h3 {
-  font-size: 18px;
-  color: #34495e;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-}
-
-.floor-row .remove-icon {
-  cursor: pointer;
-  color: #dc3545;
-  transition: color 0.3s ease;
-}
-
-.floor-row .remove-icon:hover {
-  color: #c82333;
-}
-
-.action-btn.add-room-btn,
-.action-btn.generate-btn {
-  position: relative;
-}
-
-.action-btn.add-room-btn::after,
-.action-btn.generate-btn::after {
-  content: attr(title);
-  position: absolute;
-  bottom: -25px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease;
-}
-
-.action-btn.add-room-btn:hover::after,
-.action-btn.generate-btn:hover::after {
-  opacity: 1;
-  visibility: visible;
-}
-
-.containers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  position: relative; /* 컨테이너 내 버튼 위치 조정용 */
-}
-
-.container-box {
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  width: 160px;
-  background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-.container-box.empty {
-  background-color: #f8f8f8;
-  border: 2px dashed #aaa;
-  opacity: 0.6;
-  color: #999;
-}
-
-.container-box select,
-.container-box input {
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  background-color: #fafafa;
-}
-
-.container-box .delete-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.container-box .delete-btn:hover {
-  background-color: #c82333;
-}
-
-.save-section {
-  text-align: center;
-  margin-top: 30px;
-}
-
-.hotel-settings-page {
-  width: 2200px;
-  margin: 0 auto;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow-y: auto;
-  height: 100vh;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-  background-color: #f5f6f5;
+  margin: 0;
+  padding: 0;
 }
 
-h1 {
+body,
+html {
+  font-family: var(--font-family);
+  background-color: #f5f6f5;
+  color: #2c3e50;
+  padding: var(--min-gap);
+  overflow-y: auto;
+}
+
+/* ==========================================================================
+   2. ROOM GRID CONTAINER
+========================================================================== */
+.layout-grid {
+  /* 사용 가능한 공간에 따라 카드가 400px까지 확장됨 */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 400px));
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   3. ROOM CELL (컨테이너)
+========================================================================== */
+.room-cell {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--cell-bg);
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: var(--card-width);
+  min-height: var(--card-height);
+}
+.room-cell-header {
+  flex: 0 0 40px;
+  background-color: #e9ecef;
+  border-bottom: 1px solid var(--cell-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0 8px;
+}
+.room-cell-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   4. RESERVATION CARD (예약카드)
+========================================================================== */
+.reservation-card {
+  width: var(--card-width);
+  height: var(--card-height);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--room-card-background-color);
+  border: 2px solid var(--room-card-border);
+  border-radius: 8px;
+  box-shadow: var(--room-card-shadow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.reservation-card-header {
+  flex: 0 0 var(--card-header-height);
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--cell-border);
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+.reservation-card-body {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+.reservation-card-footer {
+  flex: 0 0 var(--card-footer-height);
+  background-color: var(--footer-bg);
+  border-top: 1px solid var(--cell-border);
+  text-align: center;
+  font-size: 0.85rem;
+  padding: 4px;
+}
+
+/* ==========================================================================
+   5. ACTION BUTTONS (예약카드 헤더 내)
+========================================================================== */
+.reservation-card-header .action-buttons {
+  display: flex;
+  gap: 4px;
+}
+.reservation-card-header .action-button {
+  background-color: var(--action-btn-bg);
+  color: var(--action-btn-color);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.reservation-card-header .action-button:hover {
+  transform: scale(1.05);
+}
+
+/* ==========================================================================
+   6. RESPONSIVE & MINIMUM SIZE
+========================================================================== */
+.reservation-card,
+.room-cell {
+  min-width: var(--card-width);
+  min-height: var(--card-height);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   7. HOTEL SETTINGS PAGE LAYOUT
+========================================================================== */
+.hotel-settings-page {
+  max-width: 2200px;
+  margin: 0 auto;
+  padding: var(--min-gap);
+  background-color: #f5f6f5;
+  min-height: 100vh;
+}
+.hotel-settings-page h1 {
   font-size: 32px;
-  margin-bottom: 20px;
+  margin-bottom: var(--min-gap);
   text-align: center;
   color: #2c3e50;
 }
-
-.button-group {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 25px;
-}
-
 .action-btn {
   padding: 10px 20px;
   font-size: 16px;
-  background-color: #3498db;
-  color: white;
+  background-color: var(--primary-color, #3498db);
+  color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-
 .action-btn:hover {
   background-color: #2980b9;
 }
 
-.action-btn.add-btn {
-  background-color: #28a745;
-}
-
-.action-btn.add-btn:hover {
-  background-color: #218838;
-}
-
-.action-btn.generate-btn {
-  background-color: #17a2b8;
-}
-
-.action-btn.generate-btn:hover {
-  background-color: #138496;
-}
-
-.action-btn.add-room-btn {
-  background-color: #28a745;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.action-btn.add-room-btn:hover {
-  background-color: #218838;
-}
-
-.action-btn.change-pw-btn {
-  background-color: #6c757d;
-  margin-top: 10px;
-}
-
-.action-btn.change-pw-btn:hover {
-  background-color: #5a6268;
-}
-
-.error-message {
-  color: #dc3545;
-  font-size: 16px;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-section {
+/* 호텔 정보 섹션 */
+.hotel-info-section {
   margin-bottom: 30px;
   padding: 20px;
-  border: 1px solid #e0e0e0;
+  background-color: var(--room-card-background-color);
+  border: 1px solid var(--cell-border);
   border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-
-h2 {
-  font-size: 24px;
-  margin-bottom: 15px;
-  color: #34495e;
-}
-
 .hotel-info-section .info-columns {
   display: flex;
   gap: 40px;
+  flex-wrap: wrap;
 }
-
 .basic-info,
 .account-info {
   flex: 1;
   padding: 10px;
 }
-
 .basic-info label,
 .account-info label {
   display: block;
@@ -383,7 +217,6 @@ h2 {
   font-size: 18px;
   color: #2c3e50;
 }
-
 .basic-info input,
 .account-info input {
   width: 100%;
@@ -393,4 +226,230 @@ h2 {
   border: 1px solid #d0d0d0;
   border-radius: 6px;
   background-color: #fafafa;
+}
+
+/* ROOM TYPES SECTION */
+.room-types-section {
+  padding: 20px;
+  background-color: var(--room-card-background-color);
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.room-types-section h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #34495e;
+}
+.room-types-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  max-width: 100%;
+}
+.room-type-item {
+  flex: 0 0 calc(33.33% - 13.33px);
+  width: calc(33.33% - 13.33px);
+  min-width: 250px;
+  max-width: 400px;
+  background-color: #fdfdfd;
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.room-type-header {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2980b9;
+  margin-bottom: 10px;
+}
+.room-type-header svg {
+  margin-right: 10px;
+}
+.room-type-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.field-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.room-type-fields input,
+.room-type-aliases input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background-color: #fafafa;
+  flex: 1;
+}
+.room-type-fields .remove-btn {
+  padding: 8px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.room-type-fields .remove-btn:hover {
+  background-color: #c82333;
+}
+.room-type-aliases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.room-numbers {
+  margin-top: 10px;
+}
+.room-numbers h4 {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+.room-numbers div {
+  font-size: 12px;
+  color: #2c3e50;
+  padding: 6px;
+  background-color: #ecf0f1;
+  border-radius: 4px;
+}
+.room-type-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* LAYOUT EDITOR SECTION */
+.layout-editor-section {
+  padding: 20px;
+  background-color: var(--room-card-background-color);
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.layout-editor-section .layout-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.layout-editor-section h2 {
+  font-size: 24px;
+  color: #34495e;
+  margin: 0;
+}
+.layout-editor-section .undo-btn {
+  background-color: #6c757d;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.layout-editor-section .undo-btn:hover {
+  background-color: #5a6268;
+}
+
+/* FLOOR GRID & ROWS */
+.floor-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.floor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #fafafa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid var(--cell-border);
+}
+.floor-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+}
+.floor-row h3 {
+  font-size: 18px;
+  color: #34495e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.floor-row .remove-icon {
+  cursor: pointer;
+  color: #dc3545;
+  transition: color 0.3s ease;
+}
+.floor-row .remove-icon:hover {
+  color: #c82333;
+}
+
+/* CONTAINERS */
+.containers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  position: relative;
+}
+.container-box {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  width: 160px;
+  background-color: var(--container-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: relative;
+}
+.container-box.empty {
+  background-color: #f8f8f8;
+  border: 2px dashed #aaa;
+  opacity: 0.6;
+  color: #999;
+}
+.container-box select,
+.container-box input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background-color: #fafafa;
+}
+.container-box .delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.container-box .delete-btn:hover {
+  background-color: #c82333;
+}
+
+/* SAVE SECTION */
+.save-section {
+  text-align: center;
+  margin-top: 30px;
 }

@@ -213,8 +213,11 @@ const DraggableReservationCard = React.memo(
               <div className="content-footer-wrapper">
                 <div className="card-content">
                   <div className="card-header">
-                    <h3>
-                      {stayLabel} {renderActionButtons(reservation)}
+                    <h3 className="no-break">
+                      <span className="stay-label">{stayLabel}</span>
+                      <span className="button-group-wrapper">
+                        {renderActionButtons(reservation)}
+                      </span>
                     </h3>
                   </div>
                   <p>{reservation._id.replace(`${hotelId}-`, '')}</p>
@@ -534,7 +537,8 @@ const ContainerCell = React.memo(
           borderRadius: '8px',
           padding: '8px',
           position: 'relative',
-          minHeight: '200px',
+          minHeight: '340px',
+          minWidth: '280px',
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}
       >
@@ -1468,15 +1472,8 @@ function RoomGrid({
             .reverse()
             .map((floor) => (
               <div key={floor.floorNum} className="floor-section">
-                <h3>{floor.floorNum}층</h3>
-                <div
-                  className="layout-grid"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, minmax(200px, 1fr))', // 7개의 열로 고정
-                    gap: '10px',
-                  }}
-                >
+                {/* <h3>{floor.floorNum}층</h3>  <-- 제거 */}
+                <div className="layout-grid">
                   {getSortedContainersWithGaps(
                     floor.containers,
                     floor.floorNum
