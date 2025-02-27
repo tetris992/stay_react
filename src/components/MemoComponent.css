@@ -1,0 +1,120 @@
+/* MemoComponent.css */
+
+:root {
+  --card-width: 100%;
+  --card-height: 360px;
+  --card-header-height: 40px;
+  --card-footer-height: 30px;
+  --card-body-height: calc(
+    var(--card-height) - var(--card-header-height) - var(--card-footer-height)
+  );
+
+  --room-card-background-color: #ffffff;
+  --room-card-border: #e0e0e0;
+  --room-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --button-gap: 8px;
+
+  /* 색상 변수 추가 */
+  --color-accent-coral: #ff6347; /* 산호색 (1박) */
+  --color-primary-deep-blue: #2196f3; /* 진한 파란색 (2박 이상) */
+  --color-primary-soft-green: #4caf50; /* 연한 초록색 (대실) */
+}
+
+/* 테두리 색상 클래스 정의 */
+.border-primary-soft-green {
+  border: 2px solid var(--color-primary-soft-green); /* 연한 초록색 (대실) */
+}
+
+.border-accent-coral {
+  border: 2px solid var(--color-accent-coral); /* 산호색 (1박) */
+}
+
+.border-primary-deep-blue {
+  border: 2px solid var(--color-primary-deep-blue); /* 진한 파란색 (2박 이상) */
+}
+
+/* 메모 전체 컨테이너 */
+.memo-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 메모 헤더 (제목 및 버튼 영역) */
+.memo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #919191;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+}
+
+/* 메모 룸 번호 */
+.memo-room-number {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 1.2rem;
+}
+
+/* 메모 편집 버튼 */
+.memo-edit-button,
+.memo-cancel-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+/* 메모 편집 버튼 호버 효과 */
+.memo-edit-button:hover {
+  color: #f1c40f;
+  transform: scale(1.2);
+}
+
+/* 메모 취소 버튼 호버 효과 */
+.memo-cancel-button:hover {
+  color: #d32f2f;
+  transform: scale(1.2);
+}
+
+/* 메모 본문 */
+.memo-body {
+  flex: 1;
+  padding: 5px 10px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 0 0 5px 5px;
+}
+
+/* 메모 입력 textarea */
+.memo-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 5px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #333;
+}
+
+/* 메모 읽기 전용 표시 */
+.memo-text-display {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 1rem;
+  line-height: 1.4;
+  color: #333;
+}
