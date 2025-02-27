@@ -222,8 +222,9 @@ const DraggableReservationCard = ({
     }
   };
 
-  // 카드 전체 클릭 시 호출되는 함수 (편집모드이면 아무 동작도 하지 않음)
+  // 카드 전체 클릭 시 (미배정은 플립하지 않음)
   const handleCardClick = (e) => {
+    if (isUnassigned) return;
     if (isDragging || isEditingCard || isEditingMemo) return;
     handleCardFlip(reservation._id);
   };
@@ -240,6 +241,7 @@ const DraggableReservationCard = ({
         transform: isEditingCard ? 'scale(1.2)' : 'scale(1)',
         zIndex: isEditingCard ? 1000 : 'auto',
         position: isEditingCard ? 'relative' : 'static',
+        backgroundColor: isUnassigned ? '#f0f0f0' : undefined,
       }}
       onClick={handleCardClick}
     >
@@ -250,7 +252,7 @@ const DraggableReservationCard = ({
           perspective: '1000px',
         }}
       >
-        <div className="room-card-inner">
+        <div className="room-card-inner" style={{ backgroundColor: '#f0f0f0' }}>
           <div
             className="room-card-front"
             style={{ backfaceVisibility: 'hidden' }}
