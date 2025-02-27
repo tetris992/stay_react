@@ -1,4 +1,3 @@
-// UnassignedReservationsPanel.js
 import React, { useMemo } from 'react';
 import { format } from 'date-fns';
 
@@ -26,7 +25,14 @@ const UnassignedReservationsPanel = ({ reservations }) => {
   if (unassigned.length === 0) return null;
 
   return (
-    <div className="unassigned-reservations-panel" style={{ marginBottom: '1rem', border: '1px solid #ccc', padding: '0.5rem' }}>
+    <div
+      className="unassigned-reservations-panel"
+      style={{
+        marginBottom: '1rem',
+        border: '1px solid #ccc',
+        padding: '0.5rem',
+      }}
+    >
       <h3>
         미배정 예약: {unassigned.length}건{' '}
         {unassignedDates.length > 0 && (
@@ -35,10 +41,30 @@ const UnassignedReservationsPanel = ({ reservations }) => {
           </span>
         )}
       </h3>
-      <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+      <ul
+        style={{
+          listStyle: 'none',
+          paddingLeft: 0,
+          display: 'flex',         // 수평 배치
+          flexWrap: 'wrap',         // 화면 크기에 따라 줄바꿈
+          gap: '8px',
+        }}
+      >
         {unassigned.map((res) => (
-          <li key={res._id}>
-            {res.customerName} - 체크인: {format(new Date(res.checkIn), 'MM/dd')}
+          <li
+            key={res._id}
+            style={{
+              border: '1px solid #ccc',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ marginRight: '4px' }}>#</span>
+            <span>
+              {res.customerName} - 체크인:{' '}
+              {res.checkIn ? format(new Date(res.checkIn), 'MM/dd') : '미정'}
+            </span>
           </li>
         ))}
       </ul>
@@ -47,4 +73,3 @@ const UnassignedReservationsPanel = ({ reservations }) => {
 };
 
 export default UnassignedReservationsPanel;
- 

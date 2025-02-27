@@ -1,0 +1,546 @@
+/* DraggableReservationCard.css */
+
+/* ==========================================================================
+   [Reservation Card]
+========================================================================== */
+.room-card {
+    width: var(--card-width);
+    height: var(--card-height);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--room-card-background-color);
+    border: 2px solid var(--room-card-border);
+    border-radius: 8px;
+    box-shadow: var(--room-card-shadow);
+    overflow: hidden;
+    margin: 5px;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: opacity 0.2s ease-in-out, transform 0.3s ease-in-out;
+  }
+  
+  .room-card.cancelled {
+    background-color: #ffebee;
+    border-color: #ffcdd2;
+  }
+  
+  .room-card.highlighted {
+    border: 3px solid #00ff2f;
+    animation: highlightBlink 1s infinite;
+  }
+  
+  .room-card.onsite-created {
+    animation: highlightPulse 10s;
+    background-color: rgb(220, 249, 220);
+  }
+  
+  .room-card.edit-mode {
+    margin-left: 100px;
+    width: 500px;
+    height: 470px;
+    background: #ffffff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border: 2px solid #1a237e;
+    border-radius: 8px;
+    padding: 30px;
+    position: relative;
+    z-index: 1000;
+    transform: scale(1.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-weight: 700;
+  }
+  
+  @keyframes highlightBlink {
+    0% {
+      box-shadow: 0 0 10px #ff0000;
+    }
+    50% {
+      box-shadow: 0 0 20px #ff0000;
+    }
+    100% {
+      box-shadow: 0 0 10px #ff0000;
+    }
+  }
+  
+  @keyframes highlightPulse {
+    0% {
+      box-shadow: 0 0 50px #1b1b1b;
+    }
+    100% {
+      box-shadow: 0 0 0 #c4f4c3;
+    }
+  }
+  
+  /* ==========================================================================
+     [Flip Effect]
+  ========================================================================== */
+  .flip-container {
+    perspective: 1000px;
+    height: 100%;
+  }
+  
+  .room-card-inner {
+    min-width: 280px;
+    max-height: 360px;
+    box-sizing: border-box;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+  
+  .flip-container.flipped .room-card-inner {
+    transform: rotateY(180deg);
+  }
+  
+  .room-card-back {
+    transform: rotateY(180deg);
+    padding: 0;
+    box-sizing: border-box;
+    backface-visibility: hidden;
+  }
+  
+  .room-card-back::before {
+    display: none;
+    backface-visibility: hidden;
+  }
+  
+  .room-card.flipped:hover,
+  .room-card.flipped:hover::before {
+    transform: none !important;
+    background-color: var(--room-card-background-color) !important;
+    z-index: auto !important;
+  }
+  
+  .flip-container.auto-flip .room-card-inner {
+    animation: autoFlip 1s ease-in-out;
+  }
+  
+  @keyframes autoFlip {
+    0% {
+      transform: rotateY(0deg);
+    }
+    50% {
+      transform: rotateY(-30deg);
+    }
+    100% {
+      transform: rotateY(0deg);
+    }
+  }
+  
+  .flipped .room-card-inner {
+    transform: rotateY(180deg);
+  }
+  
+  /* ==========================================================================
+     [Card Content]
+  ========================================================================== */
+  .content-footer-wrapper {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-width: 320px;
+    height: 100%;
+    gap: 10px;
+    padding: 8px;
+    padding-left: 10px;
+    border: 2px solid var(--room-card-border);
+    border-radius: 8px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px,
+      rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+  }
+  
+  .content-footer-wrapper:hover {
+    background-color: rgb(194, 221, 238);
+  }
+  
+  .card-content {
+    padding: 8px;
+    flex: 1;
+  }
+  
+  .card-header {
+    margin-bottom: 5px;
+  }
+  
+  .no-break {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    margin-bottom: 5px;
+    z-index: 1000;
+    height: 28px;
+  }
+  
+  .stay-label {
+    font-weight: bold;
+  }
+  
+  .button-group-wrapper {
+    display: flex;
+    gap: 6px;
+    margin: 0px 5px;
+  }
+  
+  .site-info-footer {
+    margin-top: 5%;
+    padding-top: 5px;
+    border-top: 1px solid #ddd;
+    flex-shrink: 0;
+  }
+  
+  .site-info-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 90%;
+    padding: 5px 5px;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  
+  .payment-method {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+  }
+  
+  .payment-icon {
+    vertical-align: middle;
+  }
+  
+  /* ==========================================================================
+     [Action Buttons]
+  ========================================================================== */
+  .button-group {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    box-sizing: border-box;
+    width: 120px;
+    position: relative;
+    height: 28px;
+    overflow: hidden;
+  }
+  
+  .action-button {
+    font-size: 0.8rem;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    height: 28px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.3s ease, background-color 0.3s ease;
+    border-radius: 4px;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+    width: 40px;
+    z-index: 2;
+  }
+  
+  .action-button span {
+    display: inline-block;
+    transition: transform 0.3s ease;
+  }
+  
+  /* 배경 채우기 애니메이션 */
+  .action-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: width 0.3s ease;
+    z-index: -1;
+  }
+  
+  .delete-button {
+    background-color: var(--color-accent-coral);
+    color: #f00d0d;
+  }
+  
+  .delete-button:hover {
+    background-color: #e57373;
+    width: 120px;
+  }
+  
+  .delete-button:hover::before {
+    width: 100%;
+  }
+  
+  .delete-button:hover span {
+    transform: translateY(-2px);
+  }
+  
+  .confirm-button {
+    background-color: var(--color-primary-deep-blue);
+    color: #1018f9;
+  }
+  
+  .confirm-button:hover {
+    background-color: #3f51b5;
+    width: 120px;
+  }
+  
+  .confirm-button:hover::before {
+    width: 100%;
+  }
+  
+  .confirm-button:hover span {
+    transform: translateY(-2px);
+  }
+  
+  .edit-button {
+    background-color: var(--color-primary-soft-green);
+    color: #383938;
+  }
+  
+  .edit-button:hover {
+    background-color: #81c784;
+    width: 120px;
+  }
+  
+  .edit-button:hover::before {
+    width: 100%;
+  }
+  
+  .edit-button:hover span {
+    transform: translateY(-2px);
+  }
+  
+  /* 호버 시 다른 버튼 숨기기 */
+  .button-group:hover .action-button:not(:hover) {
+    opacity: 0;
+    width: 0;
+    padding: 0;
+    transition: all 0.3s ease;
+  }
+  
+  .small-button {
+    opacity: 0.95;
+    font-size: 0.95rem;
+    padding: 6px 8px;
+  }
+  
+  .small-button:hover {
+    opacity: 1;
+  }
+  
+  /* ==========================================================================
+     [Invoice Button]
+  ========================================================================== */
+  .invoice-icon-button-back {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #666e76;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .invoice-icon-button-back:hover {
+    color: rgb(186, 32, 233);
+    transform: scale(1.5);
+  }
+  
+  /* ==========================================================================
+     [Memo Section inside Card Back]
+  ========================================================================== */
+  .reservation-list {
+    position: relative;
+  }
+  
+  .memo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #919191;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px 5px 0 0;
+    cursor: pointer;
+    z-index: 1;
+  }
+  
+  .memo-body {
+    flex: 1;
+    padding: 5px 10px;
+    overflow-y: auto;
+    background-color: transparent;
+    color: #000;
+  }
+  
+  .memo-text-display {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 1rem;
+    line-height: 1.4;
+    color: rgb(58, 77, 91);
+  }
+  
+  .memo-textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 250px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 5px;
+    box-sizing: border-box;
+    font-size: 1.2rem;
+  }
+  
+  .memo-room-number {
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 1.2rem;
+  }
+  
+  .memo-edit-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .memo-edit-button:hover {
+    color: #f1c40f;
+    transform: scale(1.2);
+  }
+  
+  /* ==========================================================================
+     [Edit Mode]
+  ========================================================================== */
+  .edit-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    background: #ffffff;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  
+  .edit-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    padding: 5px 0;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .edit-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1a237e;
+    margin: 0;
+  }
+  
+  .edit-card-header .close-button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.3s ease;
+  }
+  
+  .edit-card-header .close-button:hover {
+    color: #d32f2f;
+  }
+  
+  .edit-card-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  
+  .edit-card-row label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-weight: 500;
+    color: #333;
+    font-size: 0.9rem;
+  }
+  
+  .edit-card-row input,
+  .edit-card-row select {
+    margin-top: 5px;
+    padding: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: #fff;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  
+  .edit-card-row input:focus,
+  .edit-card-row select:focus {
+    border-color: #1a237e;
+    box-shadow: 0 0 5px rgba(26, 35, 126, 0.2);
+    outline: none;
+  }
+  
+  .edit-card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 100px;
+    margin-top: 10px;
+    padding-top: 5px;
+    border-top: 1px solid #ddd;
+  }
+  
+  .edit-card-actions button {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    flex: 2;
+    max-width: 100px;
+    font-weight: 600;
+  }
+  
+  .edit-card-actions .save-button {
+    background-color: #1a237e;
+    color: #fff;
+  }
+  
+  .edit-card-actions .save-button:hover {
+    background-color: #142a6b;
+    transform: scale(1.05);
+  }
+  
+  .edit-card-actions .cancel-button {
+    background-color: #e57373;
+    color: #fff;
+  }
+  
+  .edit-card-actions .cancel-button:hover {
+    background-color: #d32f2f;
+    transform: scale(1.05);
+  }

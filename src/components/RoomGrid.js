@@ -1283,7 +1283,7 @@ function RoomGrid({
                   alignItems: 'center',
                 }}
               >
-                <h3>미배정 예약: {unassignedReservations.length}건</h3>
+                <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
                 <button
                   className="unassigned-header-title-button"
                   onClick={() => setShowUnassignedPanel(false)}
@@ -1333,7 +1333,7 @@ function RoomGrid({
                   marginBottom: '15px',
                 }}
               >
-                미배정 열기
+                당일 미배정 열기
               </button>
             )
           )}

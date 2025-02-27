@@ -680,8 +680,10 @@
 
 .unassigned-header {
   display: flex;
-  /* justify-content: space-evenly; */
+  background-color: rgb(197, 195, 195);
+  justify-content: center;
   align-items: center;
+  margin: 30px;
 }
 
 .unassigned-header-title-button {
