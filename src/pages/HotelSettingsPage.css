@@ -588,3 +588,85 @@ html {
   background-color: #6c757d;
   opacity: 0.9;
 }
+
+
+/* 기존 스타일 유지 */
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price-input-container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.price-input-container input[type="number"] {
+  border: none;
+  outline: none;
+  width: 100px;
+  padding: 5px;
+  font-size: 14px;
+}
+
+/* 스피너(화살표 버튼) 제거 */
+.price-input-container input[type="number"]::-webkit-inner-spin-button,
+.price-input-container input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.price-input-container input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.price-buttons {
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+}
+
+.price-btn {
+  padding: 1px 2px;
+  font-size: 11px;
+  margin: 0px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  width: 30px;
+  height: 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  border-left: 1px solid #ccc;
+}
+
+.price-btn.increment {
+  background-color: #28a745;
+  color: white;
+  border-bottom: 1px solid #ccc;
+}
+
+.price-btn.decrement {
+  background-color: #dc3545;
+  color: white;
+}
+
+.price-btn:hover {
+  opacity: 0.8;
+}
+
+/* 객실 수 입력 필드 스타일 조정 */
+.stock {
+  width: 80px;
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+}
