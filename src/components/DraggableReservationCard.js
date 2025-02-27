@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+// eslint-disable-next-line
+import React, { useState, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays } from 'date-fns';
@@ -11,6 +12,7 @@ import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import './DraggableReservationCard.css';
 
 const DraggableReservationCard = ({
+  isUnassigned,
   reservation,
   hotelId,
   highlightedReservationIds,
@@ -30,14 +32,26 @@ const DraggableReservationCard = ({
     type: 'RESERVATION',
     item: { reservationId: reservation._id, reservationData: reservation },
     canDrag: () =>
-      !flippedReservationIds.has(reservation._id) && !isEditingCard,
+      !flippedReservationIds.has(reservation._id) &&
+      !isEditingCard &&
+      !isEditingMemo, // 입력 모드에서는 드래그 비활성화
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [editedValues, setEditedValues] = useState({});
   const [isOpen, setIsOpen] = useState(false);
+  // 메모 편집 상태를 명시적으로 관리 (toggleMemoEdit 사용)
   const [isEditingMemo, setIsEditingMemo] = useState(false);
+
+  // 새로 정의: toggleMemoEdit - 두 번째 인자로 newState(boolean)가 있으면 해당 값으로, 없으면 토글
+  const toggleMemoEdit = (reservationId, newState) => {
+    if (typeof newState === 'boolean') {
+      setIsEditingMemo(newState);
+    } else {
+      setIsEditingMemo((prev) => !prev);
+    }
+  };
 
   const isFlipped = flippedReservationIds.has(reservation._id);
   const isHighlighted =
@@ -86,6 +100,7 @@ const DraggableReservationCard = ({
     'room-card',
     getBorderColor(reservation),
     isCancelled ? 'cancelled' : '',
+    isUnassigned ? 'unassigned-card' : '', // 미배정 전용 클래스
     isHighlighted ? 'highlighted' : '',
     isNewlyCreated ? 'onsite-created' : '',
     isEditingCard ? 'edit-mode' : '',
@@ -182,22 +197,35 @@ const DraggableReservationCard = ({
     });
   };
 
-  const toggleMemoEdit = (reservationId) => {
-    setIsEditingMemo((prev) => !prev);
-  };
-
+  // MemoComponent에 전달하는 콜백들
   const handleMemoChange = (reservationId, value) => {
     console.log(`Memo changed for ${reservationId}: ${value}`);
   };
 
   const handleMemoSave = (reservationId) => {
-    setIsEditingMemo(false);
+    // 저장 후 편집 모드 닫기
+    toggleMemoEdit(reservationId, false);
     console.log(`Memo saved for ${reservationId}`);
+    // 저장 후, 카드가 뒷면 상태라면 앞면으로 플립 (딜레이 100ms)
+    if (isFlipped) {
+      setTimeout(() => {
+        handleCardFlip(reservation._id);
+      }, 100);
+    }
   };
 
   const handleMemoCancel = (reservationId) => {
-    setIsEditingMemo(false);
+    toggleMemoEdit(reservationId, false);
     console.log(`Memo cancelled for ${reservationId}`);
+    if (isFlipped) {
+      handleCardFlip(reservation._id);
+    }
+  };
+
+  // 카드 전체 클릭 시 호출되는 함수 (편집모드이면 아무 동작도 하지 않음)
+  const handleCardClick = (e) => {
+    if (isDragging || isEditingCard || isEditingMemo) return;
+    handleCardFlip(reservation._id);
   };
 
   return (
@@ -213,10 +241,7 @@ const DraggableReservationCard = ({
         zIndex: isEditingCard ? 1000 : 'auto',
         position: isEditingCard ? 'relative' : 'static',
       }}
-      onClick={(e) => {
-        if (isDragging || isEditingCard || isEditingMemo) return;
-        handleCardFlip(reservation._id);
-      }}
+      onClick={handleCardClick}
     >
       <div
         className={`flip-container ${isFlipped ? 'flipped' : ''}`}
@@ -308,9 +333,14 @@ const DraggableReservationCard = ({
             <div
               className="room-card-back"
               style={{ backfaceVisibility: 'hidden' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick(e);
+              }}
             >
               <MemoComponent
                 reservationId={reservation._id}
+                reservationName={reservation.customerName || '예약자 없음'}
                 isEditingMemo={isEditingMemo}
                 memoRefs={memoRefs}
                 onMemoChange={handleMemoChange}
@@ -462,6 +492,7 @@ const DraggableReservationCard = ({
 };
 
 DraggableReservationCard.propTypes = {
+  isUnassigned: PropTypes.bool, // 미배정 카드 여부
   reservation: PropTypes.object.isRequired,
   hotelId: PropTypes.string.isRequired,
   highlightedReservationIds: PropTypes.array.isRequired,
@@ -476,6 +507,10 @@ DraggableReservationCard.propTypes = {
   isNewlyCreatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
+};
+// 기본값 false
+DraggableReservationCard.defaultProps = {
+  isUnassigned: false,
 };
 
 export default DraggableReservationCard;

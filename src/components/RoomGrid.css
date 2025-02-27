@@ -22,7 +22,6 @@
   --color-primary-soft-green: #4caf50; /* 연한 초록색 (대실) */
 }
 
-
 /* 테두리 색상 클래스 정의 */
 .border-primary-soft-green {
   border: 2px solid var(--color-primary-soft-green); /* 연한 초록색 (대실) */
@@ -39,14 +38,6 @@
 .room-card {
   width: var(--card-width);
   height: var(--card-height);
-  display: flex;
-  flex-direction: column;
-  background-color: var(--room-card-background-color);
-  border: 2px solid var(--room-card-border);
-  border-radius: 8px;
-  box-shadow: var(--room-card-shadow);
-  overflow: hidden;
-  margin: 5px;
 }
 
 /* 상단 영역: 헤더와 바디를 묶음 */
@@ -494,6 +485,80 @@
   width: 90%;
 }
 
+/* ===============================
+   [Unassigned Reservations Section]
+=============================== */
+
+/* 미배정 예약 카드 전용 스타일 */
+.unassigned-card {
+  background-color: #eed142; /* 원하는 배경색 */
+  transform: scale(0.95); /* 크기 축소 */
+  transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* 호버 시 약간 원래 크기에 가깝게 */
+.unassigned-card:hover {
+  transform: scale(0.98);
+  background-color: #eed142; /* 원하는 배경색 */
+}
+
+
+.unassigned-section {
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+
+.unassigned-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.unassigned-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.unassigned-header-title-button {
+  background-color: #cccccc;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  
+}
+
+.unassigned-header-title-button:hover {
+  background-color: #aaaaaa;
+}
+
+/* 미배정 예약 카드 리스트 */
+.unassigned-list {
+  display: flex; /* 플렉스 컨테이너 */
+  flex-wrap: wrap; /* 여러 줄로 나열 */
+  gap: 10px; /* 카드 사이 간격 */
+  align-items: flex-start; /* 높이가 달라도 윗줄 정렬 */
+}
+
+/* 미배정 예약 카드가 DraggableReservationCard를 그대로 사용한다면,
+   카드 크기를 조정하고 싶다면 아래처럼 클래스 선택자를 사용 가능 */
+.unassigned-list .room-card {
+  width: 280px; /* 카드 너비 (원하는 크기로) */
+  min-height: 320px; /* 카드 높이 (원하는 크기로) */
+  margin: 0;
+  padding: 0; /* 불필요한 여백 제거 */
+  scale: 0.95; /* 크기 축소 */
+}
+
 /* ==========================================================================
    [Highlight Animations]
 ========================================================================== */
@@ -527,3 +592,5 @@
     box-shadow: 0 0 10px #ff0000;
   }
 }
+
+

@@ -57,7 +57,7 @@ body::before,
 
 .main-content {
   margin-top: 140px;
-  margin-left: 280px;
+  margin-left: 300px;
   padding: 1px;
   overflow-y: auto;
   height: calc(100vh - 140px);

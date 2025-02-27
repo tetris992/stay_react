@@ -622,6 +622,7 @@ function RoomGrid({
                     isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
                     onPartialUpdate={onPartialUpdate}
                     roomTypes={roomTypes}
+                    isUnassigned={true}
                   />
                 ))}
               </div>
