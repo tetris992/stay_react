@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from 'react-modal';
 import PropTypes from 'prop-types';
 import { FaDownload, FaPrint, FaTimes, FaEdit, FaSave } from 'react-icons/fa';
@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
+import { fetchUserInfo } from '../api/api';
 
 const InvoiceModal = ({
   isOpen,
@@ -15,65 +16,68 @@ const InvoiceModal = ({
   invoiceRef,
   reservationNo,
   reservation,
-  hotelAddress,
-  phoneNumber,
-  email,
+  hotelId,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editedReservation, setEditedReservation] = useState({
     ...reservation,
+    reservationNo:
+      reservationNo || reservation.reservationNo || reservation._id || '',
   });
 
-  // 인보이스 다운로드 핸들러 (A4 크기 맞춤)
-  const handleDownload = async () => {
-    try {
-      const input = invoiceRef.current;
-      const canvas = await html2canvas(input, { scale: 2, useCORS: true }); // 높은 해상도로 캡처
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        unit: 'mm',
-        format: 'a4', // A4 크기 (210mm × 297mm)
-        orientation: 'portrait',
-      });
+  const [hotelInfo, setHotelInfo] = useState({
+    hotelName: '',
+    address: '',
+    phoneNumber: '',
+    email: '',
+  });
 
-      const imgWidth = 210; // A4 폭 (mm)
-      const pageHeight = 297; // A4 높이 (mm)
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+  // 호텔 설정 API 호출 후 로컬스토리지 저장
+  useEffect(() => {
+    const localKey = `hotelInfo_${hotelId}`;
+    const storedInfo = localStorage.getItem(localKey);
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // 예약자 이름 가져오기
-      const customerName = editedReservation.customerName || 'Invoice';
-      const sanitizedCustomerName = customerName
-        .replace(/[^a-z0-9가-힣]+/gi, '_')
-        .toLowerCase();
-
-      // 파일명 설정
-      const fileName = `Invoice_${sanitizedCustomerName}.pdf`;
-
-      pdf.save(fileName);
-      onRequestClose();
-    } catch (error) {
-      console.error('인보이스 다운로드 실패:', error);
-      alert(t('invoice.downloadFailed'));
+    if (storedInfo) {
+      setHotelInfo(JSON.parse(storedInfo));
     }
+
+    // API를 항상 최신 정보를 가져오기 위해 호출
+    const hotel_UserInfo = async () => {
+      try {
+        const userInfo = await fetchUserInfo(hotelId);
+        const info = {
+          hotelName: userInfo.hotelName || '호텔 이름 없음',
+          address: userInfo.address || '주소 정보 없음',
+          phoneNumber: userInfo.phoneNumber || '전화번호 정보 없음',
+          email: userInfo.email || '이메일 정보 없음',
+        };
+        setHotelInfo(info);
+        localStorage.setItem(localKey, JSON.stringify(info));
+        console.log('API로 호텔 회원정보 갱신됨:', info);
+      } catch (error) {
+        console.error('호텔 정보 불러오기 실패:', error);
+      }
+    };
+
+    hotel_UserInfo();
+  }, [hotelId]);
+
+  const handleDownload = async () => {
+    const input = invoiceRef.current;
+    const canvas = await html2canvas(input, { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    const imgWidth = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.save(`Invoice_${editedReservation.customerName || 'Guest'}.pdf`);
+    onRequestClose();
   };
 
-  // 인보이스 프린트 핸들러 (A4 크기 맞춤 및 정상 인쇄 보장)
   const handlePrint = () => {
-    const input = invoiceRef.current;
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank'); // 새 창 열기
     const printContents = `
       <html>
         <head>
@@ -89,11 +93,11 @@ const InvoiceModal = ({
                 padding: 0;
                 width: 210mm;
                 height: 297mm;
+                font-family: Arial, sans-serif;
               }
               .invoice-template {
                 width: 100%;
                 height: 100%;
-                font-family: Arial, sans-serif;
               }
               .invoice-header, .invoice-details, .invoice-nightly-rates, .invoice-single-rate, .invoice-footer {
                 margin: 0;
@@ -109,47 +113,34 @@ const InvoiceModal = ({
                 text-align: left;
               }
             }
+            /* 기본 스타일 유지 */
+            .invoice-content {
+              width: 210mm;
+              height: 297mm;
+            }
           </style>
         </head>
-        <body>${input.innerHTML}</body>
+        <body>${invoiceRef.current.innerHTML}</body>
       </html>
     `;
-
+  
     printWindow.document.open();
     printWindow.document.write(printContents);
     printWindow.document.close();
-
+  
     printWindow.print();
     printWindow.close(); // 인쇄 후 새 창 닫기
-    // 페이지 새로고침은 필요 없음, 모달만 닫기
-    onRequestClose();
+  
+    onRequestClose(); // 모달 닫기
   };
 
-  // 수정 모드 토글 핸들러
-  const toggleEditMode = () => {
-    setIsEditing((prev) => !prev);
-  };
+  const toggleEditMode = () => setIsEditing(!isEditing);
 
-  // 수정 완료 후 저장 핸들러
   const handleSave = () => {
-    // 실제 저장 로직을 추가해야 합니다. (예: API 호출)
-    // 예시:
-    // updateReservation(reservation._id, editedReservation, hotelId)
-    //   .then(() => {
-    //     alert(t('invoice.saveSuccess'));
-    //     onRequestClose();
-    //   })
-    //   .catch((error) => {
-    //     console.error('수정 실패:', error);
-    //     alert(t('invoice.saveFailed'));
-    //   });
-
-    // 여기서는 단순히 모드 토글만 수행
     setIsEditing(false);
     onRequestClose();
   };
 
-  // 핸들링 함수: InvoiceTemplate에서 변경된 내용을 받아 상태 업데이트
   const handleChange = (field, value) => {
     setEditedReservation((prev) => ({
       ...prev,
@@ -169,28 +160,21 @@ const InvoiceModal = ({
       overlayClassName="invoice-modal-overlay"
     >
       <div className="modal-header">
-        <h2>{t('invoice.invoice')}</h2>
-        <div className="modal-language-switcher">
-          <LanguageSwitcher /> {/* 기존 LanguageSwitcher 재사용 */}
-        </div>
-        <button
-          onClick={() => {
-            setIsEditing(false);
-            onRequestClose();
-          }}
-          className="close-button"
-          aria-label={t('invoice.close')}
-        >
+        <h6>{t('hotel.invoice')}</h6>
+        <LanguageSwitcher />
+        <button onClick={onRequestClose} className="close-button">
           <FaTimes size={20} />
         </button>
       </div>
+
       <div className="modal-body">
         <div ref={invoiceRef} className="invoice-content">
           <InvoiceTemplate
             reservation={editedReservation}
-            hotelAddress={hotelAddress || t('invoice.infoUnavailable')}
-            phoneNumber={phoneNumber || t('invoice.infoUnavailable')}
-            email={email || t('invoice.infoUnavailable')}
+            hotelSettings={hotelInfo}
+            hotelAddress={hotelInfo.address}
+            phoneNumber={hotelInfo.phoneNumber}
+            email={hotelInfo.email}
             isEditing={isEditing}
             toggleEditMode={toggleEditMode}
             handleSave={handleSave}
@@ -198,6 +182,7 @@ const InvoiceModal = ({
           />
         </div>
       </div>
+
       <div className="modal-footer">
         {!isEditing ? (
           <button onClick={toggleEditMode} className="modal-button">
@@ -208,18 +193,10 @@ const InvoiceModal = ({
             <FaSave /> {t('invoice.save')}
           </button>
         )}
-        <button
-          onClick={handleDownload}
-          className="modal-button"
-          aria-label={t('invoice.download')}
-        >
+        <button onClick={handleDownload} className="modal-button">
           <FaDownload /> {t('invoice.download')}
         </button>
-        <button
-          onClick={handlePrint}
-          className="modal-button"
-          aria-label={t('invoice.print')}
-        >
+        <button onClick={handlePrint} className="modal-button">
           <FaPrint /> {t('invoice.print')}
         </button>
       </div>
@@ -233,9 +210,7 @@ InvoiceModal.propTypes = {
   invoiceRef: PropTypes.object.isRequired,
   reservationNo: PropTypes.string.isRequired,
   reservation: PropTypes.object.isRequired,
-  hotelAddress: PropTypes.string.isRequired,
-  phoneNumber: PropTypes.string.isRequired,
-  email: PropTypes.string.isRequired,
+  hotelId: PropTypes.string.isRequired,
 };
 
 export default InvoiceModal;

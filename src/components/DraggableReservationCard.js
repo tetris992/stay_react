@@ -21,6 +21,10 @@ const DraggableReservationCard = ({
   memoRefs,
   handleCardFlip,
   openInvoiceModal,
+  hotelSettings,
+  hotelAddress,
+  phoneNumber,
+  email,
   renderActionButtons,
   loadedReservations,
   newlyCreatedId,
@@ -152,29 +156,38 @@ const DraggableReservationCard = ({
     setEditedValues((prev) => {
       const updated = { ...prev, [field]: value };
       const fieldsAffectingPrice = ['checkInDate', 'checkOutDate', 'roomInfo'];
-  
+
       // 가격을 수동으로 변경하는 경우에만 manualPriceOverride 활성화
       if (field === 'price') {
         return { ...updated, manualPriceOverride: true };
       }
-  
+
       // 룸타입이나 날짜가 변경되면 항상 가격을 자동 재계산
       if (fieldsAffectingPrice.includes(field)) {
         const ci = updated.checkInDate || format(new Date(), 'yyyy-MM-dd');
-        const co = updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
-        const nights = Math.max(1, Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24)));
-        const selectedRoom = roomTypes.find((r) => r.roomInfo === updated.roomInfo);
-  
+        const co =
+          updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const nights = Math.max(
+          1,
+          Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
+        );
+        const selectedRoom = roomTypes.find(
+          (r) => r.roomInfo === updated.roomInfo
+        );
+
         if (selectedRoom) {
           const newPrice = selectedRoom.price * nights;
-          return { ...updated, price: newPrice.toString(), manualPriceOverride: false };
+          return {
+            ...updated,
+            price: newPrice.toString(),
+            manualPriceOverride: false,
+          };
         }
       }
-  
+
       return updated;
     });
   };
-  
 
   // MemoComponent에 전달하는 콜백들
   const handleMemoChange = (reservationId, value) => {
@@ -300,7 +313,22 @@ const DraggableReservationCard = ({
                     className="invoice-icon-button-back"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openInvoiceModal(reservation);
+                      openInvoiceModal({
+                        ...reservation,
+                        reservationNo:
+                          reservation.reservationNo || reservation._id || '',
+                        hotelSettings: hotelSettings, // 호텔 설정 전체 전달
+                        hotelAddress:
+                          hotelAddress ||
+                          hotelSettings?.hotelAddress ||
+                          '주소 정보 없음',
+                        phoneNumber:
+                          phoneNumber ||
+                          hotelSettings?.phoneNumber ||
+                          '전화번호 정보 없음',
+                        email:
+                          email || hotelSettings?.email || '이메일 정보 없음',
+                      });
                     }}
                     title="인보이스 보기"
                   >
@@ -486,6 +514,10 @@ DraggableReservationCard.propTypes = {
   memoRefs: PropTypes.object.isRequired,
   handleCardFlip: PropTypes.func.isRequired,
   openInvoiceModal: PropTypes.func.isRequired,
+  hotelSettings: PropTypes.object, // 호텔 설정 전체 추가
+  hotelAddress: PropTypes.string,
+  phoneNumber: PropTypes.string,
+  email: PropTypes.string,
   renderActionButtons: PropTypes.func.isRequired,
   loadedReservations: PropTypes.array,
   newlyCreatedId: PropTypes.string,

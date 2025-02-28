@@ -1,65 +1,123 @@
-/* src/components/InvoiceTemplate.css */
-
 .invoice-template {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   font-family: 'Arial', sans-serif;
-  padding: 20px;
-  border: 1px solid #ccc;
+  color: #333333;
+  line-height: 1.6;
 }
 
 .invoice-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
 }
 
 .invoice-header h1 {
-  margin-bottom: 50px;
-  font-size: 2rem;
+  font-size: 28px;
+  margin-bottom: 10px;
+  color: #2c3e50;
 }
 
-.invoice-header h3 {
-  margin: 5px 0 0 0;
-  font-size: 1.2rem;
-  color: #555;
+.invoice-header p {
+  margin: 2px 0;
+  font-size: 14px;
+  color: #555555;
+}
+
+.invoice-details {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eeeeee;
 }
 
 .invoice-details p {
-  margin: 5px 0;
-  font-size: 1rem;
+  margin-bottom: 12px;
+  font-size: 15px;
 }
 
 .invoice-details strong {
-  width: 120px;
+  color: #34495e;
   display: inline-block;
+  width: 130px;
+}
+
+.invoice-details input[type='text'],
+.invoice-details input[type='date'] {
+  width: calc(100% - 140px);
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.invoice-nightly-rates,
+.invoice-single-rate {
+  margin-top: 25px;
+}
+
+.invoice-nightly-rates h4,
+.invoice-single-rate h4 {
+  margin-bottom: 10px;
+  color: #34495e;
 }
 
 .invoice-nightly-rates table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
 }
 
-/* invoice-nightly-rates */
-.invoice-nightly-rates th,
-.invoice-nightly-rates td {
+.invoice-nightly-rates table th,
+.invoice-nightly-rates table td {
   border: 1px solid #ddd;
   padding: 8px;
+  text-align: center;
 }
 
-.invoice-nightly-rates th {
-  background-color: #f2f2f2;
-}
-
-.invoice-single-rate h4 {
-  margin-bottom: 10px;
-}
-
-.invoice-single-rate p {
-  font-size: 1rem;
+.invoice-nightly-rates table th {
+  background-color: #f9f9f9;
 }
 
 .invoice-footer {
   text-align: center;
-  margin-top: 30px;
-  font-size: 1rem;
-  color: #777;
+  margin-top: 40px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #7f8c8d;
+}
+
+/* 한 줄 띄우기 (주소/전화번호/이메일과 예약정보 사이 여백) */
+.invoice-details {
+  margin-top: 50px;
+}
+
+/* 프린트 시 화면 요소 숨기기 */
+@media print {
+  body {
+    visibility: hidden;
+  }
+
+  .invoice-content,
+  .invoice-content * {
+    visibility: visible;
+  }
+
+  .invoice-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .modal-header,
+  .modal-footer,
+  .modal-button,
+  button,
+  input,
+  .close-button,
+  .language-switcher {
+    display: none !important;
+  }
 }

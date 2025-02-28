@@ -210,9 +210,6 @@ function RoomGrid({
   loadedReservations,
   hotelId,
   hotelSettings,
-  hotelAddress,
-  phoneNumber,
-  email,
   roomTypes,
   highlightedReservationIds,
   isSearching,
@@ -233,6 +230,8 @@ function RoomGrid({
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   // eslint-disable-next-line
   const [autoAssigning, setAutoAssigning] = useState(false);
+
+  const [selectedReservation, setSelectedReservation] = useState(null);
 
   const invoiceRef = useRef();
   const gridRef = useRef();
@@ -453,19 +452,39 @@ function RoomGrid({
     [onEdit]
   );
 
-  const openInvoiceModalHandler = (reservation) => {
-    if (!isModalOpen) {
-      setModalType('invoice');
-      setIsModalOpen(true);
-      return reservation;
-    }
-    return null;
-  };
-
-  const closeModalHandler = () => {
+  // 모달 닫기 핸들러
+  const closeModalHandler = useCallback(() => {
     setIsModalOpen(false);
     setModalType(null);
+    setSelectedReservation(null);
+  }, []);
+
+  // 모달 열기 핸들러
+  const openInvoiceModalHandler = (reservation) => {
+    if (isModalOpen) {
+      closeModalHandler();
+      setTimeout(() => {
+        setSelectedReservation({
+          ...reservation,
+          reservationNo: reservation.reservationNo || reservation._id || '',
+        });
+        setModalType('invoice');
+      }, 300);
+    } else {
+      setSelectedReservation({
+        ...reservation,
+        reservationNo: reservation.reservationNo || reservation._id || '',
+      });
+      setModalType('invoice');
+    }
   };
+
+  // 모달 상태 변경 감지 및 자동 열기
+  useEffect(() => {
+    if (selectedReservation && modalType === 'invoice' && !isModalOpen) {
+      setIsModalOpen(true);
+    }
+  }, [selectedReservation, modalType, isModalOpen]);
 
   const renderActionButtons = (reservation, onEditStart) => {
     const isOTA = isOtaReservation(reservation);
@@ -616,6 +635,7 @@ function RoomGrid({
                     memoRefs={memoRefs}
                     handleCardFlip={handleCardFlip}
                     openInvoiceModal={openInvoiceModalHandler}
+                    hotelSettings={hotelSettings}
                     renderActionButtons={renderActionButtons}
                     loadedReservations={loadedReservations || []}
                     newlyCreatedId={newlyCreatedId}
@@ -748,18 +768,14 @@ function RoomGrid({
         </div>
         {isProcessing && <p>처리 중...</p>}
         {error && <p className="error-message">{error}</p>}
-        {isModalOpen && modalType === 'invoice' && (
+        {isModalOpen && modalType === 'invoice' && selectedReservation && (
           <InvoiceModal
             isOpen={isModalOpen}
             onRequestClose={closeModalHandler}
             invoiceRef={invoiceRef}
-            hotelAddress={
-              hotelAddress || hotelSettings?.hotelAddress || '주소 정보 없음'
-            }
-            phoneNumber={
-              phoneNumber || hotelSettings?.phoneNumber || '전화번호 정보 없음'
-            }
-            email={email || hotelSettings?.email || '이메일 정보 없음'}
+            reservationNo={selectedReservation.reservationNo}
+            reservation={selectedReservation}
+            hotelId={hotelId}
           />
         )}
       </div>
@@ -767,6 +783,7 @@ function RoomGrid({
   );
 }
 
+// PropTypes 수정 (hotelId를 필수로 유지)
 RoomGrid.propTypes = {
   reservations: PropTypes.array.isRequired,
   onDelete: PropTypes.func.isRequired,
@@ -775,10 +792,6 @@ RoomGrid.propTypes = {
   onPartialUpdate: PropTypes.func.isRequired,
   loadedReservations: PropTypes.array.isRequired,
   hotelId: PropTypes.string.isRequired,
-  hotelSettings: PropTypes.object,
-  hotelAddress: PropTypes.string,
-  phoneNumber: PropTypes.string,
-  email: PropTypes.string,
   roomTypes: PropTypes.array.isRequired,
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,

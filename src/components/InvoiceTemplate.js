@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next'; // 다국어 지원을 위한 �
 
 const InvoiceTemplate = ({
   reservation,
+  hotelSettings,
   hotelAddress,
-  phoneNumber, // 전화번호 prop 추가
-  email, // 이메일 prop 추가
+  phoneNumber,
+  email,
   isEditing,
   toggleEditMode,
   handleSave,
@@ -83,7 +84,15 @@ const InvoiceTemplate = ({
         <h1>{t('invoice.title')}</h1> {/* 번역된 제목 사용 */}
         <p>
           <strong>{t('invoice.hotelAddress')}:</strong>{' '}
-          {hotelAddress || t('invoice.infoUnavailable')}
+          {hotelAddress || hotelSettings?.hotelAddress || t('invoice.infoUnavailable')}
+        </p>
+        <p>
+          <strong>{t('invoice.phoneNumber')}:</strong>{' '}
+          {phoneNumber || hotelSettings?.phoneNumber || t('invoice.infoUnavailable')}
+        </p>
+        <p>
+          <strong>{t('invoice.email')}:</strong>{' '}
+          {email || hotelSettings?.email || t('invoice.infoUnavailable')}
         </p>
       </div>
       <div className="invoice-details">
@@ -97,7 +106,7 @@ const InvoiceTemplate = ({
             <input
               type="text"
               name="customerName"
-              value={customerName}
+              value={customerName || ''}
               onChange={(e) => handleChange('customerName', e.target.value)}
             />
           ) : (
@@ -110,11 +119,11 @@ const InvoiceTemplate = ({
             <input
               type="date"
               name="checkIn"
-              value={checkIn}
+              value={checkIn ? new Date(checkIn).toISOString().split('T')[0] : ''}
               onChange={(e) => handleChange('checkIn', e.target.value)}
             />
           ) : (
-            checkIn || t('invoice.infoUnavailable')
+            checkIn ? new Date(checkIn).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : t('invoice.infoUnavailable')
           )}
         </p>
         <p>
@@ -123,11 +132,11 @@ const InvoiceTemplate = ({
             <input
               type="date"
               name="checkOut"
-              value={checkOut}
+              value={checkOut ? new Date(checkOut).toISOString().split('T')[0] : ''}
               onChange={(e) => handleChange('checkOut', e.target.value)}
             />
           ) : (
-            checkOut || t('invoice.infoUnavailable')
+            checkOut ? new Date(checkOut).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) : t('invoice.infoUnavailable')
           )}
         </p>
         <p>
@@ -136,11 +145,11 @@ const InvoiceTemplate = ({
             <input
               type="date"
               name="reservationDate"
-              value={reservationDate}
+              value={reservationDate ? new Date(reservationDate).toISOString().split('T')[0] : ''}
               onChange={(e) => handleChange('reservationDate', e.target.value)}
             />
           ) : (
-            reservationDate || t('invoice.infoUnavailable')
+            reservationDate ? new Date(reservationDate).toLocaleString('ko-KR', { dateStyle: 'medium' }) : t('invoice.infoUnavailable')
           )}
         </p>
         <p>
@@ -149,11 +158,11 @@ const InvoiceTemplate = ({
             <input
               type="text"
               name="roomInfo"
-              value={roomInfo}
+              value={roomInfo || ''}
               onChange={(e) => handleChange('roomInfo', e.target.value)}
             />
           ) : (
-            processRoomInfo(roomInfo) // 가공된 roomInfo 사용
+            processRoomInfo(roomInfo)
           )}
         </p>
         <p>
@@ -161,20 +170,12 @@ const InvoiceTemplate = ({
           {isEditing ? (
             <input
               name="specialRequests"
-              value={specialRequests}
+              value={specialRequests || ''}
               onChange={(e) => handleChange('specialRequests', e.target.value)}
             />
           ) : (
             specialRequests || t('invoice.none')
           )}
-        </p>
-        <p>
-          <strong>{t('invoice.phoneNumber')}:</strong>{' '}
-          {phoneNumber || t('invoice.infoUnavailable')}
-        </p>
-        <p>
-          <strong>{t('invoice.email')}:</strong>{' '}
-          {email || t('invoice.infoUnavailable')}
         </p>
       </div>
 
@@ -192,7 +193,7 @@ const InvoiceTemplate = ({
               {nightlyRates.map((rate, idx) => (
                 <tr key={idx}>
                   <td>{rate.date || t('invoice.infoUnavailable')}</td>
-                  <td>{rate.rate ? `${rate.rate.toLocaleString()}` : '0'}</td>
+                  <td>{rate.rate ? `${rate.rate.toLocaleString()} KRW` : '0 KRW'}</td>
                 </tr>
               ))}
               <tr>
@@ -200,7 +201,7 @@ const InvoiceTemplate = ({
                   <strong>{t('invoice.total')}</strong>
                 </td>
                 <td>
-                  <strong>{`${totalPrice.toLocaleString()}`}</strong>
+                  <strong>{`${totalPrice.toLocaleString()} KRW`}</strong>
                 </td>
               </tr>
             </tbody>
@@ -209,7 +210,7 @@ const InvoiceTemplate = ({
       ) : (
         <div className="invoice-single-rate">
           <h4>{t('invoice.price')}</h4>
-          <p>{`${totalPrice.toLocaleString()}`}</p>
+          <p>{`${totalPrice.toLocaleString()} KRW`}</p>
         </div>
       )}
 
@@ -222,9 +223,10 @@ const InvoiceTemplate = ({
 
 InvoiceTemplate.propTypes = {
   reservation: PropTypes.object.isRequired,
-  hotelAddress: PropTypes.string.isRequired,
-  phoneNumber: PropTypes.string.isRequired,
-  email: PropTypes.string.isRequired,
+  hotelSettings: PropTypes.object, // 선택적 prop으로 설정
+  hotelAddress: PropTypes.string, // 선택적 prop으로 설정
+  phoneNumber: PropTypes.string, // 선택적 prop으로 설정
+  email: PropTypes.string, // 선택적 prop으로 설정
   isEditing: PropTypes.bool.isRequired,
   toggleEditMode: PropTypes.func.isRequired,
   handleSave: PropTypes.func.isRequired,
