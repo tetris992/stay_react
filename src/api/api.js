@@ -332,16 +332,20 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
       {
         ...updateData,
         hotelId,
-        customerName: updateData.customerName,
-        phoneNumber: updateData.phoneNumber,
-      } // 명시적으로 customerName과 phoneNumber 포함
+      }
     );
     return response.data;
   } catch (error) {
-    console.error('예약 업데이트 실패:', error);
+    if (error.response && error.response.status === 409) {
+      // 중복 발생 상황 처리
+      alert('이미 해당 객실에 중복된 예약이 있습니다.');
+    } else {
+      console.error('예약 업데이트 실패:', error);
+    }
     throw error.response?.data || error;
   }
 };
+
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {

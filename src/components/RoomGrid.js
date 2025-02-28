@@ -26,6 +26,8 @@ import {
   computeDailyAvailability,
 } from '../utils/availability';
 
+import { checkConflict } from '../utils/checkConflict';
+
 /* ===============================
    HELPER FUNCTIONS
 =============================== */
@@ -67,10 +69,35 @@ const ContainerCell = React.memo(
         const { reservationId } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
+
+          // 동일 객실 드래그 시 아무것도 하지 않음
           if (
             draggedReservation.roomInfo === cont.roomInfo &&
             draggedReservation.roomNumber === cont.roomNumber
           ) {
+            return;
+          }
+
+          // ✅ 여기서 checkConflict 사용하여 충돌 체크 및 상세 정보 제공
+          const { isConflict, conflictReservation } = checkConflict(
+            draggedReservation,
+            cont.roomNumber,
+            fullReservations
+          );
+
+          if (isConflict) {
+            alert(
+              `🚫 예약을 이동할 수 없습니다.\n\n` +
+                `이동하려는 객실 (${cont.roomNumber}) 에 이미 예약이 있습니다.\n\n` +
+                `충돌 예약자: ${conflictReservation.customerName}\n` +
+                `예약 기간: ${format(
+                  new Date(conflictReservation.checkIn),
+                  'yyyy-MM-dd'
+                )} ~ ${format(
+                  new Date(conflictReservation.checkOut),
+                  'yyyy-MM-dd'
+                )}`
+            );
             return;
           }
 
@@ -94,12 +121,12 @@ const ContainerCell = React.memo(
               return;
             }
 
-            // 서로의 방정보를 교환
             handleEditExtended(reservationId, {
               roomInfo: cont.roomInfo,
               roomNumber: cont.roomNumber,
               manualAssignment: true,
             });
+
             handleEditExtended(existingReservation._id, {
               roomInfo: draggedReservation.roomInfo,
               roomNumber: draggedReservation.roomNumber,
@@ -108,6 +135,7 @@ const ContainerCell = React.memo(
           } else {
             const originalRoomInfo = draggedReservation.roomInfo;
             const originalRoomNumber = draggedReservation.roomNumber;
+
             handleEditExtended(reservationId, {
               roomInfo: cont.roomInfo,
               roomNumber: cont.roomNumber,
@@ -115,7 +143,7 @@ const ContainerCell = React.memo(
             });
 
             setTimeout(() => {
-              const updatedReservations = (fullReservations || []).map((r) =>
+              const updatedReservations = fullReservations.map((r) =>
                 r._id === draggedReservation._id
                   ? {
                       ...r,
@@ -144,12 +172,12 @@ const ContainerCell = React.memo(
               );
 
               if (!canMove) {
-                // 원래대로 복구
                 handleEditExtended(reservationId, {
                   roomInfo: originalRoomInfo,
                   roomNumber: originalRoomNumber,
                   manualAssignment: true,
                 });
+
                 alert(
                   `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
                     ', '
@@ -662,14 +690,13 @@ function RoomGrid({
               </button>
             )
           )}
-
           {floors
             .slice()
             .reverse()
             .map((floor) => (
               <div key={floor.floorNum} className="floor-section">
                 <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                  {floor.floorNum}_Floor
+                  {floor.floorNum}F
                 </h3>
                 <div className="layout-grid">
                   {(floor.containers || []).map((cont) => {

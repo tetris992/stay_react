@@ -678,7 +678,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             <div key={floor.floorNum} className="floor-row">
               <div className="floor-header">
                 <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                  {floor.floorNum}_Floor
+                  {floor.floorNum}F
                   <FaMinus
                     onClick={() => removeFloor(floor.floorNum)}
                     className="remove-icon"
