@@ -1,5 +1,3 @@
-// src/components/DailySalesModal.js
-
 import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import Modal from 'react-modal';
@@ -67,16 +65,45 @@ const DailySalesModal = ({
       });
   };
 
-  // InvoiceModal과 동일한 프린트 로직
   const handlePrint = () => {
-    const input = componentRef.current;
-    const printContents = input.innerHTML;
-    const originalContents = document.body.innerHTML;
+    const content = componentRef.current;
+    const printFrame = document.createElement('iframe');
 
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
+    // iframe을 임시로 생성하여 콘텐츠 추가
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '100%';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    document.body.appendChild(printFrame);
+
+    const printDocument =
+      printFrame.contentDocument || printFrame.contentWindow.document;
+
+    printDocument.open();
+    printDocument.write(`
+      <html>
+        <head>
+          <title>일일 매출 리포트</title>
+          <style>
+            @media print {
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+              }
+            }
+          </style>
+        </head>
+        <body>${content.innerHTML}</body>
+      </html>
+    `);
+    printDocument.close();
+
+    printFrame.onload = () => {
+      printFrame.contentWindow.focus();
+      printFrame.contentWindow.print();
+      setTimeout(() => document.body.removeChild(printFrame), 100);
+    };
   };
 
   return (
@@ -125,7 +152,7 @@ const DailySalesModal = ({
           selectedDate={selectedDate}
           totalRooms={totalRooms}
           remainingRooms={remainingRooms}
-          occupancyRate={occupancyRate} // 전달
+          occupancyRate={occupancyRate}
           dailyAverageRoomPrice={dailyAverageRoomPrice}
         />
       </div>
@@ -142,7 +169,8 @@ DailySalesModal.propTypes = {
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   totalRooms: PropTypes.number.isRequired,
   remainingRooms: PropTypes.number.isRequired,
-  avgMonthlyRoomPrice: PropTypes.number.isRequired,
+  occupancyRate: PropTypes.number.isRequired,
+  dailyAverageRoomPrice: PropTypes.number.isRequired,
 };
 
 export default DailySalesModal;

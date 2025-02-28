@@ -60,12 +60,26 @@
 
 /* 인쇄 전용 스타일 */
 @media print {
-  .sales-modal-overlay,
-  .sales-modal {
-    display: none !important;
+  body * {
+    visibility: hidden; /* 모든 콘텐츠 숨기기 */
+  }
+
+  #daily-sales-content,
+  #daily-sales-content * {
+    visibility: visible; /* 모달 콘텐츠만 표시 */
   }
 
   #daily-sales-content {
-    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* 불필요한 요소 숨기기 */
+  .modal-header,
+  .modal-actions,
+  .modal-close-button {
+    display: none !important;
   }
 }

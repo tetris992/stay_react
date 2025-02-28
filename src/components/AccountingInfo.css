@@ -46,3 +46,11 @@ h4 {
   justify-content: flex-start;
   margin-bottom: 10px;
 }
+
+.accounting-info li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0px 20px;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
