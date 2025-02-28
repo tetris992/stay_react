@@ -1,4 +1,5 @@
 // utils/roomGridUtils.js
+
 import {
   FaCreditCard,
   FaMoneyBillWave,
@@ -6,6 +7,8 @@ import {
   FaHourglassHalf,
 } from 'react-icons/fa';
 import availableOTAs from '../config/availableOTAs';
+import { format, parseISO, addDays } from 'date-fns';
+import { extractPrice } from './extractPrice';
 
 // OTA 예약인지 확인
 export function isOtaReservation(reservation) {
@@ -100,4 +103,42 @@ export function getPaymentMethodIcon(pm) {
     default:
       return null;
   }
+}
+
+// form 초기값 설정 로직 (공통화)
+export function getInitialFormData(reservation, roomTypes) {
+  const ci = reservation.checkIn ? new Date(reservation.checkIn) : new Date();
+  const co = reservation.checkOut
+    ? new Date(reservation.checkOut)
+    : addDays(ci, 1);
+  const ciDate = format(ci, 'yyyy-MM-dd');
+  const coDate = format(co, 'yyyy-MM-dd');
+  const resDate = reservation.reservationDate
+    ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd HH:mm')
+    : format(new Date(), 'yyyy-MM-dd HH:mm');
+  const priceVal = reservation.price
+    ? extractPrice(reservation.price).toString()
+    : '0';
+  const selectedRoom = roomTypes.find(
+    (r) => r.roomInfo === reservation.roomInfo
+  );
+  const basePrice = selectedRoom ? selectedRoom.price : 0;
+  const nights = Math.max(
+    1,
+    Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
+  );
+  const calculatedPrice = priceVal || (basePrice * nights).toString();
+
+  return {
+    customerName: reservation.customerName || '',
+    phoneNumber: reservation.phoneNumber || '',
+    checkInDate: ciDate,
+    checkOutDate: coDate,
+    reservationDate: resDate,
+    roomInfo: reservation.roomInfo || roomTypes[0]?.roomInfo || '', // 문자열로 설정
+    price: calculatedPrice, // 문자열로 저장
+    paymentMethod: reservation.paymentMethod || 'Pending',
+    specialRequests: reservation.specialRequests || '',
+    manualPriceOverride: !!reservation.price,
+  };
 }

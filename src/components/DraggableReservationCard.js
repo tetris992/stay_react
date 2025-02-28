@@ -5,14 +5,14 @@ import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
-import { getBorderColor } from '../utils/roomGridUtils';
-import { extractPrice } from '../utils/extractPrice';
+import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
+// import { extractPrice } from '../utils/extractPrice';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 
 import './DraggableReservationCard.css';
 
 const DraggableReservationCard = ({
-  isUnassigned,
+  isUnassigned = false,
   reservation,
   hotelId,
   highlightedReservationIds,
@@ -108,45 +108,19 @@ const DraggableReservationCard = ({
     .filter(Boolean)
     .join(' ');
 
-  const calcNights = (checkIn, checkOut) =>
-    Math.max(
-      1,
-      Math.ceil(
-        (new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)
-      )
-    );
-
   const handleEditStart = () => {
     if (isOpen || isEditingMemo) return;
     setIsOpen(true);
-    const ci = reservation.checkIn ? new Date(reservation.checkIn) : new Date();
-    const co = reservation.checkOut
-      ? new Date(reservation.checkOut)
-      : addDays(ci, 1);
-    const ciDate = format(ci, 'yyyy-MM-dd');
-    const coDate = format(co, 'yyyy-MM-dd');
-    const resDate = reservation.reservationDate
-      ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd HH:mm')
-      : format(new Date(), 'yyyy-MM-dd HH:mm');
-    const priceVal = reservation.price ? extractPrice(reservation.price) : 0;
-    const selectedRoom = roomTypes.find(
-      (r) => r.roomInfo === reservation.roomInfo
-    );
-    const basePrice = selectedRoom ? selectedRoom.price : 0;
-    const nights = calcNights(ciDate, coDate);
-    const calculatedPrice = reservation.price ? priceVal : basePrice * nights;
+    const initialForm = getInitialFormData(reservation, roomTypes);
 
+    // reservation.price를 명확히 확인하여 price 설정
+    const priceFromReservation =
+      reservation.price?.toString() || initialForm.price;
     setEditedValues({
-      customerName: reservation.customerName || '',
-      phoneNumber: reservation.phoneNumber || '',
-      checkInDate: ciDate,
-      checkOutDate: coDate,
-      reservationDate: resDate,
-      roomInfo: reservation.roomInfo || roomTypes[0]?.type || '',
-      price: calculatedPrice,
-      paymentMethod: reservation.paymentMethod || 'Pending',
-      specialRequests: reservation.specialRequests || '',
-      manualPriceOverride: !!reservation.price,
+      ...initialForm,
+      price: priceFromReservation, // reservation.price를 우선적으로 사용, 문자열로 설정
+      checkInDate: initialForm.checkInDate,
+      checkOutDate: initialForm.checkOutDate,
     });
     setIsEditingCard(true);
   };
@@ -162,7 +136,7 @@ const DraggableReservationCard = ({
     const updatedData = {
       customerName: editedValues.customerName,
       phoneNumber: editedValues.phoneNumber,
-      price: Number(editedValues.price),
+      price: parseFloat(editedValues.price), // 숫자로 변환하여 저장
       checkIn: new Date(editedValues.checkInDate).toISOString(),
       checkOut: new Date(editedValues.checkOutDate).toISOString(),
       paymentMethod: editedValues.paymentMethod,
@@ -177,25 +151,30 @@ const DraggableReservationCard = ({
   const handleFieldChange = (field, value) => {
     setEditedValues((prev) => {
       const updated = { ...prev, [field]: value };
-      if (
-        ['checkInDate', 'checkOutDate', 'roomInfo'].includes(field) &&
-        !prev.manualPriceOverride
-      ) {
-        const selectedRoom = roomTypes.find(
-          (r) => r.roomInfo === (prev.roomInfo || roomTypes[0]?.type)
-        );
+      const fieldsAffectingPrice = ['checkInDate', 'checkOutDate', 'roomInfo'];
+  
+      // 가격을 수동으로 변경하는 경우에만 manualPriceOverride 활성화
+      if (field === 'price') {
+        return { ...updated, manualPriceOverride: true };
+      }
+  
+      // 룸타입이나 날짜가 변경되면 항상 가격을 자동 재계산
+      if (fieldsAffectingPrice.includes(field)) {
+        const ci = updated.checkInDate || format(new Date(), 'yyyy-MM-dd');
+        const co = updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const nights = Math.max(1, Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24)));
+        const selectedRoom = roomTypes.find((r) => r.roomInfo === updated.roomInfo);
+  
         if (selectedRoom) {
-          const nights = calcNights(
-            prev.checkInDate || new Date(),
-            prev.checkOutDate || addDays(new Date(), 1)
-          );
           const newPrice = selectedRoom.price * nights;
-          return { ...updated, price: newPrice };
+          return { ...updated, price: newPrice.toString(), manualPriceOverride: false };
         }
       }
+  
       return updated;
     });
   };
+  
 
   // MemoComponent에 전달하는 콜백들
   const handleMemoChange = (reservationId, value) => {
@@ -419,14 +398,18 @@ const DraggableReservationCard = ({
               <label>
                 객실타입:
                 <select
-                  value={editedValues.roomInfo}
+                  value={editedValues.roomInfo} // 문자열로 설정 (예: "standard" 또는 "hinoki")
                   onChange={(e) =>
                     handleFieldChange('roomInfo', e.target.value)
                   }
                 >
                   {roomTypes.map((r, i) => (
-                    <option key={i} value={r.roomInfo}>
-                      {r.roomInfo} - {r.price.toLocaleString()} KRW/박
+                    <option
+                      key={i}
+                      value={r.roomInfo} // 문자열로 설정
+                    >
+                      {r.roomInfo.charAt(0).toUpperCase() + r.roomInfo.slice(1)}{' '}
+                      {/* 단일 객실 타입만 표시 */}
                     </option>
                   ))}
                 </select>
@@ -509,10 +492,6 @@ DraggableReservationCard.propTypes = {
   isNewlyCreatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
-};
-// 기본값 false
-DraggableReservationCard.defaultProps = {
-  isUnassigned: false,
 };
 
 export default DraggableReservationCard;

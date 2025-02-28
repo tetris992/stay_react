@@ -5,6 +5,7 @@ import { parseDate } from '../utils/dateParser';
 import { format, addDays, startOfDay } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
+import { getInitialFormData } from '../utils/roomGridUtils';
 
 const GuestFormModal = ({
   onClose,
@@ -28,43 +29,51 @@ const GuestFormModal = ({
     specialRequests: '',
   });
 
+  useEffect(() => {
+    console.log('initialData:', initialData);
+  }, [initialData]);
+
   // filteredRoomTypes를 useMemo로 캐싱
   const filteredRoomTypes = useMemo(
     () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
     [roomTypes]
   );
+  
+// 수정 모드일 때 initialData에서 정확히 객실 타입과 가격을 가져오기
+useEffect(() => {
+  if (initialData && initialData.checkIn && initialData.checkOut) {
+    const checkInDate = parseDate(initialData.checkIn);
+    const checkOutDate = parseDate(initialData.checkOut);
 
-  // 수정 모드: initialData가 있으면 폼 데이터 초기화 (한 번만 실행)
-  useEffect(() => {
-    if (initialData) {
-      const checkInDateObj = new Date(initialData.checkIn);
-      const checkOutDateObj = new Date(initialData.checkOut);
+    // 유효성 체크 추가
+    if (checkInDate && checkOutDate) {
+      const reservationDateObj = initialData.reservationDate
+        ? new Date(initialData.reservationDate)
+        : new Date();
+
+      // reservationNo가 없으면 _id 사용
+      const reservationNo = initialData.reservationNo || initialData._id || '';
+
+      // getInitialFormData 사용하여 초기값 설정
+      const initialForm = getInitialFormData(initialData, filteredRoomTypes);
+
       setFormData({
-        reservationNo: initialData.reservationNo || '',
-        customerName: initialData.customerName || '', // 빈 문자열로 초기화, 수정 가능
-        phoneNumber: initialData.phoneNumber || '', // 빈 문자열로 초기화, 수정 가능
-        checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
-        checkInTime: format(checkInDateObj, 'HH:mm'),
-        checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
-        checkOutTime: format(checkOutDateObj, 'HH:mm'),
-        reservationDate: initialData.reservationDate
-          ? format(new Date(initialData.reservationDate), 'yyyy-MM-dd HH:mm')
-          : format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo:
-          initialData.roomInfo ||
-          (filteredRoomTypes.length > 0 ? filteredRoomTypes[0].roomInfo : ''),
-        price:
-          initialData.price !== undefined
-            ? initialData.price.toString()
-            : filteredRoomTypes.length > 0 &&
-              filteredRoomTypes[0].price !== undefined
-            ? filteredRoomTypes[0].price.toString()
-            : '0',
-        paymentMethod: initialData.paymentMethod || 'Pending',
-        specialRequests: initialData.specialRequests || '',
+        reservationNo,
+        ...initialForm,
+        checkInDate: format(checkInDate, 'yyyy-MM-dd'),
+        checkInTime: format(checkInDate, 'HH:mm'),
+        checkOutDate: format(checkOutDate, 'yyyy-MM-dd'),
+        checkOutTime: format(checkOutDate, 'HH:mm'),
+        reservationDate: format(reservationDateObj, 'yyyy-MM-dd HH:mm'),
       });
+      setPrice(initialForm.price || '0'); // price 상태 보강 (문자열로 설정)
+    } else {
+      console.error('checkIn or checkOut date parsing failed', initialData);
     }
-  }, [initialData, filteredRoomTypes]);
+  } else {
+    console.error('initialData is missing checkIn or checkOut', initialData);
+  }
+}, [initialData, filteredRoomTypes]);
 
   // 생성 모드: 초기 데이터가 없으면 기본값 설정 (한 번만 실행)
   useEffect(() => {
@@ -73,7 +82,7 @@ const GuestFormModal = ({
       const checkInDate = format(now, 'yyyy-MM-dd');
       const checkOutDate = format(addDays(now, 1), 'yyyy-MM-dd');
       const selectedRoom = filteredRoomTypes[0];
-      const initialPrice = selectedRoom?.price?.toString() || '0';
+      // const initialPrice = selectedRoom?.price?.toString() || '0';
 
       setFormData({
         reservationNo: `${Date.now()}`,
@@ -85,7 +94,7 @@ const GuestFormModal = ({
         checkOutTime: '11:00',
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: selectedRoom?.roomInfo || 'Standard',
-        price: initialPrice,
+        // price: initialPrice,
         paymentMethod: 'Pending',
         specialRequests: '',
       });
@@ -126,7 +135,7 @@ const GuestFormModal = ({
     const { name, value } = e.target;
     if (name === 'roomInfo') {
       const selectedRoom = filteredRoomTypes.find(
-        (room) => room.roomInfo === value
+        (room) => room.roomInfo === value // 문자열 비교
       );
       const nightlyPrice = selectedRoom?.price || 0;
       if (formData.checkInDate && formData.checkOutDate) {
@@ -144,7 +153,7 @@ const GuestFormModal = ({
       } else {
         setPrice(nightlyPrice.toString());
       }
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value })); // 문자열로 설정
     } else if (name !== 'price') {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -316,7 +325,8 @@ const GuestFormModal = ({
         <span className="close-button" onClick={onClose}>
           ×
         </span>
-        <h2>현장 예약 입력</h2>
+        <h2>{initialData ? '예약 수정' : '현장 예약 입력'}</h2>
+
         <form onSubmit={handleSubmit}>
           <div className="modal-row">
             <label htmlFor="reservationNo">
@@ -394,30 +404,28 @@ const GuestFormModal = ({
               <select
                 id="roomInfo"
                 name="roomInfo"
-                value={formData.roomInfo}
+                value={formData.roomInfo} // 문자열로 설정 (예: "standard" 또는 "hinoki")
                 onChange={handleInputChange}
                 required
               >
-                {filteredRoomTypes.length > 0 ? (
-                  filteredRoomTypes.map((room, index) => (
-                    <option
-                      key={index}
-                      value={room.roomInfo}
-                      style={{
-                        color: isRoomTypeUnavailable(room.roomInfo)
-                          ? 'red'
-                          : 'inherit',
-                      }}
-                    >
-                      {room.roomInfo.charAt(0).toUpperCase() +
-                        room.roomInfo.slice(1)}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">객실 타입 없음</option>
-                )}
+                {filteredRoomTypes.map((room, index) => (
+                  <option
+                    key={index}
+                    value={room.roomInfo} // 문자열로 설정
+                    style={{
+                      color: isRoomTypeUnavailable(room.roomInfo)
+                        ? 'red'
+                        : 'inherit',
+                    }}
+                  >
+                    {room.roomInfo.charAt(0).toUpperCase() +
+                      room.roomInfo.slice(1)}{' '}
+                    {/* 단일 객실 타입만 표시 */}
+                  </option>
+                ))}
               </select>
             </label>
+
             <label htmlFor="price">
               가격 (KRW):
               <input
@@ -426,12 +434,11 @@ const GuestFormModal = ({
                 name="price"
                 value={price}
                 readOnly
-                min="0"
-                step="1000"
                 required
               />
             </label>
           </div>
+
           <div className="modal-row">
             <label htmlFor="paymentMethod">
               결제방법/상태:
