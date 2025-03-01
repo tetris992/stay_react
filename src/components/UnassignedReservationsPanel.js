@@ -33,7 +33,7 @@ const UnassignedReservationsPanel = ({ reservations }) => {
         padding: '0.5rem',
       }}
     >
-      <h3>
+      <h3 className='unassigned-reservations-list_all'>
         미배정 예약: {unassigned.length}건{' '}
         {unassignedDates.length > 0 && (
           <span style={{ fontSize: '0.9rem', color: 'red' }}>

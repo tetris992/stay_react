@@ -3,7 +3,7 @@
 ========================================================================== */
 :root {
   /* 예약 카드 기본 크기 */
-  --card-width: 280px;
+  --card-width: 300px;
   --card-height: 360px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
@@ -44,19 +44,78 @@ html {
   color: #2c3e50;
   padding: var(--min-gap);
   overflow-y: auto;
+  box-sizing: border-box;
+
 }
 
 /* ==========================================================================
    2. ROOM GRID CONTAINER
 ========================================================================== */
 .layout-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
-  width: auto;
   display: grid;
   gap: 10px;
   box-sizing: border-box;
+  /* 기본적으로 줄바꿈 (row), 300px~320px 너비 유지, 부드럽게 조정 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 320px));
+  width: 100%;
+  transition: grid-template-columns 0.3s ease; /* 부드러운 전환 효과 */
 }
 
+/* 4K 모니터 (3840px 이상) - 14개 객실 한 줄에 표시 */
+@media (min-width: 3840px) {
+  .layout-grid {
+    grid-template-columns: repeat(
+      14,
+      minmax(300px, 320px)
+    ); /* 14개 열 고정, 최소 300px, 최대 320px */
+    gap: 8px; /* 간격 약간 줄여 총 너비 조정 */
+    width: 100%;
+  }
+}
+
+/* 27인치 ~ 4K 미만 (2560px ~ 3839px) - 12개까지 한 줄, 초과 시 줄바꿈 */
+@media (min-width: 2560px) and (max-width: 3839px) {
+  .layout-grid {
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(300px, 320px)
+    ); /* 12개까지 한 줄, 초과 시 줄바꿈 */
+  }
+}
+
+/* 24인치 ~ 27인치 미만 (1920px ~ 2559px) - 8~10개까지 한 줄, 초과 시 줄바꿈 */
+@media (min-width: 1920px) and (max-width: 2559px) {
+  .layout-grid {
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(300px, 1fr)
+    ); /* 더 유연하게, 8~10개까지 한 줄 */
+  }
+}
+
+/* 24인치 이하 (1919px 이하) - 모바일/태블릿 반응형 */
+@media (max-width: 1919px) {
+  .layout-grid {
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(300px, 1fr)
+    ); /* 더 작은 화면에서 유연히 */
+  }
+}
+
+/* 객실 수가 14개 이하일 때 가로 스크롤 유지 (4K 이상, 선택적) */
+.layout-grid[data-cells='14'] {
+  grid-auto-flow: column;
+  width: max-content;
+  overflow-x: auto;
+}
+
+/* 부드러운 전환을 위한 전역 설정 (선택적) */
+@media (min-width: 1920px) {
+  .layout-grid {
+    transition: all 0.3s ease; /* 모든 스타일 변화 부드럽게 */
+  }
+}
 /* ==========================================================================
    3. ROOM CELL (컨테이너)
 ========================================================================== */
@@ -589,7 +648,6 @@ html {
   opacity: 0.9;
 }
 
-
 /* 기존 스타일 유지 */
 .price-row {
   display: flex;
@@ -605,7 +663,7 @@ html {
   overflow: hidden;
 }
 
-.price-input-container input[type="number"] {
+.price-input-container input[type='number'] {
   border: none;
   outline: none;
   width: 100px;
@@ -614,13 +672,13 @@ html {
 }
 
 /* 스피너(화살표 버튼) 제거 */
-.price-input-container input[type="number"]::-webkit-inner-spin-button,
-.price-input-container input[type="number"]::-webkit-outer-spin-button {
+.price-input-container input[type='number']::-webkit-inner-spin-button,
+.price-input-container input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.price-input-container input[type="number"] {
+.price-input-container input[type='number'] {
   -moz-appearance: textfield;
 }
 
