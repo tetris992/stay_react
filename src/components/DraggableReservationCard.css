@@ -198,7 +198,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgb(232, 232, 232); /* 채워질 색상 */
+  background-color: rgb(240, 240, 240); /* 채워질 색상 */
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;
   z-index: -1;
@@ -321,7 +321,7 @@
 
 /* 기본 아이콘 버튼 색상 */
 .action-button svg {
-  color: #555; /* 기본 아이콘 색상 */
+  color: #a3a3a3; /* 기본 아이콘 색상 */
   font-size: 1rem;
   transition: color 0.3s ease; /* 부드러운 색상 전환 효과 */
 }
@@ -345,11 +345,11 @@
 .action-button:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  top: -16px;
+  top: -15px;
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(252, 230, 230, 0.1);
-  color: #000;
+  color: #858585;
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.6rem;
