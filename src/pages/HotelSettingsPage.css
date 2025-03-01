@@ -45,7 +45,6 @@ html {
   padding: var(--min-gap);
   overflow-y: auto;
   box-sizing: border-box;
-
 }
 
 /* ==========================================================================
@@ -59,6 +58,7 @@ html {
   grid-template-columns: repeat(auto-fit, minmax(300px, 320px));
   width: 100%;
   transition: grid-template-columns 0.3s ease; /* 부드러운 전환 효과 */
+  overflow: visible !important;
 }
 
 /* 4K 모니터 (3840px 이상) - 14개 객실 한 줄에 표시 */

@@ -82,7 +82,7 @@
   transform: scale(1.2);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible !important;
   font-weight: 700;
 }
 
@@ -278,117 +278,100 @@
 }
 
 /* ==========================================================================
-     [Action Buttons]
-  ========================================================================== */
+   [Action Buttons - Icon Based, Embossed]
+========================================================================== */
 .button-group {
   display: inline-flex;
-  gap: 5px;
+  gap: 10px;
   align-items: center;
   justify-content: flex-end;
   box-sizing: border-box;
-  width: 120px;
+  width: 120px; /* 그룹 전체 너비 유지 */
+  height: 28px; /* 높이 유지 */
   position: relative;
-  height: 28px;
-  overflow: hidden;
+  overflow: visible; /* 툴팁 표시를 위해 overflow 제거 */
 }
-
+/* 기본 아이콘 버튼 스타일 (음각 효과) */
 .action-button {
-  font-size: 0.8rem;
+  font-size: 1rem; /* 아이콘 크기 조정 */
   border: none;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 6px;
   height: 28px;
+  width: 28px; /* 아이콘 크기에 맞게 조정 */
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: width 0.3s ease, background-color 0.3s ease;
-  border-radius: 4px;
+  border-radius: 50%; /* 원형 유지 */
   font-weight: 600;
   position: relative;
-  overflow: hidden;
-  width: 40px;
+  overflow: visible; /* 툴팁 표시를 위해 필요 */
   z-index: 2;
+  background-color: #fff; /* 기본 배경 색상 */
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(255, 255, 255, 0.5); /* 음각 효과 */
+  border: 1px solid #e0e0e0; /* 테두리 유지 */
 }
 
-.action-button span {
-  display: inline-block;
-  transition: transform 0.3s ease;
+/* 호버 시 테두리 색상 변경 및 툴팁 추가 */
+.action-button:hover {
+  border: 1px solid #a4a4a4; /* 테두리 색상 변경 유지 */
 }
 
-/* 배경 채우기 애니메이션 */
-.action-button::before {
-  content: '';
+/* 기본 아이콘 버튼 색상 */
+.action-button svg {
+  color: #555; /* 기본 아이콘 색상 */
+  font-size: 1rem;
+  transition: color 0.3s ease; /* 부드러운 색상 전환 효과 */
+}
+
+/* 삭제 버튼 아이콘 호버 시 붉은색으로 변경 */
+.action-button.delete-button:hover svg {
+  color: #ff5252; /* 붉은색 */
+}
+
+/* 확정 버튼 아이콘 호버 시 녹색으로 변경 */
+.action-button.confirm-button:hover svg {
+  color: #4caf50; /* 녹색 */
+}
+
+/* 수정 버튼 아이콘 호버 시 파란색으로 변경 */
+.action-button.edit-button:hover svg {
+  color: #2196f3; /* 파란색 */
+}
+
+/* 툴팁 스타일 (현재 코드 유지해도 무방) */
+.action-button:hover::after {
+  content: attr(data-tooltip);
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.3);
-  transition: width 0.3s ease;
-  z-index: -1;
-}
-
-.delete-button {
-  background-color: var(--color-accent-coral);
-  color: #000000;
-}
-
-.delete-button:hover {
-  background-color: #e57373;
-  width: 120px;
-}
-
-.delete-button:hover::before {
-  width: 100%;
-}
-
-.delete-button:hover span {
-  transform: translateY(-2px);
-}
-
-.confirm-button {
-  background-color: var(--color-primary-deep-blue);
-  color: #1018f9;
-}
-
-.confirm-button:hover {
-  background-color: #3f51b5;
-  width: 120px;
-}
-
-.confirm-button:hover::before {
-  width: 100%;
-}
-
-.confirm-button:hover span {
-  transform: translateY(-2px);
-}
-
-.edit-button {
-  background-color: var(--color-primary-soft-green);
-  color: #383938;
-}
-
-.edit-button:hover {
-  background-color: #81c784;
-  width: 120px;
-}
-
-.edit-button:hover::before {
-  width: 100%;
-}
-
-.edit-button:hover span {
-  transform: translateY(-2px);
-}
-
-/* 호버 시 다른 버튼 숨기기 */
-.button-group:hover .action-button:not(:hover) {
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(252, 230, 230, 0.1);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  white-space: nowrap;
+  z-index: 4;
+  pointer-events: none;
   opacity: 0;
-  width: 0;
-  padding: 0;
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease;
+}
+
+.action-button:hover::after {
+  opacity: 1;
+}
+
+/* 버튼 위치 유지 (기존 .button-group-wrapper와 호환) */
+.button-group-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  height: 30px;
+  gap: 6px;
+  margin: 0px 15px;
 }
 
 .small-button {
@@ -429,7 +412,7 @@
 }
 
 /* ==========================================================================
-     [Edit Mode]
+     [Edit Mode] 객실 카드 수정모드
   ========================================================================== */
 .edit-card-content {
   display: flex;
@@ -527,159 +510,3 @@
   max-width: 100px;
   font-weight: 600;
 }
-
-.edit-card-actions .save-button {
-  background-color: #1a237e;
-  color: #fff;
-}
-
-.edit-card-actions .save-button:hover {
-  background-color: #142a6b;
-  transform: scale(1.05);
-}
-
-.edit-card-actions .cancel-button {
-  background-color: #e57373;
-  color: #fff;
-}
-
-.edit-card-actions .cancel-button:hover {
-  background-color: #d32f2f;
-  transform: scale(1.05);
-}
-
-/* 미배정 예약  */
-/* 룸카드 에디트 모드 중복
-.room-card.edit-mode {
-  margin-left: 100px;
-  width: 500px;
-  height: 470px;
-  background: #ffffff;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  border: 2px solid #1a237e;
-  border-radius: 8px;
-  padding: 30px;
-  position: relative;
-  z-index: 1000;
-  transform: scale(1.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  font-weight: 700;
-}
-
-.edit-card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
-  background: #ffffff;
-  border-radius: 0;
-  box-sizing: border-box;
-}
-
-.edit-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-  padding: 5px 0;
-  border-bottom: 1px solid #ddd;
-}
-
-.edit-card-header h2 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1a237e;
-  margin: 0;
-}
-
-.edit-card-header .close-button {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  color: #666;
-  cursor: pointer;
-  transition: color 0.3s ease;
-}
-
-.edit-card-header .close-button:hover {
-  color: #d32f2f;
-}
-
-.edit-card-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 5px;
-}
-
-.edit-card-row label {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  font-weight: 500;
-  color: #333;
-  font-size: 0.9rem;
-}
-
-.edit-card-row input,
-.edit-card-row select {
-  margin-top: 5px;
-  padding: 6px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background-color: #fff;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.edit-card-row input:focus,
-.edit-card-row select:focus {
-  border-color: #1a237e;
-  box-shadow: 0 0 5px rgba(26, 35, 126, 0.2);
-  outline: none;
-}
-
-.edit-card-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 100px;
-  margin-top: 10px;
-  padding-top: 5px;
-  border-top: 1px solid #ddd;
-}
-
-.edit-card-actions button {
-  font-size: 0.9rem;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  flex: 2;
-  max-width: 100px;
-  font-weight: 600;
-}
-
-.edit-card-actions .save-button {
-  background-color: #1a237e;
-  color: #fff;
-}
-
-.edit-card-actions .save-button:hover {
-  background-color: #142a6b;
-  transform: scale(1.05);
-}
-
-.edit-card-actions .cancel-button {
-  background-color: #e57373;
-  color: #fff;
-}
-
-.edit-card-actions .cancel-button:hover {
-  background-color: #d32f2f;
-  transform: scale(1.05);
-} */

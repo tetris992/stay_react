@@ -3,12 +3,12 @@ import React, { useState, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays } from 'date-fns';
-import { FaFileInvoice } from 'react-icons/fa';
+import { FaFileInvoice } from 'react-icons/fa'; // FaCheck 임포트 추가
 import MemoComponent from './MemoComponent';
-import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
-// import { extractPrice } from '../utils/extractPrice';
+import { getBorderColor, getInitialFormData, isOtaReservation } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
-
+import { isCancelledStatus } from '../utils/isCancelledStatus'; // 필요한 함수 임포트 추가
+import { FaCheck, FaTrash, FaEdit } from 'react-icons/fa'; 
 import './DraggableReservationCard.css';
 
 const DraggableReservationCard = ({
@@ -221,6 +221,75 @@ const DraggableReservationCard = ({
     handleCardFlip(reservation._id);
   };
 
+  // 내부에서 정의된 renderActionButtons (중복 선언 문제 해결)
+  const renderCustomActionButtons = (reservation, onEditStart) => {
+    const isOTA = isOtaReservation(reservation);
+    const isCancelled =
+      isCancelledStatus(
+        reservation.reservationStatus || '',
+        reservation.customerName || ''
+      ) || reservation._id.includes('Canceled');
+    const isConfirmed =
+      reservation.reservationStatus &&
+      reservation.reservationStatus.toLowerCase() === 'confirmed';
+
+    let canDelete = false,
+      canConfirm = false,
+      canEdit = false;
+    if (isOTA) {
+      if (!isCancelled && !isConfirmed) canDelete = true;
+      if (isCancelled) canDelete = true;
+    } else if (reservation.siteName === '현장예약') {
+      if (!isConfirmed) canConfirm = true;
+      canDelete = true;
+      canEdit = true;
+    }
+
+    return (
+      <span className="button-group">
+        {canDelete && (
+          <button
+            className="action-button delete-button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            data-tooltip="삭제"
+          >
+            <FaTrash />
+          </button>
+        )}
+        {canConfirm && !isConfirmed && (
+          <button
+            className="action-button confirm-button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            data-tooltip="확정"
+          >
+            <FaCheck />
+          </button>
+        )}
+        {canEdit && (
+          <button
+            className="action-button edit-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditStart();
+            }}
+            data-tooltip="수정"
+          >
+            <FaEdit />
+          </button>
+        )}
+        {isConfirmed && (
+          <span className="confirmed-label">
+            <FaCheck title="예약 확정됨" />
+          </span>
+        )}
+      </span>
+    );
+  };
+
   return (
     <div
       ref={dragRef}
@@ -255,7 +324,7 @@ const DraggableReservationCard = ({
                   <h3 className="no-break">
                     <span className="stay-label">{stayLabel}</span>
                     <span className="button-group-wrapper">
-                      {renderActionButtons(reservation, handleEditStart)}
+                      {renderCustomActionButtons(reservation, handleEditStart)}
                     </span>
                   </h3>
                 </div>

@@ -77,139 +77,6 @@
   gap: 4px;
 }
 
-.action-button {
-  font-size: 0.8rem;
-  border: none;
-  cursor: pointer;
-  padding: 6px 10px;
-  height: 28px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: width 0.3s ease, background-color 0.3s ease;
-  border-radius: 4px;
-  font-weight: 600;
-  position: relative;
-  overflow: hidden;
-  width: 40px;
-  z-index: 2;
-}
-
-.action-button span {
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-/* 배경 채우기 애니메이션 */
-.action-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.3);
-  transition: width 0.3s ease;
-  z-index: -1;
-}
-
-.delete-button {
-  background-color: var(--color-accent-coral);
-  color: #f00d0d;
-}
-
-.delete-button:hover {
-  background-color: #e57373;
-  width: 120px;
-}
-
-.delete-button:hover::before {
-  width: 100%;
-}
-
-.delete-button:hover span {
-  transform: translateY(-2px);
-}
-
-.confirm-button {
-  background-color: var(--color-primary-deep-blue);
-  color: #1018f9;
-}
-
-.confirm-button:hover {
-  background-color: #3f51b5;
-  width: 120px;
-}
-
-.confirm-button:hover::before {
-  width: 100%;
-}
-
-.confirm-button:hover span {
-  transform: translateY(-2px);
-}
-
-.edit-button {
-  background-color: var(--color-primary-soft-green);
-  color: #383938;
-}
-
-.edit-button:hover {
-  background-color: #81c784;
-  width: 120px;
-}
-
-.edit-button:hover::before {
-  width: 100%;
-}
-
-.edit-button:hover span {
-  transform: translateY(-2px);
-}
-
-/* 호버 시 다른 버튼 숨기기 */
-.button-group:hover .action-button:not(:hover) {
-  opacity: 0;
-  width: 0;
-  padding: 0;
-  transition: all 0.3s ease;
-}
-
-.small-button {
-  opacity: 0.95;
-  font-size: 0.95rem;
-  padding: 6px 8px;
-}
-
-.small-button:hover {
-  opacity: 1;
-}
-
-/* 추가: 호버 시 미세한 빛 효과 (선택 사항) */
-.action-button::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  transition: width 0.3s ease, height 0.3s ease;
-  pointer-events: none;
-}
-
-.action-button:hover::after {
-  width: 200%;
-  height: 200%;
-}
-
-/* ==========================================================================
-   [Room Card Edit Mode]
-========================================================================== */
-
 /* ==========================================================================
    [Flip Effect & Other Card Styles]
 ========================================================================== */
@@ -350,7 +217,6 @@
   background-color: #eed142; /* 원하는 배경색 */
 }
 
-
 .unassigned-section {
   border: 1px solid #ddd;
   background-color: #f9f9f9;
@@ -382,7 +248,6 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  
 }
 
 .unassigned-header-title-button:hover {
@@ -440,5 +305,3 @@
     box-shadow: 0 0 10px #ff0000;
   }
 }
-
-

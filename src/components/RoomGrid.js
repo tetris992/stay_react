@@ -27,6 +27,8 @@ import {
 } from '../utils/availability';
 
 import { checkConflict } from '../utils/checkConflict';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrashAlt, faCheck, faEdit } from '@fortawesome/free-solid-svg-icons';
 
 /* ===============================
    HELPER FUNCTIONS
@@ -541,35 +543,38 @@ function RoomGrid({
       <span className="button-group">
         {canDelete && (
           <button
-            className="action-button delete-button small-button red-delete"
+            className="action-button delete-button"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteClickHandler(reservation._id, reservation.siteName);
             }}
+            data-tooltip="삭제"
           >
-            삭제
+            <FontAwesomeIcon icon={faTrashAlt} />
           </button>
         )}
         {canConfirm && !isConfirmed && (
           <button
-            className="action-button confirm-button small-button blue-confirm"
+            className="action-button confirm-button"
             onClick={(e) => {
               e.stopPropagation();
               handleConfirmClickHandler(reservation._id);
             }}
+            data-tooltip="확정"
           >
-            확정
+            <FontAwesomeIcon icon={faCheck} />
           </button>
         )}
         {canEdit && (
           <button
-            className="action-button edit-button small-button green-edit"
+            className="action-button edit-button"
             onClick={(e) => {
               e.stopPropagation();
               onEditStart();
             }}
+            data-tooltip="수정"
           >
-            수정
+            <FontAwesomeIcon icon={faEdit} />
           </button>
         )}
         {isConfirmed && (
