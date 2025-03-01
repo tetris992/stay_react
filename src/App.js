@@ -893,7 +893,7 @@ const App = () => {
           error.status === 403
             ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
             : '예약 수정에 실패했습니다.';
-        alert(message);
+        console.info(message);
         await loadReservations();
       }
     },

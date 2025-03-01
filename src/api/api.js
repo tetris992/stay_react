@@ -337,15 +337,17 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 409) {
-      // 중복 발생 상황 처리
-      alert('이미 해당 객실에 중복된 예약이 있습니다.');
+      // 백엔드에서 반환된 상세 메시지를 alert로 표시
+      const conflictMessage =
+        error.response.data.message ||
+        '이미 해당 객실에 중복된 예약이 있습니다.';
+      alert(conflictMessage);
     } else {
       console.error('예약 업데이트 실패:', error);
     }
     throw error.response?.data || error;
   }
 };
-
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {
