@@ -5,10 +5,14 @@ import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa'; // FaCheck 임포트 추가
 import MemoComponent from './MemoComponent';
-import { getBorderColor, getInitialFormData, isOtaReservation } from '../utils/roomGridUtils';
+import {
+  getBorderColor,
+  getInitialFormData,
+  isOtaReservation,
+} from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import { isCancelledStatus } from '../utils/isCancelledStatus'; // 필요한 함수 임포트 추가
-import { FaCheck, FaTrash, FaEdit } from 'react-icons/fa'; 
+import { FaCheck, FaTrash, FaEdit } from 'react-icons/fa';
 import './DraggableReservationCard.css';
 
 const DraggableReservationCard = ({
@@ -258,17 +262,6 @@ const DraggableReservationCard = ({
             <FaTrash />
           </button>
         )}
-        {canConfirm && !isConfirmed && (
-          <button
-            className="action-button confirm-button"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            data-tooltip="확정"
-          >
-            <FaCheck />
-          </button>
-        )}
         {canEdit && (
           <button
             className="action-button edit-button"
@@ -281,6 +274,18 @@ const DraggableReservationCard = ({
             <FaEdit />
           </button>
         )}
+        {canConfirm && !isConfirmed && (
+          <button
+            className="action-button confirm-button"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            data-tooltip="확정"
+          >
+            <FaCheck />
+          </button>
+        )}
+
         {isConfirmed && (
           <span className="confirmed-label">
             <FaCheck title="예약 확정됨" />
