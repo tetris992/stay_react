@@ -29,6 +29,8 @@ const DraggableReservationCard = ({
   hotelAddress,
   phoneNumber,
   email,
+  handleDeleteClickHandler,
+  handleConfirmClickHandler,
   renderActionButtons,
   loadedReservations,
   newlyCreatedId,
@@ -256,6 +258,7 @@ const DraggableReservationCard = ({
             className="action-button delete-button"
             onClick={(e) => {
               e.stopPropagation();
+              handleDeleteClickHandler(reservation._id, reservation.siteName); // 여기가 핵심!
             }}
             data-tooltip="삭제"
           >
@@ -279,13 +282,13 @@ const DraggableReservationCard = ({
             className="action-button confirm-button"
             onClick={(e) => {
               e.stopPropagation();
+              handleConfirmClickHandler(reservation._id); // 확정 로직 호출
             }}
             data-tooltip="확정"
           >
             <FaCheck />
           </button>
         )}
-
         {isConfirmed && (
           <span className="confirmed-label">
             <FaCheck title="예약 확정됨" />
@@ -579,6 +582,8 @@ const DraggableReservationCard = ({
 };
 
 DraggableReservationCard.propTypes = {
+  handleConfirmClickHandler: PropTypes.func.isRequired,
+  handleDeleteClickHandler: PropTypes.func.isRequired,
   isUnassigned: PropTypes.bool, // 미배정 카드 여부
   reservation: PropTypes.object.isRequired,
   hotelId: PropTypes.string.isRequired,

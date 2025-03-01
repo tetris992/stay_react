@@ -787,6 +787,12 @@ function RoomGrid({
                                 }
                                 onPartialUpdate={onPartialUpdate}
                                 roomTypes={roomTypes}
+                                handleDeleteClickHandler={
+                                  handleDeleteClickHandler
+                                }
+                                handleConfirmClickHandler={
+                                  handleConfirmClickHandler
+                                }
                               />
                             ))
                           )}
