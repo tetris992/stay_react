@@ -28,6 +28,7 @@ import {
   addDays,
   endOfMonth,
   differenceInCalendarDays,
+  startOfDay,
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -56,7 +57,7 @@ import './i18n';
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
 import { computeRemainingInventory } from './utils/computeRemainingInventory';
-import { computeDailyAvailability } from './utils/availability';
+import { calculateRoomAvailability } from './utils/availability';
 /* ============================================================================
    HELPER FUNCTIONS (추후 별도 유틸 파일로 분리 가능)
    ============================================================================ */
@@ -297,6 +298,7 @@ const App = () => {
 
   // 드래그 범위 선택 후, 현장예약 모달을 오픈하는 함수
   const onQuickCreateRange = (start, end, roomType) => {
+    const now = new Date();
     // 선택된 날짜 중 가장 빠른 날짜를 체크인, 가장 늦은 날짜를 체크아웃으로 지정합니다.
     const checkInDate = format(start, 'yyyy-MM-dd');
     const checkOutDate = format(end, 'yyyy-MM-dd');
@@ -306,7 +308,7 @@ const App = () => {
     // 예약번호는 현재 시간 기반으로 생성 (예시)
     const reservationNo = `${Date.now()}`;
     // 기본 예약자명은 빈 값 혹은 자동생성 이름 (원하는대로 수정)
-    const customerName = '';
+    const customerName = `현장:${format(now, 'HH:mm:ss')}`;
 
     // GuestFormModal에 전달할 초기 데이터를 구성합니다.
     const guestData = {
@@ -1322,53 +1324,43 @@ const App = () => {
   const occupancyRate =
     totalRooms > 0 ? Math.round((roomsSold / totalRooms) * 100) : 0;
 
-  // * Refactored: 현장 예약 생성용 함수 정리
+  // App.js (openOnSiteReservationForm 함수 수정)
   const openOnSiteReservationForm = () => {
     const now = new Date();
-    // 오늘 자정 계산
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    // 선택된 날짜가 오늘 이전이면 오늘 날짜로 조정
+    const todayStart = startOfDay(now);
+
     const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
 
-    // effectiveDate를 기준으로 체크인/체크아웃 시간을 설정
-    const checkInObj = new Date(effectiveDate);
-    checkInObj.setHours(16, 0, 0, 0);
-    const checkOutObj = new Date(checkInObj.getTime() + 19 * 60 * 60 * 1000);
+    const checkIn = new Date(effectiveDate);
+    checkIn.setHours(16, 0, 0, 0);
+    const checkOut = addDays(checkIn, 1);
+    checkOut.setHours(11, 0, 0, 0);
 
-    const checkInDate = format(checkInObj, 'yyyy-MM-dd');
-    const checkInTime = format(checkInObj, 'HH:mm');
-    const checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
-    const checkOutTime = format(checkOutObj, 'HH:mm');
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    const customerName = `현장숙박${rand}`;
+    // "현장: 시간:분:초" 형식으로 자동 생성
+    const customerName = `현장:${format(now, 'HH:mm:ss')}`;
 
     setGuestFormData({
       reservationNo: `${Date.now()}`,
       customerName,
       phoneNumber: '',
-      checkInDate,
-      checkInTime,
-      checkOutDate,
-      checkOutTime,
+      checkInDate: format(checkIn, 'yyyy-MM-dd'),
+      checkInTime: '16:00',
+      checkOutDate: format(checkOut, 'yyyy-MM-dd'),
+      checkOutTime: '11:00',
       reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
       roomInfo: roomTypes[0]?.roomInfo || 'Standard',
-      price: roomTypes[0]?.price?.toString() || '0',
+      price: roomTypes[0]?.price.toString() || '',
       paymentMethod: 'Pending',
       specialRequests: '',
-      checkIn: `${checkInDate}T${checkInTime}:00`,
-      checkOut: `${checkOutDate}T${checkOutTime}:00`,
+      checkIn: format(checkIn, "yyyy-MM-dd'T'HH:mm:ss"),
+      checkOut: format(checkOut, "yyyy-MM-dd'T'HH:mm:ss"),
+      _id: null, // 신규 생성임을 명확히 나타냄
     });
     setShowGuestForm(true);
   };
-
-  // * Refactored: 간편 예약 입력 함수 통합
+  // App.js (onQuickCreate 함수 수정)
   const onQuickCreate = (type) => {
     let checkInDate, checkInTime, checkOutDate, checkOutTime, customerName;
-    const rand = Math.floor(1000 + Math.random() * 9000);
     const now = new Date();
     // 오늘 자정 계산 (오늘 날짜 기준)
     const todayStart = new Date(
@@ -1387,7 +1379,7 @@ const App = () => {
       const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
-      customerName = `현장대실${rand}`;
+      customerName = `현장:${format(now, 'HH:mm:ss')}`;
       const basePrice = roomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
@@ -1423,7 +1415,7 @@ const App = () => {
         checkInObj.getTime() + nights * 24 * 60 * 60 * 1000
       );
       checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
-      customerName = `현장숙박${rand}`;
+      customerName = `현장:${format(now, 'HH:mm:ss')}`;
       const basePrice = roomTypes[0].price * nights;
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
@@ -1508,7 +1500,7 @@ const App = () => {
       `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
     );
     if (!checkIn || !checkOut) return {};
-    return computeDailyAvailability(
+    return calculateRoomAvailability(
       allReservations,
       finalRoomTypes,
       checkIn,

@@ -107,6 +107,28 @@ export function getPaymentMethodIcon(pm) {
 
 // form 초기값 설정 로직 (공통화)
 export function getInitialFormData(reservation, roomTypes) {
+  if (!reservation || typeof reservation !== 'object' || reservation.isNew) {
+    const now = new Date();
+    const ci = now;
+    const co = addDays(now, 1);
+    const ciDate = format(ci, 'yyyy-MM-dd');
+    const coDate = format(co, 'yyyy-MM-dd');
+    const selectedRoom = roomTypes[0] || { roomInfo: 'Standard', price: 0 };
+    
+    return {
+      customerName: '',
+      phoneNumber: '',
+      checkInDate: ciDate,
+      checkOutDate: coDate,
+      reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+      roomInfo: selectedRoom.roomInfo,
+      price: selectedRoom.price.toString(),
+      paymentMethod: 'Pending',
+      specialRequests: '',
+      manualPriceOverride: false,
+    };
+  }
+
   const ci = reservation.checkIn ? new Date(reservation.checkIn) : new Date();
   const co = reservation.checkOut
     ? new Date(reservation.checkOut)
@@ -121,8 +143,8 @@ export function getInitialFormData(reservation, roomTypes) {
     : '0';
   const selectedRoom = roomTypes.find(
     (r) => r.roomInfo === reservation.roomInfo
-  );
-  const basePrice = selectedRoom ? selectedRoom.price : 0;
+  ) || roomTypes[0] || { roomInfo: 'Standard', price: 0 };
+  const basePrice = selectedRoom.price || 0;
   const nights = Math.max(
     1,
     Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
@@ -135,8 +157,8 @@ export function getInitialFormData(reservation, roomTypes) {
     checkInDate: ciDate,
     checkOutDate: coDate,
     reservationDate: resDate,
-    roomInfo: reservation.roomInfo || roomTypes[0]?.roomInfo || '', // 문자열로 설정
-    price: calculatedPrice, // 문자열로 저장
+    roomInfo: reservation.roomInfo || selectedRoom.roomInfo,
+    price: calculatedPrice,
     paymentMethod: reservation.paymentMethod || 'Pending',
     specialRequests: reservation.specialRequests || '',
     manualPriceOverride: !!reservation.price,

@@ -1,3 +1,4 @@
+// src/components/RoomGrid.js
 import React, {
   useState,
   useEffect,
@@ -8,12 +9,12 @@ import React, {
 import PropTypes from 'prop-types';
 import { format } from 'date-fns';
 import { useDrop } from 'react-dnd';
-import { FaCheck } from 'react-icons/fa';
 
 import './RoomGrid.css';
 import InvoiceModal from './InvoiceModal';
 import DraggableReservationCard from './DraggableReservationCard';
 import { isCancelledStatus } from '../utils/isCancelledStatus';
+import { renderActionButtons } from '../utils/renderActionButtons'; // 공통 유틸 임포트
 import {
   isOtaReservation,
   sortContainers,
@@ -23,12 +24,9 @@ import { matchRoomType } from '../utils/matchRoomType';
 import {
   canMoveToRoom,
   canSwapReservations,
-  computeDailyAvailability,
+  calculateRoomAvailability,
 } from '../utils/availability';
-
 import { checkConflict } from '../utils/checkConflict';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrashAlt, faCheck, faEdit } from '@fortawesome/free-solid-svg-icons';
 
 /* ===============================
    HELPER FUNCTIONS
@@ -155,7 +153,7 @@ const ContainerCell = React.memo(
                   : r
               );
 
-              const availabilityByDate = computeDailyAvailability(
+              const availabilityByDate = calculateRoomAvailability(
                 updatedReservations,
                 roomTypes,
                 draggedReservation.parsedCheckInDate,
@@ -259,7 +257,7 @@ function RoomGrid({
     useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   // eslint-disable-next-line
-  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false); // 중요한 기능 유지
 
   const [selectedReservation, setSelectedReservation] = useState(null);
 
@@ -278,7 +276,7 @@ function RoomGrid({
   const allContainers = useMemo(
     () => floors.flatMap((floor) => floor.containers || []),
     [floors]
-  );
+  ); // 중요한 기능 유지
 
   const getReservationById = useCallback(
     (id) => reservations.find((res) => res._id === id),
@@ -288,6 +286,17 @@ function RoomGrid({
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return reservations.filter((reservation) => {
+      // 취소된 예약 필터링: isCancelledStatus로 확인
+      if (
+        isCancelledStatus(
+          reservation.reservationStatus || '',
+          reservation.customerName || '',
+          reservation.roomInfo || '',
+          reservation.reservationNo || ''
+        )
+      ) {
+        return false;
+      }
       const { parsedCheckInDate, parsedCheckOutDate } = reservation;
       if (!parsedCheckInDate || !parsedCheckOutDate) return false;
       const checkInDateOnly = new Date(
@@ -328,7 +337,14 @@ function RoomGrid({
   const unassignedReservations = useMemo(
     () =>
       reservations.filter(
-        (res) => !res.roomNumber || res.roomNumber.trim() === ''
+        (res) =>
+          (!res.roomNumber || res.roomNumber.trim() === '') &&
+          !isCancelledStatus(
+            res.reservationStatus || '',
+            res.customerName || '',
+            res.roomInfo || '',
+            res.reservationNo || ''
+          )
       ),
     [reservations]
   );
@@ -339,20 +355,27 @@ function RoomGrid({
     }
   }, [unassignedReservations]);
 
-  // (불필요한 디버깅 로그는 제거하였습니다)
-
   useEffect(() => {
-    setAutoAssigning(true);
+    setAutoAssigning(true); // 중요한 기능 유지
     if (!allContainers.length || unassignedReservations.length === 0) {
       setAutoAssigning(false);
       return;
     }
     const autoAssignTimer = setTimeout(() => {
-      const typeAssignments = getTypeAssignments(reservations, roomTypes);
+      const typeAssignments = getTypeAssignments(reservations, roomTypes); // 중요한 기능 유지
       const updates = [];
 
       unassignedReservations.forEach((res) => {
-        if (isOtaReservation(res)) return;
+        if (
+          isCancelledStatus(
+            res.reservationStatus || '',
+            res.customerName || '',
+            res.roomInfo || '',
+            res.reservationNo || ''
+          )
+        )
+          return; // 취소된 예약은 자동 할당에서 제외
+        if (isOtaReservation(res)) return; // 중요한 기능 유지
         if (res.roomNumber && res.roomNumber.trim() !== '') return;
 
         const matched = matchRoomType(res.roomInfo, roomTypes);
@@ -362,7 +385,7 @@ function RoomGrid({
             (cont) =>
               cont.roomInfo.toLowerCase() === typeKey &&
               cont.roomInfo !== 'none'
-          );
+          ); // 중요한 기능 유지
           const sortedContainers = sortContainers(containersForType);
           const assignedRoomNumbers = typeAssignments[typeKey] || [];
           const availableContainer = sortedContainers.find(
@@ -516,76 +539,6 @@ function RoomGrid({
     }
   }, [selectedReservation, modalType, isModalOpen]);
 
-  const renderActionButtons = (reservation, onEditStart) => {
-    const isOTA = isOtaReservation(reservation);
-    const isCancelled =
-      isCancelledStatus(
-        reservation.reservationStatus || '',
-        reservation.customerName || ''
-      ) || reservation._id.includes('Canceled');
-    const isConfirmed =
-      reservation.reservationStatus &&
-      reservation.reservationStatus.toLowerCase() === 'confirmed';
-
-    let canDelete = false,
-      canConfirm = false,
-      canEdit = false;
-    if (isOTA) {
-      if (!isCancelled && !isConfirmed) canDelete = true;
-      if (isCancelled) canDelete = true;
-    } else if (reservation.siteName === '현장예약') {
-      if (!isConfirmed) canConfirm = true;
-      canDelete = true;
-      canEdit = true;
-    }
-
-    return (
-      <span className="button-group">
-        {canDelete && (
-          <button
-            className="action-button delete-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClickHandler(reservation._id, reservation.siteName);
-            }}
-            data-tooltip="삭제"
-          >
-            <FontAwesomeIcon icon={faTrashAlt} />
-          </button>
-        )}
-        {canConfirm && !isConfirmed && (
-          <button
-            className="action-button confirm-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleConfirmClickHandler(reservation._id);
-            }}
-            data-tooltip="확정"
-          >
-            <FontAwesomeIcon icon={faCheck} />
-          </button>
-        )}
-        {canEdit && (
-          <button
-            className="action-button edit-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditStart();
-            }}
-            data-tooltip="수정"
-          >
-            <FontAwesomeIcon icon={faEdit} />
-          </button>
-        )}
-        {isConfirmed && (
-          <span className="confirmed-label">
-            <FaCheck title="예약 확정됨" />
-          </span>
-        )}
-      </span>
-    );
-  };
-
   const sortReservations = useCallback(
     (list) => {
       if (sortOrder === 'roomType') {
@@ -676,6 +629,8 @@ function RoomGrid({
                     onPartialUpdate={onPartialUpdate}
                     roomTypes={roomTypes}
                     isUnassigned={true}
+                    handleDeleteClickHandler={handleDeleteClickHandler}
+                    handleConfirmClickHandler={handleConfirmClickHandler}
                   />
                 ))}
               </div>

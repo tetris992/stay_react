@@ -8,106 +8,101 @@ import {
 
 /**
  * 예약 정보를 바탕으로 날짜별 객실 잔여 정보를 계산합니다.
- * (기존 코드 - 수정 없음)
+ * 수정사항: 체크아웃 날짜를 사용 기간에서 제외하도록 변경
  */
-export function computeDailyAvailability(
+export function calculateRoomAvailability(
   reservations,
   roomTypes,
   fromDate,
   toDate,
   gridSettings = null
 ) {
-  // 1) 각 roomType별로 stock과 객실번호(roomNumbers)를 정리
+  // 1. 객실 타입별 정보 구성
   const roomDataByType = {};
   roomTypes.forEach((rt) => {
-    const tKey = (rt.roomInfo || 'Standard').toLowerCase();
+    const tKey = rt.roomInfo.toLowerCase();
     let rooms = rt.roomNumbers || [];
-    // roomNumbers가 없으면 gridSettings.containers에서 추출
-    if (
-      (!rooms || rooms.length === 0) &&
-      gridSettings &&
-      gridSettings.containers
-    ) {
-      rooms = gridSettings.containers
-        .filter(
-          (cell) =>
-            (cell.roomInfo || 'standard').toLowerCase() === tKey &&
+    if ((!rooms || rooms.length === 0) && gridSettings && gridSettings.floors) {
+      rooms = gridSettings.floors
+        .flatMap((floor) => floor.containers || [])
+        .filter((cell) => {
+          const cellTypeKey = (cell.roomInfo || 'standard').toLowerCase();
+          return (
+            cellTypeKey === tKey &&
             cell.roomNumber &&
             cell.roomNumber.trim() !== ''
-        )
-        .map((cell) => cell.roomNumber);
+          );
+        })
+        .map((cell) => cell.roomNumber)
+        .sort();
     }
-    roomDataByType[tKey] = {
-      stock: rt.stock || 0,
-      rooms,
-    };
+    roomDataByType[tKey] = { stock: rt.stock || 0, rooms };
   });
 
-  // 2) fromDate ~ toDate 범위 내 날짜 리스트 생성
+  // 2. 기준 날짜 목록 생성 (체크아웃 날짜는 포함하지 않음)
   const start = startOfDay(fromDate);
   const end = startOfDay(toDate);
-  const totalDays = differenceInCalendarDays(end, start) + 1;
+  const numDays = differenceInCalendarDays(end, start);
   const dateList = [];
-  for (let i = 0; i < totalDays; i++) {
-    const d = addDays(start, i);
-    dateList.push(format(d, 'yyyy-MM-dd'));
+  for (let i = 0; i < numDays; i++) {
+    // '<' 사용 → 체크아웃 날 제외
+    dateList.push(format(addDays(start, i), 'yyyy-MM-dd'));
   }
 
-  // 3) 날짜별, 타입별 사용 내역 초기화
+  // 3. 날짜별 사용량 초기화
   const usageByDate = {};
   dateList.forEach((ds) => {
     usageByDate[ds] = {};
     Object.keys(roomDataByType).forEach((typeKey) => {
-      usageByDate[ds][typeKey] = { count: 0, assignedRooms: [] };
+      usageByDate[ds][typeKey] = { count: 0, assignedRooms: new Set() };
     });
-    usageByDate[ds]['unassigned'] = { count: 0, assignedRooms: [] };
+    usageByDate[ds]['unassigned'] = { count: 0, assignedRooms: new Set() };
   });
 
-  // 4) 각 예약에 대해 사용 내역 업데이트
+  // 4. 예약별 사용량 계산
   reservations.forEach((res) => {
-    if (res.isCancelled) return; // 취소 예약 무시
-
-    const ci = res.parsedCheckInDate ? startOfDay(res.parsedCheckInDate) : null;
-    const co = res.parsedCheckOutDate
-      ? startOfDay(res.parsedCheckOutDate)
-      : null;
-    if (!ci || !co) return;
-
-    let typeKey;
-    if (!res.roomNumber || res.roomNumber.trim() === '') {
-      typeKey = 'unassigned';
-    } else {
-      typeKey = res.roomInfo ? res.roomInfo.toLowerCase() : 'standard';
+    const ci = res.parsedCheckInDate ? new Date(res.parsedCheckInDate) : null;
+    const co = res.parsedCheckOutDate ? new Date(res.parsedCheckOutDate) : null;
+    if (!ci || !co) {
+      console.warn('Invalid dates for reservation', res);
+      return;
     }
 
-    // 예약 기간이 전체 범위보다 벗어나면 범위에 맞게 조정
-    const usageStart = ci < start ? start : ci;
-    const usageEnd = co > end ? end : co;
+    // 예약 타입 결정 (배정된 경우와 미배정인 경우 구분)
+    let typeKey = res.roomInfo ? res.roomInfo.toLowerCase() : 'standard';
+    if (!res.roomNumber || res.roomNumber.trim() === '') typeKey = 'unassigned';
 
-    if (usageEnd > usageStart) {
+    // 사용 기간 결정: 일반 예약은 체크아웃 날짜를 제외함
+    let usageStart = ci < start ? start : ci;
+    let usageEnd = co > end ? end : co;
+
+    // 대실(체크인 == 체크아웃)인 경우 당일만 계산
+    if (format(ci, 'yyyy-MM-dd') === format(co, 'yyyy-MM-dd')) {
+      const ds = format(usageStart, 'yyyy-MM-dd');
+      if (usageByDate[ds] && usageByDate[ds][typeKey]) {
+        usageByDate[ds][typeKey].count += 1;
+        if (res.roomNumber) {
+          usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
+        }
+      }
+    } else if (usageEnd > usageStart) {
+      // 예약 사용 기간: 체크아웃 날은 포함하지 않음
       let cursor = usageStart;
       while (cursor < usageEnd) {
+        // '<' 사용 → 체크아웃 당일 제외
         const ds = format(cursor, 'yyyy-MM-dd');
         if (usageByDate[ds] && usageByDate[ds][typeKey]) {
           usageByDate[ds][typeKey].count += 1;
-          if (typeKey !== 'unassigned' && res.roomNumber) {
-            usageByDate[ds][typeKey].assignedRooms.push(res.roomNumber);
+          if (res.roomNumber) {
+            usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
           }
         }
         cursor = addDays(cursor, 1);
       }
-    } else if (usageEnd.getTime() === usageStart.getTime()) {
-      const ds = format(usageStart, 'yyyy-MM-dd');
-      if (usageByDate[ds] && usageByDate[ds][typeKey]) {
-        usageByDate[ds][typeKey].count += 1;
-        if (typeKey !== 'unassigned' && res.roomNumber) {
-          usageByDate[ds][typeKey].assignedRooms.push(res.roomNumber);
-        }
-      }
     }
   });
 
-  // 5) 최종 availability 계산
+  // 5. 잔여 재고 계산
   const availability = {};
   dateList.forEach((ds) => {
     availability[ds] = {};
@@ -117,7 +112,7 @@ export function computeDailyAvailability(
       } else {
         const allRooms = roomDataByType[typeKey]?.rooms || [];
         const usedCount = usage.count;
-        const assigned = usage.assignedRooms || [];
+        const assigned = Array.from(usage.assignedRooms);
         const totalStock = roomDataByType[typeKey]?.stock || 0;
         const leftoverRooms = allRooms.filter(
           (rnum) => !assigned.includes(rnum)
@@ -125,6 +120,12 @@ export function computeDailyAvailability(
         const remainCalc = totalStock - usedCount;
         const remain = remainCalc < 0 ? 0 : remainCalc;
         availability[ds][typeKey] = { remain, leftoverRooms };
+
+        // 콘솔 로그 추가: 날짜, 총 객실, 점유된 객실번호, 남은 객실번호
+        console.log(`[${ds}] 객실 타입: ${typeKey}`);
+        console.log(`총 객실번호: ${allRooms.join(', ') || '없음'}`);
+        console.log(`당일 점유 객실번호: ${assigned.join(', ') || '없음'}`);
+        console.log(`남은 객실번호: ${leftoverRooms.join(', ') || '없음'}`);
       }
     });
   });
@@ -132,10 +133,6 @@ export function computeDailyAvailability(
   return availability;
 }
 
-/**
- * 선택한 날짜 범위와 해당 객실 타입에 대해,
- * 사용 가능한 객실번호 목록 메시지를 생성합니다.
- */
 export function getDetailedAvailabilityMessage(
   rangeStart,
   rangeEnd,
@@ -144,11 +141,11 @@ export function getDetailedAvailabilityMessage(
 ) {
   let msg =
     '연박 예약이 불가능합니다.\n선택한 날짜 범위에서 날짜별 사용 가능한 객실번호는 다음과 같습니다:\n';
-  let cursor = rangeStart;
-  while (cursor <= rangeEnd) {
+  let cursor = startOfDay(rangeStart);
+  while (cursor <= startOfDay(rangeEnd)) {
     const ds = format(cursor, 'yyyy-MM-dd');
     const freeRooms =
-      availabilityByDate[ds]?.[roomTypeKey]?.leftoverRooms || [];
+      availabilityByDate[ds]?.[roomTypeKey.toLowerCase()]?.leftoverRooms || [];
     msg += `${ds}: ${freeRooms.length > 0 ? freeRooms.join(', ') : '없음'}\n`;
     cursor = addDays(cursor, 1);
   }

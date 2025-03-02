@@ -1,0 +1,106 @@
+/* src/utils/renderActionButtons.css */
+
+.button-group {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    box-sizing: border-box;
+    width: 120px; /* 그룹 전체 너비 유지 */
+    height: 28px; /* 높이 유지 */
+    position: relative;
+    overflow: visible; /* 툴팁 표시를 위해 overflow 제거 */
+  }
+  
+  /* 기본 아이콘 버튼 스타일 (음각 효과) */
+  .action-button {
+    font-size: 1rem; /* 아이콘 크기 조정 */
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    height: 28px;
+    width: 28px; /* 아이콘 크기에 맞게 조정 */
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%; /* 원형 유지 */
+    font-weight: 600;
+    position: relative;
+    overflow: visible; /* 툴팁 표시를 위해 필요 */
+    z-index: 2;
+    background-color: #fff; /* 기본 배경 색상 */
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2),
+      0 1px 2px rgba(255, 255, 255, 0.5); /* 음각 효과 */
+    border: 1px solid #e0e0e0; /* 테두리 유지 */
+  }
+  
+  /* 호버 시 테두리 색상 변경 및 툴팁 추가 */
+  .action-button:hover {
+    border: 1px solid #a4a4a4; /* 테두리 색상 변경 유지 */
+  }
+  
+  /* 기본 아이콘 버튼 색상 */
+  .action-button svg {
+    color: #a3a3a3; /* 기본 아이콘 색상 */
+    font-size: 1rem;
+    transition: color 0.3s ease; /* 부드러운 색상 전환 효과 */
+  }
+  
+  /* 삭제 버튼 아이콘 호버 시 붉은색으로 변경 */
+  .action-button.delete-button:hover svg {
+    color: #ff5252; /* 붉은색 */
+  }
+  
+  /* 확정 버튼 아이콘 호버 시 녹색으로 변경 */
+  .action-button.confirm-button:hover svg {
+    color: #4caf50; /* 녹색 */
+  }
+  
+  /* 수정 버튼 아이콘 호버 시 파란색으로 변경 */
+  .action-button.edit-button:hover svg {
+    color: #2196f3; /* 파란색 */
+  }
+  
+  /* 툴팁 스타일 (현재 코드 유지해도 무방) */
+  .action-button:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(252, 230, 230, 0.1);
+    color: #858585;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .action-button:hover::after {
+    opacity: 1;
+  }
+  
+  /* 버튼 위치 유지 (기존 .button-group-wrapper와 호환) */
+  .button-group-wrapper {
+    display: flex;
+    justify-content: space-between;
+    width: auto;
+    height: 30px;
+    gap: 6px;
+    margin: 0px 15px;
+  }
+  
+  .small-button {
+    opacity: 0.95;
+    font-size: 0.95rem;
+    padding: 6px 8px;
+  }
+  
+  .small-button:hover {
+    opacity: 1;
+  }
