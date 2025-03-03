@@ -146,8 +146,8 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
         </>
       ) : (
         <>
-          <FaClipboardCheck style={{ marginRight: '4px' }} />
-          새로운 예약 확인하기
+          <FaClipboardCheck style={{ marginRight: '0px' }} />
+          <p class='res-text'>새로운 예약 확인하기</p>
         </>
       )}
     </button>

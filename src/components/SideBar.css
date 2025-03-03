@@ -125,9 +125,9 @@
   font-size: 1.1rem;
   border: none;
   border-radius: 8px;
+  background-color: rgba(199, 198, 198, 0.49);
+  color: black;
   cursor: pointer;
-  background-color: #9662ace1;
-  color: #ffffff;
   transition: background-color 0.3s ease, color 0.3s ease;
   white-space: nowrap;
   display: flex;
@@ -150,6 +150,10 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+.monthly-view-button:hover {
+  background-color: #007cb576;
+  color: #ffffff;
+}
 /* Cancel Search Button */
 .cancelSearch-button {
   padding: 12px;

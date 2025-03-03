@@ -8,8 +8,11 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  background-color: #62ac62e1;
-  color: #ffffff;
+  background-color: #c7c6c67d;
+  font-weight: 600;
+  color: black;
+  margin: 0px;
+
   transition: background-color 0.3s ease, color 0.3s ease;
   white-space: nowrap;
   display: flex;
@@ -18,9 +21,14 @@
   font-size: 18px;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
+.res-text {
+  margin-left: 0px;
+}
 
 .scrape-now-button:hover:not(:disabled) {
-  background-color: #c7c6c67d;
+  background-color: #62ac62e1;
+  color: #ffffff;
+
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
