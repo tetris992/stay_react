@@ -113,7 +113,7 @@
   align-items: center;
   gap: 10px;
   font-size: 18px;
-
+margin-bottom: 10px;
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
