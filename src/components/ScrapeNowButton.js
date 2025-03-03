@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { FaClipboardCheck } from 'react-icons/fa';
 import './ScrapeNowButton.css';
 
-// 확장 환경에서 사용할 액션 매핑
 const ACTION_MAP = {
   YanoljaMotel: 'TRIGGER_YANOLJA_SCRAPE',
   GoodMotel: 'TRIGGER_GOODMOTEL_SCRAPE',
@@ -14,7 +13,6 @@ const ACTION_MAP = {
   Expedia: 'TRIGGER_EXPEDIA_SCRAPE',
 };
 
-// 확장으로 처리할 OTA 목록
 const EXTENSION_OTAS = [
   'YanoljaMotel',
   'GoodMotel',
@@ -28,38 +26,34 @@ const EXTENSION_OTAS = [
 function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
   const [isScraping, setIsScraping] = useState(false);
   const [cooldown, setCooldown] = useState(false);
-  const COOLDOWN_TIME = 10 * 1000; // 10초 쿨다운
+  const COOLDOWN_TIME = 10 * 1000;
 
-  /**
-   * 확장으로 특정 OTA 스크랩 요청
-   * @param {string} otaName
-   * @returns {Promise<any>} 응답
-   */
   const scrapeOneExtensionOTA = (otaName) => {
+    const accessToken = localStorage.getItem('accessToken');
+
     return new Promise((resolve, reject) => {
-      const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
+      const EXTENSION_ID =
+        process.env.REACT_APP_EXTENSION_ID ||
+        'bhfggeheelkddgmlegkppgpkmioldfkl';
       const action =
         ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
-      const accessToken = localStorage.getItem('accessToken');
-      const csrfToken = localStorage.getItem('csrfToken');
 
-      if (!accessToken || !csrfToken) {
-        reject(new Error('Token is missing or expired'));
+      if (!accessToken) {
+        reject(new Error('Access token is missing or expired'));
         return;
       }
 
       chrome.runtime.sendMessage(
         EXTENSION_ID,
-        { action, hotelId, accessToken, csrfToken },
+        { action, hotelId, accessToken },
         (response) => {
           if (chrome.runtime.lastError) {
             console.error(
               '[ScrapeNowButton] runtime.lastError:',
               chrome.runtime.lastError.message
             );
-            return reject(new Error(chrome.runtime.lastError.message));
-          }
-          if (!response) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (!response) {
             reject(new Error(`No response from extension for ${otaName}`));
           } else if (!response.success) {
             reject(new Error(response.message || 'Unknown error'));
@@ -72,11 +66,6 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
     });
   };
 
-  /**
-   * 확장 기반 OTAs를 순차 처리
-   * @param {string[]} otaList
-   * @returns {Promise<Array<{otaName: string, success: boolean, message?: string}>>}
-   */
   const scrapeExtensionOTAsSequential = async (otaList) => {
     const results = [];
     for (const otaName of otaList) {
@@ -91,9 +80,6 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
     return results;
   };
 
-  /**
-   * 메인 핸들러: 확장 기반 스크랩만 처리
-   */
   const handleScrapeNow = async () => {
     if (isScraping || cooldown) return;
     if (!activeOTAs || activeOTAs.length === 0) {
@@ -105,7 +91,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
       EXTENSION_OTAS.includes(ota)
     );
     const isChromeExtensionEnv =
-      typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined';
+      typeof chrome !== 'undefined' && chrome.runtime;
 
     if (!isChromeExtensionEnv) {
       alert('이 기능은 Chrome 확장 환경에서만 동작합니다.');

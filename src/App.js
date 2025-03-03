@@ -569,98 +569,117 @@ const App = () => {
     [calculatePerNightPrice]
   );
 
-  const loadHotelSettings = useCallback(async (inputHotelId) => {
-    try {
-      const settings = await fetchHotelSettings(inputHotelId);
-      console.log('Fetched settings from API:', settings); // API 반환 데이터 디버깅
+  const loadHotelSettings = useCallback(
+    async (inputHotelId) => {
+      try {
+        const settings = await fetchHotelSettings(inputHotelId);
+        console.log(
+          'Fetched settings from API:',
+          JSON.stringify(settings, null, 2)
+        ); // API 반환 데이터 전체 출력
 
-      if (settings) {
-        if (settings._id) {
-          console.log('This hotelSettings doc has _id => existing doc.');
-          setIsNewSetup(false);
+        if (settings) {
+          const isNewDoc = !settings._id;
+          console.log(
+            `Has _id? ${!!settings._id} => ${
+              isNewDoc ? 'New setup' : 'Existing doc'
+            }`
+          );
+          setIsNewSetup(isNewDoc);
+
+          // 필드명 매핑 확장 및 기본값 보장
+          const updatedSettings = {
+            ...settings,
+            hotelAddress:
+              settings.address || settings.hotelAddress || '주소 정보 없음',
+            phoneNumber:
+              settings.phoneNumber ||
+              settings.contactPhone ||
+              '전화번호 정보 없음',
+            email:
+              settings.email || settings.contactEmail || '이메일 정보 없음',
+            totalRooms:
+              settings.totalRooms ||
+              defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+            roomTypes: settings.roomTypes || defaultRoomTypes,
+            gridSettings: settings.gridSettings || {},
+          };
+
+          console.log(
+            'Processed hotelSettings:',
+            JSON.stringify(updatedSettings, null, 2)
+          ); // 설정된 데이터 디버깅
+          setHotelSettings(updatedSettings);
+
+          // OTA 토글 초기화
+          const initialOTAToggles = (settings.otas || []).reduce((acc, ota) => {
+            acc[ota.name] = ota.isActive;
+            return acc;
+          }, {});
+          availableOTAs.forEach((ota) => {
+            if (!(ota in initialOTAToggles)) initialOTAToggles[ota] = false;
+          });
+          console.log('Initial OTA Toggles:', initialOTAToggles);
+          setOtaToggles(initialOTAToggles);
+
+          return updatedSettings;
         } else {
-          console.log('No _id => New setup.');
+          console.warn(
+            'No settings returned from fetchHotelSettings, using defaults'
+          );
+          const defaultOTAToggles = availableOTAs.reduce(
+            (acc, ota) => ({ ...acc, [ota]: false }),
+            {}
+          );
+          const defaultSettings = {
+            hotelId: inputHotelId,
+            hotelAddress: '주소 정보 없음',
+            phoneNumber: '전화번호 정보 없음',
+            email: '이메일 정보 없음',
+            totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+            roomTypes: defaultRoomTypes,
+            gridSettings: {},
+            otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+          };
+          setHotelSettings(defaultSettings);
           setIsNewSetup(true);
+          setOtaToggles(defaultOTAToggles);
+          return defaultSettings;
+        }
+      } catch (error) {
+        console.error('Failed to load hotel settings:', error);
+        if (error.response) {
+          console.log(
+            'Error response:',
+            JSON.stringify(error.response.data, null, 2)
+          ); // API 오류 상세 출력
+        } else {
+          console.log('Error details:', error.message); // 네트워크 오류 등 상세 출력
         }
 
-        // hotelSettings 상태로 통합하여 업데이트, 기본값 보장 및 디버깅
-        const updatedSettings = {
-          ...settings,
-          hotelAddress:
-            settings.address || settings.hotelAddress || '주소 정보 없음', // 백엔드 필드명 확인
-          phoneNumber:
-            settings.phoneNumber ||
-            settings.contactPhone ||
-            '전화번호 정보 없음', // 백엔드 필드명 확인
-          email: settings.email || settings.contactEmail || '이메일 정보 없음', // 백엔드 필드명 확인
-          totalRooms:
-            settings.totalRooms ||
-            defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-          roomTypes: settings.roomTypes || defaultRoomTypes,
-          gridSettings: settings.gridSettings || {},
-        };
-
-        console.log('Updated hotelSettings:', updatedSettings); // 설정된 hotelSettings 디버깅
-        setHotelSettings(updatedSettings);
-
-        const initialOTAToggles = (settings.otas || []).reduce((acc, ota) => {
-          acc[ota.name] = ota.isActive;
-          return acc;
-        }, {});
-        availableOTAs.forEach((ota) => {
-          if (!(ota in initialOTAToggles)) {
-            initialOTAToggles[ota] = false;
-          }
-        });
-        console.log('Initial OTA Toggles:', initialOTAToggles);
-        setOtaToggles(initialOTAToggles);
-        return updatedSettings;
-      } else {
-        console.warn(
-          'No settings returned from fetchHotelSettings, using defaults.'
-        );
+        // 기본값으로 설정 초기화
         const defaultOTAToggles = availableOTAs.reduce(
           (acc, ota) => ({ ...acc, [ota]: false }),
           {}
         );
         const defaultSettings = {
           hotelId: inputHotelId,
-          roomTypes: defaultRoomTypes,
-          totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-          otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
           hotelAddress: '주소 정보 없음',
           phoneNumber: '전화번호 정보 없음',
           email: '이메일 정보 없음',
+          totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+          roomTypes: defaultRoomTypes,
           gridSettings: {},
+          otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
         };
         setHotelSettings(defaultSettings);
         setIsNewSetup(true);
         setOtaToggles(defaultOTAToggles);
         return defaultSettings;
       }
-    } catch (error) {
-      console.error('Failed to load hotel settings:', error);
-      console.log('Error response:', error.response?.data); // API 오류 디버깅
-      const defaultOTAToggles = availableOTAs.reduce(
-        (acc, ota) => ({ ...acc, [ota]: false }),
-        {}
-      );
-      const defaultSettings = {
-        hotelId: inputHotelId,
-        roomTypes: defaultRoomTypes,
-        totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-        otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
-        hotelAddress: '주소 정보 없음',
-        phoneNumber: '전화번호 정보 없음',
-        email: '이메일 정보 없음',
-        gridSettings: {},
-      };
-      setIsNewSetup(true);
-      setHotelSettings(defaultSettings);
-      setOtaToggles(defaultOTAToggles);
-      return defaultSettings;
-    }
-  }, []);
+    },
+    [] // 빈 배열로 변경
+  );
 
   const loadReservations = useCallback(async () => {
     if (!hotelId) return;
@@ -703,7 +722,17 @@ const App = () => {
     [loadReservations]
   );
 
-  // * Refactored: handleLogin 함수에 의존성 otaToggles 추가 및 간결하게 정리
+  const sendMessageAsync = (id, message) =>
+    new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(id, message, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+
   const handleLogin = useCallback(
     async (accessToken, hotelIdParam) => {
       localStorage.setItem('accessToken', accessToken);
@@ -711,38 +740,41 @@ const App = () => {
       setIsAuthenticated(true);
       setHotelId(hotelIdParam);
       try {
-        if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-          const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
-          const refreshToken = localStorage.getItem('refreshToken'); // refreshToken 가져오기
-          const csrfToken = localStorage.getItem('csrfToken'); // csrfToken 가져오기
+        const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
+        if (
+          window.chrome &&
+          chrome.runtime &&
+          chrome.runtime.sendMessage &&
+          EXTENSION_ID
+        ) {
+          const refreshToken = localStorage.getItem('refreshToken');
+          const csrfToken = localStorage.getItem('csrfToken');
 
-          chrome.runtime.sendMessage(
-            EXTENSION_ID,
-            {
-              action: 'SET_TOKEN',
-              token: accessToken,
-              refreshToken,
-              csrfToken,
-            },
-            (response) => {
-              console.log('[handleLogin] Sent tokens to extension:', response);
-            }
+          await sendMessageAsync(EXTENSION_ID, {
+            action: 'SET_TOKEN',
+            token: accessToken,
+            refreshToken,
+            csrfToken,
+          }).then((response) =>
+            console.log('[handleLogin] Sent tokens to extension:', response)
           );
-          chrome.runtime.sendMessage(
-            EXTENSION_ID,
-            { action: 'SET_OTA_TOGGLES', toggles: otaToggles },
-            (response) => {
-              console.log(
-                '[handleLogin] Sent OTA toggles to extension:',
-                response
-              );
-            }
+
+          await sendMessageAsync(EXTENSION_ID, {
+            action: 'SET_OTA_TOGGLES',
+            toggles: otaToggles,
+          }).then((response) =>
+            console.log(
+              '[handleLogin] Sent OTA toggles to extension:',
+              response
+            )
           );
         }
-        await loadHotelSettings(hotelIdParam); // 한 번만 호출, 반환값 미사용
+        await loadHotelSettings(hotelIdParam);
         await loadReservations();
       } catch (error) {
         console.error('Failed to load hotel settings after login:', error);
+        // 사용자 알림 추가
+        alert('로그인 후 설정 로드에 실패했습니다. 다시 시도해 주세요.');
       }
     },
     [loadHotelSettings, loadReservations, otaToggles]
@@ -1596,7 +1628,6 @@ const App = () => {
                       // sortOrder={sortOrder}
                       hasLowStock={hasLowStock}
                       lowStockRoomTypes={lowStockRoomTypes}
-                      onMonthlyView={() => navigate('/monthly-calendar')}
                     />
                     <SideBar
                       loading={loading}
@@ -1636,6 +1667,7 @@ const App = () => {
                       labelsForOTA={labelsForOTA}
                       dailySalesByOTA={dailySalesByOTA}
                       activeReservations={activeReservations}
+                      onMonthlyView={() => navigate('/monthly-calendar')}
                     />
                     <div className="main-content" style={{ flex: '1' }}>
                       {/* 고정 영역으로 미배정 예약 패널 렌더링 */}

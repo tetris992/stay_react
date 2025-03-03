@@ -1,4 +1,3 @@
-// src/components/Header.js
 import React from 'react';
 import './Header.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,11 +8,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 
-/**
- * Header 컴포넌트
- * - 날짜 네비게이션, 메모 버튼, OTA 상태 표시, 월간 예약/Quick-create 버튼을 표시합니다.
- * - 정렬 관련 기능은 제거되었습니다.
- */
 function Header({
   selectedDate,
   onDateChange,
@@ -23,7 +17,6 @@ function Header({
   otaToggles,
   onMemo,
   flipAllMemos,
-  onMonthlyView,
   isShining,
 }) {
   const dayOfWeek = selectedDate.getDay();
@@ -80,13 +73,6 @@ function Header({
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
             </button>
-            {/* {hasLowStock &&
-              lowStockRoomTypes &&
-              lowStockRoomTypes.length > 0 && (
-                <span className="low-stock-header-warning" title="재고 부족">
-                  ⚠️ {lowStockRoomTypes.join(', ')} 재고확인
-                </span>
-              )} */}
           </div>
         </div>
 
@@ -107,16 +93,9 @@ function Header({
           ))}
         </div>
 
-        {/* 오른쪽: 월간 예약 버튼과 Quick-create 버튼 */}
+        {/* 오른쪽: Quick-create 버튼만 유지 */}
         <div className="header-right">
           <div className="quick-create-buttons">
-            <button
-              className="monthly-view-button"
-              onClick={onMonthlyView}
-              aria-label="월간 예약 현황 보기"
-            >
-              객실 재고확인
-            </button>
             <button
               className="quick-button"
               onClick={() => onQuickCreate('1박')}
@@ -157,7 +136,6 @@ function Header({
   );
 }
 
-// PropTypes 정의 (정렬 관련 Prop은 제거됨)
 Header.propTypes = {
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   onDateChange: PropTypes.func.isRequired,
@@ -168,9 +146,6 @@ Header.propTypes = {
   otaToggles: PropTypes.object.isRequired,
   onMemo: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
-  // hasLowStock: PropTypes.bool,
-  // lowStockRoomTypes: PropTypes.arrayOf(PropTypes.string),
-  onMonthlyView: PropTypes.func.isRequired,
 };
 
 export default Header;

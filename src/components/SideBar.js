@@ -16,12 +16,12 @@ import {
   FaChevronUp,
   FaSignOutAlt,
   FaCircleNotch,
-  FaClipboardCheck,
   FaTimesCircle,
   FaCalendarAlt,
   FaBed,
   FaChartLine,
   FaTools,
+  FaClipboardCheck, // 객실재고확인 버튼에 사용할 아이콘
 } from 'react-icons/fa';
 
 import ScrapeNowButton from './ScrapeNowButton';
@@ -55,11 +55,11 @@ function SideBar({
   setSearchCriteria,
   executeSearch,
   onShowCanceledModal,
-  onOnsiteReservationClick,
   needsConsent,
   dailySalesByOTA,
   labelsForOTA,
   activeReservations,
+  onMonthlyView, // 추가: 월간 보기 버튼을 위한 prop
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -161,17 +161,17 @@ function SideBar({
           </span>
         </button>
         <ScrapeNowButton hotelId={hotelId} activeOTAs={activeOTAs} />
-        <button className="onsite-button" onClick={onOnsiteReservationClick}>
+        <button className="monthly-view-button" onClick={onMonthlyView}>
           <FaClipboardCheck className="onsite-icon" />
-          <span className="btn-text">현장예약</span>
+          <span className="btn-text">객실 재고 확인</span>
         </button>
         <button className="cancelSearch-button" onClick={onShowCanceledModal}>
           <FaTimesCircle className="cancel-icon" />
-          <span className="btn-text">취소예약확인</span>
+          <span className="btn-text">취소 예약 확인</span>
         </button>
         <button className="logout-button" onClick={onLogout}>
           <FaSignOutAlt className="logout-icon" />
-          <span className="btn-text">로그아웃</span>
+          <span className="btn-text">로그 아웃</span>
         </button>
       </div>
 
@@ -324,11 +324,11 @@ SideBar.propTypes = {
   setSearchCriteria: PropTypes.func.isRequired,
   executeSearch: PropTypes.func.isRequired,
   onShowCanceledModal: PropTypes.func.isRequired,
-  onOnsiteReservationClick: PropTypes.func.isRequired,
   needsConsent: PropTypes.bool.isRequired,
   dailySalesByOTA: PropTypes.object.isRequired,
   labelsForOTA: PropTypes.array.isRequired,
   activeReservations: PropTypes.array.isRequired,
+  onMonthlyView: PropTypes.func.isRequired, // PropTypes에 추가
 };
 
 export default SideBar;

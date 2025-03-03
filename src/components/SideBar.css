@@ -94,12 +94,13 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 20px;
+  font-size: 18px;
 }
 
 .sidebar-actions button,
 .settings-button,
 .sync-button,
-.onsite-button,
+.monthly-view-button,
 .logout-button,
 .layout-settings-button {
   padding: 12px;
@@ -111,9 +112,28 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 16px;
+  font-size: 18px;
+
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* "객실재고확인" 버튼 스타일 */
+.monthly-view-button {
+  padding: 12px;
+  width: 100%;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #9662ace1;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
 }
 
 .sync-button {
@@ -123,7 +143,7 @@
 .sidebar-actions button:hover,
 .settings-button:hover,
 .sync-button:hover,
-.onsite-button:hover,
+.monthly-view-button:hover,
 .logout-button:hover,
 .layout-settings-button:hover {
   background-color: rgba(199, 198, 198, 0.49);
@@ -142,7 +162,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: 18px;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -244,8 +264,12 @@
   animation: spin 2s linear infinite;
 }
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Sales Button */
@@ -293,8 +317,12 @@
   animation: highlightPulse 2s infinite;
 }
 @keyframes highlightPulse {
-  0% { box-shadow: 0 0 50px #1b1b1b; }
-  100% { box-shadow: 0 0 0 #c4f4c3; }
+  0% {
+    box-shadow: 0 0 50px #1b1b1b;
+  }
+  100% {
+    box-shadow: 0 0 0 #c4f4c3;
+  }
 }
 
 .blink-button {
@@ -303,8 +331,13 @@
   border-radius: 5px;
 }
 @keyframes blinkAnimation {
-  0%, 100% { background-color: #f0f0f0; }
-  50% { background-color: #ffd700; }
+  0%,
+  100% {
+    background-color: #f0f0f0;
+  }
+  50% {
+    background-color: #ffd700;
+  }
 }
 
 /* OTA Settings Section */
@@ -351,7 +384,7 @@
   .sidebar-actions button,
   .settings-button,
   .sync-button,
-  .onsite-button,
+  .monthly-view-button,
   .logout-button,
   .layout-settings-button {
     justify-content: center;

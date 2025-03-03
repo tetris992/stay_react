@@ -4,17 +4,18 @@
 .scrape-now-button {
   padding: 12px;
   width: 100%;
-  color: rgb(57, 77, 209);
-  background-color: #ffffff;
-  border: 1px solid #ddd;
+  font-size: 1.1rem;
+  border: none;
   border-radius: 8px;
   cursor: pointer;
+  background-color: #62ac62e1;
+  color: #ffffff;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  white-space: nowrap;
   display: flex;
   align-items: center;
-  justify-content: left;
   gap: 10px;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 18px;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -29,6 +30,6 @@
 }
 
 .scrape-now-button .onsite-icon {
-  font-size: 16px;
+  font-size: 18px;
   margin: 0px;
 }

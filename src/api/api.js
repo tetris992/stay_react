@@ -5,26 +5,24 @@
 import axios from 'axios';
 import ApiError from '../utils/ApiError.js';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3003'; // 기본값 설정, /api 제거
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
+console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
 
-// ============== 요청 인터셉터: accessToken을 헤더에 추가 ==============
 api.interceptors.request.use(
   (config) => {
+    console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
     const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// ============== CSRF 토큰을 Axios 요청 헤더에 자동으로 포함시키는 인터셉터 ==============
 api.interceptors.request.use(
   async (config) => {
     const isGetRequest = config.method === 'get';
@@ -47,7 +45,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ============== 응답 인터셉터 (토큰 만료 시 갱신 및 자동 로그아웃) ==============
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -92,7 +89,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        // 자동 로그아웃: 로컬 인증정보 삭제 후 로그인 페이지로 리디렉션
         localStorage.removeItem('accessToken');
         localStorage.removeItem('hotelId');
         localStorage.removeItem('csrfToken');
@@ -106,27 +102,47 @@ api.interceptors.response.use(
   }
 );
 
-// ============== Auth ==============
 export const loginUser = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
     const { accessToken, isRegistered } = response.data;
-    if (accessToken) {
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('hotelId', credentials.hotelId);
-      // CSRF 토큰 가져오기
-      const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
-      const csrfToken = csrfResponse.data.csrfToken;
-      localStorage.setItem('csrfToken', csrfToken);
-      // Chrome 확장 프로그램 관련 처리는 생략
-      return { accessToken, isRegistered };
-    } else {
-      throw new ApiError(500, '로그인에 실패했습니다.');
+    if (!accessToken) throw new ApiError(500, '로그인에 실패했습니다.');
+
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('hotelId', credentials.hotelId);
+
+    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
+    const csrfToken = csrfResponse.data.csrfToken;
+    localStorage.setItem('csrfToken', csrfToken);
+
+    // ✅ 수정된 부분 (비동기 전송, 실패 무시)
+    if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+      const EXTENSION_ID =
+        process.env.REACT_APP_EXTENSION_ID ||
+        'bhfggeheelkddgmlegkppgpkmioldfkl';
+      console.log('[api.js] Sending tokens to extension ID:', EXTENSION_ID);
+
+      chrome.runtime.sendMessage(
+        EXTENSION_ID,
+        { action: 'SET_TOKEN', token: accessToken, csrfToken },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            // ⚠️ 실패해도 로그만 찍고 로그인 자체는 정상 진행
+            console.warn(
+              '[api.js] SendMessage failed:',
+              chrome.runtime.lastError
+            );
+          } else {
+            console.log('[api.js] SendMessage succeeded:', response);
+          }
+        }
+      );
     }
+
+    return { accessToken, isRegistered };
   } catch (error) {
     let errorMessage = '로그인에 실패했습니다.';
     let statusCode = 500;
-
     if (error.response) {
       statusCode = error.response.status;
       errorMessage = error.response.data?.message || errorMessage;
@@ -134,40 +150,51 @@ export const loginUser = async (credentials) => {
         const remainingAttempts = error.response.data.remainingAttempts || 0;
         const err = new ApiError(statusCode, errorMessage);
         err.remainingAttempts = remainingAttempts;
-        // userNotFound 플래그를 추가
         err.userNotFound = error.response.data.userNotFound || false;
         throw err;
       }
     } else if (error.request) {
-      errorMessage = '서버 응답이 없습니다. 네트워크 상태를 확인해주세요.';
+      errorMessage = '서버 응답이 없습니다.';
     }
     throw new ApiError(statusCode, errorMessage);
   }
 };
 
-// refreshToken 함수 추가
 export const refreshToken = async () => {
   try {
     const response = await api.post('/api/auth/refresh-token');
     const { accessToken } = response.data;
     localStorage.setItem('accessToken', accessToken);
-    // CSRF 토큰 갱신
+
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
     localStorage.setItem('csrfToken', csrfToken);
-    // Chrome 확장 프로그램에 토큰 전달
+
     if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-      const EXTENSION_ID = process.env.REACT_APP_EXTENSION_ID;
-      chrome.runtime.sendMessage(
-        EXTENSION_ID,
-        {
-          action: 'SET_TOKEN',
-          token: accessToken,
-          refreshToken: response.data.refreshToken,
-          csrfToken,
-        },
-        (response) => console.log('Token refreshed in extension:', response)
-      );
+      const EXTENSION_ID =
+        process.env.REACT_APP_EXTENSION_ID ||
+        'cnoicicjafgmfcnjclhlehfpojfaelag';
+      await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          { action: 'SET_TOKEN', token: accessToken, csrfToken },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                '[api.js] Refresh token sendMessage error:',
+                chrome.runtime.lastError
+              );
+              reject(chrome.runtime.lastError);
+            } else {
+              console.log(
+                '[api.js] Refreshed tokens sent to extension:',
+                response
+              );
+              resolve(response);
+            }
+          }
+        );
+      });
     }
     return response.data;
   } catch (error) {
@@ -230,8 +257,6 @@ export const registerUser = async (userData) => {
     throw standardError;
   }
 };
-
-// ... (나머지 API 함수는 동일)
 
 // ============== 호텔 설정 관련 API ==============
 export const fetchHotelSettings = async (hotelId) => {
@@ -376,6 +401,30 @@ export const fetchCanceledReservations = async (hotelId) => {
     throw error.response?.data || error;
   }
 };
+
+// 확장 전용 API 함수 추가
+// export const sendReservationsForExtension = async (hotelId, siteName, reservations) => {
+//   try {
+//     const accessToken = localStorage.getItem('accessToken');
+//     if (!accessToken) throw new Error('Access token is missing');
+
+//     const response = await axios.post(
+//       `${BASE_URL}/api/reservations-extension`,
+//       { hotelId, siteName, reservations },
+//       {
+//         headers: {
+//           Authorization: `Bearer ${accessToken}`,
+//           'Content-Type': 'application/json',
+//         },
+//         withCredentials: true,
+//       }
+//     );
+//     return response.data;
+//   } catch (error) {
+//     console.error('확장 예약 전송 실패:', error);
+//     throw error.response?.data || error;
+//   }
+// };
 
 // ============== 사용자 정보 ==============
 export const fetchUserInfo = async (hotelId) => {
