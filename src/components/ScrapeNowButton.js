@@ -34,7 +34,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
     return new Promise((resolve, reject) => {
       const EXTENSION_ID =
         process.env.REACT_APP_EXTENSION_ID ||
-        'bhfggeheelkddgmlegkppgpkmioldfkl';
+        'cnoicicjafgmfcnjclhlehfpojfaelag';
       const action =
         ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
 
@@ -147,7 +147,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
       ) : (
         <>
           <FaClipboardCheck style={{ marginRight: '0px' }} />
-          <p class='res-text'>새로운 예약 확인하기</p>
+          <p class="res-text">새로운 예약 확인하기</p>
         </>
       )}
     </button>
