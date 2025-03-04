@@ -796,6 +796,39 @@ const App = () => {
     [loadReservations]
   );
 
+  const handleRoomChangeAndSync = useCallback(
+    async (reservationId, newRoomNumber) => {
+      try {
+        const updatedReservation = await updateReservation(
+          reservationId,
+          { roomNumber: newRoomNumber },
+          hotelId
+        );
+
+        setAllReservations((prevReservations) => {
+          const updatedReservations = prevReservations.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedReservation } : res
+          );
+          console.log(
+            '[handleRoomChangeAndSync] Updated reservations:',
+            updatedReservations
+          );
+          filterReservationsByDate(updatedReservations, selectedDate);
+          return updatedReservations;
+        });
+
+        console.log(
+          `Reservation ${reservationId} moved to room ${newRoomNumber}`
+        );
+      } catch (error) {
+        console.error('객실 이동 후 실시간 업데이트 실패:', error);
+        alert('객실 이동 후 업데이트에 실패했습니다.');
+        await loadReservations();
+      }
+    },
+    [hotelId, selectedDate, filterReservationsByDate, loadReservations] // ⭐ loadReservations 추가
+  );
+
   const handlePartialUpdate = useCallback(
     async (reservationId, updatedData) => {
       const currentReservation = allReservations.find(
@@ -803,7 +836,6 @@ const App = () => {
       );
       if (!currentReservation) return;
 
-      // 날짜 변경 여부 체크
       const checkInChanged =
         new Date(currentReservation.checkIn).getTime() !==
         new Date(updatedData.checkIn).getTime();
@@ -826,32 +858,35 @@ const App = () => {
       }
 
       try {
-        // 날짜가 변경되었으면 새로운 날짜 값을 기반으로 파싱된 필드도 업데이트합니다.
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = new Date(newCheckIn);
         const newParsedCheckOutDate = new Date(newCheckOut);
 
-        // optimistic update: 변경된 필드와 함께 파생된 날짜 필드도 업데이트
-        setAllReservations((prev) => {
-          const newReservations = prev.map((res) =>
-            res._id === reservationId
-              ? {
-                  ...res,
-                  ...updatedData,
-                  checkIn: newCheckIn,
-                  checkOut: newCheckOut,
-                  parsedCheckInDate: newParsedCheckInDate,
-                  parsedCheckOutDate: newParsedCheckOutDate,
-                }
-              : res
-          );
-          filterReservationsByDate(newReservations, selectedDate);
-          return newReservations;
-        });
+        // 객실 번호 변경 시 handleRoomChangeAndSync 호출
+        if (updatedData.roomNumber !== currentReservation.roomNumber) {
+          await handleRoomChangeAndSync(reservationId, updatedData.roomNumber);
+        }
 
-        // API 호출
-        await updateReservation(reservationId, updatedData, hotelId);
+        // 추가 데이터 업데이트
+        const updatedReservation = await updateReservation(
+          reservationId,
+          {
+            ...updatedData,
+            checkIn: newCheckIn,
+            checkOut: newCheckOut,
+            parsedCheckInDate: newParsedCheckInDate,
+            parsedCheckOutDate: newParsedCheckOutDate,
+          },
+          hotelId
+        );
+
+        setAllReservations((prev) =>
+          prev.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedReservation } : res
+          )
+        );
+
         console.log(`예약 ${reservationId}가 부분 업데이트되었습니다.`);
       } catch (error) {
         console.error(`예약 ${reservationId} 부분 업데이트 실패:`, error);
@@ -859,13 +894,7 @@ const App = () => {
         await loadReservations();
       }
     },
-    [
-      allReservations,
-      hotelId,
-      loadReservations,
-      selectedDate,
-      filterReservationsByDate,
-    ]
+    [allReservations, hotelId, loadReservations, handleRoomChangeAndSync]
   );
 
   const handleEdit = useCallback(
@@ -900,24 +929,30 @@ const App = () => {
         const newParsedCheckInDate = new Date(newCheckIn);
         const newParsedCheckOutDate = new Date(newCheckOut);
 
-        setAllReservations((prev) => {
-          const newReservations = prev.map((res) =>
-            res._id === reservationId
-              ? {
-                  ...res,
-                  ...updatedData,
-                  checkIn: newCheckIn,
-                  checkOut: newCheckOut,
-                  parsedCheckInDate: newParsedCheckInDate,
-                  parsedCheckOutDate: newParsedCheckOutDate,
-                }
-              : res
-          );
-          filterReservationsByDate(newReservations, selectedDate);
-          return newReservations;
-        });
+        // 객실 번호 변경 시 handleRoomChangeAndSync 호출
+        if (updatedData.roomNumber !== currentReservation.roomNumber) {
+          await handleRoomChangeAndSync(reservationId, updatedData.roomNumber);
+        }
 
-        await updateReservation(reservationId, updatedData, hotelId);
+        // 추가 데이터 업데이트
+        const updatedReservation = await updateReservation(
+          reservationId,
+          {
+            ...updatedData,
+            checkIn: newCheckIn,
+            checkOut: newCheckOut,
+            parsedCheckInDate: newParsedCheckInDate,
+            parsedCheckOutDate: newParsedCheckOutDate,
+          },
+          hotelId
+        );
+
+        setAllReservations((prev) =>
+          prev.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedReservation } : res
+          )
+        );
+
         console.log(
           `Reservation ${reservationId} updated for hotel ${hotelId}`
         );
@@ -931,15 +966,8 @@ const App = () => {
         await loadReservations();
       }
     },
-    [
-      allReservations,
-      hotelId,
-      loadReservations,
-      selectedDate,
-      filterReservationsByDate,
-    ]
+    [allReservations, hotelId, loadReservations, handleRoomChangeAndSync]
   );
-
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prevDate) => {
       const newDate = addDays(prevDate, -1);
@@ -1723,6 +1751,7 @@ const App = () => {
                               needsConsent={needsConsent}
                               monthlyDailyBreakdown={monthlyDailyBreakdown}
                               selectedDate={selectedDate}
+                              handleRoomChangeAndSync={handleRoomChangeAndSync}
                             />
                           </DndProvider>
                         </div>

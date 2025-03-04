@@ -216,7 +216,11 @@ export function isRoomAvailableForPeriod(
   reservations,
   excludeReservationId = null
 ) {
-  const newInterval = { start: checkInDateTime, end: checkOutDateTime };
+  // 🔥 점유 기간 명확히 설정: 체크인일 16:00 ~ 익일 02:00
+  const newInterval = {
+    start: new Date(checkInDateTime).setHours(16, 0, 0, 0),
+    end: new Date(checkOutDateTime.setHours(2, 0, 0, 0)),
+  };
 
   const conflictingReservations = reservations.filter((r) => {
     if (excludeReservationId && r._id === excludeReservationId) return false;
@@ -224,25 +228,35 @@ export function isRoomAvailableForPeriod(
     if (!r.roomNumber || !r.roomInfo) return false;
     if (r.roomInfo.toLowerCase() !== roomTypeKey) return false;
     if (r.roomNumber !== String(roomNumber)) return false;
-    return areIntervalsOverlapping(
-      newInterval,
-      { start: r.parsedCheckInDate, end: r.parsedCheckOutDate },
-      { inclusive: false }
-    );
+
+    const reservationInterval = {
+      start: new Date(r.parsedCheckInDate.setHours(16, 0, 0, 0)),
+      end: new Date(r.parsedCheckOutDate.setHours(2, 0, 0, 0)),
+    };
+
+    return areIntervalsOverlapping(newInterval, reservationInterval, {
+      inclusive: false,
+    });
   });
 
   const conflictDays = [];
   if (conflictingReservations.length > 0) {
-    let d = startOfDay(checkInDateTime);
-    const end = startOfDay(checkOutDateTime);
+    let d = startOfDay(newInterval.start);
+    const end = startOfDay(newInterval.end);
     while (d < end) {
-      const currentDay = d; // 현재 값을 캡처
+      const currentDay = d;
       const dayStr = format(currentDay, 'yyyy-MM-dd');
-      const conflict = conflictingReservations.some(
-        (r) =>
-          currentDay >= startOfDay(r.parsedCheckInDate) &&
-          currentDay < startOfDay(r.parsedCheckOutDate)
-      );
+      const conflict = conflictingReservations.some((r) => {
+        const intervalStart = new Date(
+          r.parsedCheckInDate.setHours(16, 0, 0, 0)
+        );
+        const intervalEnd = new Date(r.parsedCheckOutDate.setHours(2, 0, 0, 0));
+        return areIntervalsOverlapping(
+          { start: currentDay, end: addDays(currentDay, 1) },
+          { start: intervalStart, end: intervalEnd },
+          { inclusive: false }
+        );
+      });
       if (conflict) {
         conflictDays.push(dayStr);
       }
@@ -250,7 +264,7 @@ export function isRoomAvailableForPeriod(
     }
   }
 
-  return { canMove: conflictingReservations.length === 0, conflictDays };
+  return { canMove: conflictDays.length === 0, conflictDays };
 }
 
 /**
@@ -266,23 +280,34 @@ export function checkContainerOverlap(
   checkOutDateTime,
   reservations
 ) {
+  // 🔥 드래그한 예약 점유기간 정확히 적용 (체크인 16시 ~ 체크아웃 02시)
+  const newInterval = {
+    start: new Date(checkInDateTime.setHours(16, 0, 0, 0)),
+    end: new Date(checkOutDateTime.setHours(2, 0, 0, 0)),
+  };
+
   const conflictDays = [];
-  let d = startOfDay(checkInDateTime);
-  const end = startOfDay(checkOutDateTime);
+  let d = startOfDay(newInterval.start);
+  const end = startOfDay(newInterval.end);
   while (d < end) {
-    const currentD = d; // 현재 값을 캡처
+    const currentD = d;
     const dayStr = format(currentD, 'yyyy-MM-dd');
-    // 해당 날짜에 이 컨테이너(객실)에 배정된 예약 수를 계산합니다.
     const count = reservations.filter((r) => {
       if (r.isCancelled) return false;
       if (!r.roomNumber || !r.roomInfo) return false;
       if (r.roomInfo.toLowerCase() !== roomTypeKey) return false;
       if (r.roomNumber !== String(roomNumber)) return false;
-      return (
-        currentD >= startOfDay(r.parsedCheckInDate) &&
-        currentD < startOfDay(r.parsedCheckOutDate)
+
+      const intervalStart = new Date(r.parsedCheckInDate.setHours(16, 0, 0, 0));
+      const intervalEnd = new Date(r.parsedCheckOutDate.setHours(2, 0, 0, 0));
+
+      return areIntervalsOverlapping(
+        { start: currentD, end: addDays(currentD, 1) },
+        { start: intervalStart, end: intervalEnd },
+        { inclusive: false }
       );
     }).length;
+
     if (count > 1) {
       conflictDays.push(dayStr);
     }
@@ -290,6 +315,7 @@ export function checkContainerOverlap(
   }
   return { canMove: conflictDays.length === 0, conflictDays };
 }
+
 /**
  * 빈 객실 이동(드래그 또는 스왑) 시, 대상 객실의 사용 가능 여부를 점검합니다.
  * 여기서는 기존의 isRoomAvailableForPeriod와 함께,

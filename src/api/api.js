@@ -402,29 +402,6 @@ export const fetchCanceledReservations = async (hotelId) => {
   }
 };
 
-// 확장 전용 API 함수 추가
-// export const sendReservationsForExtension = async (hotelId, siteName, reservations) => {
-//   try {
-//     const accessToken = localStorage.getItem('accessToken');
-//     if (!accessToken) throw new Error('Access token is missing');
-
-//     const response = await axios.post(
-//       `${BASE_URL}/api/reservations-extension`,
-//       { hotelId, siteName, reservations },
-//       {
-//         headers: {
-//           Authorization: `Bearer ${accessToken}`,
-//           'Content-Type': 'application/json',
-//         },
-//         withCredentials: true,
-//       }
-//     );
-//     return response.data;
-//   } catch (error) {
-//     console.error('확장 예약 전송 실패:', error);
-//     throw error.response?.data || error;
-//   }
-// };
 
 // ============== 사용자 정보 ==============
 export const fetchUserInfo = async (hotelId) => {

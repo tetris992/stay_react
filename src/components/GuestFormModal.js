@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import './GuestFormModal.css';
 import { parseDate } from '../utils/dateParser';
-import { format, addDays, startOfDay } from 'date-fns';
+import { format, addDays, startOfDay, differenceInCalendarDays } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
 
@@ -102,7 +102,7 @@ const GuestFormModal = ({
 
   useEffect(() => {
     if (isSubmitting) return;
-
+  
     if (
       formData.checkInDate &&
       formData.checkOutDate &&
@@ -110,22 +110,17 @@ const GuestFormModal = ({
       formData.checkInTime &&
       formData.checkOutTime
     ) {
-      const checkInDateObj = new Date(
-        `${formData.checkInDate}T${formData.checkInTime}:00`
-      );
-      const checkOutDateObj = new Date(
-        `${formData.checkOutDate}T${formData.checkOutTime}:00`
-      );
-      const nightsStayed = Math.ceil(
-        (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60 * 24)
-      );
-
+      // 날짜만 비교하여 숙박일수를 계산
+      const checkInDateObj = new Date(formData.checkInDate);
+      const checkOutDateObj = new Date(formData.checkOutDate);
+      const nightsStayed = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
+      
       const selectedRoom = filteredRoomTypes.find(
         (room) => room.roomInfo === formData.roomInfo
       );
       const nightlyPrice = selectedRoom?.price || 0;
       const newPrice = String(nightlyPrice * nightsStayed);
-
+  
       if (lastPriceRef.current !== newPrice) {
         setPrice(newPrice);
         lastPriceRef.current = newPrice;
