@@ -192,7 +192,6 @@ const App = () => {
   const [dailyTotal, setDailyTotal] = useState(0);
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [showGuestForm, setShowGuestForm] = useState(false);
-  // const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [memos, setMemos] = useState({});
   const [hotelSettings, setHotelSettings] = useState({
     hotelAddress: '',
@@ -202,13 +201,13 @@ const App = () => {
     roomTypes: [], // 필요 시 추가
     gridSettings: {}, // 필요 시 추가
   });
-
+  
   const [isNewSetup, setIsNewSetup] = useState(true);
   const [roomsSold, setRoomsSold] = useState(0);
   const [monthlySoldRooms, setMonthlySoldRooms] = useState(0);
   const [avgMonthlyRoomPrice, setAvgMonthlyRoomPrice] = useState(0);
   const dailyAverageRoomPrice =
-    roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
+  roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   // const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
@@ -220,9 +219,10 @@ const App = () => {
   const roomTypes = useMemo(() => {
     return hotelSettings?.roomTypes || [];
   }, [hotelSettings]);
-
+  
   const [dailyBreakdown, setDailyBreakdown] = useState([]);
   const [newlyCreatedId, setNewlyCreatedId] = useState(null);
+  const [updatedReservationId, setUpdatedReservationId] = useState(null);
   const [highlightedReservationIds, setHighlightedReservationIds] = useState(
     []
   );
@@ -859,14 +859,14 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-  
+
       const checkInChanged =
         new Date(currentReservation.checkIn).getTime() !==
         new Date(updatedData.checkIn).getTime();
       const checkOutChanged =
         new Date(currentReservation.checkOut).getTime() !==
         new Date(updatedData.checkOut).getTime();
-  
+
       const hasOtherChanges =
         currentReservation.customerName !== updatedData.customerName ||
         currentReservation.phoneNumber !== updatedData.phoneNumber ||
@@ -875,18 +875,18 @@ const App = () => {
         checkOutChanged ||
         currentReservation.paymentMethod !== updatedData.paymentMethod ||
         currentReservation.specialRequests !== updatedData.specialRequests;
-  
+
       if (!hasOtherChanges) {
         console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
         return;
       }
-  
+
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = new Date(newCheckIn);
         const newParsedCheckOutDate = new Date(newCheckOut);
-  
+
         const updatedReservation = await updateReservation(
           reservationId,
           {
@@ -902,16 +902,20 @@ const App = () => {
           },
           hotelId
         );
-  
-        // 서버 응답 후 단일 상태 업데이트
+
         setAllReservations((prev) => {
           const updated = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
           );
-          filterReservationsByDate(updated, selectedDate); // 한 번만 호출
+          filterReservationsByDate(updated, selectedDate);
           return updated;
         });
-  
+
+        setUpdatedReservationId(reservationId);
+        setTimeout(() => {
+          setUpdatedReservationId(null); // 10초 후 리셋
+        }, 10000);
+
         console.log(`예약 ${reservationId}가 부분 업데이트되었습니다.`);
       } catch (error) {
         console.error(`예약 ${reservationId} 부분 업데이트 실패:`, error);
@@ -1114,6 +1118,10 @@ const App = () => {
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newlyCreatedIdFromServer);
+            // 10초 후 newlyCreatedId 리셋
+            setTimeout(() => {
+              setNewlyCreatedId(null);
+            }, 10000);
           }
           console.log('Guest Form saved =>', newReservation);
           setShowGuestForm(false);
@@ -1124,6 +1132,10 @@ const App = () => {
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newReservation._id);
+            // 10초 후 newlyCreatedId 리셋 (중복 호출 방지)
+            setTimeout(() => {
+              setNewlyCreatedId(null);
+            }, 10000);
           }
         } catch (error) {
           console.error('Error saving 현장예약:', error);
@@ -1778,6 +1790,7 @@ const App = () => {
                               }
                               headerHeight={140}
                               newlyCreatedId={newlyCreatedId}
+                              updatedReservationId={updatedReservationId} // 추가
                               flipAllMemos={flipAllMemos}
                               needsConsent={needsConsent}
                               monthlyDailyBreakdown={monthlyDailyBreakdown}

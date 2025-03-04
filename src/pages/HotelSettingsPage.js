@@ -14,7 +14,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
 
-const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
+const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8, 9, 10]; // 기본 층 설정
 
 // defaultRoomTypes가 이미 import로 정의되었으므로, ESLint 경고를 무시하거나 순서를 유지
 const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
@@ -158,12 +158,14 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                     type="number"
                     placeholder="가격"
                     value={rt.price || 0}
-                    onChange={(e) => updateRoomType(idx, 'price', e.target.value)}
-                    style={{ 
-                      width: '100px', 
-                      paddingRight: '0', 
-                      border: 'none', 
-                      borderRadius: '0' 
+                    onChange={(e) =>
+                      updateRoomType(idx, 'price', e.target.value)
+                    }
+                    style={{
+                      width: '100px',
+                      paddingRight: '0',
+                      border: 'none',
+                      borderRadius: '0',
                     }} // 스피너 제거 및 스타일 조정
                   />
                   <div className="price-buttons">
@@ -250,11 +252,33 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
   );
 }
 
-
-
 function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   const previousFloorsRef = useRef([]);
   const [isAdding, setIsAdding] = useState(false); // 로딩 상태 추가
+
+  /* --------------------------------------------------------------------------
+     addFloor:
+     - 새로운 층 추가, 중복 방지 및 고유 번호 생성
+  -------------------------------------------------------------------------- */
+  const addFloor = () => {
+    if (isAdding) return;
+    setIsAdding(true);
+    try {
+      const maxFloorNum =
+        floors.length > 0 ? Math.max(...floors.map((f) => f.floorNum)) : 0;
+      const newFloorNum = maxFloorNum + 1; // 가장 높은 층 번호 + 1
+
+      // 중복 체크
+      if (floors.some((f) => f.floorNum === newFloorNum)) {
+        alert('이미 존재하는 층 번호입니다. 다른 번호를 사용하세요.');
+        return;
+      }
+
+      setFloors((prev) => [...prev, { floorNum: newFloorNum, containers: [] }]);
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   /* --------------------------------------------------------------------------
      updateContainer:
@@ -669,6 +693,21 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         >
           <FaUndo />
         </button>
+        <button
+          className="action-btn add-floor-btn"
+          onClick={addFloor}
+          disabled={isAdding}
+          title="층 추가"
+        >
+          <FaPlus /> 층 추가
+        </button>
+        <button
+          className="action-btn undo-btn"
+          onClick={undoRemoveFloor}
+          title="되돌리기"
+        >
+          <FaUndo />
+        </button>
       </div>
       <div className="floor-grid">
         {floors
@@ -739,11 +778,11 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                               )
                             }
                             placeholder="가격"
-                            style={{ 
-                              width: '100px', 
-                              paddingRight: '0', 
-                              border: 'none', 
-                              borderRadius: '0' 
+                            style={{
+                              width: '100px',
+                              paddingRight: '0',
+                              border: 'none',
+                              borderRadius: '0',
                             }} // 스피너 제거 및 스타일 조정
                           />
                           <div className="price-buttons">
@@ -798,9 +837,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
     </section>
   );
 }
-
-
-
 
 // HotelSettingsPage 본문도 원본 유지
 export default function HotelSettingsPage() {

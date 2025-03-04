@@ -30,6 +30,8 @@ const DraggableReservationCard = ({
   loadedReservations,
   newlyCreatedId,
   isNewlyCreatedHighlighted,
+  updatedReservationId, // 추가
+  isUpdatedHighlighted, // 추가
   onPartialUpdate,
   roomTypes,
 }) => {
@@ -61,6 +63,8 @@ const DraggableReservationCard = ({
     highlightedReservationIds.includes(reservation._id) && isSearching;
   const isNewlyCreated =
     reservation._id === newlyCreatedId && isNewlyCreatedHighlighted;
+    const isUpdated =
+    reservation._id === updatedReservationId && isUpdatedHighlighted; //
   const isCancelled =
     reservation._id.includes('Canceled') ||
     (reservation.reservationStatus || '').toLowerCase() === 'cancelled';
@@ -105,7 +109,7 @@ const DraggableReservationCard = ({
     isCancelled ? 'cancelled' : '',
     isUnassigned ? 'unassigned-card' : '',
     isHighlighted ? 'highlighted' : '',
-    isNewlyCreated ? 'onsite-created' : '',
+    isNewlyCreated || isUpdated ? 'onsite-created' : '', // 신규 생성 또는 수정 시 강조
     isEditingCard ? 'edit-mode' : '',
   ]
     .filter(Boolean)

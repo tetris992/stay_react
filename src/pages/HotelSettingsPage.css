@@ -678,10 +678,6 @@ html {
   margin: 0;
 }
 
-.price-input-container input[type='number'] {
-  -moz-appearance: textfield;
-}
-
 .price-buttons {
   display: flex;
   flex-direction: column;
@@ -727,4 +723,33 @@ html {
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #f8f9fa;
+}
+/* HotelSettingsPage.css 추가 또는 수정 */
+.button-content {
+  display: flex;
+  align-items: center; /* 수직 중앙 정렬 */
+  gap: 8px; /* 아이콘과 텍스트 사이 간격 */
+}
+
+.action-btn.add-floor-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: var(--action-btn-bg, #16a34a);
+  color: var(--action-btn-color, #ffffff);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: flex; /* 버튼 전체를 flex로 설정 */
+  align-items: center; /* 버튼 내 콘텐츠 수직 중앙 정렬 */
+}
+
+.action-btn.add-floor-btn:hover {
+  background-color: #14532d;
+  transform: scale(1.05);
+}
+
+.action-btn.add-floor-btn svg {
+  font-size: 1.2rem; /* 아이콘 크기 조정 (필요 시) */
+  margin-right: 5px;
 }

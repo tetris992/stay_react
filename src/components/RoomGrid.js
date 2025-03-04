@@ -249,6 +249,7 @@ function RoomGrid({
   sortOrder,
   selectedDate,
   handleRoomChangeAndSync,
+  updatedReservationId,
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -262,6 +263,7 @@ function RoomGrid({
   const [autoAssigning, setAutoAssigning] = useState(false); // 중요한 기능 유지
 
   const [selectedReservation, setSelectedReservation] = useState(null);
+  const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
 
   const invoiceRef = useRef();
   const gridRef = useRef();
@@ -443,15 +445,35 @@ function RoomGrid({
         const timeoutId = setTimeout(() => {
           card.classList.remove('onsite-created');
           setIsNewlyCreatedHighlighted(false);
+        }, 10000); // 10초 후 강조 해제
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [newlyCreatedId]);
+
+  // 수정된 예약 강조
+  useEffect(() => {
+    if (updatedReservationId) {
+      setIsUpdatedHighlighted(true);
+      const card = document.querySelector(
+        `.room-card[data-id="${updatedReservationId}"]`
+      );
+      if (card) {
+        card.classList.add('onsite-created'); // 동일한 스타일 재사용
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const timeoutId = setTimeout(() => {
+          card.classList.remove('onsite-created');
+          setIsUpdatedHighlighted(false);
         }, 10000);
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [newlyCreatedId, reservations]);
+  }, [updatedReservationId]);
 
   useEffect(() => {
     if (isSearching && highlightedReservationIds.length > 0) {
       setIsNewlyCreatedHighlighted(false);
+      setIsUpdatedHighlighted(false); // 검색 시 둘 다 해제
     }
   }, [isSearching, highlightedReservationIds]);
 
@@ -628,6 +650,8 @@ function RoomGrid({
                     loadedReservations={loadedReservations || []}
                     newlyCreatedId={newlyCreatedId}
                     isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                    updatedReservationId={updatedReservationId} // 수정된 ID 전달
+                    isUpdatedHighlighted={isUpdatedHighlighted} // 수정 강조 상태 전달
                     onPartialUpdate={onPartialUpdate}
                     roomTypes={roomTypes}
                     isUnassigned={true}
@@ -792,6 +816,7 @@ RoomGrid.propTypes = {
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
+  updatedReservationId: PropTypes.string, 
   flipAllMemos: PropTypes.bool.isRequired,
   sortOrder: PropTypes.string,
   selectedDate: PropTypes.instanceOf(Date),
