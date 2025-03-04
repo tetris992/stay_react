@@ -29,6 +29,7 @@ import {
   endOfMonth,
   differenceInCalendarDays,
   startOfDay,
+  getHours,
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -201,13 +202,13 @@ const App = () => {
     roomTypes: [], // 필요 시 추가
     gridSettings: {}, // 필요 시 추가
   });
-  
+
   const [isNewSetup, setIsNewSetup] = useState(true);
   const [roomsSold, setRoomsSold] = useState(0);
   const [monthlySoldRooms, setMonthlySoldRooms] = useState(0);
   const [avgMonthlyRoomPrice, setAvgMonthlyRoomPrice] = useState(0);
   const dailyAverageRoomPrice =
-  roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
+    roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   // const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
@@ -219,7 +220,7 @@ const App = () => {
   const roomTypes = useMemo(() => {
     return hotelSettings?.roomTypes || [];
   }, [hotelSettings]);
-  
+
   const [dailyBreakdown, setDailyBreakdown] = useState([]);
   const [newlyCreatedId, setNewlyCreatedId] = useState(null);
   const [updatedReservationId, setUpdatedReservationId] = useState(null);
@@ -928,7 +929,13 @@ const App = () => {
         await loadReservations();
       }
     },
-    [allReservations, hotelId, loadReservations, selectedDate, filterReservationsByDate]
+    [
+      allReservations,
+      hotelId,
+      loadReservations,
+      selectedDate,
+      filterReservationsByDate,
+    ]
   );
 
   const handleEdit = useCallback(
@@ -1110,14 +1117,24 @@ const App = () => {
             Array.isArray(newReservation.createdReservationIds) &&
             newReservation.createdReservationIds.length > 0
           ) {
-            const newlyCreatedIdFromServer =
-              newReservation.createdReservationIds[0];
+            const newlyCreatedIdFromServer = newReservation.createdReservationIds[0];
             console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
             if (data.checkIn) {
               const parsedDate = parseDate(data.checkIn);
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newlyCreatedIdFromServer);
+  
+            // 100ms 후 새로 생성된 예약 카드로 스크롤
+            setTimeout(() => {
+              const card = document.querySelector(
+                `.room-card[data-id="${newlyCreatedIdFromServer}"]`
+              );
+              if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+  
             // 10초 후 newlyCreatedId 리셋
             setTimeout(() => {
               setNewlyCreatedId(null);
@@ -1132,7 +1149,18 @@ const App = () => {
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newReservation._id);
-            // 10초 후 newlyCreatedId 리셋 (중복 호출 방지)
+  
+            // 100ms 후 새로 생성된 예약 카드로 스크롤 (중복 호출 방지)
+            setTimeout(() => {
+              const card = document.querySelector(
+                `.room-card[data-id="${newReservation._id}"]`
+              );
+              if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+  
+            // 10초 후 newlyCreatedId 리셋
             setTimeout(() => {
               setNewlyCreatedId(null);
             }, 10000);
@@ -1416,10 +1444,24 @@ const App = () => {
 
   useEffect(() => {
     if (isAuthenticated && hotelId && !isLoading) {
-      loadReservations();
-      const intervalId = setInterval(() => {
+      const syncReservations = () => {
+        const now = new Date();
+        const hours = getHours(now);
+        // 새벽 1시~6시(1~6시)에는 동기화 건너뛰기
+        if (hours >= 1 && hours < 6) {
+          console.log('새벽 시간(1시~6시), 동기화 건너뛰기');
+          return;
+        }
         loadReservations();
-      }, 120 * 60 * 1000);
+      };
+
+      // 초기 동기화
+      syncReservations();
+
+      // 30분(1,800,000ms)마다 동기화
+      const intervalId = setInterval(syncReservations, 30 * 60 * 1000);
+
+      // 클린업
       return () => clearInterval(intervalId);
     }
   }, [isAuthenticated, hotelId, loadReservations, isLoading]);
