@@ -1,17 +1,14 @@
-// src/components/DraggableReservationCard.js
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
-import {
-  getBorderColor,
-  getInitialFormData,
-} from '../utils/roomGridUtils';
+import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
-import { renderActionButtons } from '../utils/renderActionButtons'; // 공통 유틸 임포트
+import { renderActionButtons } from '../utils/renderActionButtons';
 import './DraggableReservationCard.css';
+// import debounce from 'lodash/debounce';
 
 const DraggableReservationCard = ({
   isUnassigned = false,
@@ -29,7 +26,7 @@ const DraggableReservationCard = ({
   email,
   handleDeleteClickHandler,
   handleConfirmClickHandler,
-  renderActionButtons: customRenderActionButtons, // 기존 renderActionButtons 프롭 유지
+  renderActionButtons: customRenderActionButtons,
   loadedReservations,
   newlyCreatedId,
   isNewlyCreatedHighlighted,
@@ -42,7 +39,7 @@ const DraggableReservationCard = ({
     canDrag: () =>
       !flippedReservationIds.has(reservation._id) &&
       !isEditingCard &&
-      !isEditingMemo, // 입력 모드에서는 드래그 비활성화
+      !isEditingMemo,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
@@ -118,13 +115,14 @@ const DraggableReservationCard = ({
     if (isOpen || isEditingMemo) return;
     setIsOpen(true);
     const initialForm = getInitialFormData(reservation, roomTypes);
-
-    const priceFromReservation = reservation.price?.toString() || initialForm.price;
+    const priceFromReservation =
+      reservation.price?.toString() || initialForm.price;
     setEditedValues({
       ...initialForm,
       price: priceFromReservation,
       checkInDate: initialForm.checkInDate,
       checkOutDate: initialForm.checkOutDate,
+      roomNumber: reservation.roomNumber,
     });
     setIsEditingCard(true);
   };
@@ -140,11 +138,13 @@ const DraggableReservationCard = ({
     const updatedData = {
       customerName: editedValues.customerName,
       phoneNumber: editedValues.phoneNumber,
-      price: parseFloat(editedValues.price),
       checkIn: new Date(editedValues.checkInDate).toISOString(),
       checkOut: new Date(editedValues.checkOutDate).toISOString(),
       paymentMethod: editedValues.paymentMethod,
       specialRequests: editedValues.specialRequests,
+      roomInfo: reservation.roomInfo,
+      roomNumber: editedValues.roomNumber || reservation.roomNumber,
+      price: editedValues.price || reservation.totalPrice,
     };
     onPartialUpdate(reservation._id, updatedData);
     setIsEditingCard(false);
@@ -155,24 +155,30 @@ const DraggableReservationCard = ({
   const handleFieldChange = (field, value) => {
     setEditedValues((prev) => {
       const updated = { ...prev, [field]: value };
-      const fieldsAffectingPrice = ['checkInDate', 'checkOutDate', 'roomInfo'];
-
-      if (field === 'price') {
-        return { ...updated, manualPriceOverride: true };
-      }
-
+      const fieldsAffectingPrice = ['checkInDate', 'checkOutDate'];
+  
       if (fieldsAffectingPrice.includes(field)) {
         const ci = updated.checkInDate || format(new Date(), 'yyyy-MM-dd');
-        const co = updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
-        const nights = Math.max(1, Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24)));
-        const selectedRoom = roomTypes.find((r) => r.roomInfo === updated.roomInfo);
-
-        if (selectedRoom) {
+        const co =
+          updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const nights = Math.max(
+          1,
+          Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
+        );
+        const selectedRoom = roomTypes.find(
+          (r) => r.roomInfo === reservation.roomInfo
+        );
+  
+        if (selectedRoom && !updated.manualPriceOverride) {
           const newPrice = selectedRoom.price * nights;
-          return { ...updated, price: newPrice.toString(), manualPriceOverride: false };
+          return {
+            ...updated,
+            price: newPrice.toString(),
+            manualPriceOverride: false,
+          };
         }
       }
-
+      // 서버 호출 없음, 로컬 상태만 업데이트
       return updated;
     });
   };
@@ -202,6 +208,14 @@ const DraggableReservationCard = ({
     if (isDragging || isEditingCard || isEditingMemo) return;
     handleCardFlip(reservation._id);
   };
+
+  // 실시간 가격 표시를 위한 계산
+  const displayPrice = useMemo(() => {
+    if (isEditingCard && editedValues.price !== undefined) {
+      return editedValues.price;
+    }
+    return getPriceForDisplay(reservation);
+  }, [isEditingCard, editedValues.price, reservation]);
 
   return (
     <div
@@ -260,7 +274,7 @@ const DraggableReservationCard = ({
                     ? format(reservation.parsedCheckOutDate, 'yyyy-MM-dd HH:mm')
                     : '정보 없음'}
                 </p>
-                <p>가격: {getPriceForDisplay(reservation)}</p>
+                <p>가격: {displayPrice}</p> {/* 실시간 가격 표시 */}
                 <p>
                   객실 정보:{' '}
                   {reservation.roomInfo && reservation.roomInfo.length > 30
@@ -270,7 +284,10 @@ const DraggableReservationCard = ({
                 <p>
                   예약일:{' '}
                   {reservation.reservationDate
-                    ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd')
+                    ? format(
+                        parseISO(reservation.reservationDate),
+                        'yyyy-MM-dd'
+                      )
                     : '정보 없음'}
                 </p>
                 {reservation.phoneNumber && (
@@ -299,11 +316,19 @@ const DraggableReservationCard = ({
                       e.stopPropagation();
                       openInvoiceModal({
                         ...reservation,
-                        reservationNo: reservation.reservationNo || reservation._id || '',
+                        reservationNo:
+                          reservation.reservationNo || reservation._id || '',
                         hotelSettings,
-                        hotelAddress: hotelAddress || hotelSettings?.hotelAddress || '주소 정보 없음',
-                        phoneNumber: phoneNumber || hotelSettings?.phoneNumber || '전화번호 정보 없음',
-                        email: email || hotelSettings?.email || '이메일 정보 없음',
+                        hotelAddress:
+                          hotelAddress ||
+                          hotelSettings?.hotelAddress ||
+                          '주소 정보 없음',
+                        phoneNumber:
+                          phoneNumber ||
+                          hotelSettings?.phoneNumber ||
+                          '전화번호 정보 없음',
+                        email:
+                          email || hotelSettings?.email || '이메일 정보 없음',
                       });
                     }}
                     title="인보이스 보기"
@@ -359,7 +384,9 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.customerName}
-                  onChange={(e) => handleFieldChange('customerName', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('customerName', e.target.value)
+                  }
                   required
                 />
               </label>
@@ -368,7 +395,9 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.phoneNumber}
-                  onChange={(e) => handleFieldChange('phoneNumber', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('phoneNumber', e.target.value)
+                  }
                 />
               </label>
             </div>
@@ -378,7 +407,9 @@ const DraggableReservationCard = ({
                 <input
                   type="date"
                   value={editedValues.checkInDate}
-                  onChange={(e) => handleFieldChange('checkInDate', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('checkInDate', e.target.value)
+                  }
                 />
               </label>
               <label>
@@ -386,23 +417,21 @@ const DraggableReservationCard = ({
                 <input
                   type="date"
                   value={editedValues.checkOutDate}
-                  onChange={(e) => handleFieldChange('checkOutDate', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('checkOutDate', e.target.value)
+                  }
                 />
               </label>
             </div>
             <div className="edit-card-row">
               <label>
                 객실타입:
-                <select
-                  value={editedValues.roomInfo}
-                  onChange={(e) => handleFieldChange('roomInfo', e.target.value)}
-                >
-                  {roomTypes.map((r, i) => (
-                    <option key={i} value={r.roomInfo}>
-                      {r.roomInfo.charAt(0).toUpperCase() + r.roomInfo.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  value={reservation.roomInfo}
+                  readOnly
+                  disabled
+                />
               </label>
               <label>
                 가격 (KRW):
@@ -411,10 +440,7 @@ const DraggableReservationCard = ({
                   min="0"
                   step="1"
                   value={editedValues.price}
-                  onChange={(e) => {
-                    handleFieldChange('price', e.target.value);
-                    setEditedValues((prev) => ({ ...prev, manualPriceOverride: true }));
-                  }}
+                  onChange={(e) => handleFieldChange('price', e.target.value)}
                 />
               </label>
             </div>
@@ -423,7 +449,9 @@ const DraggableReservationCard = ({
                 결제방법/상태:
                 <select
                   value={editedValues.paymentMethod || 'Pending'}
-                  onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('paymentMethod', e.target.value)
+                  }
                 >
                   <option value="Pending">Pending</option>
                   <option value="Card">Card</option>
@@ -436,7 +464,9 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.specialRequests}
-                  onChange={(e) => handleFieldChange('specialRequests', e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange('specialRequests', e.target.value)
+                  }
                 />
               </label>
             </div>
@@ -444,7 +474,11 @@ const DraggableReservationCard = ({
               <button type="submit" className="save-button">
                 저장
               </button>
-              <button type="button" className="cancel-button" onClick={handleEditCancel}>
+              <button
+                type="button"
+                className="cancel-button"
+                onClick={handleEditCancel}
+              >
                 취소
               </button>
             </div>

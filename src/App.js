@@ -797,11 +797,18 @@ const App = () => {
   );
 
   const handleRoomChangeAndSync = useCallback(
-    async (reservationId, newRoomNumber) => {
+    async (reservationId, newRoomNumber, newRoomInfo, currentPrice) => {
       try {
+        const currentReservation = allReservations.find(
+          (res) => res._id === reservationId
+        );
         const updatedReservation = await updateReservation(
           reservationId,
-          { roomNumber: newRoomNumber },
+          {
+            roomNumber: newRoomNumber,
+            roomInfo: newRoomInfo,
+            price: currentPrice || currentReservation.totalPrice, // 현재 가격 유지
+          },
           hotelId
         );
 
@@ -818,7 +825,7 @@ const App = () => {
         });
 
         console.log(
-          `Reservation ${reservationId} moved to room ${newRoomNumber}`
+          `Reservation ${reservationId} moved to room ${newRoomNumber} with type ${newRoomInfo}`
         );
       } catch (error) {
         console.error('객실 이동 후 실시간 업데이트 실패:', error);
@@ -826,8 +833,25 @@ const App = () => {
         await loadReservations();
       }
     },
-    [hotelId, selectedDate, filterReservationsByDate, loadReservations] // ⭐ loadReservations 추가
+    [
+      hotelId,
+      selectedDate,
+      filterReservationsByDate,
+      loadReservations,
+      allReservations,
+    ]
   );
+
+  // finalRoomTypes에서 'none' 제외
+  const finalRoomTypes = useMemo(() => {
+    const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
+    const containers = gridSettings.floors
+      ? gridSettings.floors.flatMap((floor) => floor.containers || [])
+      : [];
+    if (!roomTypes.length) return [];
+    const merged = buildRoomTypesWithNumbers(roomTypes, containers);
+    return merged.filter((rt) => rt.roomInfo.toLowerCase() !== 'none');
+  }, [hotelSettings]);
 
   const handlePartialUpdate = useCallback(
     async (reservationId, updatedData) => {
@@ -835,14 +859,14 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-
+  
       const checkInChanged =
         new Date(currentReservation.checkIn).getTime() !==
         new Date(updatedData.checkIn).getTime();
       const checkOutChanged =
         new Date(currentReservation.checkOut).getTime() !==
         new Date(updatedData.checkOut).getTime();
-
+  
       const hasOtherChanges =
         currentReservation.customerName !== updatedData.customerName ||
         currentReservation.phoneNumber !== updatedData.phoneNumber ||
@@ -851,24 +875,18 @@ const App = () => {
         checkOutChanged ||
         currentReservation.paymentMethod !== updatedData.paymentMethod ||
         currentReservation.specialRequests !== updatedData.specialRequests;
-
+  
       if (!hasOtherChanges) {
         console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
         return;
       }
-
+  
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = new Date(newCheckIn);
         const newParsedCheckOutDate = new Date(newCheckOut);
-
-        // 객실 번호 변경 시 handleRoomChangeAndSync 호출
-        if (updatedData.roomNumber !== currentReservation.roomNumber) {
-          await handleRoomChangeAndSync(reservationId, updatedData.roomNumber);
-        }
-
-        // 추가 데이터 업데이트
+  
         const updatedReservation = await updateReservation(
           reservationId,
           {
@@ -877,24 +895,36 @@ const App = () => {
             checkOut: newCheckOut,
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
+            roomInfo: currentReservation.roomInfo,
+            roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
+            price: updatedData.price || currentReservation.totalPrice,
+            totalPrice: updatedData.price || currentReservation.totalPrice,
           },
           hotelId
         );
-
-        setAllReservations((prev) =>
-          prev.map((res) =>
+  
+        // 서버 응답 후 단일 상태 업데이트
+        setAllReservations((prev) => {
+          const updated = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
-          )
-        );
-
+          );
+          filterReservationsByDate(updated, selectedDate); // 한 번만 호출
+          return updated;
+        });
+  
         console.log(`예약 ${reservationId}가 부분 업데이트되었습니다.`);
       } catch (error) {
         console.error(`예약 ${reservationId} 부분 업데이트 실패:`, error);
+        setAllReservations((prev) =>
+          prev.map((res) =>
+            res._id === reservationId ? { ...res, ...currentReservation } : res
+          )
+        );
         alert('예약 수정에 실패했습니다. 다시 시도해주세요.');
         await loadReservations();
       }
     },
-    [allReservations, hotelId, loadReservations, handleRoomChangeAndSync]
+    [allReservations, hotelId, loadReservations, selectedDate, filterReservationsByDate]
   );
 
   const handleEdit = useCallback(
@@ -929,12 +959,10 @@ const App = () => {
         const newParsedCheckInDate = new Date(newCheckIn);
         const newParsedCheckOutDate = new Date(newCheckOut);
 
-        // 객실 번호 변경 시 handleRoomChangeAndSync 호출
         if (updatedData.roomNumber !== currentReservation.roomNumber) {
           await handleRoomChangeAndSync(reservationId, updatedData.roomNumber);
         }
 
-        // 추가 데이터 업데이트
         const updatedReservation = await updateReservation(
           reservationId,
           {
@@ -943,15 +971,21 @@ const App = () => {
             checkOut: newCheckOut,
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
+            roomInfo: currentReservation.roomInfo,
+            roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
+            price: updatedData.price || currentReservation.totalPrice,
           },
           hotelId
         );
 
-        setAllReservations((prev) =>
-          prev.map((res) =>
+        // 서버 응답 반영 및 즉시 UI 갱신
+        setAllReservations((prev) => {
+          const updated = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
-          )
-        );
+          );
+          filterReservationsByDate(updated, selectedDate); // activeReservations 갱신
+          return updated;
+        });
 
         console.log(
           `Reservation ${reservationId} updated for hotel ${hotelId}`
@@ -966,8 +1000,16 @@ const App = () => {
         await loadReservations();
       }
     },
-    [allReservations, hotelId, loadReservations, handleRoomChangeAndSync]
+    [
+      allReservations,
+      hotelId,
+      loadReservations,
+      handleRoomChangeAndSync,
+      selectedDate,
+      filterReservationsByDate,
+    ]
   );
+
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prevDate) => {
       const newDate = addDays(prevDate, -1);
@@ -1359,17 +1401,6 @@ const App = () => {
     };
     initializeAuth();
   }, [loadHotelSettings, loadReservations, navigate]);
-
-  // finalRoomTypes에서 'none' 제외
-  const finalRoomTypes = useMemo(() => {
-    const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
-    const containers = gridSettings.floors
-      ? gridSettings.floors.flatMap((floor) => floor.containers || [])
-      : [];
-    if (!roomTypes.length) return [];
-    const merged = buildRoomTypesWithNumbers(roomTypes, containers);
-    return merged.filter((rt) => rt.roomInfo.toLowerCase() !== 'none');
-  }, [hotelSettings]);
 
   useEffect(() => {
     if (isAuthenticated && hotelId && !isLoading) {

@@ -10,12 +10,10 @@ import availableOTAs from '../config/availableOTAs';
 import { format, parseISO, addDays } from 'date-fns';
 import { extractPrice } from './extractPrice';
 
-// OTA 예약인지 확인
 export function isOtaReservation(reservation) {
   return availableOTAs.includes(reservation.siteName || '');
 }
 
-// 컨테이너 정렬
 export function sortContainers(containers) {
   return containers.sort((a, b) => {
     const aNum = parseInt(a.roomNumber || '', 10);
@@ -27,10 +25,8 @@ export function sortContainers(containers) {
   });
 }
 
-// 테두리 색상 클래스 반환
 export function getBorderColor(reservation) {
   try {
-    // 데이터 유효성 검사 강화
     if (
       !reservation ||
       !reservation.parsedCheckInDate ||
@@ -46,7 +42,6 @@ export function getBorderColor(reservation) {
     const ci = reservation.parsedCheckInDate;
     const co = reservation.parsedCheckOutDate;
 
-    // 날짜 객체가 유효한지 확인
     if (
       !(ci instanceof Date) ||
       !(co instanceof Date) ||
@@ -57,7 +52,6 @@ export function getBorderColor(reservation) {
       return '';
     }
 
-    // 대실 여부 확인
     const hasDaesil =
       (reservation.customerName &&
         reservation.customerName.toLowerCase().includes('대실')) ||
@@ -68,20 +62,16 @@ export function getBorderColor(reservation) {
       return 'border-primary-soft-green';
     }
 
-    // 체크인/체크아웃 날짜만 사용 (시간 제거)
     const ciOnly = new Date(ci.getFullYear(), ci.getMonth(), ci.getDate());
     const coOnly = new Date(co.getFullYear(), co.getMonth(), co.getDate());
-
-    // 날짜 차이 계산 (일 단위)
     const diff = Math.floor((coOnly - ciOnly) / (1000 * 60 * 60 * 24));
 
-    // 색상 반환 로직
     if (diff === 0) {
-      return 'border-primary-soft-green'; // 대실
+      return 'border-primary-soft-green';
     } else if (diff === 1) {
-      return 'border-accent-coral'; // 1박
+      return 'border-accent-coral';
     } else if (diff >= 2) {
-      return 'border-primary-deep-blue'; // 연박 (2박 이상)
+      return 'border-primary-deep-blue';
     }
     return '';
   } catch (err) {
@@ -89,7 +79,7 @@ export function getBorderColor(reservation) {
     return '';
   }
 }
-// 결제 방법에 따른 아이콘 반환
+
 export function getPaymentMethodIcon(pm) {
   switch (pm) {
     case 'Card':
@@ -105,24 +95,31 @@ export function getPaymentMethodIcon(pm) {
   }
 }
 
-// form 초기값 설정 로직 (공통화)
 export function getInitialFormData(reservation, roomTypes) {
   if (!reservation || typeof reservation !== 'object' || reservation.isNew) {
     const now = new Date();
-    const ci = now;
-    const co = addDays(now, 1);
+    const ci = reservation?.checkIn ? new Date(reservation.checkIn) : now;
+    const co = reservation?.checkOut
+      ? new Date(reservation.checkOut)
+      : addDays(ci, 1);
     const ciDate = format(ci, 'yyyy-MM-dd');
     const coDate = format(co, 'yyyy-MM-dd');
-    const selectedRoom = roomTypes[0] || { roomInfo: 'Standard', price: 0 };
-    
+    const roomInfo = reservation?.roomInfo || roomTypes[0]?.roomInfo || 'Standard';
+    const selectedRoom = roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
+    const nights = Math.max(
+      1,
+      Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
+    );
+    const basePrice = (selectedRoom?.price || 0) * nights;
+
     return {
-      customerName: '',
-      phoneNumber: '',
+      customerName: reservation?.customerName || '',
+      phoneNumber: reservation?.phoneNumber || '',
       checkInDate: ciDate,
       checkOutDate: coDate,
       reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-      roomInfo: selectedRoom.roomInfo,
-      price: selectedRoom.price.toString(),
+      roomInfo: roomInfo,
+      price: String(basePrice),
       paymentMethod: 'Pending',
       specialRequests: '',
       manualPriceOverride: false,
@@ -138,18 +135,15 @@ export function getInitialFormData(reservation, roomTypes) {
   const resDate = reservation.reservationDate
     ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd HH:mm')
     : format(new Date(), 'yyyy-MM-dd HH:mm');
-  const priceVal = reservation.price
-    ? extractPrice(reservation.price).toString()
-    : '0';
-  const selectedRoom = roomTypes.find(
-    (r) => r.roomInfo === reservation.roomInfo
-  ) || roomTypes[0] || { roomInfo: 'Standard', price: 0 };
-  const basePrice = selectedRoom.price || 0;
+  const roomInfo = reservation.roomInfo || roomTypes[0]?.roomInfo || 'Standard';
+  const selectedRoom = roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
   const nights = Math.max(
     1,
     Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
   );
-  const calculatedPrice = priceVal || (basePrice * nights).toString();
+  const priceVal = reservation.price
+    ? extractPrice(reservation.price).toString()
+    : String((selectedRoom?.price || 0) * nights);
 
   return {
     customerName: reservation.customerName || '',
@@ -157,8 +151,8 @@ export function getInitialFormData(reservation, roomTypes) {
     checkInDate: ciDate,
     checkOutDate: coDate,
     reservationDate: resDate,
-    roomInfo: reservation.roomInfo || selectedRoom.roomInfo,
-    price: calculatedPrice,
+    roomInfo: roomInfo,
+    price: priceVal,
     paymentMethod: reservation.paymentMethod || 'Pending',
     specialRequests: reservation.specialRequests || '',
     manualPriceOverride: !!reservation.price,
