@@ -1,6 +1,6 @@
 /* global chrome */
 import React, { useState } from 'react';
-import { FaClipboardCheck } from 'react-icons/fa';
+import { FaSearch } from 'react-icons/fa';
 import './ScrapeNowButton.css';
 
 const ACTION_MAP = {
@@ -136,18 +136,18 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
     >
       {isScraping ? (
         <>
-          <FaClipboardCheck style={{ color: 'red' }} />
+          <FaSearch style={{ color: 'red' }} />
           예약 확인중...
         </>
       ) : cooldown ? (
         <>
-          <FaClipboardCheck style={{ color: 'green' }} />
+          <FaSearch style={{ color: 'green' }} />
           예약 가져오는중...
         </>
       ) : (
         <>
-          <FaClipboardCheck style={{ marginRight: '0px' }} />
-          <p class="res-text">새로운 예약 확인하기</p>
+          <FaSearch style={{ marginRight: '0px' }} />
+          <p className="res-text">새로운 예약 확인하기</p>
         </>
       )}
     </button>

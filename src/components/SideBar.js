@@ -21,7 +21,6 @@ import {
   FaBed,
   FaChartLine,
   FaTools,
-  FaClipboardCheck, // 객실재고확인 버튼에 사용할 아이콘
 } from 'react-icons/fa';
 
 import ScrapeNowButton from './ScrapeNowButton';
@@ -162,7 +161,7 @@ function SideBar({
         </button>
         <ScrapeNowButton hotelId={hotelId} activeOTAs={activeOTAs} />
         <button className="monthly-view-button" onClick={onMonthlyView}>
-          <FaClipboardCheck className="onsite-icon" />
+          <FaBed className="onsite-icon" />
           <span className="btn-text">객실 재고 확인</span>
         </button>
         <button className="cancelSearch-button" onClick={onShowCanceledModal}>
