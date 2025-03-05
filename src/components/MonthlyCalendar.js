@@ -1,5 +1,4 @@
-// src/components/MonthlyCalendar.js
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   format,
   endOfMonth,
@@ -9,6 +8,10 @@ import {
   eachDayOfInterval,
   startOfWeek,
   endOfWeek,
+  differenceInCalendarDays,
+  getHours,
+  differenceInHours,
+  isSameDay,
 } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
@@ -54,7 +57,6 @@ const MonthlyCalendar = ({
 
   // **중요**: 월간 계산 시, 이전 날(혹은 가장 빠른 예약이 시작된 날)부터 계산하여,
   // 이미 체크인한 예약도 반영되도록 한다.
-  // 여기서는 단순히 calendarStart의 하루 전으로 설정.
   const calcFromDate = addDays(calendarStart, -1);
   // toDate는 calendarEnd의 다음 날
   const calcToDate = addDays(calendarEnd, 1);
@@ -72,19 +74,91 @@ const MonthlyCalendar = ({
     [gridStart, gridEnd]
   );
 
-  const availabilityByDate = useMemo(() => {
+  // now를 useMemo로 한 번만 생성 (렌더마다 새 객체 생성을 막음)
+  const memoizedNow = useMemo(() => new Date(), []);
+  const currentHour = getHours(memoizedNow);
+  const isAfter2AM = currentHour >= 2;
+
+  // availabilityByDate 계산 및 현재 시간 반영
+  const [availabilityByDate, setAvailabilityByDate] = useState({});
+  useEffect(() => {
     console.log('[MonthlyCalendar] 계산 범위:', {
       calcFromDate: format(calcFromDate, 'yyyy-MM-dd'),
       calcToDate: format(calcToDate, 'yyyy-MM-dd'),
+      currentTime: format(memoizedNow, 'yyyy-MM-dd HH:mm:ss'),
+      isAfter2AM,
     });
-    return calculateRoomAvailability(
+    const newAvailability = calculateRoomAvailability(
       reservations,
       filteredRoomTypes,
       calcFromDate,
       calcToDate,
       gridSettings
     );
-  }, [reservations, filteredRoomTypes, calcFromDate, calcToDate, gridSettings]);
+
+    // 현재 시간이 새벽 2시 이후라면, 체크아웃 날짜의 새벽 2시 이후 공실을 반영
+    if (isAfter2AM) {
+      const adjustedAvailability = { ...newAvailability };
+      Object.keys(newAvailability).forEach((dateStr) => {
+        Object.keys(newAvailability[dateStr]).forEach((typeKey) => {
+          if (typeKey !== 'unassigned') {
+            // 기본값 설정
+            const data = newAvailability[dateStr][typeKey] || {
+              count: 0,
+              assignedRooms: new Set(),
+              remain: 0,
+              leftoverRooms: [],
+            };
+            const checkoutReservations = reservations.filter((res) => {
+              const co = res.parsedCheckOutDate
+                ? new Date(res.parsedCheckOutDate)
+                : null;
+              return (
+                co &&
+                format(co, 'yyyy-MM-dd') === dateStr &&
+                res.roomInfo.toLowerCase() === typeKey
+              );
+            });
+            checkoutReservations.forEach((res) => {
+              const co = new Date(res.parsedCheckOutDate);
+              if (co && currentHour >= 2 && isSameDay(co, memoizedNow)) {
+                // 새벽 2시 이후이고, 체크아웃 날짜가 현재 날짜와 동일하면 퇴실 객실을 공실로 처리
+                const roomNumber = res.roomNumber;
+                if (data.assignedRooms && data.assignedRooms.has(roomNumber)) {
+                  data.assignedRooms.delete(roomNumber);
+                  data.count--;
+                  data.remain = Math.max(data.remain + 1, 0); // remain 증가
+                  const rooms =
+                    filteredRoomTypes.find(
+                      (rt) => rt.roomInfo.toLowerCase() === typeKey
+                    )?.roomNumbers || [];
+                  data.leftoverRooms = rooms.filter(
+                    (rnum) => !data.assignedRooms.has(rnum)
+                  );
+                  console.log(
+                    `[After 2AM] Checkout Room ${roomNumber} freed on ${dateStr}, Leftover Rooms: ${data.leftoverRooms.join(', ')}, Remain: ${data.remain}`
+                  );
+                }
+              }
+            });
+            adjustedAvailability[dateStr][typeKey] = data;
+          }
+        });
+      });
+      setAvailabilityByDate(adjustedAvailability);
+    } else {
+      setAvailabilityByDate(newAvailability);
+    }
+  }, [
+    reservations,
+    filteredRoomTypes,
+    calcFromDate,
+    calcToDate,
+    gridSettings,
+    memoizedNow, // memoizedNow로 변경
+    currentHour, // currentHour는 memoizedNow에서 파생되므로 유지
+    isAfter2AM, // isAfter2AM도 유지
+  ]);
 
   const unassignedDates = useMemo(() => {
     const setOfDates = new Set();
@@ -119,20 +193,40 @@ const MonthlyCalendar = ({
     const [rangeStart, rangeEnd] = [start, end].sort((a, b) => a - b);
     const tKey = roomInfo.toLowerCase();
     const isDayUse =
-      format(rangeStart, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd');
+      format(rangeStart, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd') &&
+      differenceInCalendarDays(rangeEnd, rangeStart) === 0 && // 동일 날짜이고 하루 차이 없음
+      differenceInHours(rangeEnd, rangeStart) <= 4 && // 4시간 이내로 제한
+      rangeStart >= memoizedNow && // 현재 시간 이후로만 대실 가능
+      differenceInCalendarDays(rangeEnd, rangeStart) === 0; // 다중 날짜는 숙박으로 처리
 
     let cursor = rangeStart;
     const shortageDays = [];
     if (isDayUse) {
       const ds = format(cursor, 'yyyy-MM-dd');
-      const data = availabilityByDate[ds]?.[tKey];
-      const remainVal = data?.remain ?? 0;
-      if (remainVal <= 0) shortageDays.push(ds);
+      const data = availabilityByDate[ds]?.[tKey] || {};
+      const remainVal = data.remain ?? 0;
+      if (remainVal <= 0) {
+        shortageDays.push(ds);
+      } else {
+        // 대실 예약 가능 여부 확인 (4시간 이내 사용 가능한지)
+        const freeRooms = data.leftoverRooms || [];
+        if (freeRooms.length === 0) {
+          shortageDays.push(ds);
+        } else {
+          // 현재 시간과 비교하여 4시간 이내 사용 가능 여부 확인
+          const startHour = rangeStart.getHours();
+          const endHour = rangeEnd.getHours();
+          if (endHour - startHour > 4 || rangeEnd < memoizedNow) {
+            shortageDays.push(ds);
+          }
+        }
+      }
     } else {
+      // 숙박 예약 처리 (다중 날짜)
       while (cursor < rangeEnd) {
         const ds = format(cursor, 'yyyy-MM-dd');
-        const data = availabilityByDate[ds]?.[tKey];
-        const remainVal = data?.remain ?? 0;
+        const data = availabilityByDate[ds]?.[tKey] || {};
+        const remainVal = data.remain ?? 0;
         if (remainVal <= 0) shortageDays.push(ds);
         cursor = addDays(cursor, 1);
       }
@@ -146,13 +240,22 @@ const MonthlyCalendar = ({
     cursor = rangeStart;
     let commonRooms = null;
     if (isDayUse) {
+      // 대실 예약 (4시간 이내 동일 날짜)
       const ds = format(cursor, 'yyyy-MM-dd');
-      const freeRooms = availabilityByDate[ds]?.[tKey]?.leftoverRooms || [];
+      const data = availabilityByDate[ds]?.[tKey] || {};
+      const freeRooms = data.leftoverRooms || [];
+      if (freeRooms.length === 0) {
+        alert(`선택한 날짜(${ds})에 대실 가능한 객실이 없습니다.`);
+        setSelectedRange(null);
+        return;
+      }
       commonRooms = new Set(freeRooms);
     } else {
+      // 숙박 예약 (다중 날짜)
       while (cursor < rangeEnd) {
         const ds = format(cursor, 'yyyy-MM-dd');
-        const freeRooms = availabilityByDate[ds]?.[tKey]?.leftoverRooms || [];
+        const data = availabilityByDate[ds]?.[tKey] || {};
+        const freeRooms = data.leftoverRooms || [];
         commonRooms =
           commonRooms === null
             ? new Set(freeRooms)
@@ -173,12 +276,32 @@ const MonthlyCalendar = ({
     }
 
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
+    const nights = differenceInCalendarDays(rangeEnd, rangeStart);
     const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(
       rangeEnd,
       'MM/dd'
-    )} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
+    )} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n${
+      isDayUse ? '대실' : `${nights}박`
+    }\n예약 생성하시겠습니까?`;
     if (window.confirm(msg)) {
-      onRangeSelect?.(rangeStart, rangeEnd, roomInfo, selectedRoomNumber);
+      // 대실과 숙박 예약을 구분하여 onRangeSelect 호출
+      if (isDayUse) {
+        onRangeSelect?.(
+          rangeStart,
+          rangeEnd,
+          roomInfo,
+          selectedRoomNumber,
+          'dayUse'
+        );
+      } else {
+        onRangeSelect?.(
+          rangeStart,
+          rangeEnd,
+          roomInfo,
+          selectedRoomNumber,
+          'stay'
+        );
+      }
       onReturnView?.();
     }
     setSelectedRange(null);
@@ -208,9 +331,14 @@ const MonthlyCalendar = ({
   const renderDayCell = (day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const isOutside = day < calendarStart || day > calendarEnd;
-    const isToday = dateStr === format(today, 'yyyy-MM-dd');
+    const isToday = isSameDay(day, memoizedNow);
     const isWeekend = [0, 6].includes(day.getDay());
     const dayAvailability = availabilityByDate[dateStr] || {};
+
+    console.log('[renderDayCell] Day Availability:', {
+      date: dateStr,
+      availability: dayAvailability,
+    });
 
     return (
       <div
@@ -246,14 +374,24 @@ const MonthlyCalendar = ({
         <div className="cell-content">
           {filteredRoomTypes.map((rt) => {
             const typeKey = rt.roomInfo.toLowerCase();
-            const data = dayAvailability[typeKey] || {};
+            const data = availabilityByDate[dateStr]?.[typeKey] || {};
             const remain = data.remain ?? 0;
             const leftoverRooms = data.leftoverRooms || [];
+            const assignedRooms = data.assignedRooms || new Set();
             const selected = isRoomTypeSelected(day, rt.roomInfo);
             const isAll = remain === rt.stock && remain > 0;
             const remainLabel = isAll ? '(All)' : remain;
             const leftoverRoomDisplay =
               leftoverRooms.length > 0 ? leftoverRooms.join(', ') : null;
+            const assignedDisplay =
+              Array.from(assignedRooms).length > 0
+                ? Array.from(assignedRooms).join(', ')
+                : '없음';
+
+            console.log(
+              `[renderDayCell] Room Type: ${rt.roomInfo}, Remain: ${remain}, Leftover Rooms: ${leftoverRoomDisplay}, Assigned Rooms: ${assignedDisplay}`
+            );
+
             return (
               <div
                 key={rt.roomInfo}
