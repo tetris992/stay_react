@@ -66,7 +66,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       14,
-      minmax(310px, 320px)
+      minmax(330px, 330px)
     ); /* 14개 열 고정, 최소 310px, 최대 320px */
     gap: 8px; /* 간격 약간 줄여 총 너비 조정 */
     width: 100%;
@@ -78,7 +78,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(310px, 320px)
+      minmax(320px, 320px)
     ); /* 12개까지 한 줄, 초과 시 줄바꿈 */
   }
 }
@@ -88,7 +88,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(310px, 1fr)
+      minmax(320px, 1fr)
     ); /* 더 유연하게, 8~10개까지 한 줄 */
   }
 }
@@ -98,7 +98,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(310px, 1fr)
+      minmax(320px, 1fr)
     ); /* 더 작은 화면에서 유연히 */
   }
 }

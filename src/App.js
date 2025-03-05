@@ -14,6 +14,7 @@ import RoomGrid from './components/RoomGrid.js';
 import CanceledReservationsModal from './components/CanceledReservationsModal.js';
 import MonthlyCalendar from './components/MonthlyCalendar';
 import GuestFormModal from './components/GuestFormModal';
+import DayUseFormModal from './components/DayUseFormModal.js';
 import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
@@ -1117,14 +1118,15 @@ const App = () => {
             Array.isArray(newReservation.createdReservationIds) &&
             newReservation.createdReservationIds.length > 0
           ) {
-            const newlyCreatedIdFromServer = newReservation.createdReservationIds[0];
+            const newlyCreatedIdFromServer =
+              newReservation.createdReservationIds[0];
             console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
             if (data.checkIn) {
               const parsedDate = parseDate(data.checkIn);
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newlyCreatedIdFromServer);
-  
+
             // 100ms 후 새로 생성된 예약 카드로 스크롤
             setTimeout(() => {
               const card = document.querySelector(
@@ -1134,7 +1136,7 @@ const App = () => {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
             }, 100);
-  
+
             // 10초 후 newlyCreatedId 리셋
             setTimeout(() => {
               setNewlyCreatedId(null);
@@ -1149,7 +1151,7 @@ const App = () => {
               setSelectedDate(parsedDate);
             }
             setNewlyCreatedId(newReservation._id);
-  
+
             // 100ms 후 새로 생성된 예약 카드로 스크롤 (중복 호출 방지)
             setTimeout(() => {
               const card = document.querySelector(
@@ -1159,7 +1161,7 @@ const App = () => {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
             }, 100);
-  
+
             // 10초 후 newlyCreatedId 리셋
             setTimeout(() => {
               setNewlyCreatedId(null);
@@ -1503,32 +1505,31 @@ const App = () => {
     });
     setShowGuestForm(true);
   };
-  // App.js (onQuickCreate 함수 수정)
+
   const onQuickCreate = (type) => {
     let checkInDate, checkInTime, checkOutDate, checkOutTime, customerName;
     const now = new Date();
-    // 오늘 자정 계산 (오늘 날짜 기준)
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate()
     );
 
-    // 선택된 날짜가 과거라면 오늘 날짜로 대체
     const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
 
     if (type === '대실') {
-      // 대실은 현재 시각을 기준으로 예약 생성 (대실은 당일 기준으로 처리하는 경우)
+      // 대실은 DayUseFormModal로 열기
       checkInDate = format(now, 'yyyy-MM-dd');
       checkInTime = format(now, 'HH:mm');
       const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
-      customerName = `현장:${format(now, 'HH:mm:ss')}`;
-      const basePrice = roomTypes[0].price;
+      customerName = `대실:${format(now, 'HH:mm:ss')}`;
+      const basePrice = finalRoomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
+
       setGuestFormData({
         reservationNo: `${Date.now()}`,
         customerName,
@@ -1537,15 +1538,17 @@ const App = () => {
         checkOutDate,
         checkOutTime,
         reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: roomTypes[0].roomInfo,
+        roomInfo: finalRoomTypes[0].roomInfo,
         price: price.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
         checkIn: checkInISO,
         checkOut: checkOutISO,
+        type: 'dayUse',
       });
+      setShowGuestForm(true); // DayUseFormModal로 열리도록 설정
     } else {
-      // 퀵예약(현장예약) 일반 예약의 경우 effectiveDate(선택 날짜가 과거이면 오늘로 대체)를 기준으로 진행
+      // 숙박은 기존 GuestFormModal로 열기
       const baseDate = new Date(effectiveDate);
       baseDate.setHours(16, 0, 0, 0); // 기본 체크인 시간: 오후 4시
       checkInDate = format(baseDate, 'yyyy-MM-dd');
@@ -1561,9 +1564,10 @@ const App = () => {
       );
       checkOutDate = format(checkOutObj, 'yyyy-MM-dd');
       customerName = `현장:${format(now, 'HH:mm:ss')}`;
-      const basePrice = roomTypes[0].price * nights;
+      const basePrice = finalRoomTypes[0].price * nights;
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
+
       setGuestFormData({
         reservationNo: `${Date.now()}`,
         customerName,
@@ -1572,15 +1576,16 @@ const App = () => {
         checkOutDate,
         checkOutTime,
         reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo: roomTypes[0].roomInfo,
+        roomInfo: finalRoomTypes[0].roomInfo,
         price: basePrice.toString(),
         paymentMethod: 'Pending',
         specialRequests: '',
         checkIn: checkInISO,
         checkOut: checkOutISO,
+        type: 'stay',
       });
+      setShowGuestForm(true); // GuestFormModal로 열리도록 설정
     }
-    setShowGuestForm(true);
   };
 
   const combinedSync = () => {
@@ -1855,17 +1860,29 @@ const App = () => {
                         </div>
                       </div>
 
-                      {showGuestForm && (
-                        <GuestFormModal
-                          initialData={guestFormData}
-                          roomTypes={
-                            hotelSettings?.roomTypes || defaultRoomTypes
-                          }
-                          onClose={() => setShowGuestForm(false)}
-                          onSave={handleFormSave}
-                          availabilityByDate={guestAvailability}
-                        />
-                      )}
+                      {showGuestForm &&
+                        (guestFormData.type === 'stay' ? (
+                          <GuestFormModal
+                            initialData={guestFormData}
+                            roomTypes={
+                              hotelSettings?.roomTypes || defaultRoomTypes
+                            }
+                            onClose={() => setShowGuestForm(false)}
+                            onSave={handleFormSave}
+                            availabilityByDate={guestAvailability}
+                          />
+                        ) : (
+                          <DayUseFormModal
+                            initialData={guestFormData}
+                            roomTypes={
+                              hotelSettings?.roomTypes || defaultRoomTypes
+                            }
+                            onClose={() => setShowGuestForm(false)}
+                            onSave={handleFormSave}
+                            availabilityByDate={guestAvailability}
+                            hotelSettings={hotelSettings} // 호텔 설정 전달
+                          />
+                        ))}
                     </div>
                     <SalesModal
                       isOpen={isSalesModalOpen}
