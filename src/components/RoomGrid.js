@@ -161,7 +161,7 @@ const ContainerCell = React.memo(
                 draggedReservation.parsedCheckOutDate,
                 gridSettings
               );
-
+              
               const { canMove, conflictDays } = canMoveToRoom(
                 cont.roomNumber,
                 cont.roomInfo.toLowerCase(),
@@ -171,19 +171,19 @@ const ContainerCell = React.memo(
                 updatedReservations,
                 draggedReservation._id
               );
-
+              
               if (!canMove) {
                 handleEditExtended(reservationId, {
                   roomInfo: originalRoomInfo,
                   roomNumber: originalRoomNumber,
                   manualAssignment: true,
                 });
-
-                alert(
-                  `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
-                    ', '
-                  )} (해당 날짜에 이미 예약이 있습니다.)`
-                );
+              
+                const conflictMessage = draggedReservation.type === 'dayUse'
+                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(draggedReservation.parsedCheckInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(draggedReservation.parsedCheckOutDate, 'yyyy-MM-dd HH:mm')}`
+                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(', ')} (해당 날짜에 이미 예약이 있습니다.)`;
+              
+                alert(conflictMessage);
               }
             }, 100);
           }

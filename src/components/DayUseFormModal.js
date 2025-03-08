@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import './GuestFormModal.css'; // 동일한 스타일 사용
+import './GuestFormModal.css';
 import { parseDate } from '../utils/dateParser';
-import { format, addHours, startOfDay } from 'date-fns'; // todayStart 제거
+import { format, addHours, startOfDay, addDays } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
 
@@ -12,23 +12,22 @@ const DayUseFormModal = ({
   initialData,
   roomTypes,
   availabilityByDate,
-  hotelSettings, // 호텔 설정 추가 (전화번호 가져오기)
+  hotelSettings,
 }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
     customerName: '',
-    phoneNumber: '', // 기본값은 호텔 설정의 전화번호
+    phoneNumber: '',
     checkInDate: '',
-    checkInTime: '',
-    checkOutDate: '',
-    checkOutTime: '',
+    checkInTime: '16:00',
+    durationHours: 4,
     reservationDate: '',
     roomInfo: '',
     price: '0',
     paymentMethod: '',
     specialRequests: '',
     roomNumber: '',
-    manualPriceOverride: false, // 사용자 가격 수정 여부
+    manualPriceOverride: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -38,100 +37,57 @@ const DayUseFormModal = ({
   );
 
   useEffect(() => {
+    const now = new Date();
+    const defaultCheckInDate = initialData?.checkInDate || format(now, 'yyyy-MM-dd'); // 보고 있는 날짜 우선
     if (initialData && initialData._id) {
       const checkInDateObj = new Date(initialData.checkIn);
-      const checkOutDateObj = new Date(initialData.checkOut);
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
-        phoneNumber:
-          initialData.phoneNumber || hotelSettings?.phoneNumber || '', // 호텔 설정 전화번호
+        phoneNumber: initialData.phoneNumber || hotelSettings?.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
         checkInTime: format(checkInDateObj, 'HH:mm'),
-        checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
-        checkOutTime: format(checkOutDateObj, 'HH:mm'),
-        reservationDate:
-          initialData.reservationDate || format(new Date(), 'yyyy-MM-dd HH:mm'),
-        roomInfo:
-          initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
+        durationHours: initialData.duration || 4,
+        reservationDate: initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo: initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
-        manualPriceOverride: !!initialData.price, // 초기 가격 있으면 수동 수정으로 간주
+        manualPriceOverride: !!initialData.price,
       });
     } else {
-      const now = new Date();
-      const defaultCheckIn = initialData?.checkInDate
-        ? parseDate(
-            `${initialData.checkInDate}T${
-              initialData.checkInTime || format(now, 'HH:mm')
-            }:00`
-          )
-        : now;
-      const defaultCheckOut = addHours(defaultCheckIn, 4); // 체크인 기준 4시간 후
-
-      const checkInDateStr = format(defaultCheckIn, 'yyyy-MM-dd');
-      const checkOutDateStr = format(defaultCheckOut, 'yyyy-MM-dd');
-      const checkInTimeStr = format(defaultCheckIn, 'HH:mm');
-      const checkOutTimeStr = format(defaultCheckOut, 'HH:mm');
-      const initialRoomInfo =
-        initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
-      const selectedRoom =
-        filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
-        filteredRoomTypes[0];
-      const basePrice = selectedRoom?.price || 0;
-      const price = String(Math.floor(basePrice * 0.5)); // 숙박 가격의 절반
+      const initialRoomInfo = initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
+      const selectedRoom = filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) || filteredRoomTypes[0];
+      const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5); // 대실 기본 가격
 
       setFormData({
         reservationNo: initialData?.reservationNo || `${Date.now()}`,
-        customerName:
-          initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
-        phoneNumber: hotelSettings?.phoneNumber || '', // 호텔 설정 전화번호 자동 입력
-        checkInDate: checkInDateStr,
-        checkInTime: checkInTimeStr,
-        checkOutDate: checkOutDateStr,
-        checkOutTime: checkOutTimeStr,
-        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+        phoneNumber: hotelSettings?.phoneNumber || '',
+        checkInDate: defaultCheckInDate, // 보고 있는 날짜로 설정
+        checkInTime: initialData?.checkInTime || '16:00',
+        durationHours: 4,
+        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
-        price: price,
+        price: String(basePrice),
         paymentMethod: initialData?.paymentMethod || 'Pending',
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
-        manualPriceOverride: false, // 신규 예약은 자동 계산
+        manualPriceOverride: false,
       });
     }
   }, [initialData, filteredRoomTypes, hotelSettings]);
 
   useEffect(() => {
-    if (
-      isSubmitting ||
-      formData.manualPriceOverride ||
-      (initialData && initialData._id)
-    )
-      return; // 수정 모드 또는 수동 수정 시 가격 계산 스킵
-
-    if (formData.checkInDate && formData.checkInTime && formData.roomInfo) {
-      const checkInDateObj = new Date(
-        `${formData.checkInDate}T${formData.checkInTime}:00`
-      );
-      const checkOutDateObj = addHours(checkInDateObj, 4); // 4시간 후 체크아웃
-      const selectedRoom = filteredRoomTypes.find(
-        (room) => room.roomInfo === formData.roomInfo
-      );
-      const basePrice = selectedRoom?.price || 0;
-      const price = String(Math.floor(basePrice * 0.5)); // 숙박 가격의 절반
-
-      setFormData((prev) => ({
-        ...prev,
-        checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
-        checkOutTime: format(checkOutDateObj, 'HH:mm'),
-        price: price,
-      }));
-    }
+    if (isSubmitting || formData.manualPriceOverride || (initialData && initialData._id)) return;
+    const selectedRoom = filteredRoomTypes.find((room) => room.roomInfo === formData.roomInfo);
+    const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
+    const additionalHours = Math.max(formData.durationHours - 4, 0);
+    const price = String(basePrice + additionalHours * 10000);
+    setFormData((prev) => ({ ...prev, price }));
   }, [
-    formData.checkInDate,
-    formData.checkInTime,
+    formData.durationHours,
     formData.roomInfo,
     formData.manualPriceOverride,
     filteredRoomTypes,
@@ -141,7 +97,6 @@ const DayUseFormModal = ({
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // 수정 모드에서는 roomInfo 변경 방지
     if (name === 'roomInfo' && initialData?._id) return;
     setFormData((prev) => ({
       ...prev,
@@ -150,42 +105,17 @@ const DayUseFormModal = ({
     }));
   };
 
-  const handleCheckInDateChange = (e) => {
-    const selectedDate = e.target.value;
-    const now = new Date();
-    const defaultCheckInTime = format(now, 'HH:mm');
+  const handleDurationChange = (increment) => {
     setFormData((prev) => ({
       ...prev,
-      checkInDate: selectedDate,
-      checkInTime: defaultCheckInTime,
-    }));
-  };
-
-  const handleCheckOutDateChange = (e) => {
-    const selectedDate = e.target.value;
-    const checkInDateObj = new Date(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-    const defaultCheckOut = addHours(checkInDateObj, 4);
-    setFormData((prev) => ({
-      ...prev,
-      checkOutDate: selectedDate,
-      checkOutTime: format(defaultCheckOut, 'HH:mm'),
+      durationHours: Math.max(1, prev.durationHours + increment),
+      manualPriceOverride: false,
     }));
   };
 
   const isRoomTypeUnavailable = (roomInfo) => {
-    if (!availabilityByDate || !formData.checkInDate || !formData.checkInTime) {
-      return false;
-    }
-    const checkInDateObj = new Date(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-
-    // eslint-disable-next-line no-unused-vars
-    const checkOutDate = addHours(checkInDateObj, 4);
-
-    const ds = format(checkInDateObj, 'yyyy-MM-dd');
+    if (!availabilityByDate || !formData.checkInDate) return false;
+    const ds = formData.checkInDate;
     const availForDay = availabilityByDate[ds]?.[roomInfo.toLowerCase()];
     return !availForDay || availForDay.remain <= 0;
   };
@@ -195,46 +125,40 @@ const DayUseFormModal = ({
     if (isSubmitting) return;
     setIsSubmitting(true);
 
+    console.log('[DayUseFormModal] handleSubmit - Form Data:', formData);
+    console.log('[DayUseFormModal] availabilityByDate:', availabilityByDate);
+    console.log('[DayUseFormModal] roomTypes:', roomTypes);
+
     const numericPrice = parseFloat(formData.price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
 
-    const checkInDateTime = parseDate(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-    const checkOutDateTime = parseDate(
-      `${formData.checkOutDate}T${formData.checkOutTime}:00`
-    );
-    if (!checkInDateTime || !checkOutDateTime) {
-      alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
-      setIsSubmitting(false);
-      return;
-    }
-    if (checkInDateTime >= checkOutDateTime) {
-      alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
+    const checkInDateTime = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    if (!checkInDateTime) {
+      alert('유효한 체크인 날짜와 시간을 입력해주세요.');
       setIsSubmitting(false);
       return;
     }
 
-    // 대실은 과거 날짜로 생성 가능
+    const checkOutDateTime = addHours(checkInDateTime, formData.durationHours);
+
     const tKey = formData.roomInfo.toLowerCase();
     const ds = format(checkInDateTime, 'yyyy-MM-dd');
     const availForDay = availabilityByDate[ds]?.[tKey];
+    console.log(`[DayUseFormModal] Checking availability for ${ds}, roomType: ${tKey}`, availForDay);
+
     if (!availForDay || availForDay.remain <= 0) {
       const detailedMsg = getDetailedAvailabilityMessage(
         startOfDay(checkInDateTime),
-        startOfDay(checkOutDateTime),
+        addDays(startOfDay(checkInDateTime), 1),
         tKey,
         availabilityByDate
       );
+      console.log('[DayUseFormModal] Availability Message:', detailedMsg);
       alert(detailedMsg);
-      setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
@@ -243,6 +167,7 @@ const DayUseFormModal = ({
       formData.roomNumber ||
       availForDay.leftoverRooms?.sort((a, b) => parseInt(a) - parseInt(b))[0] ||
       '';
+    console.log('[DayUseFormModal] Selected Room Number:', selectedRoomNumber);
 
     const finalData = {
       ...formData,
@@ -251,8 +176,11 @@ const DayUseFormModal = ({
       checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
       roomNumber: String(selectedRoomNumber),
       siteName: '현장예약',
-      type: 'dayUse', // 대실임을 명시
+      type: 'dayUse',
+      duration: formData.durationHours,
     };
+
+    console.log('[DayUseFormModal] Final Data to Save:', finalData);
 
     try {
       if (initialData?._id) {
@@ -262,46 +190,35 @@ const DayUseFormModal = ({
       }
       onClose();
     } catch (error) {
-      const errorMessage =
-        error.status === 403
-          ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-          : error.response?.data?.message ||
-            error.message ||
-            '예약 저장에 실패했습니다. 다시 시도해주세요.';
-      alert(errorMessage);
-      console.error('예약 저장 오류:', error);
-      setFormData((prev) => ({ ...prev, price: '0' }));
+      console.error('[DayUseFormModal] Save Error:', error);
+      alert(error.message || '예약 저장에 실패했습니다.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const displayCheckOut = useMemo(() => {
+    if (!formData.checkInDate || !formData.checkInTime) return '';
+    const checkIn = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkOut = addHours(checkIn, formData.durationHours);
+    return format(checkOut, 'yyyy-MM-dd HH:mm');
+  }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
+
   return ReactDOM.createPortal(
     <div className="guest-form-modal">
       <div className="modal-card">
-        {isSubmitting && (
-          <div className="modal-overlay-spinner">처리 중...</div>
-        )}
-        <span className="close-button" onClick={onClose}>
-          ×
-        </span>
-        <h2>{initialData?._id ? '예약 수정' : '대실 예약 입력'}</h2>
+        {isSubmitting && <div className="modal-overlay-spinner">처리 중...</div>}
+        <span className="close-button" onClick={onClose}>×</span>
+        <h2>{initialData?._id ? '대실 예약 수정' : '대실 예약 입력'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="modal-row">
-            <label htmlFor="reservationNo">
+            <label>
               예약번호:
-              <input
-                id="reservationNo"
-                type="text"
-                name="reservationNo"
-                value={formData.reservationNo}
-                readOnly
-              />
+              <input type="text" name="reservationNo" value={formData.reservationNo} readOnly />
             </label>
-            <label htmlFor="customerName">
+            <label>
               예약자:
               <input
-                id="customerName"
                 type="text"
                 name="customerName"
                 value={formData.customerName}
@@ -312,10 +229,9 @@ const DayUseFormModal = ({
             </label>
           </div>
           <div className="modal-row">
-            <label htmlFor="phoneNumber">
+            <label>
               연락처:
               <input
-                id="phoneNumber"
                 type="text"
                 name="phoneNumber"
                 value={formData.phoneNumber}
@@ -323,83 +239,78 @@ const DayUseFormModal = ({
                 disabled={isSubmitting}
               />
             </label>
-            <label htmlFor="checkInDate">
+            <label>
               체크인:
               <input
-                id="checkInDate"
                 type="date"
                 name="checkInDate"
                 value={formData.checkInDate}
-                onChange={handleCheckInDateChange}
+                onChange={handleInputChange}
+                required
+                disabled={isSubmitting}
+              />
+              <input
+                type="time"
+                name="checkInTime"
+                value={formData.checkInTime}
+                onChange={handleInputChange}
                 required
                 disabled={isSubmitting}
               />
             </label>
           </div>
           <div className="modal-row">
-            <label htmlFor="checkOutDate">
-              체크아웃 (기본 4시간 후):
-              <input
-                id="checkOutDate"
-                type="date"
-                name="checkOutDate"
-                value={formData.checkOutDate}
-                onChange={handleCheckOutDateChange}
-                required
+            <label>
+              사용 시간:
+              <button
+                type="button"
+                onClick={() => handleDurationChange(-1)}
+                disabled={isSubmitting || formData.durationHours <= 1}
+              >
+                -
+              </button>
+              <span>{formData.durationHours}시간</span>
+              <button
+                type="button"
+                onClick={() => handleDurationChange(1)}
                 disabled={isSubmitting}
-              />
+              >
+                +
+              </button>
             </label>
-            <label htmlFor="reservationDate">
-              예약시간:
-              <input
-                id="reservationDate"
-                type="text"
-                name="reservationDate"
-                value={formData.reservationDate}
-                readOnly
-              />
+            <label>
+              체크아웃:
+              <input type="text" value={displayCheckOut} readOnly />
             </label>
           </div>
           <div className="modal-row">
-            <label htmlFor="roomInfo">
+            <label>
               객실타입:
               {initialData?._id ? (
-                <input
-                  id="roomInfo"
-                  type="text"
-                  name="roomInfo"
-                  value={formData.roomInfo}
-                  readOnly
-                  disabled
-                />
+                <input type="text" value={formData.roomInfo} readOnly disabled />
               ) : (
                 <select
-                  id="roomInfo"
                   name="roomInfo"
                   value={formData.roomInfo}
                   onChange={handleInputChange}
                   required
                   disabled={isSubmitting}
                 >
-                  {filteredRoomTypes.map((rt) => {
-                    const unavailable = isRoomTypeUnavailable(rt.roomInfo);
-                    return (
-                      <option
-                        key={rt.roomInfo}
-                        value={rt.roomInfo}
-                        style={{ color: unavailable ? 'red' : 'inherit' }}
-                      >
-                        {rt.roomInfo}
-                      </option>
-                    );
-                  })}
+                  {filteredRoomTypes.map((rt) => (
+                    <option
+                      key={rt.roomInfo}
+                      value={rt.roomInfo}
+                      style={{ color: isRoomTypeUnavailable(rt.roomInfo) ? 'red' : 'inherit' }}
+                    >
+                      {rt.roomInfo}
+                    </option>
+                  ))}
                 </select>
               )}
             </label>
-            <label htmlFor="price">
+            <label>
               가격 (KRW):
               <input
-                id="price"
                 type="number"
                 name="price"
                 value={formData.price}
@@ -410,10 +321,9 @@ const DayUseFormModal = ({
             </label>
           </div>
           <div className="modal-row">
-            <label htmlFor="paymentMethod">
+            <label>
               결제방법/상태:
               <select
-                id="paymentMethod"
                 name="paymentMethod"
                 value={formData.paymentMethod}
                 onChange={handleInputChange}
@@ -426,10 +336,9 @@ const DayUseFormModal = ({
                 <option value="Pending">Pending</option>
               </select>
             </label>
-            <label htmlFor="specialRequests">
+            <label>
               고객요청:
               <input
-                id="specialRequests"
                 type="text"
                 name="specialRequests"
                 value={formData.specialRequests}
@@ -439,19 +348,10 @@ const DayUseFormModal = ({
             </label>
           </div>
           <div className="guest-form-actions">
-            <button
-              type="button"
-              onClick={onClose}
-              className="guest-form-button guest-form-cancel"
-              disabled={isSubmitting}
-            >
+            <button type="button" onClick={onClose} disabled={isSubmitting}>
               취소
             </button>
-            <button
-              type="submit"
-              className="guest-form-button guest-form-save"
-              disabled={isSubmitting}
-            >
+            <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? '처리 중...' : '저장'}
             </button>
           </div>
@@ -473,7 +373,7 @@ DayUseFormModal.propTypes = {
     })
   ).isRequired,
   availabilityByDate: PropTypes.object.isRequired,
-  hotelSettings: PropTypes.object.isRequired, // 호텔 설정 추가
+  hotelSettings: PropTypes.object.isRequired,
 };
 
 export default DayUseFormModal;

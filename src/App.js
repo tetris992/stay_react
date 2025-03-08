@@ -31,6 +31,7 @@ import {
   differenceInCalendarDays,
   startOfDay,
   getHours,
+  addHours,
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -1519,12 +1520,12 @@ const App = () => {
 
     if (type === '대실') {
       // 대실은 DayUseFormModal로 열기
-      checkInDate = format(now, 'yyyy-MM-dd');
-      checkInTime = format(now, 'HH:mm');
-      const fourHoursLater = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+      checkInDate = format(effectiveDate, 'yyyy-MM-dd'); // selectedDate 반영
+      checkInTime = format(effectiveDate, 'HH:mm'); // 현재 시간 반영
+      const fourHoursLater = new Date(effectiveDate.getTime() + 4 * 60 * 60 * 1000);
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
-      customerName = `대실:${format(now, 'HH:mm:ss')}`;
+      customerName = `대실:${format(effectiveDate, 'HH:mm:ss')}`; // effectiveDate 기반으로 수정
       const basePrice = finalRoomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
@@ -1640,16 +1641,23 @@ const App = () => {
     setNeedsConsent(false);
   }, []);
 
-  // guestAvailability 계산 시 'none' 제외
   const guestAvailability = useMemo(() => {
     if (!guestFormData) return {};
     const checkIn = parseDate(
       `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
     );
-    const checkOut = parseDate(
-      `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
-    );
+    let checkOut;
+    if (guestFormData.type === 'dayUse') {
+      // 대실 예약: durationHours를 사용해 체크아웃 시간 계산
+      checkOut = addHours(checkIn, parseInt(guestFormData.durationHours || 4));
+    } else {
+      // 숙박 예약: checkOutDate와 checkOutTime 사용
+      checkOut = parseDate(
+        `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
+      );
+    }
     if (!checkIn || !checkOut) return {};
+    console.log('[App.js] guestAvailability - checkIn:', checkIn, 'checkOut:', checkOut);
     return calculateRoomAvailability(
       allReservations,
       finalRoomTypes,

@@ -1,5 +1,3 @@
-// utils/roomGridUtils.js
-
 import {
   FaCreditCard,
   FaMoneyBillWave,
@@ -95,35 +93,54 @@ export function getPaymentMethodIcon(pm) {
   }
 }
 
-export function getInitialFormData(reservation, roomTypes) {
+export function getInitialFormData(reservation, roomTypes, isDayUse = false) {
+  const now = new Date();
   if (!reservation || typeof reservation !== 'object' || reservation.isNew) {
-    const now = new Date();
     const ci = reservation?.checkIn ? new Date(reservation.checkIn) : now;
-    const co = reservation?.checkOut
-      ? new Date(reservation.checkOut)
-      : addDays(ci, 1);
-    const ciDate = format(ci, 'yyyy-MM-dd');
-    const coDate = format(co, 'yyyy-MM-dd');
-    const roomInfo = reservation?.roomInfo || roomTypes[0]?.roomInfo || 'Standard';
-    const selectedRoom = roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
-    const nights = Math.max(
-      1,
-      Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
-    );
-    const basePrice = (selectedRoom?.price || 0) * nights;
-
-    return {
-      customerName: reservation?.customerName || '',
-      phoneNumber: reservation?.phoneNumber || '',
-      checkInDate: ciDate,
-      checkOutDate: coDate,
-      reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-      roomInfo: roomInfo,
-      price: String(basePrice),
-      paymentMethod: 'Pending',
-      specialRequests: '',
-      manualPriceOverride: false,
-    };
+    if (isDayUse) {
+      const basePrice = Math.floor((roomTypes[0]?.price || 0) * 0.5); // 대실 기본 가격
+      return {
+        customerName:
+          reservation?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+        phoneNumber: reservation?.phoneNumber || '',
+        checkInDate: format(ci, 'yyyy-MM-dd'), // 보고 있는 날짜 반영
+        checkInTime: format(ci, 'HH:mm'),
+        durationHours: 4,
+        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo: reservation?.roomInfo || roomTypes[0]?.roomInfo || 'Standard',
+        price: String(basePrice),
+        paymentMethod: 'Pending',
+        specialRequests: '',
+        manualPriceOverride: false,
+      };
+    } else {
+      const co = reservation?.checkOut
+        ? new Date(reservation.checkOut)
+        : addDays(ci, 1);
+      const ciDate = format(ci, 'yyyy-MM-dd');
+      const coDate = format(co, 'yyyy-MM-dd');
+      const roomInfo =
+        reservation?.roomInfo || roomTypes[0]?.roomInfo || 'Standard';
+      const selectedRoom =
+        roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
+      const nights = Math.max(
+        1,
+        Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
+      );
+      const basePrice = (selectedRoom?.price || 0) * nights;
+      return {
+        customerName: reservation?.customerName || '',
+        phoneNumber: reservation?.phoneNumber || '',
+        checkInDate: ciDate,
+        checkOutDate: coDate,
+        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo: roomInfo,
+        price: String(basePrice),
+        paymentMethod: 'Pending',
+        specialRequests: '',
+        manualPriceOverride: false,
+      };
+    }
   }
 
   const ci = reservation.checkIn ? new Date(reservation.checkIn) : new Date();
@@ -136,7 +153,8 @@ export function getInitialFormData(reservation, roomTypes) {
     ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd HH:mm')
     : format(new Date(), 'yyyy-MM-dd HH:mm');
   const roomInfo = reservation.roomInfo || roomTypes[0]?.roomInfo || 'Standard';
-  const selectedRoom = roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
+  const selectedRoom =
+    roomTypes.find((r) => r.roomInfo === roomInfo) || roomTypes[0];
   const nights = Math.max(
     1,
     Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
@@ -158,3 +176,31 @@ export function getInitialFormData(reservation, roomTypes) {
     manualPriceOverride: !!reservation.price,
   };
 }
+
+export const checkConflict = (
+  draggedReservation,
+  targetRoomNumber,
+  fullReservations
+) => {
+  const draggedCheckIn = new Date(draggedReservation.checkIn);
+  const draggedCheckOut = new Date(draggedReservation.checkOut);
+
+  for (const reservation of fullReservations) {
+    if (
+      reservation.roomNumber !== targetRoomNumber ||
+      reservation._id === draggedReservation._id ||
+      reservation.isCancelled
+    )
+      continue;
+
+    const resCheckIn = new Date(reservation.checkIn);
+    const resCheckOut = new Date(reservation.checkOut);
+
+    if (draggedCheckIn < resCheckOut && draggedCheckOut > resCheckIn) {
+      if (draggedCheckIn.getTime() === resCheckOut.getTime()) continue;
+      return { isConflict: true, conflictReservation: reservation };
+    }
+  }
+
+  return { isConflict: false };
+};
