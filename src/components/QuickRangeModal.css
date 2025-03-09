@@ -1,0 +1,198 @@
+/* 기본 변수 설정 */
+:root {
+    --primary-color: #1a237e;
+    --accent-color: #142a6b;
+    --secondary-color: #e57373;
+    --error-color: #d32f2f;
+    --text-color: #333;
+    --background-color: #ffffff;
+    --overlay-color: rgba(0, 0, 0, 0.6);
+    --border-radius: 12px;
+    --transition-speed: 0.3s;
+    --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  
+  /* 전체 모달 오버레이 */
+  .quick-range-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--overlay-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  
+  /* 모달 카드 */
+  .modal-card {
+    width: 600px;
+    background: var(--background-color);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    position: relative;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+    font-family: var(--font-family);
+    color: var(--text-color);
+    transition: transform var(--transition-speed);
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  /* 모달 오픈 애니메이션 */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* 닫기 버튼 */
+  .close-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: color var(--transition-speed);
+  }
+  
+  .close-button:hover {
+    color: var(--secondary-color);
+  }
+  
+  /* 모달 제목 */
+  .modal-card h2 {
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 2rem;
+    color: var(--primary-color);
+    font-weight: 700;
+  }
+  
+  /* 폼 레이아웃 */
+  .modal-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* 행 스타일 (입력/선택 필드 그룹) */
+  .modal-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .modal-row label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+    color: var(--text-color);
+  }
+  
+  /* 입력 필드 및 셀렉트 박스 */
+  .modal-row input,
+  .modal-row select {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    background-color: #f9f9f9;
+    transition: border-color var(--transition-speed),
+      box-shadow var(--transition-speed);
+  }
+  
+  .modal-row input:focus,
+  .modal-row select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(26, 35, 126, 0.2);
+    outline: none;
+  }
+  
+  /* 고객 요청 필드 (2칸 차지) */
+  .special-requests {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+    color: var(--text-color);
+  }
+  
+  .special-requests input {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    background-color: #f9f9f9;
+    transition: border-color var(--transition-speed),
+      box-shadow var(--transition-speed);
+    width: 100%; /* 두 칸 차지하도록 전체 너비 */
+  }
+  
+  .special-requests input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(26, 35, 126, 0.2);
+    outline: none;
+  }
+  
+  /* 액션 버튼 영역 */
+  .guest-form-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+  }
+  
+  .guest-form-button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color var(--transition-speed), transform 0.2s;
+    font-weight: bold;
+    min-width: 120px;
+  }
+  
+  /* 저장 버튼 */
+  .guest-form-button.guest-form-save {
+    background-color: var(--primary-color);
+    color: #fff;
+  }
+  
+  .guest-form-button.guest-form-save:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.05);
+  }
+  
+  /* 취소 버튼 */
+  .guest-form-button.guest-form-cancel {
+    background-color: var(--secondary-color);
+    color: #fff;
+  }
+  
+  .guest-form-button.guest-form-cancel:hover {
+    background-color: var(--error-color);
+    transform: scale(1.05);
+  }
+  
+  /* 비활성화된 버튼 스타일 */
+  .guest-form-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+  }

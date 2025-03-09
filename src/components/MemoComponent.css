@@ -36,11 +36,11 @@
   color: #fff;
   padding: 5px 10px;
   border-radius: 5px 5px 0 0;
-  
+  max-width: 300px;
   /* 고정 높이로 통일: 편집 모드 전/후 동일 */
   height: 40px;
   flex-shrink: 0;
-  
+
   /* 필요 시 아래 마진 제거 */
   margin-bottom: 0;
 }
@@ -51,8 +51,7 @@
   cursor: pointer;
 }
 
-
-.memo-edit-button:hover { 
+.memo-edit-button:hover {
   color: red;
 }
 

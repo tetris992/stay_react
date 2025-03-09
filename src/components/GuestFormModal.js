@@ -32,7 +32,7 @@ const GuestFormModal = ({
     paymentMethod: '',
     specialRequests: '',
     roomNumber: '',
-    manualPriceOverride: false, // 사용자 가격 수정 여부
+    manualPriceOverride: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,6 +42,7 @@ const GuestFormModal = ({
   );
 
   useEffect(() => {
+    const now = new Date();
     if (initialData && initialData._id) {
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
@@ -54,17 +55,16 @@ const GuestFormModal = ({
         checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
         checkOutTime: format(checkOutDateObj, 'HH:mm'),
         reservationDate:
-          initialData.reservationDate || format(new Date(), 'yyyy-MM-dd HH:mm'),
+          initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
-        manualPriceOverride: !!initialData.price, // 초기 가격 있으면 수동 수정으로 간주
+        manualPriceOverride: !!initialData.price,
       });
     } else {
-      const now = new Date();
       const defaultCheckIn = initialData?.checkInDate
         ? parseDate(
             `${initialData.checkInDate}T${
@@ -81,13 +81,21 @@ const GuestFormModal = ({
         : addDays(defaultCheckIn, 1);
 
       const checkInDateStr = format(defaultCheckIn, 'yyyy-MM-dd');
-      const checkOutDateStr = format(defaultCheckOut, 'yyyy-MM-dd');
+      const checkOutDateStr = defaultCheckOut
+        ? format(defaultCheckOut, 'yyyy-MM-dd')
+        : format(addDays(new Date(checkInDateStr), 1), 'yyyy-MM-dd'); // 기본 체크아웃 날짜 설정
+      const checkInTimeStr = initialData?.checkInTime || '16:00';
+      const checkOutTimeStr = initialData?.checkOutTime || '11:00';
+
       const initialRoomInfo =
         initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
         filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
         filteredRoomTypes[0];
-      const nights = differenceInCalendarDays(defaultCheckOut, defaultCheckIn);
+      const nights = differenceInCalendarDays(
+        defaultCheckOut || addDays(defaultCheckIn, 1),
+        defaultCheckIn
+      );
       const basePrice = (selectedRoom?.price || 0) * Math.max(nights, 1);
 
       setFormData({
@@ -95,16 +103,16 @@ const GuestFormModal = ({
         customerName: initialData?.customerName || '',
         phoneNumber: initialData?.phoneNumber || '',
         checkInDate: checkInDateStr,
-        checkInTime: initialData?.checkInTime || '16:00',
+        checkInTime: checkInTimeStr,
         checkOutDate: checkOutDateStr,
-        checkOutTime: initialData?.checkOutTime || '11:00',
-        reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        checkOutTime: checkOutTimeStr,
+        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(basePrice),
         paymentMethod: initialData?.paymentMethod || 'Pending',
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
-        manualPriceOverride: false, // 신규 예약은 자동 계산
+        manualPriceOverride: false,
       });
     }
   }, [initialData, filteredRoomTypes]);
@@ -115,7 +123,7 @@ const GuestFormModal = ({
       formData.manualPriceOverride ||
       (initialData && initialData._id)
     )
-      return; // 수정 모드 또는 수동 수정 시 가격 계산 스킵
+      return;
 
     if (
       formData.checkInDate &&
@@ -124,23 +132,29 @@ const GuestFormModal = ({
       formData.checkInTime &&
       formData.checkOutTime
     ) {
-      const checkInDateObj = new Date(
+      const checkInDateObj = parseDate(
         `${formData.checkInDate}T${formData.checkInTime}:00`
       );
-      const checkOutDateObj = new Date(
+      const checkOutDateObj = parseDate(
         `${formData.checkOutDate}T${formData.checkOutTime}:00`
       );
-      const nights = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
-      const selectedRoom = filteredRoomTypes.find(
-        (room) => room.roomInfo === formData.roomInfo
-      );
-      const nightlyPrice = selectedRoom?.price || 0;
-      const totalPrice = String(nightlyPrice * Math.max(nights, 1));
 
-      setFormData((prev) => ({
-        ...prev,
-        price: totalPrice,
-      }));
+      if (checkInDateObj && checkOutDateObj) {
+        const nights = differenceInCalendarDays(
+          checkOutDateObj,
+          checkInDateObj
+        );
+        const selectedRoom = filteredRoomTypes.find(
+          (room) => room.roomInfo === formData.roomInfo
+        );
+        const nightlyPrice = selectedRoom?.price || 0;
+        const totalPrice = String(nightlyPrice * Math.max(nights, 1));
+
+        setFormData((prev) => ({
+          ...prev,
+          price: totalPrice,
+        }));
+      }
     }
   }, [
     formData.checkInDate,
@@ -156,7 +170,6 @@ const GuestFormModal = ({
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // 수정 모드에서는 roomInfo 변경 방지
     if (name === 'roomInfo' && initialData?._id) return;
     setFormData((prev) => ({
       ...prev,
@@ -189,16 +202,20 @@ const GuestFormModal = ({
     if (
       !availabilityByDate ||
       !formData.checkInDate ||
-      !formData.checkOutDate
+      !formData.checkOutDate ||
+      !formData.checkInTime ||
+      !formData.checkOutTime
     ) {
       return false;
     }
-    const start = new Date(
+    const start = parseDate(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
-    const end = new Date(
+    const end = parseDate(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
+
+    if (!start || !end) return false;
 
     let cursor = start;
     while (cursor < end) {
@@ -216,7 +233,7 @@ const GuestFormModal = ({
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
-  
+
     const numericPrice = parseFloat(formData.price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
@@ -224,26 +241,44 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-  
+
+    // 입력값 검증
+    if (
+      !formData.checkInDate ||
+      !formData.checkInTime ||
+      !formData.checkOutDate ||
+      !formData.checkOutTime
+    ) {
+      alert('체크인/체크아웃 날짜와 시간을 모두 입력해주세요.');
+      setFormData((prev) => ({ ...prev, price: '0' }));
+      setIsSubmitting(false);
+      return;
+    }
+
     const checkInDateTime = parseDate(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
     const checkOutDateTime = parseDate(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
+
+    console.log('[GuestFormModal] checkInDateTime:', checkInDateTime);
+    console.log('[GuestFormModal] checkOutDateTime:', checkOutDateTime);
+
     if (!checkInDateTime || !checkOutDateTime) {
       alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
       setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
+
     if (checkInDateTime >= checkOutDateTime) {
       alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
       setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
-  
+
     if (
       !initialData?._id &&
       formData.customerName.includes('현장') &&
@@ -254,7 +289,7 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-  
+
     const tKey = formData.roomInfo.toLowerCase();
     let cursor = new Date(checkInDateTime);
     let missingDates = [];
@@ -276,7 +311,7 @@ const GuestFormModal = ({
       }
       cursor = addDays(cursor, 1);
     }
-  
+
     if (!commonRooms || commonRooms.size === 0 || missingDates.length > 0) {
       const detailedMsg = getDetailedAvailabilityMessage(
         startOfDay(checkInDateTime),
@@ -289,11 +324,11 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-  
+
     const selectedRoomNumber =
       formData.roomNumber ||
       [...commonRooms].sort((a, b) => parseInt(a) - parseInt(b))[0];
-  
+
     const finalData = {
       ...formData,
       price: numericPrice,
@@ -302,15 +337,15 @@ const GuestFormModal = ({
       roomNumber: String(selectedRoomNumber),
       siteName: '현장예약',
     };
-  
-    console.log('[GuestFormModal] Submitting finalData:', finalData); // 디버깅 로그 추가
+
+    console.log('[GuestFormModal] Submitting finalData:', finalData);
     try {
       if (initialData?._id) {
         await onSave(initialData._id, finalData);
-        console.log('[GuestFormModal] Save successful for:', initialData._id); // 성공 로그
+        console.log('[GuestFormModal] Save successful for:', initialData._id);
       } else {
         await onSave(null, finalData);
-        console.log('[GuestFormModal] New reservation saved:', finalData); // 성공 로그
+        console.log('[GuestFormModal] New reservation saved:', finalData);
       }
       onClose();
     } catch (error) {

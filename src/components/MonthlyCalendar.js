@@ -12,7 +12,6 @@ import {
 import { ko } from 'date-fns/locale';
 import { FaLock, FaLockOpen } from 'react-icons/fa';
 import './MonthlyCalendar.css';
-import GuestFormModal from './GuestFormModal';
 import { calculateRoomAvailability } from '../utils/availability';
 
 const getDetailedAvailabilityMessage = (
@@ -76,8 +75,6 @@ const MonthlyCalendar = ({
   }, [reservations]);
 
   const [selectedRange, setSelectedRange] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalData, setModalData] = useState(null);
   const [selectedDate, setSelectedDate] = useState(today);
 
   const availabilityByDate = useMemo(() => {
@@ -94,7 +91,7 @@ const MonthlyCalendar = ({
       calcFromDate,
       calcToDate,
       gridSettings,
-      selectedDates // 보고하는 날짜 전후 하루 이틀
+      selectedDates
     );
   }, [reservations, roomTypes, gridSettings, selectedDate, today]);
 
@@ -110,65 +107,77 @@ const MonthlyCalendar = ({
   };
 
   const handleRoomTypeMouseUp = () => {
-    if (!selectedRange) return;
-
+    if (!selectedRange) {
+      console.log('[MonthlyCalendar] selectedRange is null');
+      return;
+    }
+    console.log('[MonthlyCalendar] selectedRange:', selectedRange);
+  
     const { roomInfo, start, end } = selectedRange;
     const [rangeStart, rangeEnd] = [start, end].sort((a, b) => a - b);
     const tKey = roomInfo.toLowerCase();
-
+  
     let cursor = rangeStart;
     const shortageDays = [];
     while (cursor < rangeEnd) {
       const ds = format(cursor, 'yyyy-MM-dd');
       const data = availabilityByDate[ds]?.[tKey];
+      console.log(`[MonthlyCalendar] Checking availability for ${ds}:`, data);
       if (!data || data.remain <= 0) shortageDays.push(ds);
       cursor = addDays(cursor, 1);
     }
-
+  
     if (shortageDays.length > 0) {
+      console.log('[MonthlyCalendar] Shortage days detected:', shortageDays);
       alert(`선택 구간에 재고 부족: ${shortageDays.join(', ')}`);
       setSelectedRange(null);
       return;
     }
-
+  
     let commonRooms = null;
     cursor = rangeStart;
     while (cursor < rangeEnd) {
       const ds = format(cursor, 'yyyy-MM-dd');
       const freeRooms = availabilityByDate[ds]?.[tKey]?.leftoverRooms || [];
+      console.log(`[MonthlyCalendar] Free rooms for ${ds}:`, freeRooms);
       commonRooms = commonRooms
         ? new Set([...commonRooms].filter((r) => freeRooms.includes(r)))
         : new Set(freeRooms);
       cursor = addDays(cursor, 1);
     }
-
+  
+    console.log('[MonthlyCalendar] Calculated commonRooms:', commonRooms);
+  
     if (!commonRooms || commonRooms.size === 0) {
-      const msg = getDetailedAvailabilityMessage(
-        rangeStart,
-        rangeEnd,
-        tKey,
-        availabilityByDate
-      );
+      const msg = getDetailedAvailabilityMessage(rangeStart, rangeEnd, tKey, availabilityByDate);
+      console.log('[MonthlyCalendar] No common rooms, showing message:', msg);
       alert(msg);
       setSelectedRange(null);
       return;
     }
-
+  
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
-    const msg =
-      `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(
-        rangeEnd,
-        'MM/dd'
-      )} (${roomInfo})\n` +
-      `공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
+    const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(rangeEnd, 'MM/dd')} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
+    console.log('[MonthlyCalendar] Showing confirm dialog with message:', msg);
     if (window.confirm(msg)) {
-      setModalData({
-        checkInDate: format(rangeStart, 'yyyy-MM-dd'),
-        checkOutDate: format(rangeEnd, 'yyyy-MM-dd'),
-        roomInfo,
-        roomNumber: selectedRoomNumber.toString(),
-      });
-      setIsModalOpen(true);
+      try {
+        const checkInDateObj = startOfDay(rangeStart);
+        checkInDateObj.setHours(16, 0, 0, 0);
+        const checkOutDateObj = startOfDay(rangeEnd);
+        checkOutDateObj.setHours(11, 0, 0, 0);
+        console.log('[MonthlyCalendar] Calling onRangeSelect:', {
+          checkIn: checkInDateObj,
+          checkOut: checkOutDateObj,
+          roomInfo,
+        });
+        if (typeof onRangeSelect !== 'function') {
+          console.error('[MonthlyCalendar] onRangeSelect is not a function:', onRangeSelect);
+          return;
+        }
+        onRangeSelect(checkInDateObj, checkOutDateObj, roomInfo);
+      } catch (error) {
+        console.error('[MonthlyCalendar] Error calling onRangeSelect:', error);
+      }
     }
     setSelectedRange(null);
   };
@@ -185,7 +194,7 @@ const MonthlyCalendar = ({
   const handleHeaderClick = (day, e) => {
     e.stopPropagation();
     setPopup({ day, x: e.clientX, y: e.clientY });
-    setSelectedDate(day); // 클릭한 날짜로 업데이트
+    setSelectedDate(day);
   };
 
   const handlePopupConfirm = () => {
@@ -196,12 +205,6 @@ const MonthlyCalendar = ({
   };
 
   const handlePopupCancel = () => setPopup(null);
-
-  const handleModalSave = async (id, data) => {
-    await onRangeSelect(data);
-    setIsModalOpen(false);
-    onReturnView?.();
-  };
 
   const renderDayCell = (day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
@@ -326,16 +329,6 @@ const MonthlyCalendar = ({
       <div className={`calendar-grid ${isLocked ? 'locked' : ''}`}>
         {days.map(renderDayCell)}
       </div>
-
-      {isModalOpen && modalData && (
-        <GuestFormModal
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleModalSave}
-          initialData={modalData}
-          roomTypes={roomTypes}
-          availabilityByDate={availabilityByDate}
-        />
-      )}
 
       {popup && (
         <div

@@ -5,6 +5,7 @@ import {
   faCaretLeft,
   faCaretRight,
   faStickyNote,
+  faCalendarAlt, // 달력 아이콘 추가
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 
@@ -18,6 +19,9 @@ function Header({
   onMemo,
   flipAllMemos,
   isShining,
+  /* 새로 추가 */
+  isMonthlyView,
+  toggleMonthlyView,
 }) {
   const dayOfWeek = selectedDate.getDay();
   const weekdayName = selectedDate.toLocaleDateString('ko-KR', {
@@ -66,12 +70,23 @@ function Header({
       <div className="header-bottom">
         <div className="header-left">
           <div className="additional-buttons">
+            {/* 메모 버튼 */}
             <button
               className={`memo-button ${flipAllMemos ? 'active' : ''}`}
               onClick={onMemo}
               aria-label="모든 방 카드 메모 플립"
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
+            </button>
+
+            {/* 월간/일간 뷰 전환 버튼 */}
+            <button
+              className="view-toggle-button"
+              onClick={toggleMonthlyView}
+              aria-label="월간/일간 뷰 전환"
+            >
+              <FontAwesomeIcon icon={faCalendarAlt} style={{ marginRight: 6 }} />
+              {isMonthlyView ? '일간 뷰' : '월간 뷰'}
             </button>
           </div>
         </div>
@@ -87,13 +102,15 @@ function Header({
             >
               <span>{ota}</span>
               <span
-                className={`status-lamp ${otaToggles[ota] ? 'green' : 'gray'}`}
+                className={`status-lamp ${
+                  otaToggles[ota] ? 'green' : 'gray'
+                }`}
               ></span>
             </div>
           ))}
         </div>
 
-        {/* 오른쪽: Quick-create 버튼만 유지 */}
+        {/* 오른쪽: Quick-create 버튼 */}
         <div className="header-right">
           <div className="quick-create-buttons">
             <button
@@ -146,6 +163,9 @@ Header.propTypes = {
   otaToggles: PropTypes.object.isRequired,
   onMemo: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
+  /* 새로 추가 */
+  isMonthlyView: PropTypes.bool.isRequired,
+  toggleMonthlyView: PropTypes.func.isRequired,
 };
 
 export default Header;

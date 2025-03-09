@@ -9,7 +9,7 @@
 
 .calendar-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 20px;
 }
@@ -18,7 +18,7 @@
   font-size: 1.8rem;
   font-weight: bold;
   color: var(--room-card-text-color);
-  margin: 0;
+  margin: 0px 50px;
 }
 
 /* 아이콘 및 텍스트를 포함하는 버튼 스타일 */
@@ -31,17 +31,24 @@
   cursor: pointer;
   font-size: 1.2rem;
   color: var(--room-card-text-color);
+  margin: 0px 20px;
+}
+
+.lock-toggle-button:hover {
+  cursor: pointer;
 }
 
 .lock-icon {
   font-size: 1rem;
   margin-left: 10px;
   color: rgb(0, 51, 255);
+  margin: 0px 50px;
 }
 
 .lock-text {
   font-size: 1rem;
   margin-left: 5px;
+  margin: 0px 50px;
 }
 
 .return-button {
@@ -299,7 +306,6 @@
   justify-content: space-evenly;
   align-items: center;
 }
-
 
 /* 기본 스타일 (MonthlyCalendar.css 또는 별도의 CSS 파일에 추가) */
 .room-type {

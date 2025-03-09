@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import './GuestFormModal.css';
+import './DayUseFormModal.css'; // 별도의 CSS 파일 사용
 import { parseDate } from '../utils/dateParser';
 import { format, addHours, startOfDay, addDays } from 'date-fns';
 import PropTypes from 'prop-types';
@@ -38,7 +38,7 @@ const DayUseFormModal = ({
 
   useEffect(() => {
     const now = new Date();
-    const defaultCheckInDate = initialData?.checkInDate || format(now, 'yyyy-MM-dd'); // 보고 있는 날짜 우선
+    const defaultCheckInDate = initialData?.checkInDate || format(now, 'yyyy-MM-dd');
     if (initialData && initialData._id) {
       const checkInDateObj = new Date(initialData.checkIn);
       setFormData({
@@ -59,13 +59,13 @@ const DayUseFormModal = ({
     } else {
       const initialRoomInfo = initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom = filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) || filteredRoomTypes[0];
-      const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5); // 대실 기본 가격
+      const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
 
       setFormData({
         reservationNo: initialData?.reservationNo || `${Date.now()}`,
         customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
         phoneNumber: hotelSettings?.phoneNumber || '',
-        checkInDate: defaultCheckInDate, // 보고 있는 날짜로 설정
+        checkInDate: defaultCheckInDate,
         checkInTime: initialData?.checkInTime || '16:00',
         durationHours: 4,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
@@ -125,10 +125,6 @@ const DayUseFormModal = ({
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    console.log('[DayUseFormModal] handleSubmit - Form Data:', formData);
-    console.log('[DayUseFormModal] availabilityByDate:', availabilityByDate);
-    console.log('[DayUseFormModal] roomTypes:', roomTypes);
-
     const numericPrice = parseFloat(formData.price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
@@ -142,13 +138,11 @@ const DayUseFormModal = ({
       setIsSubmitting(false);
       return;
     }
-
     const checkOutDateTime = addHours(checkInDateTime, formData.durationHours);
 
     const tKey = formData.roomInfo.toLowerCase();
     const ds = format(checkInDateTime, 'yyyy-MM-dd');
     const availForDay = availabilityByDate[ds]?.[tKey];
-    console.log(`[DayUseFormModal] Checking availability for ${ds}, roomType: ${tKey}`, availForDay);
 
     if (!availForDay || availForDay.remain <= 0) {
       const detailedMsg = getDetailedAvailabilityMessage(
@@ -157,7 +151,6 @@ const DayUseFormModal = ({
         tKey,
         availabilityByDate
       );
-      console.log('[DayUseFormModal] Availability Message:', detailedMsg);
       alert(detailedMsg);
       setIsSubmitting(false);
       return;
@@ -167,7 +160,6 @@ const DayUseFormModal = ({
       formData.roomNumber ||
       availForDay.leftoverRooms?.sort((a, b) => parseInt(a) - parseInt(b))[0] ||
       '';
-    console.log('[DayUseFormModal] Selected Room Number:', selectedRoomNumber);
 
     const finalData = {
       ...formData,
@@ -179,8 +171,6 @@ const DayUseFormModal = ({
       type: 'dayUse',
       duration: formData.durationHours,
     };
-
-    console.log('[DayUseFormModal] Final Data to Save:', finalData);
 
     try {
       if (initialData?._id) {
@@ -205,13 +195,13 @@ const DayUseFormModal = ({
   }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
 
   return ReactDOM.createPortal(
-    <div className="guest-form-modal">
-      <div className="modal-card">
-        {isSubmitting && <div className="modal-overlay-spinner">처리 중...</div>}
-        <span className="close-button" onClick={onClose}>×</span>
+    <div className="dayuse-modal">
+      <div className="dayuse-modal-card">
+        {isSubmitting && <div className="dayuse-modal-overlay-spinner">처리 중...</div>}
+        <span className="dayuse-close-button" onClick={onClose}>×</span>
         <h2>{initialData?._id ? '대실 예약 수정' : '대실 예약 입력'}</h2>
         <form onSubmit={handleSubmit}>
-          <div className="modal-row">
+          <div className="dayuse-modal-row">
             <label>
               예약번호:
               <input type="text" name="reservationNo" value={formData.reservationNo} readOnly />
@@ -228,7 +218,7 @@ const DayUseFormModal = ({
               />
             </label>
           </div>
-          <div className="modal-row">
+          <div className="dayuse-modal-row">
             <label>
               연락처:
               <input
@@ -259,31 +249,35 @@ const DayUseFormModal = ({
               />
             </label>
           </div>
-          <div className="modal-row">
+          <div className="dayuse-modal-row">
             <label>
               사용 시간:
-              <button
-                type="button"
-                onClick={() => handleDurationChange(-1)}
-                disabled={isSubmitting || formData.durationHours <= 1}
-              >
-                -
-              </button>
-              <span>{formData.durationHours}시간</span>
-              <button
-                type="button"
-                onClick={() => handleDurationChange(1)}
-                disabled={isSubmitting}
-              >
-                +
-              </button>
+              <div className="dayuse-duration-change-container">
+                <button
+                  type="button"
+                  className="dayuse-duration-button plus"
+                  onClick={() => handleDurationChange(1)}
+                  disabled={isSubmitting}
+                >
+                  +
+                </button>
+                <span>{formData.durationHours}시간</span>
+                <button
+                  type="button"
+                  className="dayuse-duration-button minus"
+                  onClick={() => handleDurationChange(-1)}
+                  disabled={isSubmitting || formData.durationHours <= 1}
+                >
+                  -
+                </button>
+              </div>
             </label>
             <label>
               체크아웃:
               <input type="text" value={displayCheckOut} readOnly />
             </label>
           </div>
-          <div className="modal-row">
+          <div className="dayuse-modal-row">
             <label>
               객실타입:
               {initialData?._id ? (
@@ -320,7 +314,7 @@ const DayUseFormModal = ({
               />
             </label>
           </div>
-          <div className="modal-row">
+          <div className="dayuse-modal-row">
             <label>
               결제방법/상태:
               <select
@@ -347,7 +341,7 @@ const DayUseFormModal = ({
               />
             </label>
           </div>
-          <div className="guest-form-actions">
+          <div className="dayuse-guest-form-actions">
             <button type="button" onClick={onClose} disabled={isSubmitting}>
               취소
             </button>

@@ -98,7 +98,7 @@ const MemoComponent = ({
         onClick={(e) => e.stopPropagation()}
         style={{ cursor: isEditingMemo ? 'default' : 'pointer' }}
       >
-        <span>Memo - {reservationName}</span>
+        <span>Memo</span>
         {isEditingMemo ? (
           <div className="memo-button-group">
             <button

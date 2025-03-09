@@ -17,6 +17,7 @@ import CanceledReservationsModal from './components/CanceledReservationsModal.js
 import MonthlyCalendar from './components/MonthlyCalendar';
 import GuestFormModal from './components/GuestFormModal';
 import DayUseFormModal from './components/DayUseFormModal.js';
+import QuickRangeModal from './components/QuickRangeModal';
 import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
@@ -34,7 +35,6 @@ import {
   startOfDay,
   addHours,
   addMonths,
-  
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -44,6 +44,7 @@ import { isCancelledStatus } from './utils/isCancelledStatus.js';
 import UnassignedReservationsPanel from './components/UnassignedReservationsPanel';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { v4 as uuidv4 } from 'uuid';
 
 // * Refactored: API 관련 함수들을 한 번에 import (중복 제거)
 import api, {
@@ -241,13 +242,17 @@ const App = () => {
   const [needsConsent, setNeedsConsent] = useState(false);
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
   const [showCanceledModal, setShowCanceledModal] = useState(false);
-  // const [isLayoutEditorOpen, setIsLayoutEditorOpen] = useState(false);
+  const [showQuickRangeModal, setShowQuickRangeModal] = useState(false);
   const [otaToggles, setOtaToggles] = useState(
     availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
   );
   const [selectedReservation, setSelectedReservation] = useState(null);
   // const [sortOrder, setSortOrder] = useState('newest');
   const navigate = useNavigate();
+
+  const [isMonthlyView, setIsMonthlyView] = useState(false);
+
+  const toggleMonthlyView = () => setIsMonthlyView((prev) => !prev);
 
   const handleReservationSelect = useCallback((res) => {
     setSelectedReservation(res);
@@ -306,44 +311,66 @@ const App = () => {
     []
   );
 
-  // 드래그 범위 선택 후, 현장예약 모달을 오픈하는 함수
-  const onQuickCreateRange = (start, end, roomType) => {
-    const now = new Date();
-    // 선택된 날짜 중 가장 빠른 날짜를 체크인, 가장 늦은 날짜를 체크아웃으로 지정합니다.
-    const checkInDate = format(start, 'yyyy-MM-dd');
-    const checkOutDate = format(end, 'yyyy-MM-dd');
-    const defaultCheckInTime = '16:00'; // 기본 체크인 시간
-    const defaultCheckOutTime = '11:00'; // 기본 체크아웃 시간
+ // onQuickCreateRange 함수 수정
+const onQuickCreateRange = (start, end, roomType) => {
+  console.log('[onQuickCreateRange] Received:', { start, end, roomType });
+  if (!start || !end || !roomType) {
+    console.error('[onQuickCreateRange] Invalid arguments:', {
+      start,
+      end,
+      roomType,
+    });
+    return;
+  }
+  const safeStart =
+    start instanceof Date && !isNaN(start.getTime())
+      ? start
+      : new Date(start);
+  const safeEnd =
+    end instanceof Date && !isNaN(end.getTime())
+      ? end
+      : addDays(safeStart, 1);
 
-    // 예약번호는 현재 시간 기반으로 생성 (예시)
-    const reservationNo = `${Date.now()}`;
-    // 기본 예약자명은 빈 값 혹은 자동생성 이름 (원하는대로 수정)
-    const customerName = `현장:${format(now, 'HH:mm:ss')}`;
+  if (isNaN(safeStart.getTime()) || isNaN(safeEnd.getTime())) {
+    console.error('[onQuickCreateRange] Invalid start or end date:', {
+      start,
+      end,
+      safeStart,
+      safeEnd,
+    });
+    return;
+  }
 
-    // GuestFormModal에 전달할 초기 데이터를 구성합니다.
-    const guestData = {
-      reservationNo,
-      customerName,
-      phoneNumber: '',
-      checkInDate,
-      checkInTime: defaultCheckInTime,
-      checkOutDate,
-      checkOutTime: defaultCheckOutTime,
-      reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-      roomInfo: roomType,
-      price: '', // 가격은 추후 수동 입력 혹은 계산할 수 있습니다.
-      paymentMethod: 'Pending',
-      specialRequests: '',
-      checkIn: `${checkInDate}T${defaultCheckInTime}:00`,
-      checkOut: `${checkOutDate}T${defaultCheckOutTime}:00`,
-    };
+  const checkInDateObj = startOfDay(safeStart);
+  checkInDateObj.setHours(16, 0, 0, 0);
+  const checkOutDateObj = startOfDay(safeEnd);
+  checkOutDateObj.setHours(11, 0, 0, 0);
 
-    // GuestFormModal을 오픈
-    setGuestFormData(guestData);
-    setShowGuestForm(true);
+  const guestData = {
+    reservationNo: `현장예약-${uuidv4()}`, // 고유 ID 생성
+    customerName: `현장:${format(new Date(), 'HH:mm:ss')}`,
+    phoneNumber: '',
+    checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
+    checkInTime: '16:00',
+    checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
+    checkOutTime: '11:00',
+    reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+    roomInfo: roomType,
+    price: '',
+    paymentMethod: 'Pending',
+    specialRequests: '',
+    checkIn: format(checkInDateObj, "yyyy-MM-dd'T'HH:mm:ss"),
+    checkOut: format(checkOutDateObj, "yyyy-MM-dd'T'HH:mm:ss"),
   };
 
+  console.log('[onQuickCreateRange] Setting guestFormData:', guestData);
+  setGuestFormData(guestData);
+  console.log('[onQuickCreateRange] Setting showQuickRangeModal to true');
+  setShowQuickRangeModal(true);
+};
+
   // roomTypes와 activeReservations가 업데이트될 때마다 남은 재고 계산
+
   const remainingInventory = useMemo(() => {
     return computeRemainingInventory(roomTypes, activeReservations);
   }, [roomTypes, activeReservations]);
@@ -392,15 +419,15 @@ const App = () => {
             selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
           const finalIncluded = isIncluded || isSameDayStay;
           if (finalIncluded) {
-            console.log(
-              `Including reservation ${reservation._id} from ${format(
-                checkInDate,
-                'yyyy-MM-dd HH:mm'
-              )} to ${format(
-                checkOutDate,
-                'yyyy-MM-dd HH:mm'
-              )} on ${selectedDateString}`
-            );
+            // console.log(
+            //   `Including reservation ${reservation._id} from ${format(
+            //     checkInDate,
+            //     'yyyy-MM-dd HH:mm'
+            //   )} to ${format(
+            //     checkOutDate,
+            //     'yyyy-MM-dd HH:mm'
+            //   )} on ${selectedDateString}`
+            // );
           }
           return finalIncluded;
         }
@@ -591,18 +618,13 @@ const App = () => {
     async (inputHotelId) => {
       try {
         const settings = await fetchHotelSettings(inputHotelId);
-        console.log(
-          'Fetched settings from API:',
-          JSON.stringify(settings, null, 2)
-        ); // API 반환 데이터 전체 출력
+        // console.log(
+        //   'Fetched settings from API:',
+        //   JSON.stringify(settings, null, 2)
+        // ); // API 반환 데이터 전체 출력
 
         if (settings) {
           const isNewDoc = !settings._id;
-          console.log(
-            `Has _id? ${!!settings._id} => ${
-              isNewDoc ? 'New setup' : 'Existing doc'
-            }`
-          );
           setIsNewSetup(isNewDoc);
 
           // 필드명 매핑 확장 및 기본값 보장
@@ -622,11 +644,6 @@ const App = () => {
             roomTypes: settings.roomTypes || defaultRoomTypes,
             gridSettings: settings.gridSettings || {},
           };
-
-          console.log(
-            'Processed hotelSettings:',
-            JSON.stringify(updatedSettings, null, 2)
-          ); // 설정된 데이터 디버깅
           setHotelSettings(updatedSettings);
 
           // OTA 토글 초기화
@@ -717,13 +734,13 @@ const App = () => {
     setLoading(false);
   }, [filterReservationsByDate, selectedDate, hotelId, processReservation]);
 
-const today = useCallback(() => {
-  const currentDate = new Date();
-  setSelectedDate(currentDate);
-  filterReservationsByDate(allReservations, currentDate);
-  console.log('Moved to Today:', currentDate);
-  return currentDate; // 명시적 반환
-}, [allReservations, filterReservationsByDate]);
+  const today = useCallback(() => {
+    const currentDate = new Date();
+    setSelectedDate(currentDate);
+    filterReservationsByDate(allReservations, currentDate);
+    console.log('Moved to Today:', currentDate);
+    return currentDate; // 명시적 반환
+  }, [allReservations, filterReservationsByDate]);
 
   const handleDelete = useCallback(
     async (reservationId, hotelIdParam, siteName) => {
@@ -751,29 +768,6 @@ const today = useCallback(() => {
         }
       });
     });
-
-  useEffect(() => {
-    if (isAuthenticated && hotelId && socketRef.current) {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      socketRef.current = io(BASE_URL, {
-        withCredentials: true,
-        query: { hotelId, accessToken: getAccessToken() },
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-      });
-      socketRef.current.emit('joinHotel', hotelId);
-
-      return () => {
-        if (socketRef.current) {
-          socketRef.current.disconnect();
-        }
-      };
-    }
-  }, [isAuthenticated, hotelId]);
 
   const handleLogin = useCallback(
     async (accessToken, hotelIdParam) => {
@@ -911,26 +905,31 @@ const today = useCallback(() => {
       console.warn('Reservations or roomTypes is missing in App.js');
       return {};
     }
-  
-    const safeToday = today instanceof Date && !isNaN(today) ? today : new Date();
+
+    const safeToday =
+      today instanceof Date && !isNaN(today) ? today : new Date();
     const safeSelectedDate =
-      selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate : new Date();
-  
+      selectedDate instanceof Date && !isNaN(selectedDate)
+        ? selectedDate
+        : new Date();
+
     const calcFromDate = startOfDay(safeToday);
-    const calcToDate = startOfDay(addDays(endOfMonth(addMonths(safeToday, 1)), 1));
+    const calcToDate = startOfDay(
+      addDays(endOfMonth(addMonths(safeToday, 1)), 1)
+    );
     const selectedDates = [
       format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
       format(safeSelectedDate, 'yyyy-MM-dd'),
       format(addDays(safeSelectedDate, 1), 'yyyy-MM-dd'),
     ];
-  
+
     console.log(
       '[App.js] Calculating availabilityByDate for selectedDate:',
       format(safeSelectedDate, 'yyyy-MM-dd'),
       'with selectedDates:',
       selectedDates
     );
-  
+
     return calculateRoomAvailability(
       allReservations,
       finalRoomTypes,
@@ -1232,66 +1231,26 @@ const today = useCallback(() => {
 
   const socketRef = useRef(null);
 
-  // WebSocket 연결 초기화
   useEffect(() => {
+    let socketCleanup = () => {};
+
     if (isAuthenticated && hotelId) {
-      socketRef.current = io(BASE_URL, {
-        withCredentials: true,
-        query: { hotelId, accessToken: localStorage.getItem('accessToken') },
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-      });
-
-      socketRef.current.on('connect', () => {
-        console.log('WebSocket connected at:', new Date().toISOString());
-        if (socketRef.current.rooms && !socketRef.current.rooms.has(hotelId)) {
-          socketRef.current.emit('joinHotel', hotelId);
-          console.log(`Joined hotel room: ${hotelId}`);
-        }
-      });
-
-      socketRef.current.on('disconnect', () => {
-        console.log('WebSocket disconnected at:', new Date().toISOString());
-      });
-
-      socketRef.current.on('reconnect', (attemptNumber) => {
-        console.log(
-          `WebSocket reconnected after attempt ${attemptNumber} at:`,
-          new Date().toISOString()
-        );
-        if (socketRef.current.rooms && !socketRef.current.rooms.has(hotelId)) {
-          socketRef.current.emit('joinHotel', hotelId);
-          console.log(`Rejoined hotel room: ${hotelId} after reconnect`);
-        }
-      });
-
-      return () => {
-        socketRef.current.off('connect');
-        socketRef.current.off('disconnect');
-        socketRef.current.off('reconnect');
+      // 기존 연결 종료
+      if (socketRef.current) {
         socketRef.current.disconnect();
-        console.log(
-          'WebSocket cleanup completed at:',
-          new Date().toISOString()
-        );
-      };
-    }
-  }, [isAuthenticated, hotelId]); // 의존성 배열에서 selectedDate 제외
+      }
 
-  // WebSocket 이벤트 핸들러 등록
-  useEffect(() => {
-    if (isAuthenticated && hotelId) {
+      // 새로운 WebSocket 연결
       socketRef.current = io(BASE_URL, {
         withCredentials: true,
-        query: { hotelId, accessToken: getAccessToken() }, // 수정: getAccessToken() 사용
+        query: { hotelId, accessToken: getAccessToken() },
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
       });
 
+      // 연결 이벤트
       socketRef.current.on('connect', () => {
         console.log('WebSocket connected at:', new Date().toISOString());
         if (socketRef.current.rooms && !socketRef.current.rooms.has(hotelId)) {
@@ -1315,7 +1274,7 @@ const today = useCallback(() => {
         }
       });
 
-      // 이벤트 핸들러 등록
+      // 이벤트 핸들러 정의
       const handleReservationCreated = (data) => {
         console.log(`Received reservationCreated: ${data.reservation._id}`);
         const newReservation = processReservation(data.reservation);
@@ -1350,7 +1309,6 @@ const today = useCallback(() => {
           const updated = prev.map((res) =>
             res._id === updatedReservation._id ? updatedReservation : res
           );
-          console.log('Updated allReservations:', updated);
           const filtered = filterReservationsByDate(updated, selectedDate);
           setActiveReservations(filtered);
           setUpdatedReservationId(updatedReservation._id);
@@ -1395,12 +1353,14 @@ const today = useCallback(() => {
         alert(data.message);
       };
 
+      // 이벤트 리스너 등록
       socketRef.current.on('reservationCreated', handleReservationCreated);
       socketRef.current.on('reservationUpdated', handleReservationUpdated);
       socketRef.current.on('reservationDeleted', handleReservationDeleted);
       socketRef.current.on('forceLogout', handleForceLogout);
 
-      return () => {
+      // 정리 함수
+      socketCleanup = () => {
         socketRef.current.off('connect');
         socketRef.current.off('disconnect');
         socketRef.current.off('reconnect');
@@ -1415,6 +1375,8 @@ const today = useCallback(() => {
         );
       };
     }
+
+    return socketCleanup;
   }, [
     isAuthenticated,
     hotelId,
@@ -1498,93 +1460,59 @@ const today = useCallback(() => {
     [hotelId]
   );
 
-  const handleFormSave = useCallback(
-    async (reservationId, data) => {
-      if (reservationId) {
-        try {
-          await handleEdit(reservationId, data, hotelId);
-          console.log('예약이 성공적으로 수정되었습니다.');
-        } catch (error) {
-          console.error('예약 수정 실패:', error);
-          alert(
-            '예약 수정에 실패했습니다: ' + (error.message || '알 수 없는 오류')
-          );
-        }
-      } else {
-        try {
-          const reservationData = {
-            siteName: '현장예약',
-            reservations: [data],
-            hotelId,
-          };
-          console.log('handleFormSave:', reservationId, data);
-          const newReservation = await saveOnSiteReservation(reservationData);
-          if (
-            newReservation &&
-            Array.isArray(newReservation.createdReservationIds) &&
-            newReservation.createdReservationIds.length > 0
-          ) {
-            const newlyCreatedIdFromServer =
-              newReservation.createdReservationIds[0];
-            console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
-            if (data.checkIn) {
-              const parsedDate = parseDate(data.checkIn);
-              setSelectedDate(parsedDate);
-            }
-            setNewlyCreatedId(newlyCreatedIdFromServer);
-
-            // 100ms 후 새로 생성된 예약 카드로 스크롤
-            setTimeout(() => {
-              const card = document.querySelector(
-                `.room-card[data-id="${newlyCreatedIdFromServer}"]`
-              );
-              if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
-
-            // 10초 후 newlyCreatedId 리셋
-            setTimeout(() => {
-              setNewlyCreatedId(null);
-            }, 10000);
-          }
-          console.log('Guest Form saved =>', newReservation);
-          setShowGuestForm(false);
-          await loadReservations();
-          if (newReservation && newReservation._id) {
-            if (newReservation.checkIn) {
-              const parsedDate = parseDate(newReservation.checkIn);
-              setSelectedDate(parsedDate);
-            }
-            setNewlyCreatedId(newReservation._id);
-
-            // 100ms 후 새로 생성된 예약 카드로 스크롤 (중복 호출 방지)
-            setTimeout(() => {
-              const card = document.querySelector(
-                `.room-card[data-id="${newReservation._id}"]`
-              );
-              if (card) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
-
-            // 10초 후 newlyCreatedId 리셋
-            setTimeout(() => {
-              setNewlyCreatedId(null);
-            }, 10000);
-          }
-        } catch (error) {
-          console.error('Error saving 현장예약:', error);
-          const message =
-            error.status === 403
-              ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-              : error.message || '현장 예약 저장에 실패했습니다.';
-          alert(message);
-        }
+  const handleFormSave = async (reservationId, data) => {
+    console.log('[handleFormSave] Received data:', data); // 디버깅
+    if (reservationId) {
+      try {
+        await handleEdit(reservationId, data, hotelId);
+        console.log('예약이 성공적으로 수정되었습니다.');
+      } catch (error) {
+        console.error('예약 수정 실패:', error);
+        alert(
+          '예약 수정에 실패했습니다: ' + (error.message || '알 수 없는 오류')
+        );
       }
-    },
-    [hotelId, loadReservations, handleEdit]
-  );
+    } else {
+      try {
+        const reservationData = {
+          siteName: '현장예약',
+          reservations: [data],
+          hotelId,
+        };
+        console.log('[handleFormSave] Sending to API:', reservationData);
+        const response = await saveOnSiteReservation(reservationData);
+        console.log('[handleFormSave] API Response:', response);
+        if (
+          response &&
+          Array.isArray(response.createdReservationIds) &&
+          response.createdReservationIds.length > 0
+        ) {
+          const newlyCreatedIdFromServer = response.createdReservationIds[0];
+          console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
+          if (data.checkIn) {
+            const parsedDate = parseDate(data.checkIn);
+            setSelectedDate(parsedDate);
+          }
+          setNewlyCreatedId(newlyCreatedIdFromServer);
+          setTimeout(() => setNewlyCreatedId(null), 10000);
+        } else {
+          throw new Error('예약 ID가 반환되지 않았습니다.');
+        }
+        setShowGuestForm(false);
+        await loadReservations();
+      } catch (error) {
+        console.error('[handleFormSave] Error saving reservation:', error);
+        const message =
+          error.response?.status === 403
+            ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
+            : error.response?.data?.message ||
+              error.message ||
+              '현장 예약 저장에 실패했습니다.';
+        alert(message);
+        throw error; // 추가 디버깅을 위해 오류 재抛출
+      }
+    }
+  };
 
   const [searchCriteria, setSearchCriteria] = useState({
     name: '',
@@ -1895,26 +1823,25 @@ const today = useCallback(() => {
       now.getMonth(),
       now.getDate()
     );
-
+  
     const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
-
+  
     if (type === '대실') {
-      // 대실은 DayUseFormModal로 열기
-      checkInDate = format(effectiveDate, 'yyyy-MM-dd'); // selectedDate 반영
-      checkInTime = format(effectiveDate, 'HH:mm'); // 현재 시간 반영
+      checkInDate = format(effectiveDate, 'yyyy-MM-dd');
+      checkInTime = format(effectiveDate, 'HH:mm');
       const fourHoursLater = new Date(
         effectiveDate.getTime() + 4 * 60 * 60 * 1000
       );
       checkOutDate = format(fourHoursLater, 'yyyy-MM-dd');
       checkOutTime = format(fourHoursLater, 'HH:mm');
-      customerName = `대실:${format(effectiveDate, 'HH:mm:ss')}`; // effectiveDate 기반으로 수정
+      customerName = `대실:${format(effectiveDate, 'HH:mm:ss')}`;
       const basePrice = finalRoomTypes[0].price;
       const price = Math.floor(basePrice * 0.5);
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
-
+  
       setGuestFormData({
-        reservationNo: `${Date.now()}`,
+        reservationNo: `${uuidv4()}`, // 고유 ID 생성
         customerName,
         checkInDate,
         checkInTime,
@@ -1929,11 +1856,10 @@ const today = useCallback(() => {
         checkOut: checkOutISO,
         type: 'dayUse',
       });
-      setShowGuestForm(true); // DayUseFormModal로 열리도록 설정
+      setShowGuestForm(true);
     } else {
-      // 숙박은 기존 GuestFormModal로 열기
       const baseDate = new Date(effectiveDate);
-      baseDate.setHours(16, 0, 0, 0); // 기본 체크인 시간: 오후 4시
+      baseDate.setHours(16, 0, 0, 0);
       checkInDate = format(baseDate, 'yyyy-MM-dd');
       checkInTime = '16:00';
       checkOutTime = '11:00';
@@ -1950,9 +1876,9 @@ const today = useCallback(() => {
       const basePrice = finalRoomTypes[0].price * nights;
       const checkInISO = `${checkInDate}T${checkInTime}:00`;
       const checkOutISO = `${checkOutDate}T${checkOutTime}:00`;
-
+  
       setGuestFormData({
-        reservationNo: `${Date.now()}`,
+        reservationNo: `${uuidv4()}`, // 고유 ID 생성
         customerName,
         checkInDate,
         checkInTime,
@@ -1967,7 +1893,7 @@ const today = useCallback(() => {
         checkOut: checkOutISO,
         type: 'stay',
       });
-      setShowGuestForm(true); // GuestFormModal로 열리도록 설정
+      setShowGuestForm(true);
     }
   };
 
@@ -2023,21 +1949,51 @@ const today = useCallback(() => {
     setNeedsConsent(false);
   }, []);
 
-// guestAvailability 계산 (가정: 비슷한 문제 발생 가능)
-const guestAvailability = useMemo(() => {
-  if (!guestFormData) {
-    const safeSelectedDate =
-      selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate : new Date();
-    const viewingDateStart = startOfDay(safeSelectedDate);
-    const viewingDateEnd = addDays(viewingDateStart, 1);
-    console.log(
-      '[App.js] Calculating guestAvailability for selectedDate:',
-      format(safeSelectedDate, 'yyyy-MM-dd')
+  // guestAvailability 계산 (가정: 비슷한 문제 발생 가능)
+  const guestAvailability = useMemo(() => {
+    if (!guestFormData) {
+      const safeSelectedDate =
+        selectedDate instanceof Date && !isNaN(selectedDate)
+          ? selectedDate
+          : new Date();
+      const viewingDateStart = startOfDay(safeSelectedDate);
+      const viewingDateEnd = addDays(viewingDateStart, 1);
+      console.log(
+        '[App.js] Calculating guestAvailability for selectedDate:',
+        format(safeSelectedDate, 'yyyy-MM-dd')
+      );
+      const selectedDates = [
+        format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
+        format(safeSelectedDate, 'yyyy-MM-dd'),
+        format(addDays(safeSelectedDate, 1), 'yyyy-MM-dd'),
+      ];
+      return calculateRoomAvailability(
+        allReservations,
+        finalRoomTypes,
+        viewingDateStart,
+        viewingDateEnd,
+        hotelSettings?.gridSettings,
+        selectedDates
+      );
+    }
+    // guestFormData가 있는 경우 처리 (기존 로직 유지)
+    const checkIn = parseDate(
+      `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
     );
+    let checkOut;
+    if (guestFormData.type === 'dayUse') {
+      checkOut = addHours(checkIn, parseInt(guestFormData.durationHours || 4));
+    } else {
+      checkOut = parseDate(
+        `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
+      );
+    }
+    const viewingDateStart = startOfDay(checkIn);
+    const viewingDateEnd = addDays(startOfDay(checkOut), 1);
     const selectedDates = [
-      format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
-      format(safeSelectedDate, 'yyyy-MM-dd'),
-      format(addDays(safeSelectedDate, 1), 'yyyy-MM-dd'),
+      format(addDays(checkIn, -1), 'yyyy-MM-dd'),
+      format(checkIn, 'yyyy-MM-dd'),
+      format(addDays(checkIn, 1), 'yyyy-MM-dd'),
     ];
     return calculateRoomAvailability(
       allReservations,
@@ -2047,35 +2003,20 @@ const guestAvailability = useMemo(() => {
       hotelSettings?.gridSettings,
       selectedDates
     );
-  }
-  // guestFormData가 있는 경우 처리 (기존 로직 유지)
-  const checkIn = parseDate(
-    `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
-  );
-  let checkOut;
-  if (guestFormData.type === 'dayUse') {
-    checkOut = addHours(checkIn, parseInt(guestFormData.durationHours || 4));
-  } else {
-    checkOut = parseDate(
-      `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
-    );
-  }
-  const viewingDateStart = startOfDay(checkIn);
-  const viewingDateEnd = addDays(startOfDay(checkOut), 1);
-  const selectedDates = [
-    format(addDays(checkIn, -1), 'yyyy-MM-dd'),
-    format(checkIn, 'yyyy-MM-dd'),
-    format(addDays(checkIn, 1), 'yyyy-MM-dd'),
-  ];
-  return calculateRoomAvailability(
+  }, [
+    guestFormData,
     allReservations,
     finalRoomTypes,
-    viewingDateStart,
-    viewingDateEnd,
-    hotelSettings?.gridSettings,
-    selectedDates
-  );
-}, [guestFormData, allReservations, finalRoomTypes, selectedDate, hotelSettings]);
+    selectedDate,
+    hotelSettings,
+  ]);
+
+  // showQuickRangeModal이 true로 변경될 때 isMonthlyView를 false로 설정
+  useEffect(() => {
+    if (showQuickRangeModal) {
+      setIsMonthlyView(false);
+    }
+  }, [showQuickRangeModal]);
 
   return (
     <div
@@ -2166,6 +2107,8 @@ const guestAvailability = useMemo(() => {
                       // sortOrder={sortOrder}
                       hasLowStock={hasLowStock}
                       lowStockRoomTypes={lowStockRoomTypes}
+                      isMonthlyView={isMonthlyView}
+                      toggleMonthlyView={toggleMonthlyView}
                     />
                     <SideBar
                       loading={loading}
@@ -2267,7 +2210,11 @@ const guestAvailability = useMemo(() => {
                               setAllReservations={setAllReservations} // 추가
                               filterReservationsByDate={
                                 filterReservationsByDate
-                              } // 추가
+                              }
+                              isMonthlyView={isMonthlyView} // 추가
+                              setIsMonthlyView={setIsMonthlyView} // 추가
+                              toggleMonthlyView={toggleMonthlyView} // 추가
+                              onQuickCreateRange={onQuickCreateRange}
                             />
                           </DndProvider>
                         </div>
@@ -2306,6 +2253,20 @@ const guestAvailability = useMemo(() => {
                             onSave={handleFormSave}
                             availabilityByDate={guestAvailability}
                             hotelSettings={hotelSettings} // 호텔 설정 전달
+                          />
+                        ))}
+                      {showQuickRangeModal &&
+                        (console.log(
+                          '[App.js] Rendering QuickRangeModal with:',
+                          guestFormData
+                        ),
+                        (
+                          <QuickRangeModal
+                            initialData={guestFormData}
+                            roomTypes={finalRoomTypes}
+                            availabilityByDate={availabilityByDate}
+                            onClose={() => setShowQuickRangeModal(false)}
+                            onSave={handleFormSave}
                           />
                         ))}
                     </div>

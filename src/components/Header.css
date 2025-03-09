@@ -177,10 +177,13 @@
   color: #ffffff;
   transition: background-color 0.3s ease, color 0.3s ease;
   white-space: nowrap;
+
 }
 
 .quick-button:hover {
   background-color: #007cb576;
+  cursor: pointer;
+
 }
 
 .quick-button-green {
@@ -190,6 +193,13 @@
 
 .quick-button-green:hover {
   background-color: #45a04979;
+}
+
+.view-toggle-button {
+  border: none;
+}
+.view-toggle-button:hover {
+  cursor: pointer;
 }
 
 /* 투명도 효과 영역 */

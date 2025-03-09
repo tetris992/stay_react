@@ -341,6 +341,7 @@ function RoomGrid({
   setAllReservations,
   filterReservationsByDate,
   availabilityByDate,
+  onQuickCreateRange,
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -728,17 +729,13 @@ function RoomGrid({
     >
       <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
         <div>
-          <button onClick={toggleMonthlyView} style={{ marginBottom: '10px' }}>
-            {isMonthlyView ? '일간 뷰로 전환' : '월간 뷰로 전환'}
-          </button>
-
           {isMonthlyView ? (
             <MonthlyCalendar
               reservations={reservations}
               roomTypes={roomTypes}
               availabilityByDate={availabilityByDate}
               gridSettings={hotelSettings?.gridSettings || {}}
-              onRangeSelect={onEdit} // 예약 생성 시 onEdit 사용 (상위에서 정의된 함수)
+              onRangeSelect={onQuickCreateRange} // 예약 생성 시 onEdit 사용 (상위에서 정의된 함수)
               onReturnView={toggleMonthlyView} // 월간 뷰에서 일간 뷰로 복귀
               onDateNavigate={(date) => {
                 setIsMonthlyView(false);
@@ -772,9 +769,9 @@ function RoomGrid({
                     className="unassigned-list"
                     style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
                   >
-                    {sortReservations(unassignedReservations).map((res) => (
+                    {sortReservations(unassignedReservations).map((res, index) => (
                       <DraggableReservationCard
-                        key={res._id}
+                        key={`${res._id || res.reservationNo}-${index}`}
                         reservation={res}
                         hotelId={hotelId}
                         highlightedReservationIds={
@@ -892,9 +889,11 @@ function RoomGrid({
                                   예약 없음
                                 </div>
                               ) : (
-                                sortedReservations.map((rsv) => (
+                                sortedReservations.map((rsv, index) => (
                                   <DraggableReservationCard
-                                    key={rsv._id}
+                                    key={`${
+                                      rsv._id || rsv.reservationNo
+                                    }-${index}`}
                                     reservation={rsv}
                                     hotelId={hotelId}
                                     highlightedReservationIds={
@@ -974,6 +973,10 @@ RoomGrid.propTypes = {
   selectedDate: PropTypes.instanceOf(Date),
   handleRoomChangeAndSync: PropTypes.func.isRequired,
   setSelectedDate: PropTypes.func.isRequired,
+  isMonthlyView: PropTypes.bool.isRequired,
+  setIsMonthlyView: PropTypes.func.isRequired,
+  toggleMonthlyView: PropTypes.func.isRequired,
+  onQuickCreateRange: PropTypes.func.isRequired,
 };
 
 export default RoomGrid;

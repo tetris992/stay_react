@@ -264,6 +264,13 @@ const DraggableReservationCard = ({
     return '';
   }, [diffDays, reservation.customerName]);
 
+  // reservationNo를 20자 제한으로 표시
+  const truncatedReservationNo = reservation.reservationNo
+    ? reservation.reservationNo.length > 20
+      ? `${reservation.reservationNo.substring(0, 20)}...`
+      : reservation.reservationNo
+    : '정보 없음';
+
   const cardClassNames = [
     'room-card',
     getBorderColor(reservation),
@@ -415,7 +422,8 @@ const DraggableReservationCard = ({
                     </span>
                   </h3>
                 </div>
-                <p>{reservation._id.replace(`${hotelId}-`, '')}</p>
+                <p className="reservation-no">{truncatedReservationNo}</p>
+                {/* <p>{reservation._id.replace(`${hotelId}-`, '')}</p> */}
                 <p>예약자: {reservation.customerName || '정보 없음'}</p>
                 <p>
                   체크인:{' '}
