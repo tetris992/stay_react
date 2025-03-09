@@ -33,6 +33,8 @@ import {
   differenceInCalendarDays,
   startOfDay,
   addHours,
+  addMonths,
+  
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -715,12 +717,13 @@ const App = () => {
     setLoading(false);
   }, [filterReservationsByDate, selectedDate, hotelId, processReservation]);
 
-  const today = useCallback(() => {
-    const currentDate = new Date();
-    setSelectedDate(currentDate);
-    filterReservationsByDate(allReservations, currentDate);
-    console.log('Moved to Today:', currentDate);
-  }, [allReservations, filterReservationsByDate]);
+const today = useCallback(() => {
+  const currentDate = new Date();
+  setSelectedDate(currentDate);
+  filterReservationsByDate(allReservations, currentDate);
+  console.log('Moved to Today:', currentDate);
+  return currentDate; // 명시적 반환
+}, [allReservations, filterReservationsByDate]);
 
   const handleDelete = useCallback(
     async (reservationId, hotelIdParam, siteName) => {
@@ -902,6 +905,41 @@ const App = () => {
     const merged = buildRoomTypesWithNumbers(roomTypes, containers);
     return merged.filter((rt) => rt.roomInfo.toLowerCase() !== 'none');
   }, [hotelSettings]);
+
+  const availabilityByDate = useMemo(() => {
+    if (!allReservations || !finalRoomTypes) {
+      console.warn('Reservations or roomTypes is missing in App.js');
+      return {};
+    }
+  
+    const safeToday = today instanceof Date && !isNaN(today) ? today : new Date();
+    const safeSelectedDate =
+      selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate : new Date();
+  
+    const calcFromDate = startOfDay(safeToday);
+    const calcToDate = startOfDay(addDays(endOfMonth(addMonths(safeToday, 1)), 1));
+    const selectedDates = [
+      format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
+      format(safeSelectedDate, 'yyyy-MM-dd'),
+      format(addDays(safeSelectedDate, 1), 'yyyy-MM-dd'),
+    ];
+  
+    console.log(
+      '[App.js] Calculating availabilityByDate for selectedDate:',
+      format(safeSelectedDate, 'yyyy-MM-dd'),
+      'with selectedDates:',
+      selectedDates
+    );
+  
+    return calculateRoomAvailability(
+      allReservations,
+      finalRoomTypes,
+      calcFromDate,
+      calcToDate,
+      hotelSettings?.gridSettings || {},
+      selectedDates
+    );
+  }, [allReservations, finalRoomTypes, hotelSettings, selectedDate, today]);
 
   const handlePartialUpdate = useCallback(
     async (reservationId, updatedData) => {
@@ -1985,57 +2023,59 @@ const App = () => {
     setNeedsConsent(false);
   }, []);
 
-  const guestAvailability = useMemo(() => {
-    if (!guestFormData) {
-      // guestFormData가 없으면 selectedDate를 기반으로 기본 가용성 계산
-      const viewingDateStart = startOfDay(selectedDate);
-      const viewingDateEnd = addDays(viewingDateStart, 1); // 하루 범위
-      console.log(
-        '[App.js] Calculating guestAvailability for selectedDate:',
-        format(selectedDate, 'yyyy-MM-dd')
-      );
-      return calculateRoomAvailability(
-        allReservations,
-        finalRoomTypes,
-        viewingDateStart,
-        viewingDateEnd,
-        hotelSettings?.gridSettings,
-        selectedDate // selectedDate 전달
-      );
-    }
-    const checkIn = parseDate(
-      `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
-    );
-    let checkOut;
-    if (guestFormData.type === 'dayUse') {
-      checkOut = addHours(checkIn, parseInt(guestFormData.durationHours || 4));
-    } else {
-      checkOut = parseDate(
-        `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
-      );
-    }
-    if (!checkIn || !checkOut) return {};
+// guestAvailability 계산 (가정: 비슷한 문제 발생 가능)
+const guestAvailability = useMemo(() => {
+  if (!guestFormData) {
+    const safeSelectedDate =
+      selectedDate instanceof Date && !isNaN(selectedDate) ? selectedDate : new Date();
+    const viewingDateStart = startOfDay(safeSelectedDate);
+    const viewingDateEnd = addDays(viewingDateStart, 1);
     console.log(
-      '[App.js] guestAvailability - checkIn:',
-      checkIn,
-      'checkOut:',
-      checkOut
+      '[App.js] Calculating guestAvailability for selectedDate:',
+      format(safeSelectedDate, 'yyyy-MM-dd')
     );
+    const selectedDates = [
+      format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
+      format(safeSelectedDate, 'yyyy-MM-dd'),
+      format(addDays(safeSelectedDate, 1), 'yyyy-MM-dd'),
+    ];
     return calculateRoomAvailability(
       allReservations,
       finalRoomTypes,
-      checkIn,
-      checkOut,
+      viewingDateStart,
+      viewingDateEnd,
       hotelSettings?.gridSettings,
-      selectedDate // selectedDate 전달
+      selectedDates
     );
-  }, [
-    guestFormData,
+  }
+  // guestFormData가 있는 경우 처리 (기존 로직 유지)
+  const checkIn = parseDate(
+    `${guestFormData.checkInDate}T${guestFormData.checkInTime}:00`
+  );
+  let checkOut;
+  if (guestFormData.type === 'dayUse') {
+    checkOut = addHours(checkIn, parseInt(guestFormData.durationHours || 4));
+  } else {
+    checkOut = parseDate(
+      `${guestFormData.checkOutDate}T${guestFormData.checkOutTime}:00`
+    );
+  }
+  const viewingDateStart = startOfDay(checkIn);
+  const viewingDateEnd = addDays(startOfDay(checkOut), 1);
+  const selectedDates = [
+    format(addDays(checkIn, -1), 'yyyy-MM-dd'),
+    format(checkIn, 'yyyy-MM-dd'),
+    format(addDays(checkIn, 1), 'yyyy-MM-dd'),
+  ];
+  return calculateRoomAvailability(
     allReservations,
     finalRoomTypes,
-    hotelSettings,
-    selectedDate,
-  ]); // selectedDate 의존성 추가
+    viewingDateStart,
+    viewingDateEnd,
+    hotelSettings?.gridSettings,
+    selectedDates
+  );
+}, [guestFormData, allReservations, finalRoomTypes, selectedDate, hotelSettings]);
 
   return (
     <div
@@ -2092,6 +2132,8 @@ const App = () => {
                   <MonthlyCalendar
                     reservations={allReservations}
                     roomTypes={finalRoomTypes}
+                    availabilityByDate={availabilityByDate} // 추가
+                    gridSettings={hotelSettings?.gridSettings || {}} // 추가
                     currentDate={selectedDate}
                     onRangeSelect={onQuickCreateRange}
                     onReturnView={() => navigate('/')}
@@ -2220,6 +2262,7 @@ const App = () => {
                               needsConsent={needsConsent}
                               monthlyDailyBreakdown={monthlyDailyBreakdown}
                               selectedDate={selectedDate}
+                              setSelectedDate={setSelectedDate} // 추가
                               handleRoomChangeAndSync={handleRoomChangeAndSync}
                               setAllReservations={setAllReservations} // 추가
                               filterReservationsByDate={

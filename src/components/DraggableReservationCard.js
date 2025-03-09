@@ -4,6 +4,7 @@ import { useDrag } from 'react-dnd';
 import { format, parseISO, addDays, differenceInSeconds } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
+import { checkConflict } from '../utils/checkConflict'; // 프런트엔드 유틸리티 임포트
 import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import { renderActionButtons } from '../utils/renderActionButtons';
@@ -33,24 +34,161 @@ const DraggableReservationCard = ({
   isUpdatedHighlighted,
   onPartialUpdate,
   roomTypes,
+  allReservations = [], // 기본 파라미터로 기본값 설정
 }) => {
+  const [isEditingCard, setIsEditingCard] = useState(false);
+  const [editedValues, setEditedValues] = useState({});
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditingMemo, setIsEditingMemo] = useState(false);
+  const [remainingTime, setRemainingTime] = useState('');
+  const [conflictDetails, setConflictDetails] = useState(null);
+
+  const canDragMemo = useMemo(() => {
+    if (!Array.isArray(roomTypes) || !Array.isArray(allReservations) || roomTypes.length === 0) {
+      console.log('Invalid roomTypes or allReservations:', { roomTypes, allReservations });
+      return false;
+    }
+
+    let hasConflict = false;
+
+    if (isUnassigned) {
+      roomTypes.forEach((roomType) => {
+        const roomNumbers = roomType.roomNumbers || [];
+        if (roomNumbers.length === 0) return;
+        roomNumbers.forEach((roomNumber) => {
+          try {
+            const { isConflict } = checkConflict(
+              {
+                ...reservation,
+                checkIn: reservation.parsedCheckInDate,
+                checkOut: reservation.parsedCheckOutDate,
+              },
+              roomNumber,
+              allReservations,
+              reservation._id
+            );
+            if (isConflict) {
+              console.log(`Conflict detected for unassigned room ${roomNumber} with ${reservation._id}`);
+              hasConflict = true;
+            }
+          } catch (error) {
+            console.error('Error checking conflict:', error.message);
+            hasConflict = true; // 에러 발생 시 안전하게 충돌로 간주
+          }
+        });
+      });
+    } else {
+      roomTypes.forEach((roomType) => {
+        if (roomType.roomInfo === reservation.roomInfo) return;
+        const roomNumbers = roomType.roomNumbers || [];
+        if (roomNumbers.length === 0) return;
+        roomNumbers.forEach((roomNumber) => {
+          try {
+            const { isConflict } = checkConflict(
+              {
+                ...reservation,
+                checkIn: reservation.parsedCheckInDate,
+                checkOut: reservation.parsedCheckOutDate,
+              },
+              roomNumber,
+              allReservations,
+              reservation._id
+            );
+            if (isConflict) {
+              console.log(`Conflict detected for room ${roomNumber} with ${reservation._id}`);
+              hasConflict = true;
+            }
+          } catch (error) {
+            console.error('Error checking conflict:', error.message);
+            hasConflict = true;
+          }
+        });
+      });
+    }
+
+    // console.log('canDragMemo:', !hasConflict, { reservationId: reservation._id });
+    return !hasConflict;
+  }, [reservation, allReservations, roomTypes, isUnassigned]);
+
+  useEffect(() => {
+    if (!Array.isArray(roomTypes) || !Array.isArray(allReservations) || roomTypes.length === 0) {
+      setConflictDetails(null);
+      return;
+    }
+
+    let conflictInfo = null;
+
+    if (isUnassigned) {
+      roomTypes.forEach((roomType) => {
+        const roomNumbers = roomType.roomNumbers || [];
+        if (roomNumbers.length === 0) return;
+        roomNumbers.forEach((roomNumber) => {
+          try {
+            const { isConflict, conflictingReservation } = checkConflict(
+              {
+                ...reservation,
+                checkIn: reservation.parsedCheckInDate,
+                checkOut: reservation.parsedCheckOutDate,
+              },
+              roomNumber,
+              allReservations,
+              reservation._id
+            );
+            if (isConflict && !conflictInfo) {
+              const conflictCheckIn = format(new Date(conflictingReservation.checkIn), 'yyyy-MM-dd HH:mm');
+              const conflictCheckOut = format(new Date(conflictingReservation.checkOut), 'yyyy-MM-dd HH:mm');
+              conflictInfo = `객실 ${roomNumber} (${roomType.roomInfo})에서 예약 기간이 겹칩니다.\n충돌 예약자: ${conflictingReservation.customerName || '정보 없음'}\n예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
+            }
+          } catch (error) {
+            console.error('Error checking conflict:', error.message);
+            conflictInfo = '충돌 확인 중 오류가 발생했습니다.';
+          }
+        });
+      });
+    } else {
+      roomTypes.forEach((roomType) => {
+        if (roomType.roomInfo === reservation.roomInfo) return;
+        const roomNumbers = roomType.roomNumbers || [];
+        if (roomNumbers.length === 0) return;
+        roomNumbers.forEach((roomNumber) => {
+          try {
+            const { isConflict, conflictingReservation } = checkConflict(
+              {
+                ...reservation,
+                checkIn: reservation.parsedCheckInDate,
+                checkOut: reservation.parsedCheckOutDate,
+              },
+              roomNumber,
+              allReservations,
+              reservation._id
+            );
+            if (isConflict && !conflictInfo) {
+              const conflictCheckIn = format(new Date(conflictingReservation.checkIn), 'yyyy-MM-dd HH:mm');
+              const conflictCheckOut = format(new Date(conflictingReservation.checkOut), 'yyyy-MM-dd HH:mm');
+              conflictInfo = `객실 ${roomNumber} (${roomType.roomInfo})에서 예약 기간이 겹칩니다.\n충돌 예약자: ${conflictingReservation.customerName || '정보 없음'}\n예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
+            }
+          } catch (error) {
+            console.error('Error checking conflict:', error.message);
+            conflictInfo = '충돌 확인 중 오류가 발생했습니다.';
+          }
+        });
+      });
+    }
+
+    setConflictDetails(conflictInfo);
+  }, [reservation, allReservations, roomTypes, isUnassigned]);
+
   const [{ isDragging }, dragRef] = useDrag({
     type: 'RESERVATION',
     item: { reservationId: reservation._id, reservationData: reservation },
     canDrag: () =>
       !flippedReservationIds.has(reservation._id) &&
       !isEditingCard &&
-      !isEditingMemo,
+      !isEditingMemo &&
+      canDragMemo,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
-  const [isEditingCard, setIsEditingCard] = useState(false);
-  const [editedValues, setEditedValues] = useState({});
-  const [isOpen, setIsOpen] = useState(false);
-  const [isEditingMemo, setIsEditingMemo] = useState(false);
-  const [remainingTime, setRemainingTime] = useState('');
-
-  // 대실 예약 카운트다운 로직
   useEffect(() => {
     if (reservation.type !== 'dayUse') return;
 
@@ -86,12 +224,9 @@ const DraggableReservationCard = ({
   };
 
   const isFlipped = flippedReservationIds.has(reservation._id);
-  const isHighlighted =
-    highlightedReservationIds.includes(reservation._id) && isSearching;
-  const isNewlyCreated =
-    reservation._id === newlyCreatedId && isNewlyCreatedHighlighted;
-  const isUpdated =
-    reservation._id === updatedReservationId && isUpdatedHighlighted;
+  const isHighlighted = highlightedReservationIds.includes(reservation._id) && isSearching;
+  const isNewlyCreated = reservation._id === newlyCreatedId && isNewlyCreatedHighlighted;
+  const isUpdated = reservation._id === updatedReservationId && isUpdatedHighlighted;
   const isCancelled =
     reservation._id.includes('Canceled') ||
     (reservation.reservationStatus || '').toLowerCase() === 'cancelled';
@@ -123,8 +258,7 @@ const DraggableReservationCard = ({
 
   const stayLabel = useMemo(() => {
     if (diffDays === 0) return '(대실)';
-    else if (diffDays === 1 && reservation.customerName.includes('대실'))
-      return '(대실)';
+    else if (diffDays === 1 && reservation.customerName.includes('대실')) return '(대실)';
     else if (diffDays === 1) return '(1박)';
     else if (diffDays >= 2) return `(${diffDays}박)`;
     return '';
@@ -138,17 +272,16 @@ const DraggableReservationCard = ({
     isHighlighted ? 'highlighted' : '',
     isNewlyCreated || isUpdated ? 'onsite-created' : '',
     isEditingCard ? 'edit-mode' : '',
+    !canDragMemo ? 'draggable-false' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
-  // 수정 시작 시, 편집 폼에 초기값 설정
   const handleEditStart = () => {
     if (isOpen || isEditingMemo) return;
     setIsOpen(true);
     const initialForm = getInitialFormData(reservation, roomTypes);
-    const priceFromReservation =
-      reservation.price?.toString() || initialForm.price;
+    const priceFromReservation = reservation.price?.toString() || initialForm.price;
     setEditedValues({
       ...initialForm,
       price: priceFromReservation,
@@ -191,23 +324,16 @@ const DraggableReservationCard = ({
 
       if (fieldsAffectingPrice.includes(field)) {
         const ci = updated.checkInDate || format(new Date(), 'yyyy-MM-dd');
-        const co =
-          updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
+        const co = updated.checkOutDate || format(addDays(new Date(), 1), 'yyyy-MM-dd');
         const nights = Math.max(
           1,
           Math.ceil((new Date(co) - new Date(ci)) / (1000 * 60 * 60 * 24))
         );
-        const selectedRoom = roomTypes.find(
-          (r) => r.roomInfo === reservation.roomInfo
-        );
+        const selectedRoom = roomTypes.find((r) => r.roomInfo === reservation.roomInfo);
 
         if (selectedRoom && !updated.manualPriceOverride) {
           const newPrice = selectedRoom.price * nights;
-          return {
-            ...updated,
-            price: newPrice.toString(),
-            manualPriceOverride: false,
-          };
+          return { ...updated, price: newPrice.toString(), manualPriceOverride: false };
         }
       }
       return updated;
@@ -234,9 +360,7 @@ const DraggableReservationCard = ({
     }
   };
 
-  // 수정: 메모 입력중인 경우, 클릭 이벤트 발생 시 플립하지 않도록 추가 조건 적용
   const handleCardClick = (e) => {
-    // 만약 클릭한 대상이 메모 컴포넌트 내부라면 플립하지 않음
     if (e.target.closest('.memo-component')) return;
     if (isUnassigned) return;
     if (isDragging || isEditingCard || isEditingMemo) return;
@@ -255,8 +379,9 @@ const DraggableReservationCard = ({
       ref={dragRef}
       className={cardClassNames}
       data-id={reservation._id}
+      title={canDragMemo ? '' : (conflictDetails || '해당 기간에 이미 예약이 있어 이동할 수 없습니다.')}
       style={{
-        cursor: isEditingCard || isEditingMemo ? 'default' : 'pointer',
+        cursor: isEditingCard || isEditingMemo || !canDragMemo ? 'default' : 'pointer',
         transition: 'opacity 0.2s ease-in-out, transform 0.3s ease-in-out',
         opacity: isDragging ? 0.5 : 1,
         transform: isEditingCard ? 'scale(1.2)' : 'scale(1)',
@@ -274,10 +399,7 @@ const DraggableReservationCard = ({
         }}
       >
         <div className="room-card-inner" style={{ backgroundColor: '#f0f0f0' }}>
-          <div
-            className="room-card-front"
-            style={{ backfaceVisibility: 'hidden' }}
-          >
+          <div className="room-card-front" style={{ backfaceVisibility: 'hidden' }}>
             <div className="content-footer-wrapper">
               <div className="card-content">
                 <div className="card-header">
@@ -325,10 +447,7 @@ const DraggableReservationCard = ({
                 <p>
                   예약일:{' '}
                   {reservation.reservationDate
-                    ? format(
-                        parseISO(reservation.reservationDate),
-                        'yyyy-MM-dd'
-                      )
+                    ? format(parseISO(reservation.reservationDate), 'yyyy-MM-dd')
                     : '정보 없음'}
                 </p>
                 {reservation.phoneNumber && (
@@ -340,13 +459,7 @@ const DraggableReservationCard = ({
                 <div className="site-info-wrapper">
                   <p className="site-info">
                     사이트:{' '}
-                    <span
-                      className={
-                        reservation.siteName === '현장예약'
-                          ? 'onsite-reservation'
-                          : ''
-                      }
-                    >
+                    <span className={reservation.siteName === '현장예약' ? 'onsite-reservation' : ''}>
                       {reservation.siteName || '정보 없음'}
                     </span>
                   </p>
@@ -357,19 +470,11 @@ const DraggableReservationCard = ({
                       e.stopPropagation();
                       openInvoiceModal({
                         ...reservation,
-                        reservationNo:
-                          reservation.reservationNo || reservation._id || '',
+                        reservationNo: reservation.reservationNo || reservation._id || '',
                         hotelSettings,
-                        hotelAddress:
-                          hotelAddress ||
-                          hotelSettings?.hotelAddress ||
-                          '주소 정보 없음',
-                        phoneNumber:
-                          phoneNumber ||
-                          hotelSettings?.phoneNumber ||
-                          '전화번호 정보 없음',
-                        email:
-                          email || hotelSettings?.email || '이메일 정보 없음',
+                        hotelAddress: hotelAddress || hotelSettings?.hotelAddress || '주소 정보 없음',
+                        phoneNumber: phoneNumber || hotelSettings?.phoneNumber || '전화번호 정보 없음',
+                        email: email || hotelSettings?.email || '이메일 정보 없음',
                       });
                     }}
                     title="인보이스 보기"
@@ -381,14 +486,10 @@ const DraggableReservationCard = ({
             </div>
           </div>
           {isFlipped && (
-            <div
-              className="room-card-back"
-              style={{ backfaceVisibility: 'hidden' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCardClick(e);
-              }}
-            >
+            <div className="room-card-back" style={{ backfaceVisibility: 'hidden' }} onClick={(e) => {
+              e.stopPropagation();
+              handleCardClick(e);
+            }}>
               <MemoComponent
                 reservationId={reservation._id}
                 reservationName={reservation.customerName || '예약자 없음'}
@@ -411,11 +512,7 @@ const DraggableReservationCard = ({
           <form onSubmit={handleEditSave}>
             <div className="edit-card-header">
               <h2>예약 수정</h2>
-              <button
-                type="button"
-                className="close-button"
-                onClick={handleEditCancel}
-              >
+              <button type="button" className="close-button" onClick={handleEditCancel}>
                 닫기
               </button>
             </div>
@@ -425,9 +522,7 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.customerName}
-                  onChange={(e) =>
-                    handleFieldChange('customerName', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('customerName', e.target.value)}
                   required
                 />
               </label>
@@ -436,9 +531,7 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.phoneNumber}
-                  onChange={(e) =>
-                    handleFieldChange('phoneNumber', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('phoneNumber', e.target.value)}
                 />
               </label>
             </div>
@@ -448,9 +541,7 @@ const DraggableReservationCard = ({
                 <input
                   type="date"
                   value={editedValues.checkInDate}
-                  onChange={(e) =>
-                    handleFieldChange('checkInDate', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('checkInDate', e.target.value)}
                 />
               </label>
               <label>
@@ -458,21 +549,14 @@ const DraggableReservationCard = ({
                 <input
                   type="date"
                   value={editedValues.checkOutDate}
-                  onChange={(e) =>
-                    handleFieldChange('checkOutDate', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('checkOutDate', e.target.value)}
                 />
               </label>
             </div>
             <div className="edit-card-row">
               <label>
                 객실타입:
-                <input
-                  type="text"
-                  value={reservation.roomInfo}
-                  readOnly
-                  disabled
-                />
+                <input type="text" value={reservation.roomInfo} readOnly disabled />
               </label>
               <label>
                 가격 (KRW):
@@ -490,9 +574,7 @@ const DraggableReservationCard = ({
                 결제방법/상태:
                 <select
                   value={editedValues.paymentMethod || 'Pending'}
-                  onChange={(e) =>
-                    handleFieldChange('paymentMethod', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
                 >
                   <option value="Pending">Pending</option>
                   <option value="Card">Card</option>
@@ -505,23 +587,13 @@ const DraggableReservationCard = ({
                 <input
                   type="text"
                   value={editedValues.specialRequests}
-                  onChange={(e) =>
-                    handleFieldChange('specialRequests', e.target.value)
-                  }
+                  onChange={(e) => handleFieldChange('specialRequests', e.target.value)}
                 />
               </label>
             </div>
             <div className="edit-card-actions">
-              <button type="submit" className="save-button">
-                저장
-              </button>
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={handleEditCancel}
-              >
-                취소
-              </button>
+              <button type="submit" className="save-button">저장</button>
+              <button type="button" className="cancel-button" onClick={handleEditCancel}>취소</button>
             </div>
           </form>
         </div>
@@ -554,6 +626,7 @@ DraggableReservationCard.propTypes = {
   isUpdatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
+  allReservations: PropTypes.array,
 };
 
 export default DraggableReservationCard;

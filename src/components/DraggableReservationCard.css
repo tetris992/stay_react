@@ -528,3 +528,9 @@
   color: var(--expired-color);
   font-weight: bold;
 }
+
+.draggable-false {
+  cursor: not-allowed !important;
+  opacity: 0.7;
+  border: 2px dashed #ff4d4f; /* 충돌 시 빨간 점선 테두리 */
+}

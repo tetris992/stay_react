@@ -14,6 +14,7 @@ import InvoiceModal from './InvoiceModal';
 import DraggableReservationCard from './DraggableReservationCard';
 import { isCancelledStatus } from '../utils/isCancelledStatus';
 import { renderActionButtons } from '../utils/renderActionButtons';
+import MonthlyCalendar from './MonthlyCalendar';
 import {
   isOtaReservation,
   sortContainers,
@@ -50,6 +51,7 @@ function getTypeAssignments(reservations, roomTypes) {
 /* ===============================
    [B] ContainerCell
 =============================== */
+// RoomGrid.js 내 ContainerCell
 const ContainerCell = React.memo(
   ({
     cont,
@@ -62,14 +64,14 @@ const ContainerCell = React.memo(
     gridSettings,
     handleEditExtended,
     handleRoomChangeAndSync,
-    setAllReservations, // 추가
-    filterReservationsByDate, // 추가
+    setAllReservations,
+    filterReservationsByDate,
     selectedDate,
   }) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
       drop: async (item) => {
-        const { reservationId } = item;
+        const { reservationId, originalRoomNumber, originalRoomInfo } = item;
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
 
@@ -85,7 +87,6 @@ const ContainerCell = React.memo(
             return;
           }
 
-          // 날짜 유효성 검사
           if (
             !draggedReservation.parsedCheckInDate ||
             !draggedReservation.parsedCheckOutDate ||
@@ -101,6 +102,11 @@ const ContainerCell = React.memo(
             alert(
               '드래그된 예약의 날짜 정보가 유효하지 않습니다. 이동이 취소되었습니다.'
             );
+            handleEditExtended(reservationId, {
+              roomInfo: originalRoomInfo,
+              roomNumber: originalRoomNumber,
+              manualAssignment: true,
+            });
             return;
           }
 
@@ -113,7 +119,7 @@ const ContainerCell = React.memo(
           if (isConflict) {
             alert(
               `🚫 예약을 이동할 수 없습니다.\n\n` +
-                `이동하려는 객실 (${cont.roomNumber}) 에 이미 예약이 있습니다.\n\n` +
+                `이동하려는 객실 (${cont.roomNumber})에 이미 예약이 있습니다.\n\n` +
                 `충돌 예약자: ${
                   conflictReservation.customerName || '정보 없음'
                 }\n` +
@@ -125,17 +131,29 @@ const ContainerCell = React.memo(
                   'yyyy-MM-dd'
                 )}`
             );
+            handleEditExtended(reservationId, {
+              roomInfo: originalRoomInfo,
+              roomNumber: originalRoomNumber,
+              manualAssignment: true,
+            });
             return;
           }
 
-          const originalRoomInfo = draggedReservation.roomInfo;
-          const originalRoomNumber = draggedReservation.roomNumber;
+          const originalRoomInfoLocal = draggedReservation.roomInfo;
+          const originalRoomNumberLocal = draggedReservation.roomNumber;
 
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
               '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
             );
-            if (!confirmSwap) return;
+            if (!confirmSwap) {
+              handleEditExtended(reservationId, {
+                roomInfo: originalRoomInfoLocal,
+                roomNumber: originalRoomNumberLocal,
+                manualAssignment: true,
+              });
+              return;
+            }
 
             const existingReservation = assignedReservations[0];
             if (
@@ -148,6 +166,11 @@ const ContainerCell = React.memo(
               alert(
                 '스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.'
               );
+              handleEditExtended(reservationId, {
+                roomInfo: originalRoomInfoLocal,
+                roomNumber: originalRoomNumberLocal,
+                manualAssignment: true,
+              });
               return;
             }
 
@@ -164,7 +187,6 @@ const ContainerCell = React.memo(
               existingReservation.totalPrice
             );
           } else {
-            // 서버 업데이트
             await handleRoomChangeAndSync(
               reservationId,
               cont.roomNumber,
@@ -172,7 +194,6 @@ const ContainerCell = React.memo(
               draggedReservation.totalPrice
             );
 
-            // 임시로 상태 업데이트
             const updatedReservations = fullReservations.map((r) =>
               r._id === draggedReservation._id
                 ? {
@@ -183,16 +204,21 @@ const ContainerCell = React.memo(
                 : r
             );
 
-            // 가용성 계산 및 충돌 체크
             const viewingDateStart = startOfDay(selectedDate);
             const viewingDateEnd = addDays(viewingDateStart, 1);
+            const selectedDates = [
+              format(addDays(selectedDate, -1), 'yyyy-MM-dd'),
+              format(selectedDate, 'yyyy-MM-dd'),
+              format(addDays(selectedDate, 1), 'yyyy-MM-dd'),
+            ];
+
             const availabilityByDate = calculateRoomAvailability(
               updatedReservations,
               roomTypes,
               viewingDateStart,
               viewingDateEnd,
               gridSettings,
-              selectedDate
+              selectedDates // 수정: selectedDates 전달
             );
 
             const { canMove, conflictDays } = canMoveToRoom(
@@ -206,7 +232,6 @@ const ContainerCell = React.memo(
             );
 
             if (canMove) {
-              // UI 즉시 갱신
               setAllReservations((prev) => {
                 const updated = prev.map((r) =>
                   r._id === draggedReservation._id
@@ -224,13 +249,11 @@ const ContainerCell = React.memo(
                 `Successfully moved reservation ${reservationId} to ${cont.roomNumber}`
               );
             } else {
-              // 충돌이 있으면 원래 상태로 복구
               handleEditExtended(reservationId, {
-                roomInfo: originalRoomInfo,
-                roomNumber: originalRoomNumber,
+                roomInfo: originalRoomInfoLocal,
+                roomNumber: originalRoomNumberLocal,
                 manualAssignment: true,
               });
-
               const conflictMessage =
                 draggedReservation.type === 'dayUse'
                   ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(
@@ -243,7 +266,6 @@ const ContainerCell = React.memo(
                   : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
                       ', '
                     )} (해당 날짜에 이미 예약이 있습니다.)`;
-
               alert(conflictMessage);
             }
           }
@@ -287,8 +309,8 @@ ContainerCell.propTypes = {
   gridSettings: PropTypes.object,
   handleEditExtended: PropTypes.func.isRequired,
   handleRoomChangeAndSync: PropTypes.func.isRequired,
-  setAllReservations: PropTypes.func.isRequired, // 추가
-  filterReservationsByDate: PropTypes.func.isRequired, // 추가
+  setAllReservations: PropTypes.func.isRequired,
+  filterReservationsByDate: PropTypes.func.isRequired,
   selectedDate: PropTypes.instanceOf(Date),
 };
 
@@ -313,10 +335,12 @@ function RoomGrid({
   flipAllMemos,
   sortOrder,
   selectedDate,
+  setSelectedDate,
   handleRoomChangeAndSync,
   updatedReservationId,
-  setAllReservations, // 추가
-  filterReservationsByDate, // 추가
+  setAllReservations,
+  filterReservationsByDate,
+  availabilityByDate,
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -327,7 +351,7 @@ function RoomGrid({
     useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   // eslint-disable-next-line
-  const [autoAssigning, setAutoAssigning] = useState(false); // 중요한 기능 유지
+  const [autoAssigning, setAutoAssigning] = useState(false);
 
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
@@ -347,7 +371,7 @@ function RoomGrid({
   const allContainers = useMemo(
     () => floors.flatMap((floor) => floor.containers || []),
     [floors]
-  ); // 중요한 기능 유지
+  );
 
   const getReservationById = useCallback(
     (id) => reservations.find((res) => res._id === id),
@@ -357,7 +381,6 @@ function RoomGrid({
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return reservations.filter((reservation) => {
-      // 취소된 예약 필터링: isCancelledStatus로 확인
       if (
         isCancelledStatus(
           reservation.reservationStatus || '',
@@ -427,13 +450,13 @@ function RoomGrid({
   }, [unassignedReservations]);
 
   useEffect(() => {
-    setAutoAssigning(true); // 중요한 기능 유지
+    setAutoAssigning(true);
     if (!allContainers.length || unassignedReservations.length === 0) {
       setAutoAssigning(false);
       return;
     }
     const autoAssignTimer = setTimeout(() => {
-      const typeAssignments = getTypeAssignments(reservations, roomTypes); // 중요한 기능 유지
+      const typeAssignments = getTypeAssignments(reservations, roomTypes);
       const updates = [];
 
       unassignedReservations.forEach((res) => {
@@ -445,8 +468,8 @@ function RoomGrid({
             res.reservationNo || ''
           )
         )
-          return; // 취소된 예약은 자동 할당에서 제외
-        if (isOtaReservation(res)) return; // 중요한 기능 유지
+          return;
+        if (isOtaReservation(res)) return;
         if (res.roomNumber && res.roomNumber.trim() !== '') return;
 
         const matched = matchRoomType(res.roomInfo, roomTypes);
@@ -456,7 +479,7 @@ function RoomGrid({
             (cont) =>
               cont.roomInfo.toLowerCase() === typeKey &&
               cont.roomInfo !== 'none'
-          ); // 중요한 기능 유지
+          );
           const sortedContainers = sortContainers(containersForType);
           const assignedRoomNumbers = typeAssignments[typeKey] || [];
           const availableContainer = sortedContainers.find(
@@ -512,7 +535,7 @@ function RoomGrid({
         const timeoutId = setTimeout(() => {
           card.classList.remove('onsite-created');
           setIsNewlyCreatedHighlighted(false);
-        }, 10000); // 10초 후 강조 해제
+        }, 10000);
         return () => clearTimeout(timeoutId);
       }
     }
@@ -590,9 +613,21 @@ function RoomGrid({
   const handleEditExtended = useCallback(
     async (reservationId, updatedData) => {
       await onEdit(reservationId, updatedData);
+      setAllReservations((prev) =>
+        prev.map((res) =>
+          res._id === reservationId ? { ...res, ...updatedData } : res
+        )
+      );
+      filterReservationsByDate(reservations, selectedDate);
       setIsNewlyCreatedHighlighted(false);
     },
-    [onEdit]
+    [
+      onEdit,
+      setAllReservations,
+      filterReservationsByDate,
+      reservations,
+      selectedDate,
+    ]
   );
 
   const closeModalHandler = useCallback(() => {
@@ -660,6 +695,28 @@ function RoomGrid({
     [sortOrder, roomTypes]
   );
 
+  // 월간 뷰로 전환 버튼 핸들러
+  const [isMonthlyView, setIsMonthlyView] = useState(false);
+  const toggleMonthlyView = () => setIsMonthlyView(!isMonthlyView);
+
+  // availabilityByDate 계산
+  // const availabilityByDate = useMemo(() => {
+  //   if (!reservations || !roomTypes) {
+  //     console.warn('Reservations or roomTypes is missing');
+  //     return {};
+  //   }
+  //   const today = startOfDay(new Date());
+  //   const calcFromDate = addDays(today, -1);
+  //   const calcToDate = addDays(endOfMonth(addMonths(today, 1)), 1);
+  //   return calculateRoomAvailability(
+  //     reservations,
+  //     roomTypes,
+  //     calcFromDate,
+  //     calcToDate,
+  //     hotelSettings?.gridSettings || {}
+  //   );
+  // }, [reservations, roomTypes, hotelSettings]);
+
   return (
     <div
       style={{
@@ -671,186 +728,213 @@ function RoomGrid({
     >
       <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
         <div>
-          {showUnassignedPanel && unassignedReservations.length > 0 ? (
-            <div
-              className="unassigned-section"
-              style={{ marginBottom: '2rem' }}
-            >
-              <div
-                className="unassigned-header"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
-                <button
-                  className="unassigned-header-title-button"
-                  onClick={() => setShowUnassignedPanel(false)}
-                >
-                  닫기
-                </button>
-              </div>
-              <div
-                className="unassigned-list"
-                style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
-              >
-                {sortReservations(unassignedReservations).map((res) => (
-                  <DraggableReservationCard
-                    key={res._id}
-                    reservation={res}
-                    hotelId={hotelId}
-                    highlightedReservationIds={highlightedReservationIds || []}
-                    isSearching={isSearching || false}
-                    flippedReservationIds={flippedReservationIds}
-                    memos={memos || {}}
-                    memoRefs={memoRefs}
-                    handleCardFlip={handleCardFlip}
-                    openInvoiceModal={openInvoiceModalHandler}
-                    hotelSettings={hotelSettings}
-                    renderActionButtons={renderActionButtons}
-                    loadedReservations={loadedReservations || []}
-                    newlyCreatedId={newlyCreatedId}
-                    isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
-                    updatedReservationId={updatedReservationId}
-                    isUpdatedHighlighted={isUpdatedHighlighted}
-                    onPartialUpdate={onPartialUpdate}
-                    roomTypes={roomTypes}
-                    isUnassigned={true}
-                    handleDeleteClickHandler={handleDeleteClickHandler}
-                    handleConfirmClickHandler={handleConfirmClickHandler}
-                  />
-                ))}
-              </div>
-            </div>
+          <button onClick={toggleMonthlyView} style={{ marginBottom: '10px' }}>
+            {isMonthlyView ? '일간 뷰로 전환' : '월간 뷰로 전환'}
+          </button>
+
+          {isMonthlyView ? (
+            <MonthlyCalendar
+              reservations={reservations}
+              roomTypes={roomTypes}
+              availabilityByDate={availabilityByDate}
+              gridSettings={hotelSettings?.gridSettings || {}}
+              onRangeSelect={onEdit} // 예약 생성 시 onEdit 사용 (상위에서 정의된 함수)
+              onReturnView={toggleMonthlyView} // 월간 뷰에서 일간 뷰로 복귀
+              onDateNavigate={(date) => {
+                setIsMonthlyView(false);
+                setSelectedDate(date); // 날짜 업데이트
+              }}
+            />
           ) : (
-            unassignedReservations.length > 0 && (
-              <button
-                className="unassigned-header-title-button"
-                onClick={() => setShowUnassignedPanel(true)}
-                style={{
-                  cursor: 'pointer',
-                  marginLeft: '50px',
-                  marginBottom: '15px',
-                }}
-              >
-                당일 미배정 열기
-              </button>
-            )
-          )}
-          {floors
-            .slice()
-            .reverse()
-            .map((floor) => (
-              <div key={floor.floorNum} className="floor-section">
-                <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                  {floor.floorNum}F
-                </h3>
-                <div className="layout-grid">
-                  {(floor.containers || []).map((cont) => {
-                    const reservationsForCont =
-                      floorReservations[cont.containerId] || [];
-                    const sortedReservations =
-                      sortReservations(reservationsForCont);
-                    return (
-                      <ContainerCell
-                        key={cont.containerId}
-                        cont={cont}
-                        onEdit={onEdit}
-                        getReservationById={getReservationById}
-                        assignedReservations={reservationsForCont}
-                        fullReservations={reservations}
+            <>
+              {showUnassignedPanel && unassignedReservations.length > 0 ? (
+                <div
+                  className="unassigned-section"
+                  style={{ marginBottom: '2rem' }}
+                >
+                  <div
+                    className="unassigned-header"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
+                    <button
+                      className="unassigned-header-title-button"
+                      onClick={() => setShowUnassignedPanel(false)}
+                    >
+                      닫기
+                    </button>
+                  </div>
+                  <div
+                    className="unassigned-list"
+                    style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
+                  >
+                    {sortReservations(unassignedReservations).map((res) => (
+                      <DraggableReservationCard
+                        key={res._id}
+                        reservation={res}
+                        hotelId={hotelId}
+                        highlightedReservationIds={
+                          highlightedReservationIds || []
+                        }
+                        isSearching={isSearching || false}
+                        flippedReservationIds={flippedReservationIds}
+                        memos={memos || {}}
+                        memoRefs={memoRefs}
+                        handleCardFlip={handleCardFlip}
+                        openInvoiceModal={openInvoiceModalHandler}
+                        hotelSettings={hotelSettings}
+                        renderActionButtons={renderActionButtons}
+                        loadedReservations={loadedReservations || []}
+                        newlyCreatedId={newlyCreatedId}
+                        isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                        updatedReservationId={updatedReservationId}
+                        isUpdatedHighlighted={isUpdatedHighlighted}
+                        onPartialUpdate={onPartialUpdate}
                         roomTypes={roomTypes}
-                        gridSettings={hotelSettings?.gridSettings}
-                        handleEditExtended={handleEditExtended}
-                        handleRoomChangeAndSync={handleRoomChangeAndSync}
-                        setAllReservations={setAllReservations} // 추가
-                        filterReservationsByDate={filterReservationsByDate} // 추가
-                        selectedDate={selectedDate}
-                      >
-                        <div
-                          className="container-label"
-                          style={{
-                            marginLeft: '5px',
-                            marginBottom: '5px',
-                            borderBottom: '1px solid #ddd',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: '1.5rem',
-                              fontWeight: 'bold',
-                              textAlign: 'left',
-                            }}
-                          >
-                            {cont.roomNumber || '미설정'}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '1rem',
-                              color: 'gray',
-                              marginLeft: '15%',
-                            }}
-                          >
-                            {cont.roomInfo || '미설정'}
-                          </span>
-                        </div>
-                        <div
-                          className="reservation-list"
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '5px',
-                          }}
-                        >
-                          {sortedReservations.length === 0 ? (
-                            <div style={{ fontStyle: 'italic', color: '#999' }}>
-                              예약 없음
-                            </div>
-                          ) : (
-                            sortedReservations.map((rsv) => (
-                              <DraggableReservationCard
-                                key={rsv._id}
-                                reservation={rsv}
-                                hotelId={hotelId}
-                                highlightedReservationIds={
-                                  highlightedReservationIds
-                                }
-                                isSearching={isSearching}
-                                flippedReservationIds={flippedReservationIds}
-                                memos={memos}
-                                memoRefs={memoRefs}
-                                handleCardFlip={handleCardFlip}
-                                openInvoiceModal={openInvoiceModalHandler}
-                                getPaymentMethodIcon={getPaymentMethodIcon}
-                                renderActionButtons={renderActionButtons}
-                                loadedReservations={loadedReservations}
-                                newlyCreatedId={newlyCreatedId}
-                                isNewlyCreatedHighlighted={
-                                  isNewlyCreatedHighlighted
-                                }
-                                onPartialUpdate={onPartialUpdate}
-                                roomTypes={roomTypes}
-                                handleDeleteClickHandler={
-                                  handleDeleteClickHandler
-                                }
-                                handleConfirmClickHandler={
-                                  handleConfirmClickHandler
-                                }
-                              />
-                            ))
-                          )}
-                        </div>
-                      </ContainerCell>
-                    );
-                  })}
+                        isUnassigned={true}
+                        handleDeleteClickHandler={handleDeleteClickHandler}
+                        handleConfirmClickHandler={handleConfirmClickHandler}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ) : (
+                unassignedReservations.length > 0 && (
+                  <button
+                    className="unassigned-header-title-button"
+                    onClick={() => setShowUnassignedPanel(true)}
+                    style={{
+                      cursor: 'pointer',
+                      marginLeft: '50px',
+                      marginBottom: '15px',
+                    }}
+                  >
+                    당일 미배정 열기
+                  </button>
+                )
+              )}
+              {floors
+                .slice()
+                .reverse()
+                .map((floor) => (
+                  <div key={floor.floorNum} className="floor-section">
+                    <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
+                      {floor.floorNum}F
+                    </h3>
+                    <div className="layout-grid">
+                      {(floor.containers || []).map((cont) => {
+                        const reservationsForCont =
+                          floorReservations[cont.containerId] || [];
+                        const sortedReservations =
+                          sortReservations(reservationsForCont);
+                        return (
+                          <ContainerCell
+                            key={cont.containerId}
+                            cont={cont}
+                            onEdit={onEdit}
+                            getReservationById={getReservationById}
+                            assignedReservations={reservationsForCont}
+                            fullReservations={reservations}
+                            roomTypes={roomTypes}
+                            gridSettings={hotelSettings?.gridSettings}
+                            handleEditExtended={handleEditExtended}
+                            handleRoomChangeAndSync={handleRoomChangeAndSync}
+                            setAllReservations={setAllReservations}
+                            filterReservationsByDate={filterReservationsByDate}
+                            selectedDate={selectedDate}
+                          >
+                            <div
+                              className="container-label"
+                              style={{
+                                marginLeft: '5px',
+                                marginBottom: '5px',
+                                borderBottom: '1px solid #ddd',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: '1.5rem',
+                                  fontWeight: 'bold',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {cont.roomNumber || '미설정'}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '1rem',
+                                  color: 'gray',
+                                  marginLeft: '15%',
+                                }}
+                              >
+                                {cont.roomInfo || '미설정'}
+                              </span>
+                            </div>
+                            <div
+                              className="reservation-list"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '5px',
+                              }}
+                            >
+                              {sortedReservations.length === 0 ? (
+                                <div
+                                  style={{ fontStyle: 'italic', color: '#999' }}
+                                >
+                                  예약 없음
+                                </div>
+                              ) : (
+                                sortedReservations.map((rsv) => (
+                                  <DraggableReservationCard
+                                    key={rsv._id}
+                                    reservation={rsv}
+                                    hotelId={hotelId}
+                                    highlightedReservationIds={
+                                      highlightedReservationIds
+                                    }
+                                    isSearching={isSearching}
+                                    flippedReservationIds={
+                                      flippedReservationIds
+                                    }
+                                    memos={memos}
+                                    memoRefs={memoRefs}
+                                    handleCardFlip={handleCardFlip}
+                                    openInvoiceModal={openInvoiceModalHandler}
+                                    getPaymentMethodIcon={getPaymentMethodIcon}
+                                    renderActionButtons={renderActionButtons}
+                                    loadedReservations={loadedReservations}
+                                    newlyCreatedId={newlyCreatedId}
+                                    isNewlyCreatedHighlighted={
+                                      isNewlyCreatedHighlighted
+                                    }
+                                    onPartialUpdate={onPartialUpdate}
+                                    roomTypes={roomTypes}
+                                    handleDeleteClickHandler={
+                                      handleDeleteClickHandler
+                                    }
+                                    handleConfirmClickHandler={
+                                      handleConfirmClickHandler
+                                    }
+                                  />
+                                ))
+                              )}
+                            </div>
+                          </ContainerCell>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+            </>
+          )}
         </div>
         {isProcessing && <p>처리 중...</p>}
         {error && <p className="error-message">{error}</p>}
@@ -883,11 +967,13 @@ RoomGrid.propTypes = {
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
   updatedReservationId: PropTypes.string,
-  setAllReservations: PropTypes.func.isRequired, // 추가
-  filterReservationsByDate: PropTypes.func.isRequired, // 추가
+  setAllReservations: PropTypes.func.isRequired,
+  filterReservationsByDate: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
   sortOrder: PropTypes.string,
   selectedDate: PropTypes.instanceOf(Date),
+  handleRoomChangeAndSync: PropTypes.func.isRequired,
+  setSelectedDate: PropTypes.func.isRequired,
 };
 
 export default RoomGrid;
