@@ -1,5 +1,3 @@
-// src/api/api.js
-
 /* global chrome */
 
 import axios from 'axios';
@@ -12,6 +10,10 @@ const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
+
+// 토큰 가져오기 함수
+const getAccessToken = () => localStorage.getItem('accessToken');
+const getCsrfToken = () => localStorage.getItem('csrfToken');
 
 api.interceptors.request.use(
   (config) => {
@@ -115,7 +117,6 @@ export const loginUser = async (credentials) => {
     const csrfToken = csrfResponse.data.csrfToken;
     localStorage.setItem('csrfToken', csrfToken);
 
-    // ✅ 수정된 부분 (비동기 전송, 실패 무시)
     if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
       const EXTENSION_ID =
         process.env.REACT_APP_EXTENSION_ID ||
@@ -127,7 +128,6 @@ export const loginUser = async (credentials) => {
         { action: 'SET_TOKEN', token: accessToken, csrfToken },
         (response) => {
           if (chrome.runtime.lastError) {
-            // ⚠️ 실패해도 로그만 찍고 로그인 자체는 정상 진행
             console.warn(
               '[api.js] SendMessage failed:',
               chrome.runtime.lastError
@@ -207,7 +207,7 @@ export const logoutUser = async () => {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
       console.warn('로그인 상태가 아닙니다.');
-      return { redirect: '/login' }; // 로그인 상태가 없으면 클라이언트에 리다이렉션 경로 반환
+      return { redirect: '/login' };
     }
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
@@ -222,15 +222,14 @@ export const logoutUser = async () => {
         },
       }
     );
-    return { redirect: '/login', ...response.data }; // 백엔드 응답과 함께 리다이렉션 경로 반환
+    return { redirect: '/login', ...response.data };
   } catch (error) {
     console.error('로그아웃 실패:', error);
-    return { error: error.message, redirect: '/login' }; // 오류 발생 시도 리다이렉션 경로 반환
+    return { error: error.message, redirect: '/login' };
   } finally {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
     localStorage.removeItem('csrfToken');
-    // window.location.href 제거, 클라이언트에서 처리하도록 변경
   }
 };
 
@@ -347,6 +346,7 @@ export const confirmReservation = async (reservationId, hotelId) => {
     const errorMessage =
       error.response?.data?.message || '예약 확정에 실패했습니다.';
     console.log(errorMessage);
+    throw error.response?.data || error; // 에러를 호출자에게 전달
   }
 };
 
@@ -362,7 +362,6 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 409) {
-      // 백엔드에서 반환된 상세 메시지를 alert로 표시
       const conflictMessage =
         error.response.data.message ||
         '이미 해당 객실에 중복된 예약이 있습니다.';
@@ -374,12 +373,14 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
   }
 };
 
+// syncReservation 함수 제거 (WebSocket으로 대체됨)
+
 export const saveOnSiteReservation = async (reservationData) => {
   try {
     const response = await api.post('/api/reservations', {
       ...reservationData,
-      customerName: reservationData.customerName, // 명시적으로 customerName 포함
-      phoneNumber: reservationData.phoneNumber, // 명시적으로 phoneNumber 포함
+      customerName: reservationData.customerName,
+      phoneNumber: reservationData.phoneNumber,
     });
     return response.data;
   } catch (error) {
@@ -401,7 +402,6 @@ export const fetchCanceledReservations = async (hotelId) => {
     throw error.response?.data || error;
   }
 };
-
 
 // ============== 사용자 정보 ==============
 export const fetchUserInfo = async (hotelId) => {
@@ -500,5 +500,8 @@ export const consentUser = async (hotelId) => {
 export const setCsrfToken = (token) => {
   localStorage.setItem('csrfToken', token);
 };
+
+// 토큰 관리 함수 공개
+export { getAccessToken, getCsrfToken };
 
 export default api;

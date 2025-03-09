@@ -216,7 +216,7 @@ const GuestFormModal = ({
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
-
+  
     const numericPrice = parseFloat(formData.price);
     if (isNaN(numericPrice) || numericPrice < 0) {
       alert('가격은 유효한 숫자여야 하며 음수가 될 수 없습니다.');
@@ -224,7 +224,7 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-
+  
     const checkInDateTime = parseDate(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
@@ -243,7 +243,7 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-
+  
     if (
       !initialData?._id &&
       formData.customerName.includes('현장') &&
@@ -254,7 +254,7 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-
+  
     const tKey = formData.roomInfo.toLowerCase();
     let cursor = new Date(checkInDateTime);
     let missingDates = [];
@@ -276,7 +276,7 @@ const GuestFormModal = ({
       }
       cursor = addDays(cursor, 1);
     }
-
+  
     if (!commonRooms || commonRooms.size === 0 || missingDates.length > 0) {
       const detailedMsg = getDetailedAvailabilityMessage(
         startOfDay(checkInDateTime),
@@ -289,11 +289,11 @@ const GuestFormModal = ({
       setIsSubmitting(false);
       return;
     }
-
+  
     const selectedRoomNumber =
       formData.roomNumber ||
       [...commonRooms].sort((a, b) => parseInt(a) - parseInt(b))[0];
-
+  
     const finalData = {
       ...formData,
       price: numericPrice,
@@ -302,15 +302,19 @@ const GuestFormModal = ({
       roomNumber: String(selectedRoomNumber),
       siteName: '현장예약',
     };
-
+  
+    console.log('[GuestFormModal] Submitting finalData:', finalData); // 디버깅 로그 추가
     try {
       if (initialData?._id) {
         await onSave(initialData._id, finalData);
+        console.log('[GuestFormModal] Save successful for:', initialData._id); // 성공 로그
       } else {
         await onSave(null, finalData);
+        console.log('[GuestFormModal] New reservation saved:', finalData); // 성공 로그
       }
       onClose();
     } catch (error) {
+      console.error('[GuestFormModal] Save Error:', error);
       const errorMessage =
         error.status === 403
           ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
@@ -318,7 +322,6 @@ const GuestFormModal = ({
             error.message ||
             '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
-      console.error('예약 저장 오류:', error);
       setFormData((prev) => ({ ...prev, price: '0' }));
     } finally {
       setIsSubmitting(false);

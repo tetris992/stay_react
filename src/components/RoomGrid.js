@@ -1,4 +1,3 @@
-// src/components/RoomGrid.js
 import React, {
   useState,
   useEffect,
@@ -7,14 +6,14 @@ import React, {
   useMemo,
 } from 'react';
 import PropTypes from 'prop-types';
-import { format } from 'date-fns';
+import { format, startOfDay, addDays } from 'date-fns';
 import { useDrop } from 'react-dnd';
 
 import './RoomGrid.css';
 import InvoiceModal from './InvoiceModal';
 import DraggableReservationCard from './DraggableReservationCard';
 import { isCancelledStatus } from '../utils/isCancelledStatus';
-import { renderActionButtons } from '../utils/renderActionButtons'; // 공통 유틸 임포트
+import { renderActionButtons } from '../utils/renderActionButtons';
 import {
   isOtaReservation,
   sortContainers,
@@ -63,6 +62,9 @@ const ContainerCell = React.memo(
     gridSettings,
     handleEditExtended,
     handleRoomChangeAndSync,
+    setAllReservations, // 추가
+    filterReservationsByDate, // 추가
+    selectedDate,
   }) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
@@ -71,10 +73,34 @@ const ContainerCell = React.memo(
         if (cont.roomInfo && cont.roomNumber) {
           const draggedReservation = getReservationById(reservationId);
 
+          if (!draggedReservation) {
+            console.warn(`No reservation found for ID: ${reservationId}`);
+            return;
+          }
+
           if (
             draggedReservation.roomInfo === cont.roomInfo &&
             draggedReservation.roomNumber === cont.roomNumber
           ) {
+            return;
+          }
+
+          // 날짜 유효성 검사
+          if (
+            !draggedReservation.parsedCheckInDate ||
+            !draggedReservation.parsedCheckOutDate ||
+            isNaN(draggedReservation.parsedCheckInDate) ||
+            isNaN(draggedReservation.parsedCheckOutDate)
+          ) {
+            console.error('Invalid date values for dragged reservation:', {
+              checkIn: draggedReservation.checkIn,
+              checkOut: draggedReservation.checkOut,
+              parsedCheckInDate: draggedReservation.parsedCheckInDate,
+              parsedCheckOutDate: draggedReservation.parsedCheckOutDate,
+            });
+            alert(
+              '드래그된 예약의 날짜 정보가 유효하지 않습니다. 이동이 취소되었습니다.'
+            );
             return;
           }
 
@@ -88,7 +114,9 @@ const ContainerCell = React.memo(
             alert(
               `🚫 예약을 이동할 수 없습니다.\n\n` +
                 `이동하려는 객실 (${cont.roomNumber}) 에 이미 예약이 있습니다.\n\n` +
-                `충돌 예약자: ${conflictReservation.customerName}\n` +
+                `충돌 예약자: ${
+                  conflictReservation.customerName || '정보 없음'
+                }\n` +
                 `예약 기간: ${format(
                   new Date(conflictReservation.checkIn),
                   'yyyy-MM-dd'
@@ -99,6 +127,9 @@ const ContainerCell = React.memo(
             );
             return;
           }
+
+          const originalRoomInfo = draggedReservation.roomInfo;
+          const originalRoomNumber = draggedReservation.roomNumber;
 
           if (assignedReservations && assignedReservations.length > 0) {
             const confirmSwap = window.confirm(
@@ -133,9 +164,7 @@ const ContainerCell = React.memo(
               existingReservation.totalPrice
             );
           } else {
-            const originalRoomInfo = draggedReservation.roomInfo;
-            const originalRoomNumber = draggedReservation.roomNumber;
-
+            // 서버 업데이트
             await handleRoomChangeAndSync(
               reservationId,
               cont.roomNumber,
@@ -143,49 +172,80 @@ const ContainerCell = React.memo(
               draggedReservation.totalPrice
             );
 
-            setTimeout(() => {
-              const updatedReservations = fullReservations.map((r) =>
-                r._id === draggedReservation._id
-                  ? {
-                      ...r,
-                      roomInfo: cont.roomInfo,
-                      roomNumber: cont.roomNumber,
-                    }
-                  : r
-              );
+            // 임시로 상태 업데이트
+            const updatedReservations = fullReservations.map((r) =>
+              r._id === draggedReservation._id
+                ? {
+                    ...r,
+                    roomInfo: cont.roomInfo,
+                    roomNumber: cont.roomNumber,
+                  }
+                : r
+            );
 
-              const availabilityByDate = calculateRoomAvailability(
-                updatedReservations,
-                roomTypes,
-                draggedReservation.parsedCheckInDate,
-                draggedReservation.parsedCheckOutDate,
-                gridSettings
+            // 가용성 계산 및 충돌 체크
+            const viewingDateStart = startOfDay(selectedDate);
+            const viewingDateEnd = addDays(viewingDateStart, 1);
+            const availabilityByDate = calculateRoomAvailability(
+              updatedReservations,
+              roomTypes,
+              viewingDateStart,
+              viewingDateEnd,
+              gridSettings,
+              selectedDate
+            );
+
+            const { canMove, conflictDays } = canMoveToRoom(
+              cont.roomNumber,
+              cont.roomInfo.toLowerCase(),
+              draggedReservation.parsedCheckInDate,
+              draggedReservation.parsedCheckOutDate,
+              availabilityByDate,
+              updatedReservations,
+              draggedReservation._id
+            );
+
+            if (canMove) {
+              // UI 즉시 갱신
+              setAllReservations((prev) => {
+                const updated = prev.map((r) =>
+                  r._id === draggedReservation._id
+                    ? {
+                        ...r,
+                        roomInfo: cont.roomInfo,
+                        roomNumber: cont.roomNumber,
+                      }
+                    : r
+                );
+                filterReservationsByDate(updated, selectedDate);
+                return updated;
+              });
+              console.log(
+                `Successfully moved reservation ${reservationId} to ${cont.roomNumber}`
               );
-              
-              const { canMove, conflictDays } = canMoveToRoom(
-                cont.roomNumber,
-                cont.roomInfo.toLowerCase(),
-                draggedReservation.parsedCheckInDate,
-                draggedReservation.parsedCheckOutDate,
-                availabilityByDate,
-                updatedReservations,
-                draggedReservation._id
-              );
-              
-              if (!canMove) {
-                handleEditExtended(reservationId, {
-                  roomInfo: originalRoomInfo,
-                  roomNumber: originalRoomNumber,
-                  manualAssignment: true,
-                });
-              
-                const conflictMessage = draggedReservation.type === 'dayUse'
-                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(draggedReservation.parsedCheckInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(draggedReservation.parsedCheckOutDate, 'yyyy-MM-dd HH:mm')}`
-                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(', ')} (해당 날짜에 이미 예약이 있습니다.)`;
-              
-                alert(conflictMessage);
-              }
-            }, 100);
+            } else {
+              // 충돌이 있으면 원래 상태로 복구
+              handleEditExtended(reservationId, {
+                roomInfo: originalRoomInfo,
+                roomNumber: originalRoomNumber,
+                manualAssignment: true,
+              });
+
+              const conflictMessage =
+                draggedReservation.type === 'dayUse'
+                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(
+                      draggedReservation.parsedCheckInDate,
+                      'yyyy-MM-dd HH:mm'
+                    )} ~ ${format(
+                      draggedReservation.parsedCheckOutDate,
+                      'yyyy-MM-dd HH:mm'
+                    )}`
+                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
+                      ', '
+                    )} (해당 날짜에 이미 예약이 있습니다.)`;
+
+              alert(conflictMessage);
+            }
           }
         }
       },
@@ -215,6 +275,7 @@ const ContainerCell = React.memo(
   }
 );
 
+// ContainerCell PropTypes에 setAllReservations와 filterReservationsByDate 추가
 ContainerCell.propTypes = {
   cont: PropTypes.object.isRequired,
   onEdit: PropTypes.func.isRequired,
@@ -225,6 +286,10 @@ ContainerCell.propTypes = {
   roomTypes: PropTypes.array.isRequired,
   gridSettings: PropTypes.object,
   handleEditExtended: PropTypes.func.isRequired,
+  handleRoomChangeAndSync: PropTypes.func.isRequired,
+  setAllReservations: PropTypes.func.isRequired, // 추가
+  filterReservationsByDate: PropTypes.func.isRequired, // 추가
+  selectedDate: PropTypes.instanceOf(Date),
 };
 
 /* ===============================
@@ -250,6 +315,8 @@ function RoomGrid({
   selectedDate,
   handleRoomChangeAndSync,
   updatedReservationId,
+  setAllReservations, // 추가
+  filterReservationsByDate, // 추가
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -451,7 +518,6 @@ function RoomGrid({
     }
   }, [newlyCreatedId]);
 
-  // 수정된 예약 강조
   useEffect(() => {
     if (updatedReservationId) {
       setIsUpdatedHighlighted(true);
@@ -459,7 +525,7 @@ function RoomGrid({
         `.room-card[data-id="${updatedReservationId}"]`
       );
       if (card) {
-        card.classList.add('onsite-created'); // 동일한 스타일 재사용
+        card.classList.add('onsite-created');
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         const timeoutId = setTimeout(() => {
           card.classList.remove('onsite-created');
@@ -473,7 +539,7 @@ function RoomGrid({
   useEffect(() => {
     if (isSearching && highlightedReservationIds.length > 0) {
       setIsNewlyCreatedHighlighted(false);
-      setIsUpdatedHighlighted(false); // 검색 시 둘 다 해제
+      setIsUpdatedHighlighted(false);
     }
   }, [isSearching, highlightedReservationIds]);
 
@@ -529,14 +595,12 @@ function RoomGrid({
     [onEdit]
   );
 
-  // 모달 닫기 핸들러
   const closeModalHandler = useCallback(() => {
     setIsModalOpen(false);
     setModalType(null);
     setSelectedReservation(null);
   }, []);
 
-  // 모달 열기 핸들러
   const openInvoiceModalHandler = (reservation) => {
     if (isModalOpen) {
       closeModalHandler();
@@ -556,7 +620,6 @@ function RoomGrid({
     }
   };
 
-  // 모달 상태 변경 감지 및 자동 열기
   useEffect(() => {
     if (selectedReservation && modalType === 'invoice' && !isModalOpen) {
       setIsModalOpen(true);
@@ -650,8 +713,8 @@ function RoomGrid({
                     loadedReservations={loadedReservations || []}
                     newlyCreatedId={newlyCreatedId}
                     isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
-                    updatedReservationId={updatedReservationId} // 수정된 ID 전달
-                    isUpdatedHighlighted={isUpdatedHighlighted} // 수정 강조 상태 전달
+                    updatedReservationId={updatedReservationId}
+                    isUpdatedHighlighted={isUpdatedHighlighted}
                     onPartialUpdate={onPartialUpdate}
                     roomTypes={roomTypes}
                     isUnassigned={true}
@@ -702,6 +765,9 @@ function RoomGrid({
                         gridSettings={hotelSettings?.gridSettings}
                         handleEditExtended={handleEditExtended}
                         handleRoomChangeAndSync={handleRoomChangeAndSync}
+                        setAllReservations={setAllReservations} // 추가
+                        filterReservationsByDate={filterReservationsByDate} // 추가
+                        selectedDate={selectedDate}
                       >
                         <div
                           className="container-label"
@@ -803,7 +869,7 @@ function RoomGrid({
   );
 }
 
-// PropTypes 수정 (hotelId를 필수로 유지)
+// RoomGrid PropTypes에 setAllReservations와 filterReservationsByDate 추가
 RoomGrid.propTypes = {
   reservations: PropTypes.array.isRequired,
   onDelete: PropTypes.func.isRequired,
@@ -816,7 +882,9 @@ RoomGrid.propTypes = {
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,
   newlyCreatedId: PropTypes.string,
-  updatedReservationId: PropTypes.string, 
+  updatedReservationId: PropTypes.string,
+  setAllReservations: PropTypes.func.isRequired, // 추가
+  filterReservationsByDate: PropTypes.func.isRequired, // 추가
   flipAllMemos: PropTypes.bool.isRequired,
   sortOrder: PropTypes.string,
   selectedDate: PropTypes.instanceOf(Date),

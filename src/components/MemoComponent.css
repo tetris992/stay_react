@@ -31,19 +31,29 @@
 .memo-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-evenly;
   background-color: #c6c6c6; /* or #919191 등 원하는 색상 */
   color: #fff;
   padding: 5px 10px;
   border-radius: 5px 5px 0 0;
-  cursor: pointer;
-
+  
   /* 고정 높이로 통일: 편집 모드 전/후 동일 */
   height: 40px;
   flex-shrink: 0;
-
+  
   /* 필요 시 아래 마진 제거 */
   margin-bottom: 0;
+}
+
+.memo-edit-button {
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+
+.memo-edit-button:hover { 
+  color: red;
 }
 
 /* 메모 본문 */
@@ -52,7 +62,7 @@
   overflow-y: auto; /* 스크롤 허용 */
   background-color: #ffffff;
   border-radius: 0 0 5px 5px;
-  padding: 5px 10px;
+  padding: 15px 20px;
 }
 
 /* 메모 입력 textarea */
@@ -65,7 +75,7 @@
   resize: none;
   padding: 5px;
   box-sizing: border-box;
-  font-size: 1rem;
+  font-size: 1.2rem;
   line-height: 1.4;
   color: #333;
 }

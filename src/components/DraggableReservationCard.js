@@ -1,14 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO, addDays, differenceInSeconds } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
 import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import { renderActionButtons } from '../utils/renderActionButtons';
 import './DraggableReservationCard.css';
-// import debounce from 'lodash/debounce';
 
 const DraggableReservationCard = ({
   isUnassigned = false,
@@ -30,8 +29,8 @@ const DraggableReservationCard = ({
   loadedReservations,
   newlyCreatedId,
   isNewlyCreatedHighlighted,
-  updatedReservationId, // 추가
-  isUpdatedHighlighted, // 추가
+  updatedReservationId,
+  isUpdatedHighlighted,
   onPartialUpdate,
   roomTypes,
 }) => {
@@ -49,6 +48,34 @@ const DraggableReservationCard = ({
   const [editedValues, setEditedValues] = useState({});
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingMemo, setIsEditingMemo] = useState(false);
+  const [remainingTime, setRemainingTime] = useState('');
+
+  // 대실 예약 카운트다운 로직
+  useEffect(() => {
+    if (reservation.type !== 'dayUse') return;
+
+    const calculateRemainingTime = () => {
+      const checkOutDate = new Date(reservation.checkOut);
+      const now = new Date();
+      const diffInSeconds = differenceInSeconds(checkOutDate, now);
+
+      if (diffInSeconds <= 0) {
+        setRemainingTime('만료됨');
+        return;
+      }
+
+      const hours = Math.floor(diffInSeconds / 3600);
+      const minutes = Math.floor((diffInSeconds % 3600) / 60);
+      const seconds = diffInSeconds % 60;
+      setRemainingTime(`${hours}시간 ${minutes}분 ${seconds}초`);
+    };
+
+    if (reservation._id === newlyCreatedId || reservation.checkOut) {
+      calculateRemainingTime();
+      const interval = setInterval(calculateRemainingTime, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [reservation.checkOut, reservation.type, newlyCreatedId, reservation._id]);
 
   const toggleMemoEdit = (reservationId, newState) => {
     if (typeof newState === 'boolean') {
@@ -63,8 +90,8 @@ const DraggableReservationCard = ({
     highlightedReservationIds.includes(reservation._id) && isSearching;
   const isNewlyCreated =
     reservation._id === newlyCreatedId && isNewlyCreatedHighlighted;
-    const isUpdated =
-    reservation._id === updatedReservationId && isUpdatedHighlighted; //
+  const isUpdated =
+    reservation._id === updatedReservationId && isUpdatedHighlighted;
   const isCancelled =
     reservation._id.includes('Canceled') ||
     (reservation.reservationStatus || '').toLowerCase() === 'cancelled';
@@ -109,12 +136,13 @@ const DraggableReservationCard = ({
     isCancelled ? 'cancelled' : '',
     isUnassigned ? 'unassigned-card' : '',
     isHighlighted ? 'highlighted' : '',
-    isNewlyCreated || isUpdated ? 'onsite-created' : '', // 신규 생성 또는 수정 시 강조
+    isNewlyCreated || isUpdated ? 'onsite-created' : '',
     isEditingCard ? 'edit-mode' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
+  // 수정 시작 시, 편집 폼에 초기값 설정
   const handleEditStart = () => {
     if (isOpen || isEditingMemo) return;
     setIsOpen(true);
@@ -160,7 +188,7 @@ const DraggableReservationCard = ({
     setEditedValues((prev) => {
       const updated = { ...prev, [field]: value };
       const fieldsAffectingPrice = ['checkInDate', 'checkOutDate'];
-  
+
       if (fieldsAffectingPrice.includes(field)) {
         const ci = updated.checkInDate || format(new Date(), 'yyyy-MM-dd');
         const co =
@@ -172,7 +200,7 @@ const DraggableReservationCard = ({
         const selectedRoom = roomTypes.find(
           (r) => r.roomInfo === reservation.roomInfo
         );
-  
+
         if (selectedRoom && !updated.manualPriceOverride) {
           const newPrice = selectedRoom.price * nights;
           return {
@@ -182,7 +210,6 @@ const DraggableReservationCard = ({
           };
         }
       }
-      // 서버 호출 없음, 로컬 상태만 업데이트
       return updated;
     });
   };
@@ -207,13 +234,15 @@ const DraggableReservationCard = ({
     }
   };
 
+  // 수정: 메모 입력중인 경우, 클릭 이벤트 발생 시 플립하지 않도록 추가 조건 적용
   const handleCardClick = (e) => {
+    // 만약 클릭한 대상이 메모 컴포넌트 내부라면 플립하지 않음
+    if (e.target.closest('.memo-component')) return;
     if (isUnassigned) return;
     if (isDragging || isEditingCard || isEditingMemo) return;
     handleCardFlip(reservation._id);
   };
 
-  // 실시간 가격 표시를 위한 계산
   const displayPrice = useMemo(() => {
     if (isEditingCard && editedValues.price !== undefined) {
       return editedValues.price;
@@ -278,7 +307,15 @@ const DraggableReservationCard = ({
                     ? format(reservation.parsedCheckOutDate, 'yyyy-MM-dd HH:mm')
                     : '정보 없음'}
                 </p>
-                <p>가격: {displayPrice}</p> {/* 실시간 가격 표시 */}
+                {reservation.type === 'dayUse' && (
+                  <p className="countdown">
+                    남은 시간:{' '}
+                    <span className={remainingTime === '만료됨' ? 'expired' : ''}>
+                      {remainingTime || '계산 중...'}
+                    </span>
+                  </p>
+                )}
+                <p>가격: {displayPrice}</p>
                 <p>
                   객실 정보:{' '}
                   {reservation.roomInfo && reservation.roomInfo.length > 30
@@ -513,6 +550,8 @@ DraggableReservationCard.propTypes = {
   loadedReservations: PropTypes.array,
   newlyCreatedId: PropTypes.string,
   isNewlyCreatedHighlighted: PropTypes.bool,
+  updatedReservationId: PropTypes.string,
+  isUpdatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
 };

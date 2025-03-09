@@ -10,6 +10,9 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import { fetchUserInfo } from '../api/api';
 
+// Modal의 appElement 설정 (필수)
+Modal.setAppElement('#root'); // 또는 모달이 마운트될 최상위 DOM 요소 지정
+
 const InvoiceModal = ({
   isOpen,
   onRequestClose,
@@ -33,17 +36,18 @@ const InvoiceModal = ({
     email: '',
   });
 
-  // 호텔 설정 API 호출 후 로컬스토리지 저장
+  // useEffect 최적화: API 호출 중복 방지
   useEffect(() => {
     const localKey = `hotelInfo_${hotelId}`;
     const storedInfo = localStorage.getItem(localKey);
 
     if (storedInfo) {
       setHotelInfo(JSON.parse(storedInfo));
+      return; // localStorage에 데이터가 있으면 API 호출 생략
     }
 
-    // API를 항상 최신 정보를 가져오기 위해 호출
-    const hotel_UserInfo = async () => {
+    // API 호출
+    const fetchHotelInfo = async () => {
       try {
         const userInfo = await fetchUserInfo(hotelId);
         const info = {
@@ -60,8 +64,10 @@ const InvoiceModal = ({
       }
     };
 
-    hotel_UserInfo();
-  }, [hotelId]);
+    if (isOpen) {
+      fetchHotelInfo();
+    }
+  }, [hotelId, isOpen]); // isOpen을 의존성에 추가하여 모달 열릴 때만 호출
 
   const handleDownload = async () => {
     const input = invoiceRef.current;
@@ -77,7 +83,7 @@ const InvoiceModal = ({
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank'); // 새 창 열기
+    const printWindow = window.open('', '_blank');
     const printContents = `
       <html>
         <head>
@@ -113,7 +119,6 @@ const InvoiceModal = ({
                 text-align: left;
               }
             }
-            /* 기본 스타일 유지 */
             .invoice-content {
               width: 210mm;
               height: 297mm;
@@ -123,15 +128,14 @@ const InvoiceModal = ({
         <body>${invoiceRef.current.innerHTML}</body>
       </html>
     `;
-  
+
     printWindow.document.open();
     printWindow.document.write(printContents);
     printWindow.document.close();
-  
+
     printWindow.print();
-    printWindow.close(); // 인쇄 후 새 창 닫기
-  
-    onRequestClose(); // 모달 닫기
+    printWindow.close();
+    onRequestClose();
   };
 
   const toggleEditMode = () => setIsEditing(!isEditing);
@@ -151,13 +155,12 @@ const InvoiceModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onRequestClose={() => {
-        setIsEditing(false);
-        onRequestClose();
-      }}
+      onRequestClose={onRequestClose}
       contentLabel={t('invoice.modalTitle')}
       className="invoice-modal-content"
       overlayClassName="invoice-modal-overlay"
+      shouldCloseOnOverlayClick={true}
+      shouldCloseOnEsc={true}
     >
       <div className="modal-header">
         <h6>{t('hotel.invoice')}</h6>

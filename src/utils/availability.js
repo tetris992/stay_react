@@ -13,6 +13,12 @@ export function calculateRoomAvailability(
   toDate,
   gridSettings = null
 ) {
+  // 입력 날짜 유효성 검사
+  if (!fromDate || !toDate || isNaN(new Date(fromDate)) || isNaN(new Date(toDate))) {
+    console.error('Invalid fromDate or toDate:', { fromDate, toDate });
+    return {};
+  }
+
   const currentDate = format(new Date(), 'yyyy-MM-dd'); // 현재 날짜
   const viewingDate = format(fromDate, 'yyyy-MM-dd'); // 보고 있는 날짜
 
@@ -61,12 +67,15 @@ export function calculateRoomAvailability(
 
   // 4. 예약별 사용량 계산
   reservations.forEach((res) => {
-    const ci = res.parsedCheckInDate ? new Date(res.parsedCheckInDate) : null;
-    const co = res.parsedCheckOutDate ? new Date(res.parsedCheckOutDate) : null;
-    if (!ci || !co) {
+    const ci = res.parsedCheckInDate ? new Date(res.parsedCheckInDate) : (res.checkIn ? new Date(res.checkIn) : null);
+    const co = res.parsedCheckOutDate ? new Date(res.parsedCheckOutDate) : (res.checkOut ? new Date(res.checkOut) : null);
+    
+    // 날짜 유효성 검사
+    if (!ci || !co || isNaN(ci) || isNaN(co)) {
       console.warn('[calculateRoomAvailability] Invalid reservation dates:', res);
       return;
     }
+
     let typeKey = res.roomInfo ? res.roomInfo.toLowerCase() : 'standard';
     if (!res.roomNumber || !res.roomNumber.trim()) {
       typeKey = 'unassigned';
@@ -88,10 +97,10 @@ export function calculateRoomAvailability(
               if (otherRes._id === res._id || otherRes.isCancelled) return false;
               if (otherRes.roomNumber !== res.roomNumber) return false;
               if (otherRes.type !== 'dayUse') return false;
-              const otherInterval = {
-                start: new Date(otherRes.parsedCheckInDate),
-                end: new Date(otherRes.parsedCheckOutDate),
-              };
+              const otherCi = otherRes.parsedCheckInDate ? new Date(otherRes.parsedCheckInDate) : (otherRes.checkIn ? new Date(otherRes.checkIn) : null);
+              const otherCo = otherRes.parsedCheckOutDate ? new Date(otherRes.parsedCheckOutDate) : (otherRes.checkOut ? new Date(otherRes.checkOut) : null);
+              if (!otherCi || !otherCo || isNaN(otherCi) || isNaN(otherCo)) return false;
+              const otherInterval = { start: otherCi, end: otherCo };
               return areIntervalsOverlapping(resInterval, otherInterval, {
                 inclusive: false,
               });
@@ -148,7 +157,6 @@ export function calculateRoomAvailability(
 
   return availability;
 }
-
 export function getDetailedAvailabilityMessage(
   rangeStart,
   rangeEnd,
