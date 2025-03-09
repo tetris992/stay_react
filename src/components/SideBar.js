@@ -4,6 +4,7 @@ import AccountingInfo from './AccountingInfo';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
+import { toZonedTime } from 'date-fns-tz'; // utcToZonedTime → toZonedTime으로 변경
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css';
 import logo from '../assets/StaySync.svg';
@@ -58,7 +59,7 @@ function SideBar({
   dailySalesByOTA,
   labelsForOTA,
   activeReservations,
-  onMonthlyView, // 추가: 월간 보기 버튼을 위한 prop
+  onMonthlyView,
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -77,14 +78,26 @@ function SideBar({
   };
 
   const handleDateChangeInternal = (date) => {
-    onDateChange(date);
+    try {
+      const kstDate = toZonedTime(date, 'Asia/Seoul'); // toZonedTime 사용
+      console.log('[SideBar] Date changed to:', kstDate); // 디버깅 로그
+      onDateChange(kstDate);
+    } catch (error) {
+      console.error('[SideBar] Date change error:', error);
+      alert('날짜 선택에 실패했습니다.');
+    }
   };
 
   const handleVoiceResult = (transcript) => {
-    setSearchCriteria({ ...searchCriteria, name: transcript });
-    setTimeout(() => {
-      executeSearch(transcript);
-    }, 1000);
+    try {
+      setSearchCriteria({ ...searchCriteria, name: transcript });
+      setTimeout(() => {
+        executeSearch(transcript);
+      }, 1000);
+    } catch (error) {
+      console.error('[SideBar] Voice search error:', error);
+      alert('음성 검색에 실패했습니다.');
+    }
   };
 
   const triggerVisualEffect = (effectType) => {
@@ -144,6 +157,7 @@ function SideBar({
         <button
           className={`settings-button ${needsConsent ? 'blink-button' : ''}`}
           onClick={handleSettingsClick}
+          aria-label="호텔 설정 페이지로 이동"
         >
           <FaCog className="settings-icon" />
           <span className="btn-text">호텔 설정</span>
@@ -159,16 +173,32 @@ function SideBar({
             {loading ? '동기화 중...' : '서버 동기화'}
           </span>
         </button>
-        <ScrapeNowButton hotelId={hotelId} activeOTAs={activeOTAs} />
-        <button className="monthly-view-button" onClick={onMonthlyView}>
+        <ScrapeNowButton
+          hotelId={hotelId}
+          activeOTAs={activeOTAs}
+          aria-label="즉시 스크래핑"
+        />
+        <button
+          className="monthly-view-button"
+          onClick={onMonthlyView}
+          aria-label="객실 재고 확인"
+        >
           <FaBed className="onsite-icon" />
           <span className="btn-text">객실 재고 확인</span>
         </button>
-        <button className="cancelSearch-button" onClick={onShowCanceledModal}>
+        <button
+          className="cancelSearch-button"
+          onClick={onShowCanceledModal}
+          aria-label="취소 예약 확인"
+        >
           <FaTimesCircle className="cancel-icon" />
           <span className="btn-text">취소 예약 확인</span>
         </button>
-        <button className="logout-button" onClick={onLogout}>
+        <button
+          className="logout-button"
+          onClick={onLogout}
+          aria-label="로그아웃"
+        >
           <FaSignOutAlt className="logout-icon" />
           <span className="btn-text">로그 아웃</span>
         </button>
@@ -188,6 +218,7 @@ function SideBar({
             locale={ko}
             inline
             monthsShown={1}
+            aria-label="날짜 선택 캘린더"
           />
         </div>
       </div>
@@ -203,6 +234,7 @@ function SideBar({
             totalRooms={totalRooms}
             roomsSold={roomsSold}
             remainingRooms={remainingRooms}
+            aria-label="객실 상태 차트"
           />
         </div>
       </div>
@@ -231,6 +263,7 @@ function SideBar({
         <div
           className="ota-settings-header"
           onClick={() => setIsOtaSettingsOpen((prev) => !prev)}
+          aria-label="OTA 설정 토글"
         >
           <h4 className="section-title">
             <FaTools className="section-icon" />
@@ -239,13 +272,14 @@ function SideBar({
           {isOtaSettingsOpen ? <FaChevronUp /> : <FaChevronDown />}
         </div>
         {isOtaSettingsOpen && (
-          <div className="ota-toggles">
+          <div className="ota-toggles" role="region" aria-label="OTA 토글 목록">
             {availableOTAs.map((ota) => (
               <label key={ota}>
                 <input
                   type="checkbox"
                   checked={otaToggles?.[ota] || false}
                   onChange={() => onToggleOTA(ota)}
+                  aria-label={`${ota} 토글`}
                 />
                 {ota}
               </label>
@@ -264,6 +298,7 @@ function SideBar({
         dailySales={dailySales}
         dailySalesByOTA={dailySalesByOTA}
         maxRooms={totalRooms}
+        aria-label="매출 그래프 모달"
       />
 
       {/* Footer */}
@@ -312,22 +347,35 @@ SideBar.propTypes = {
   monthlySoldRooms: PropTypes.number.isRequired,
   avgMonthlyRoomPrice: PropTypes.number.isRequired,
   onLogout: PropTypes.func.isRequired,
-  dailyBreakdown: PropTypes.array.isRequired,
-  monthlyDailyBreakdown: PropTypes.array.isRequired,
+  dailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
+  monthlyDailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
   openSalesModal: PropTypes.func.isRequired,
   hotelId: PropTypes.string.isRequired,
-  hotelSettings: PropTypes.object.isRequired,
-  otaToggles: PropTypes.object.isRequired,
+  hotelSettings: PropTypes.shape({
+    hotelAddress: PropTypes.string,
+    phoneNumber: PropTypes.string,
+    email: PropTypes.string,
+    totalRooms: PropTypes.number,
+    roomTypes: PropTypes.array,
+    gridSettings: PropTypes.object,
+  }).isRequired,
+  otaToggles: PropTypes.objectOf(PropTypes.bool).isRequired,
   onToggleOTA: PropTypes.func.isRequired,
-  searchCriteria: PropTypes.object.isRequired,
+  searchCriteria: PropTypes.shape({
+    name: PropTypes.string,
+    reservationNo: PropTypes.string,
+    checkInDate: PropTypes.string,
+    checkOutDate: PropTypes.string,
+  }).isRequired,
   setSearchCriteria: PropTypes.func.isRequired,
   executeSearch: PropTypes.func.isRequired,
   onShowCanceledModal: PropTypes.func.isRequired,
   needsConsent: PropTypes.bool.isRequired,
-  dailySalesByOTA: PropTypes.object.isRequired,
-  labelsForOTA: PropTypes.array.isRequired,
-  activeReservations: PropTypes.array.isRequired,
-  onMonthlyView: PropTypes.func.isRequired, // PropTypes에 추가
+  dailySalesByOTA: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number))
+    .isRequired,
+  labelsForOTA: PropTypes.arrayOf(PropTypes.string).isRequired,
+  activeReservations: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onMonthlyView: PropTypes.func.isRequired,
 };
 
 export default SideBar;

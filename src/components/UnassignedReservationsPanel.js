@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
-import { format } from 'date-fns';
+import { parseDate, formatDate } from '../utils/dateParser'; // dateParser.js 경로에 맞게 조정
 
 const UnassignedReservationsPanel = ({ reservations }) => {
-  // roomNumber가 없거나 빈 문자열인 예약을 미배정 예약으로 판단
   const unassigned = useMemo(
     () =>
       reservations.filter(
@@ -11,12 +10,14 @@ const UnassignedReservationsPanel = ({ reservations }) => {
     [reservations]
   );
 
-  // 미배정 예약들의 체크인 날짜(중복 제거)
   const unassignedDates = useMemo(() => {
     const dates = new Set();
     unassigned.forEach((res) => {
       if (res.checkIn) {
-        dates.add(format(new Date(res.checkIn), 'MM/dd'));
+        const parsedDate = parseDate(res.checkIn);
+        if (parsedDate) {
+          dates.add(formatDate(parsedDate, 'MM/dd')); // KST 기준으로 포맷팅
+        }
       }
     });
     return Array.from(dates);
@@ -33,7 +34,7 @@ const UnassignedReservationsPanel = ({ reservations }) => {
         padding: '0.5rem',
       }}
     >
-      <h3 className='unassigned-reservations-list_all'>
+      <h3 className="unassigned-reservations-list_all">
         미배정 예약: {unassigned.length}건{' '}
         {unassignedDates.length > 0 && (
           <span style={{ fontSize: '0.9rem', color: 'red' }}>
@@ -45,8 +46,8 @@ const UnassignedReservationsPanel = ({ reservations }) => {
         style={{
           listStyle: 'none',
           paddingLeft: 0,
-          display: 'flex',         // 수평 배치
-          flexWrap: 'wrap',         // 화면 크기에 따라 줄바꿈
+          display: 'flex',
+          flexWrap: 'wrap',
           gap: '8px',
         }}
       >
@@ -63,7 +64,7 @@ const UnassignedReservationsPanel = ({ reservations }) => {
             <span style={{ marginRight: '4px' }}>#</span>
             <span>
               {res.customerName} - 체크인:{' '}
-              {res.checkIn ? format(new Date(res.checkIn), 'MM/dd') : '미정'}
+              {res.checkIn ? formatDate(parseDate(res.checkIn), 'MM/dd') : '미정'}
             </span>
           </li>
         ))}
