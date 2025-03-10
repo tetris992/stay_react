@@ -13,10 +13,10 @@ import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo } from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
+import { toZonedTime } from 'date-fns-tz'; // KST 변환용
 
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8]; // 기본 층 설정
 
-// defaultRoomTypes가 이미 import로 정의되었으므로, ESLint 경고를 무시하거나 순서를 유지
 const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
   ...rt,
   aliases: [], // 빈 배열로 초기화
@@ -62,7 +62,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
         nameEng: '',
         price: 0,
         stock: 0,
-        aliases: [], // 빈 배열로 초기화
+        aliases: [],
         roomNumbers: [],
         floorSettings: {},
         startRoomNumbers: {},
@@ -74,13 +74,12 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
     setRoomTypes((prev) => {
       const updated = [...prev];
       if (field === 'price') {
-        // 입력값 유효성 검사 (숫자만 허용, 빈 입력 허용)
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
           alert('유효한 가격을 입력해주세요.');
-          return prev; // 유효하지 않은 입력은 상태 변경 무시
+          return prev;
         }
-        updated[index][field] = numValue || 0; // 빈 입력은 0으로 설정
+        updated[index][field] = numValue || 0;
       } else if (field === 'nameKor' || field === 'nameEng') {
         updated[index][field] = value;
         updated[index].roomInfo = (
@@ -91,6 +90,10 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
       } else if (field === 'aliases' && aliasIndex !== null) {
         updated[index].aliases[aliasIndex] = value;
       }
+      console.log(
+        `[RoomTypeEditor] Updated ${field} at index ${index}:`,
+        value
+      ); // 디버깅 로그
       return updated;
     });
   };
@@ -106,7 +109,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
   const decrementPrice = (index) => {
     setRoomTypes((prev) => {
       const updated = [...prev];
-      updated[index].price = Math.max(0, (updated[index].price || 0) - 1000); // 0 이하로 내려가지 않음
+      updated[index].price = Math.max(0, (updated[index].price || 0) - 1000);
       return updated;
     });
   };
@@ -116,7 +119,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
   };
 
   return (
-    <section className="room-types-section">
+    <section className="room-types-section" aria-label="객실 타입 설정 섹션">
       <h2>객실 타입 설정</h2>
       <div className="room-types-container">
         {roomTypes.map((rt, idx) => (
@@ -126,6 +129,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
               <button
                 className="remove-btn"
                 onClick={() => removeRoomType(idx)}
+                aria-label={`객실 타입 ${idx + 1} 삭제`}
               >
                 <FaTrash />
               </button>
@@ -140,6 +144,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'nameKor', e.target.value)
                   }
+                  aria-label="한글 이름 입력"
                 />
                 <input
                   className="name-eng"
@@ -149,6 +154,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'nameEng', e.target.value)
                   }
+                  aria-label="영어 이름 입력"
                 />
               </div>
               <div className="field-row price-row">
@@ -166,20 +172,23 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                       paddingRight: '0',
                       border: 'none',
                       borderRadius: '0',
-                    }} // 스피너 제거 및 스타일 조정
+                    }}
+                    aria-label="가격 입력"
                   />
                   <div className="price-buttons">
                     <button
                       className="price-btn increment"
                       onClick={() => incrementPrice(idx)}
+                      aria-label="가격 증가"
                     >
-                      +
+                      <FaPlus />
                     </button>
                     <button
                       className="price-btn decrement"
                       onClick={() => decrementPrice(idx)}
+                      aria-label="가격 감소"
                     >
-                      -
+                      <FaMinus />
                     </button>
                   </div>
                 </div>
@@ -189,11 +198,12 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   placeholder="객실 수"
                   value={rt.stock || 0}
                   readOnly
-                  style={{ marginLeft: '10px' }} // 객실 수 입력을 price-row 안에 맞춤
+                  style={{ marginLeft: '10px' }}
+                  aria-label="객실 수"
                 />
               </div>
             </div>
-            <div className="room-type-aliases">
+            <div className="room-type-aliases" aria-label="별칭 입력 섹션">
               <div className="field-row">
                 <input
                   type="text"
@@ -202,6 +212,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'aliases', e.target.value, 0)
                   }
+                  aria-label="별칭 1 입력"
                 />
                 <input
                   type="text"
@@ -210,6 +221,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'aliases', e.target.value, 1)
                   }
+                  aria-label="별칭 2 입력"
                 />
               </div>
               <div className="field-row">
@@ -220,6 +232,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'aliases', e.target.value, 2)
                   }
+                  aria-label="별칭 3 입력"
                 />
                 <input
                   type="text"
@@ -228,10 +241,11 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   onChange={(e) =>
                     updateRoomType(idx, 'aliases', e.target.value, 3)
                   }
+                  aria-label="별칭 4 입력"
                 />
               </div>
             </div>
-            <div className="room-numbers">
+            <div className="room-numbers" aria-label="객실 번호 목록">
               <h4>객실 번호 배열</h4>
               <div>
                 {rt.roomNumbers?.length > 0
@@ -243,10 +257,13 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
         ))}
       </div>
       <div className="room-type-actions">
-        <button className="action-btn add-btn" onClick={addRoomType}>
+        <button
+          className="action-btn add-btn"
+          onClick={addRoomType}
+          aria-label="객실 타입 추가"
+        >
           + 타입 추가
         </button>
-        {/* "객실 번호 생성" 버튼 제거 */}
       </div>
     </section>
   );
@@ -254,37 +271,31 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
 
 function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   const previousFloorsRef = useRef([]);
-  const [isAdding, setIsAdding] = useState(false); // 로딩 상태 추가
+  const [isAdding, setIsAdding] = useState(false);
 
-  /* --------------------------------------------------------------------------
-     addFloor:
-     - 새로운 층 추가, 중복 방지 및 고유 번호 생성
-  -------------------------------------------------------------------------- */
   const addFloor = () => {
     if (isAdding) return;
     setIsAdding(true);
     try {
       const maxFloorNum =
         floors.length > 0 ? Math.max(...floors.map((f) => f.floorNum)) : 0;
-      const newFloorNum = maxFloorNum + 1; // 가장 높은 층 번호 + 1
+      const newFloorNum = maxFloorNum + 1;
 
-      // 중복 체크
       if (floors.some((f) => f.floorNum === newFloorNum)) {
         alert('이미 존재하는 층 번호입니다. 다른 번호를 사용하세요.');
         return;
       }
 
       setFloors((prev) => [...prev, { floorNum: newFloorNum, containers: [] }]);
+      console.log(`[LayoutEditor] Added floor: ${newFloorNum}`); // 디버깅 로그
+    } catch (error) {
+      console.error('[LayoutEditor] Error adding floor:', error);
+      alert('층 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAdding(false);
     }
   };
 
-  /* --------------------------------------------------------------------------
-     updateContainer:
-     - 특정 층의 컨테이너 필드 업데이트
-     - 고유 `containerId` 생성 및 중복 방지
-  -------------------------------------------------------------------------- */
   const updateContainer = (floorNum, containerId, field, value) => {
     setFloors((prev) => {
       const updated = [...prev];
@@ -298,21 +309,18 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       const oldRoomInfo = container.roomInfo;
 
       if (field === 'price') {
-        // 입력값 유효성 검사 (숫자만 허용, 빈 입력 허용)
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
           alert('유효한 가격을 입력해주세요.');
-          return prev; // 유효하지 않은 입력은 상태 변경 무시
+          return prev;
         }
-        container[field] = numValue || 0; // 빈 입력은 0으로 설정
+        container[field] = numValue || 0;
       } else {
         container[field] = value;
       }
 
       if (field === 'roomInfo') {
-        if (!value || value === '') {
-          return prev;
-        }
+        if (!value || value === '') return prev;
         if (!container.roomNumber) {
           const allRooms = updated.flatMap((f) =>
             f.containers.filter((c) => c.roomInfo && c.roomNumber)
@@ -345,9 +353,11 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
         container.price = matchingType ? matchingType.price : 0;
 
-        // 고유한 containerId 생성 (UUID 사용)
+        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
         const uniqueId = uuidv4();
-        container.containerId = `${floorNum}-${value}-${container.roomNumber}-${uniqueId}`;
+        container.containerId = `${floorNum}-${value}-${
+          container.roomNumber
+        }-${kstNow.getTime()}-${uniqueId}`;
 
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
@@ -379,10 +389,10 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 updatedTypes[newIdx].roomNumbers.length;
             }
           }
+          console.log('[LayoutEditor] Updated roomTypes:', updatedTypes); // 디버깅 로그
           return updatedTypes;
         });
 
-        // 층 내 컨테이너 정렬
         updated[floorIdx].containers.sort(
           (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
         );
@@ -422,11 +432,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       return updated;
     });
   };
-  /* --------------------------------------------------------------------------
-     removeFloor:
-     - 특정 층 삭제 전 상태 저장 (undo 용)
-     - 해당 층에 해당하는 roomNumbers는 roomTypes에서 제거
-  -------------------------------------------------------------------------- */
+
   const removeFloor = (floorNum) => {
     setFloors((prev) => {
       if (!prev) return prev;
@@ -443,27 +449,21 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           ).length,
         }))
       );
+      console.log(`[LayoutEditor] Removed floor: ${floorNum}`); // 디버깅 로그
       return updated;
     });
   };
 
-  /* --------------------------------------------------------------------------
-     undoRemoveFloor:
-     - 삭제한 층 되돌리기
-  -------------------------------------------------------------------------- */
   const undoRemoveFloor = () => {
     if (previousFloorsRef.current.length > 0) {
       setFloors([...previousFloorsRef.current]);
       previousFloorsRef.current = [];
+      console.log('[LayoutEditor] Undo floor removal'); // 디버깅 로그
     } else {
       alert('되돌릴 삭제가 없습니다.');
     }
   };
 
-  /* --------------------------------------------------------------------------
-   addRoomToFloor:
-   - 실시간 상태 업데이트 보장 및 중복 방지 강화
---------------------------------------------------------------------------- */
   const addRoomToFloor = async (floorNum) => {
     if (isAdding) return;
     setIsAdding(true);
@@ -507,9 +507,12 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           .toString()
           .padStart(2, '0')}`;
 
+        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
         const uniqueId = uuidv4();
         const newContainer = {
-          containerId: `${floorNum}-${defaultRoomType.roomInfo}-${newRoomNumber}-${uniqueId}`,
+          containerId: `${floorNum}-${
+            defaultRoomType.roomInfo
+          }-${newRoomNumber}-${kstNow.getTime()}-${uniqueId}`,
           roomInfo: defaultRoomType.roomInfo,
           roomNumber: newRoomNumber,
           price: defaultRoomType.price,
@@ -524,7 +527,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         return updated;
       });
 
-      // 실시간 상태 업데이트 보장
       setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
         const typeIdx = updatedTypes.findIndex(
@@ -545,15 +547,17 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         }
         return updatedTypes;
       });
+      console.log(
+        `[LayoutEditor] Added room ${newRoomNumber} to floor ${floorNum}`
+      ); // 디버깅 로그
+    } catch (error) {
+      console.error('[LayoutEditor] Error adding room:', error);
+      alert('객실 추가 중 오류가 발생했습니다.');
     } finally {
       setIsAdding(false);
     }
   };
 
-  /* --------------------------------------------------------------------------
-   removeContainer:
-   - 특정 컨테이너 삭제 후, roomTypes 업데이트 및 중복 제거
---------------------------------------------------------------------------- */
   const removeContainer = (floorNum, containerId) => {
     setFloors((prev) => {
       const updated = [...prev];
@@ -580,7 +584,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             ].roomNumbers.filter((num) => num !== removed.roomNumber);
             updatedTypes[typeIdx].roomNumbers = [
               ...new Set(updatedTypes[typeIdx].roomNumbers),
-            ]; // 중복 제거
+            ];
             updatedTypes[typeIdx].roomNumbers.sort(
               (a, b) => parseInt(a, 10) - parseInt(b, 10)
             );
@@ -591,7 +595,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         });
       }
 
-      // 중복 번호 제거 후 재정렬
       const uniqueContainers = [];
       const seenNumbers = new Set();
       containers.forEach((container) => {
@@ -613,22 +616,20 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           .toString()
           .padStart(2, '0')}`;
         container.roomNumber = newRoomNumber;
+        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
         container.containerId = `${floorNum}-${
           container.roomInfo
-        }-${newRoomNumber}-${Date.now()}-${Math.random()
+        }-${newRoomNumber}-${kstNow.getTime()}-${Math.random()
           .toString(36)
           .substr(2, 9)}`;
       });
 
       updated[floorIdx].containers = uniqueContainers;
+      console.log(`[LayoutEditor] Removed container ${containerId}`); // 디버깅 로그
       return updated;
     });
   };
 
-  /* --------------------------------------------------------------------------
-   generateInitialLayout:
-   - "none" 옵션 제거, 유효한 객실 타입만 컨테이너 생성
---------------------------------------------------------------------------- */
   const generateInitialLayout = () => {
     const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
@@ -673,16 +674,21 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       });
       return updatedTypes;
     });
+    console.log('[LayoutEditor] Generated initial layout'); // 디버깅 로그
   };
 
   return (
-    <section className="layout-editor-section">
+    <section
+      className="layout-editor-section"
+      aria-label="객실 레이아웃 편집 섹션"
+    >
       <div className="layout-header">
         <h2>객실 레이아웃 편집</h2>
         <button
           className="action-btn generate-btn"
           onClick={generateInitialLayout}
           title="레이아웃 생성"
+          aria-label="레이아웃 생성"
         >
           레이아웃 생성
         </button>
@@ -690,6 +696,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           className="action-btn undo-btn"
           onClick={undoRemoveFloor}
           title="되돌리기"
+          aria-label="삭제 되돌리기"
         >
           <FaUndo />
         </button>
@@ -698,15 +705,9 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           onClick={addFloor}
           disabled={isAdding}
           title="층 추가"
+          aria-label="층 추가"
         >
           <FaPlus /> 층 추가
-        </button>
-        <button
-          className="action-btn undo-btn"
-          onClick={undoRemoveFloor}
-          title="되돌리기"
-        >
-          <FaUndo />
         </button>
       </div>
       <div className="floor-grid">
@@ -722,6 +723,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                     onClick={() => removeFloor(floor.floorNum)}
                     className="remove-icon"
                     title="객실 층 삭제"
+                    aria-label={`층 ${floor.floorNum} 삭제`}
                   />
                 </h3>
               </div>
@@ -729,7 +731,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 {floor.containers.map((cont, index) => (
                   <React.Fragment key={cont.containerId}>
                     <div
-                      className={`container-box`}
+                      className="container-box"
                       style={{
                         backgroundColor: getColorForRoomType(cont.roomInfo),
                       }}
@@ -744,6 +746,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                             e.target.value
                           )
                         }
+                        aria-label={`객실 유형 선택 ${index + 1}`}
                       >
                         {roomTypes.map((rt) => (
                           <option key={rt.roomInfo} value={rt.roomInfo}>
@@ -763,6 +766,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                           )
                         }
                         placeholder="객실 번호"
+                        aria-label="객실 번호 입력"
                       />
                       <div className="price-row">
                         <div className="price-input-container">
@@ -783,7 +787,8 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                               paddingRight: '0',
                               border: 'none',
                               borderRadius: '0',
-                            }} // 스피너 제거 및 스타일 조정
+                            }}
+                            aria-label="가격 입력"
                           />
                           <div className="price-buttons">
                             <button
@@ -794,8 +799,9 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                                   cont.containerId
                                 )
                               }
+                              aria-label="가격 증가"
                             >
-                              +
+                              <FaPlus />
                             </button>
                             <button
                               className="price-btn decrement"
@@ -805,8 +811,9 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                                   cont.containerId
                                 )
                               }
+                              aria-label="가격 감소"
                             >
-                              -
+                              <FaMinus />
                             </button>
                           </div>
                         </div>
@@ -816,6 +823,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                         onClick={() =>
                           removeContainer(floor.floorNum, cont.containerId)
                         }
+                        aria-label={`객실 ${cont.roomNumber} 삭제`}
                       >
                         <FaTrash />
                       </button>
@@ -827,6 +835,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                   onClick={() => addRoomToFloor(floor.floorNum)}
                   disabled={isAdding}
                   title="객실 추가"
+                  aria-label={`층 ${floor.floorNum}에 객실 추가`}
                 >
                   <FaPlus />
                 </button>
@@ -838,7 +847,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
   );
 }
 
-// HotelSettingsPage 본문도 원본 유지
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
   const originalDataRef = useRef(null);
@@ -874,6 +882,7 @@ export default function HotelSettingsPage() {
           fetchHotelSettings(hotelId),
           fetchUserInfo(hotelId),
         ]);
+        console.log('[HotelSettingsPage] Fetched hotel data:', hotelData); // 디버깅 로그
 
         if (hotelData && hotelData._id) {
           setIsExisting(true);
@@ -892,7 +901,6 @@ export default function HotelSettingsPage() {
             })) || initializedDefaultRoomTypes,
             containers
           );
-          // 실시간 상태 동기화
           updatedRoomTypes.forEach((rt) => {
             rt.roomNumbers = (rt.roomNumbers || []).sort(
               (a, b) => parseInt(a, 10) - parseInt(b, 10)
@@ -927,7 +935,7 @@ export default function HotelSettingsPage() {
           setPhoneNumber(userData.phoneNumber || phoneNumber);
         }
       } catch (err) {
-        console.error(err);
+        console.error('[HotelSettingsPage] Error loading data:', err);
         setError('호텔 설정 또는 사용자 정보 로딩 실패: ' + err.message);
       }
     }
@@ -938,7 +946,7 @@ export default function HotelSettingsPage() {
     const defaultRoomTypesCopy = defaultRoomTypes.map((rt) => ({
       ...rt,
       aliases: [],
-      roomNumbers: [], // 초기화
+      roomNumbers: [],
     }));
 
     const newFloors = DEFAULT_FLOORS.map((floorNum) => {
@@ -973,14 +981,15 @@ export default function HotelSettingsPage() {
     });
 
     defaultRoomTypesCopy.forEach((rt) => {
-      rt.roomNumbers = [...new Set(rt.roomNumbers)]; // 중복 제거
+      rt.roomNumbers = [...new Set(rt.roomNumbers)];
       rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
       rt.stock = rt.roomNumbers.length;
     });
 
-    setRoomTypes(defaultRoomTypesCopy); // roomTypes 업데이트
-    setFloors(newFloors); // floors 업데이트
-    setTotalRooms(defaultRoomTypesCopy.reduce((sum, rt) => sum + rt.stock, 0)); // 총 객실 수 계산
+    setRoomTypes(defaultRoomTypesCopy);
+    setFloors(newFloors);
+    setTotalRooms(defaultRoomTypesCopy.reduce((sum, rt) => sum + rt.stock, 0));
+    console.log('[HotelSettingsPage] Loaded default settings'); // 디버깅 로그
     alert('디폴트 설정이 불러와졌습니다.');
   };
 
@@ -1010,6 +1019,7 @@ export default function HotelSettingsPage() {
         }
       });
     });
+    console.log('[HotelSettingsPage] Updated roomTypes:', newRoomTypes); // 디버깅 로그
     return { roomTypes: hasChanges ? newRoomTypes : roomTypes, hasChanges };
   }, [floors, roomTypes]);
 
@@ -1039,6 +1049,7 @@ export default function HotelSettingsPage() {
       phoneNumber,
       hotelName,
     };
+    console.log('[HotelSettingsPage] Updated totalRooms:', newTotal); // 디버깅 로그
   }, [
     floors,
     hotelId,
@@ -1105,11 +1116,11 @@ export default function HotelSettingsPage() {
     };
     try {
       if (isExisting) {
-        console.log('Updating hotel settings with payload:', payload);
+        console.log('[HotelSettingsPage] Updating hotel settings:', payload); // 디버깅 로그
         await updateHotelSettings(hotelId, payload);
         alert('업데이트 완료');
       } else {
-        console.log('Registering new hotel with payload:', payload);
+        console.log('[HotelSettingsPage] Registering new hotel:', payload); // 디버깅 로그
         await registerHotel(payload);
         alert('등록 완료');
         setIsExisting(true);
@@ -1131,8 +1142,8 @@ export default function HotelSettingsPage() {
       navigate('/');
       window.location.reload();
     } catch (err) {
-      console.error('저장 실패:', err);
-      alert('저장 실패: ' + err.message);
+      console.error('[HotelSettingsPage] Save failed:', err);
+      alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -1148,23 +1159,35 @@ export default function HotelSettingsPage() {
     setEmail(orig.email);
     setPhoneNumber(orig.phoneNumber);
     setHotelName(orig.hotelName);
+    console.log('[HotelSettingsPage] Cancelled changes'); // 디버깅 로그
     alert('변경 사항이 취소되었습니다.');
   };
 
   return (
-    <div className="hotel-settings-page">
+    <div className="hotel-settings-page" aria-label="호텔 설정 페이지">
       <h1>호텔 설정</h1>
       <div className="hotel-settings-button-group">
-        <button className="hotel-settings-btn" onClick={() => navigate('/')}>
+        <button
+          className="hotel-settings-btn"
+          onClick={() => navigate('/')}
+          aria-label="메인 페이지로 이동"
+        >
           메인으로
         </button>
-        <button className="hotel-settings-btn" onClick={handleLoadDefault}>
+        <button
+          className="hotel-settings-btn"
+          onClick={handleLoadDefault}
+          aria-label="디폴트 설정 불러오기"
+        >
           디폴트 불러오기
         </button>
-        <button className="hotel-settings-btn" onClick={handleCancel}>
+        <button
+          className="hotel-settings-btn"
+          onClick={handleCancel}
+          aria-label="변경 사항 취소"
+        >
           취소
         </button>
-        {' '}
         <button
           className="hotel-settings-btn-chrome"
           onClick={() =>
@@ -1173,12 +1196,17 @@ export default function HotelSettingsPage() {
               '_blank'
             )
           }
+          aria-label="크롬 확장 프로그램 설치"
         >
           크롬확장설치
         </button>
       </div>
-      {error && <p className="error-message">{error}</p>}
-      <section className="hotel-info-section">
+      {error && (
+        <p className="error-message" role="alert">
+          {error}
+        </p>
+      )}
+      <section className="hotel-info-section" aria-label="호텔 기본 정보 섹션">
         <div className="info-columns">
           <div className="basic-info">
             <h2>호텔 기본 정보</h2>
@@ -1188,11 +1216,12 @@ export default function HotelSettingsPage() {
                 value={hotelId}
                 onChange={(e) => setHotelId(e.target.value)}
                 disabled={isExisting}
+                aria-label="호텔 ID 입력"
               />
             </label>
             <label>
               총 객실 수:
-              <input value={totalRooms} readOnly />
+              <input value={totalRooms} readOnly aria-label="총 객실 수" />
             </label>
             <label>
               호텔 주소:
@@ -1200,6 +1229,7 @@ export default function HotelSettingsPage() {
                 value={hotelAddress}
                 onChange={(e) => setHotelAddress(e.target.value)}
                 placeholder="호텔 주소를 입력하세요"
+                aria-label="호텔 주소 입력"
               />
             </label>
             <label>
@@ -1208,6 +1238,7 @@ export default function HotelSettingsPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="이메일을 입력하세요"
+                aria-label="이메일 입력"
               />
             </label>
             <label>
@@ -1216,6 +1247,7 @@ export default function HotelSettingsPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="전화번호를 입력하세요"
+                aria-label="전화번호 입력"
               />
             </label>
           </div>
@@ -1227,6 +1259,7 @@ export default function HotelSettingsPage() {
                 value={hotelName}
                 onChange={(e) => setHotelName(e.target.value)}
                 placeholder="호텔 이름을 입력하세요"
+                aria-label="호텔 이름 입력"
               />
             </label>
             <label>
@@ -1235,6 +1268,7 @@ export default function HotelSettingsPage() {
                 value={adminName}
                 onChange={(e) => setAdminName(e.target.value)}
                 placeholder="관리자 이름을 입력하세요"
+                aria-label="관리자 이름 입력"
               />
             </label>
             <label>
@@ -1244,8 +1278,13 @@ export default function HotelSettingsPage() {
                 value="********"
                 readOnly
                 placeholder="비밀번호 변경은 별도 처리"
+                aria-label="비밀번호 (읽기 전용)"
               />
-              <button className="action-btn change-pw-btn" disabled>
+              <button
+                className="action-btn change-pw-btn"
+                disabled
+                aria-label="비밀번호 변경 (미구현)"
+              >
                 비밀번호 변경 (미구현)
               </button>
             </label>
@@ -1262,7 +1301,11 @@ export default function HotelSettingsPage() {
         />
       </DndProvider>
       <div className="save-section">
-        <button className="hotelsetting-all-save" onClick={handleSaveAll}>
+        <button
+          className="hotelsetting-all-save"
+          onClick={handleSaveAll}
+          aria-label="모든 설정 저장"
+        >
           전체 저장
         </button>
       </div>
