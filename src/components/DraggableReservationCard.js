@@ -74,17 +74,20 @@ const DraggableReservationCard = ({
 
   // UI 표시용 날짜+시간 문자열 (고정 시간 반영)
   const displayCheckIn = useMemo(() => {
-    return checkInDate
-      ? `${format(checkInDate, 'yyyy-MM-dd')} ${checkInTime}`
-      : '정보 없음';
-  }, [checkInDate, checkInTime]);
+    if (!checkInDate) return '정보 없음';
+    if (reservation.siteName === '현장예약') {
+      return `${format(checkInDate, 'yyyy-MM-dd')} ${checkInTime}`; // 현장 예약: 고정 시간
+    }
+    return format(checkInDate, 'yyyy-MM-dd HH:mm'); // OTA: 원본 시간
+  }, [checkInDate, checkInTime, reservation.siteName]);
 
   const displayCheckOut = useMemo(() => {
-    return checkOutDate
-      ? `${format(checkOutDate, 'yyyy-MM-dd')} ${checkOutTime}`
-      : '정보 없음';
-  }, [checkOutDate, checkOutTime]);
-
+    if (!checkOutDate) return '정보 없음';
+    if (reservation.siteName === '현장예약') {
+      return `${format(checkOutDate, 'yyyy-MM-dd')} ${checkOutTime}`; // 현장 예약: 고정 시간
+    }
+    return format(checkOutDate, 'yyyy-MM-dd HH:mm'); // OTA: 원본 시간
+  }, [checkOutDate, checkOutTime, reservation.siteName]);
   // 드래그 가능 여부 체크
   const canDragMemo = useMemo(() => {
     if (
@@ -396,18 +399,34 @@ const DraggableReservationCard = ({
     const updatedData = {
       customerName: editedValues.customerName,
       phoneNumber: editedValues.phoneNumber,
-      checkIn: new Date(
-        `${editedValues.checkInDate}T${checkInTime}:00+09:00`
-      ).toISOString(),
-      checkOut: new Date(
-        `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`
-      ).toISOString(),
       paymentMethod: editedValues.paymentMethod,
       specialRequests: editedValues.specialRequests,
       roomInfo: reservation.roomInfo,
       roomNumber: editedValues.roomNumber || reservation.roomNumber,
       price: editedValues.price || reservation.totalPrice,
     };
+
+    // 체크인/체크아웃 시간 처리
+    if (reservation.siteName === '현장예약') {
+      // 현장 예약: 고정 시간 적용
+      updatedData.checkIn = new Date(
+        `${editedValues.checkInDate}T${checkInTime}:00+09:00`
+      ).toISOString();
+      updatedData.checkOut = new Date(
+        `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`
+      ).toISOString();
+    } else {
+      // OTA: 원본 시간 유지 (날짜만 변경 시 원본 시간 결합)
+      const originalCheckInTime = format(checkInDate, 'HH:mm');
+      const originalCheckOutTime = format(checkOutDate, 'HH:mm');
+      updatedData.checkIn = new Date(
+        `${editedValues.checkInDate}T${originalCheckInTime}:00+09:00`
+      ).toISOString();
+      updatedData.checkOut = new Date(
+        `${editedValues.checkOutDate}T${originalCheckOutTime}:00+09:00`
+      ).toISOString();
+    }
+
     onPartialUpdate(reservation._id, updatedData);
     setIsEditingCard(false);
     setEditedValues({});
@@ -419,7 +438,10 @@ const DraggableReservationCard = ({
       const updated = { ...prev, [field]: value };
       const fieldsAffectingPrice = ['checkInDate', 'checkOutDate'];
 
-      if (fieldsAffectingPrice.includes(field)) {
+      if (
+        fieldsAffectingPrice.includes(field) &&
+        reservation.siteName === '현장예약' // 현장 예약에만 적용
+      ) {
         const ci = new Date(`${updated.checkInDate}T${checkInTime}:00+09:00`);
         const co = new Date(`${updated.checkOutDate}T${checkOutTime}:00+09:00`);
         const nights = Math.max(

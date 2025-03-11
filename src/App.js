@@ -743,8 +743,7 @@ const App = () => {
           console.warn(`No reservation found for ID: ${reservationId}`);
           return;
         }
-
-        // 동일한 객실로의 이동 방지
+  
         if (
           currentReservation.roomNumber === newRoomNumber &&
           currentReservation.roomInfo === newRoomInfo
@@ -752,24 +751,26 @@ const App = () => {
           console.log(`No change in room assignment for ${reservationId}`);
           return;
         }
-
+  
         const updatedReservation = await updateReservation(
           reservationId,
           {
             roomNumber: newRoomNumber,
             roomInfo: newRoomInfo,
             price: currentPrice || currentReservation.totalPrice,
+            checkIn: currentReservation.checkIn, // 원본 시간 유지
+            checkOut: currentReservation.checkOut, // 원본 시간 유지
           },
           hotelId
         );
-
+  
         setAllReservations((prevReservations) => {
           const updatedReservations = prevReservations.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
           );
           filterReservationsByDate(updatedReservations, selectedDate);
-          setUpdatedReservationId(reservationId); // 강조 표시용 ID 설정
-          setTimeout(() => setUpdatedReservationId(null), 10000); // 10초 후 리셋
+          setUpdatedReservationId(reservationId);
+          setTimeout(() => setUpdatedReservationId(null), 10000);
           console.log(
             `[handleRoomChangeAndSync] Successfully updated reservation ${reservationId} to room ${newRoomNumber}`
           );
