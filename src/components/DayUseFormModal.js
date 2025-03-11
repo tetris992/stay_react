@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import './DayUseFormModal.css'; // 별도의 CSS 파일 사용
-import { parseDate } from '../utils/dateParser';
+import './DayUseFormModal.css';
 import { format, addHours, startOfDay, addDays } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
@@ -39,15 +38,20 @@ const DayUseFormModal = ({
   useEffect(() => {
     const now = new Date();
     const defaultCheckInDate = initialData?.checkInDate || format(now, 'yyyy-MM-dd');
+
     if (initialData && initialData._id) {
+      // 기존 예약 수정 (OTA 또는 현장 대실)
       const checkInDateObj = new Date(initialData.checkIn);
+      const checkOutDateObj = new Date(initialData.checkOut);
+      const duration = Math.round((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)); // 시간 차이 계산
+
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
         phoneNumber: initialData.phoneNumber || hotelSettings?.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
         checkInTime: format(checkInDateObj, 'HH:mm'),
-        durationHours: initialData.duration || 4,
+        durationHours: duration || 4,
         reservationDate: initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
@@ -57,25 +61,46 @@ const DayUseFormModal = ({
         manualPriceOverride: !!initialData.price,
       });
     } else {
+      // 신규 예약
       const initialRoomInfo = initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom = filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) || filteredRoomTypes[0];
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
 
-      setFormData({
-        reservationNo: initialData?.reservationNo || `${Date.now()}`,
-        customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
-        phoneNumber: hotelSettings?.phoneNumber || '',
-        checkInDate: defaultCheckInDate,
-        checkInTime: initialData?.checkInTime || '16:00',
-        durationHours: 4,
-        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-        roomInfo: initialRoomInfo,
-        price: String(basePrice),
-        paymentMethod: initialData?.paymentMethod || 'Pending',
-        specialRequests: initialData?.specialRequests || '',
-        roomNumber: initialData?.roomNumber || '',
-        manualPriceOverride: false,
-      });
+      if (initialData?.siteName === '현장예약') {
+        // 현장 대실: 현재 시간으로 체크인 설정
+        setFormData({
+          reservationNo: initialData?.reservationNo || `${Date.now()}`,
+          customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+          phoneNumber: hotelSettings?.phoneNumber || '',
+          checkInDate: format(now, 'yyyy-MM-dd'),
+          checkInTime: format(now, 'HH:mm'), // 현재 시간
+          durationHours: 4,
+          reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+          roomInfo: initialRoomInfo,
+          price: String(basePrice),
+          paymentMethod: initialData?.paymentMethod || 'Pending',
+          specialRequests: initialData?.specialRequests || '',
+          roomNumber: initialData?.roomNumber || '',
+          manualPriceOverride: false,
+        });
+      } else {
+        // OTA 대실 등
+        setFormData({
+          reservationNo: initialData?.reservationNo || `${Date.now()}`,
+          customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+          phoneNumber: hotelSettings?.phoneNumber || '',
+          checkInDate: defaultCheckInDate,
+          checkInTime: initialData?.checkInTime || '16:00',
+          durationHours: 4,
+          reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+          roomInfo: initialRoomInfo,
+          price: String(basePrice),
+          paymentMethod: initialData?.paymentMethod || 'Pending',
+          specialRequests: initialData?.specialRequests || '',
+          roomNumber: initialData?.roomNumber || '',
+          manualPriceOverride: false,
+        });
+      }
     }
   }, [initialData, filteredRoomTypes, hotelSettings]);
 
@@ -132,8 +157,8 @@ const DayUseFormModal = ({
       return;
     }
 
-    const checkInDateTime = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    if (!checkInDateTime) {
+    const checkInDateTime = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    if (isNaN(checkInDateTime)) {
       alert('유효한 체크인 날짜와 시간을 입력해주세요.');
       setIsSubmitting(false);
       return;
@@ -167,7 +192,7 @@ const DayUseFormModal = ({
       checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
       checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
       roomNumber: String(selectedRoomNumber),
-      siteName: '현장예약',
+      siteName: initialData?.siteName || '현장예약',
       type: 'dayUse',
       duration: formData.durationHours,
     };
@@ -189,7 +214,7 @@ const DayUseFormModal = ({
 
   const displayCheckOut = useMemo(() => {
     if (!formData.checkInDate || !formData.checkInTime) return '';
-    const checkIn = parseDate(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkIn = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
     const checkOut = addHours(checkIn, formData.durationHours);
     return format(checkOut, 'yyyy-MM-dd HH:mm');
   }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
@@ -237,7 +262,7 @@ const DayUseFormModal = ({
                 value={formData.checkInDate}
                 onChange={handleInputChange}
                 required
-                disabled={isSubmitting}
+                disabled={isSubmitting || (initialData?.siteName === '현장예약' && !initialData?._id)}
               />
               <input
                 type="time"
@@ -245,7 +270,7 @@ const DayUseFormModal = ({
                 value={formData.checkInTime}
                 onChange={handleInputChange}
                 required
-                disabled={isSubmitting}
+                disabled={isSubmitting || (initialData?.siteName === '현장예약' && !initialData?._id)}
               />
             </label>
           </div>

@@ -1,14 +1,11 @@
 import { parse, isValid } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
-import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
-
-// KST 시간대 설정
-const TIMEZONE = 'Asia/Seoul';
+import { format } from 'date-fns'; // format 추가
 
 // 캐싱을 위한 객체
 const parsedDateCache = {};
 
-// 전처리 함수
+// 전처리 함수 (변경 없음)
 const cleanString = (str) => {
   return str
     .replace(/\([^)]*\)/g, '') // 괄호 안의 내용 제거
@@ -19,6 +16,7 @@ const cleanString = (str) => {
     .trim(); // 앞뒤 공백 제거
 };
 
+// 날짜 파싱 함수 (시간대 변환 제거)
 export const parseDate = (dateString) => {
   if (!dateString) return null;
 
@@ -27,7 +25,6 @@ export const parseDate = (dateString) => {
     return parsedDateCache[dateString];
   }
 
-  // ISO 형식에서 시간대 정보를 유지하며 처리
   let cleanedDateString = cleanString(dateString);
 
   // 개발 모드에서 전처리된 문자열 로그 출력
@@ -84,12 +81,11 @@ export const parseDate = (dateString) => {
         locale,
       });
       if (isValid(parsed)) {
-        // 파싱된 날짜를 KST로 변환
-        parsedDate = toZonedTime(parsed, TIMEZONE);
+        parsedDate = parsed; // 시간대 변환(toZonedTime) 제거
         parsedDateCache[dateString] = parsedDate;
 
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Parsed Date (KST): ${formatInTimeZone(parsedDate, TIMEZONE, 'yyyy-MM-dd HH:mm:ssXXX')}`);
+          console.log(`Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
         }
         return parsedDate;
       }
@@ -100,11 +96,11 @@ export const parseDate = (dateString) => {
   try {
     const directParsed = new Date(cleanedDateString);
     if (isValid(directParsed)) {
-      parsedDate = toZonedTime(directParsed, TIMEZONE);
+      parsedDate = directParsed; // 시간대 변환(toZonedTime) 제거
       parsedDateCache[dateString] = parsedDate;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Direct Parsed Date (KST): ${formatInTimeZone(parsedDate, TIMEZONE, 'yyyy-MM-dd HH:mm:ssXXX')}`);
+        console.log(`Direct Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
       }
       return parsedDate;
     }
@@ -119,11 +115,11 @@ export const parseDate = (dateString) => {
   return null;
 };
 
-// 날짜 포맷팅 함수 (KST 기준)
+// 날짜 포맷팅 함수 (시간대 변환 제거)
 export const formatDate = (date, formatString = 'yyyy-MM-dd HH:mm:ss') => {
   if (!date) return '정보 없음';
   try {
-    return formatInTimeZone(date, TIMEZONE, formatString);
+    return format(date, formatString); // formatInTimeZone 대신 기본 format 사용
   } catch (error) {
     console.error(`Error formatting date: ${date}`, error);
     return '정보 없음';

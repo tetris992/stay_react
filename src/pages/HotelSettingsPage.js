@@ -307,7 +307,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       if (containerIdx === -1) return prev;
       const container = updated[floorIdx].containers[containerIdx];
       const oldRoomInfo = container.roomInfo;
-
+  
       if (field === 'price') {
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
@@ -318,7 +318,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       } else {
         container[field] = value;
       }
-
+  
       if (field === 'roomInfo') {
         if (!value || value === '') return prev;
         if (!container.roomNumber) {
@@ -349,16 +349,13 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             .toString()
             .padStart(2, '0')}`;
         }
-
+  
         const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
         container.price = matchingType ? matchingType.price : 0;
-
-        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
+  
         const uniqueId = uuidv4();
-        container.containerId = `${floorNum}-${value}-${
-          container.roomNumber
-        }-${kstNow.getTime()}-${uniqueId}`;
-
+        container.containerId = `${floorNum}-${value}-${container.roomNumber}-${Date.now()}-${uniqueId}`; // KST 변환 제거
+  
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           if (oldRoomInfo && container.roomNumber) {
@@ -389,10 +386,10 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 updatedTypes[newIdx].roomNumbers.length;
             }
           }
-          console.log('[LayoutEditor] Updated roomTypes:', updatedTypes); // 디버깅 로그
+          console.log('[LayoutEditor] Updated roomTypes:', updatedTypes);
           return updatedTypes;
         });
-
+  
         updated[floorIdx].containers.sort(
           (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
         );
@@ -400,7 +397,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       return updated;
     });
   };
-
   const incrementContainerPrice = (floorNum, containerId) => {
     setFloors((prev) => {
       const updated = [...prev];
@@ -865,6 +861,10 @@ export default function HotelSettingsPage() {
   const [hotelName, setHotelName] = useState('');
   const [adminName, setAdminName] = useState('');
 
+  // 체크인/체크아웃 시간 상태 추가
+  const [checkInTime, setCheckInTime] = useState('16:00'); // 디폴트 16:00
+  const [checkOutTime, setCheckOutTime] = useState('11:00'); // 디폴트 11:00
+
   useEffect(() => {
     async function loadData() {
       if (!hotelId) {
@@ -882,7 +882,7 @@ export default function HotelSettingsPage() {
           fetchHotelSettings(hotelId),
           fetchUserInfo(hotelId),
         ]);
-        console.log('[HotelSettingsPage] Fetched hotel data:', hotelData); // 디버깅 로그
+        console.log('[HotelSettingsPage] Fetched hotel data:', hotelData);
 
         if (hotelData && hotelData._id) {
           setIsExisting(true);
@@ -916,6 +916,9 @@ export default function HotelSettingsPage() {
           setEmail(hotelData.email || '');
           setPhoneNumber(hotelData.phoneNumber || '');
           setHotelName(hotelData.hotelName || '');
+          // 체크인/체크아웃 시간 로드
+          setCheckInTime(hotelData.checkInTime || '16:00');
+          setCheckOutTime(hotelData.checkOutTime || '11:00');
         } else {
           setIsExisting(false);
           setRoomTypes([...initializedDefaultRoomTypes]);
@@ -1113,32 +1116,20 @@ export default function HotelSettingsPage() {
       email,
       phoneNumber,
       hotelName,
+      checkInTime,  // 추가
+      checkOutTime, // 추가
     };
     try {
       if (isExisting) {
-        console.log('[HotelSettingsPage] Updating hotel settings:', payload); // 디버깅 로그
+        console.log('[HotelSettingsPage] Updating hotel settings:', payload);
         await updateHotelSettings(hotelId, payload);
         alert('업데이트 완료');
       } else {
-        console.log('[HotelSettingsPage] Registering new hotel:', payload); // 디버깅 로그
+        console.log('[HotelSettingsPage] Registering new hotel:', payload);
         await registerHotel(payload);
         alert('등록 완료');
         setIsExisting(true);
       }
-      console.log(
-        '[HotelSettingsPage] Saved gridSettings.floors:',
-        payload.gridSettings.floors
-      );
-      payload.gridSettings.floors.forEach((floor) => {
-        console.log(
-          `[HotelSettingsPage] Floor ${floor.floorNum} containers:`,
-          floor.containers
-        );
-      });
-      console.log(
-        '[HotelSettingsPage] Total containers saved:',
-        payload.gridSettings.floors.flatMap((f) => f.containers).length
-      );
       navigate('/');
       window.location.reload();
     } catch (err) {
@@ -1248,6 +1239,25 @@ export default function HotelSettingsPage() {
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="전화번호를 입력하세요"
                 aria-label="전화번호 입력"
+              />
+            </label>
+            {/* 체크인/체크아웃 시간 입력 필드 추가 */}
+            <label>
+              체크인 시간:
+              <input
+                type="time"
+                value={checkInTime}
+                onChange={(e) => setCheckInTime(e.target.value)}
+                aria-label="체크인 시간 입력"
+              />
+            </label>
+            <label>
+              체크아웃 시간:
+              <input
+                type="time"
+                value={checkOutTime}
+                onChange={(e) => setCheckOutTime(e.target.value)}
+                aria-label="체크아웃 시간 입력"
               />
             </label>
           </div>

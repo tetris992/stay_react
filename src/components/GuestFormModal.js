@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import './GuestFormModal.css';
-import { parseDate } from '../utils/dateParser';
 import {
   format,
   addDays,
@@ -17,15 +16,16 @@ const GuestFormModal = ({
   initialData,
   roomTypes,
   availabilityByDate,
+  hotelSettings, // 호텔 설정에서 고정된 시간 가져옴
 }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
     customerName: '',
     phoneNumber: '',
     checkInDate: '',
-    checkInTime: '',
+    checkInTime: '', // 고정값으로만 사용
     checkOutDate: '',
-    checkOutTime: '',
+    checkOutTime: '', // 고정값으로만 사용
     reservationDate: '',
     roomInfo: '',
     price: '0',
@@ -43,6 +43,9 @@ const GuestFormModal = ({
 
   useEffect(() => {
     const now = new Date();
+    const defaultCheckInTime = hotelSettings?.checkInTime || '16:00';
+    const defaultCheckOutTime = hotelSettings?.checkOutTime || '11:00';
+
     if (initialData && initialData._id) {
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
@@ -51,9 +54,9 @@ const GuestFormModal = ({
         customerName: initialData.customerName || '',
         phoneNumber: initialData.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
-        checkInTime: format(checkInDateObj, 'HH:mm'),
+        checkInTime: format(checkInDateObj, 'HH:mm'), // 서버 값 유지
         checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
-        checkOutTime: format(checkOutDateObj, 'HH:mm'),
+        checkOutTime: format(checkOutDateObj, 'HH:mm'), // 서버 값 유지
         reservationDate:
           initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo:
@@ -66,36 +69,35 @@ const GuestFormModal = ({
       });
     } else {
       const defaultCheckIn = initialData?.checkInDate
-        ? parseDate(
-            `${initialData.checkInDate}T${
-              initialData.checkInTime || '16:00'
-            }:00`
-          )
-        : new Date(now.setHours(16, 0, 0, 0));
+        ? new Date(`${initialData.checkInDate}T${defaultCheckInTime}:00`)
+        : new Date(
+            now.setHours(
+              parseInt(defaultCheckInTime.split(':')[0]),
+              parseInt(defaultCheckInTime.split(':')[1]),
+              0,
+              0
+            )
+          );
       const defaultCheckOut = initialData?.checkOutDate
-        ? parseDate(
-            `${initialData.checkOutDate}T${
-              initialData.checkOutTime || '11:00'
-            }:00`
-          )
+        ? new Date(`${initialData.checkOutDate}T${defaultCheckOutTime}:00`)
         : addDays(defaultCheckIn, 1);
 
+      defaultCheckOut.setHours(
+        parseInt(defaultCheckOutTime.split(':')[0]),
+        parseInt(defaultCheckOutTime.split(':')[1]),
+        0,
+        0
+      );
+
       const checkInDateStr = format(defaultCheckIn, 'yyyy-MM-dd');
-      const checkOutDateStr = defaultCheckOut
-        ? format(defaultCheckOut, 'yyyy-MM-dd')
-        : format(addDays(new Date(checkInDateStr), 1), 'yyyy-MM-dd'); // 기본 체크아웃 날짜 설정
-      const checkInTimeStr = initialData?.checkInTime || '16:00';
-      const checkOutTimeStr = initialData?.checkOutTime || '11:00';
+      const checkOutDateStr = format(defaultCheckOut, 'yyyy-MM-dd');
 
       const initialRoomInfo =
         initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
         filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
         filteredRoomTypes[0];
-      const nights = differenceInCalendarDays(
-        defaultCheckOut || addDays(defaultCheckIn, 1),
-        defaultCheckIn
-      );
+      const nights = differenceInCalendarDays(defaultCheckOut, defaultCheckIn);
       const basePrice = (selectedRoom?.price || 0) * Math.max(nights, 1);
 
       setFormData({
@@ -103,9 +105,9 @@ const GuestFormModal = ({
         customerName: initialData?.customerName || '',
         phoneNumber: initialData?.phoneNumber || '',
         checkInDate: checkInDateStr,
-        checkInTime: checkInTimeStr,
+        checkInTime: defaultCheckInTime, // 고정값
         checkOutDate: checkOutDateStr,
-        checkOutTime: checkOutTimeStr,
+        checkOutTime: defaultCheckOutTime, // 고정값
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(basePrice),
@@ -115,7 +117,7 @@ const GuestFormModal = ({
         manualPriceOverride: false,
       });
     }
-  }, [initialData, filteredRoomTypes]);
+  }, [initialData, filteredRoomTypes, hotelSettings]);
 
   useEffect(() => {
     if (
@@ -125,21 +127,20 @@ const GuestFormModal = ({
     )
       return;
 
-    if (
-      formData.checkInDate &&
-      formData.checkOutDate &&
-      formData.roomInfo &&
-      formData.checkInTime &&
-      formData.checkOutTime
-    ) {
-      const checkInDateObj = parseDate(
+    if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
+      const checkInDateObj = new Date(
         `${formData.checkInDate}T${formData.checkInTime}:00`
       );
-      const checkOutDateObj = parseDate(
+      const checkOutDateObj = new Date(
         `${formData.checkOutDate}T${formData.checkOutTime}:00`
       );
 
-      if (checkInDateObj && checkOutDateObj) {
+      if (
+        checkInDateObj &&
+        checkOutDateObj &&
+        !isNaN(checkInDateObj) &&
+        !isNaN(checkOutDateObj)
+      ) {
         const nights = differenceInCalendarDays(
           checkOutDateObj,
           checkInDateObj
@@ -158,14 +159,14 @@ const GuestFormModal = ({
     }
   }, [
     formData.checkInDate,
-    formData.checkInTime,
     formData.checkOutDate,
-    formData.checkOutTime,
     formData.roomInfo,
     formData.manualPriceOverride,
     filteredRoomTypes,
     isSubmitting,
     initialData,
+    formData.checkInTime, // 의존성 추가
+    formData.checkOutTime, // 의존성 추가
   ]);
 
   const handleInputChange = (e) => {
@@ -180,21 +181,17 @@ const GuestFormModal = ({
 
   const handleCheckInDateChange = (e) => {
     const selectedDate = e.target.value;
-    const defaultCheckInTime = '16:00';
     setFormData((prev) => ({
       ...prev,
       checkInDate: selectedDate,
-      checkInTime: defaultCheckInTime,
     }));
   };
 
   const handleCheckOutDateChange = (e) => {
     const selectedDate = e.target.value;
-    const defaultCheckOutTime = '11:00';
     setFormData((prev) => ({
       ...prev,
       checkOutDate: selectedDate,
-      checkOutTime: defaultCheckOutTime,
     }));
   };
 
@@ -208,14 +205,14 @@ const GuestFormModal = ({
     ) {
       return false;
     }
-    const start = parseDate(
+    const start = new Date(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
-    const end = parseDate(
+    const end = new Date(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
 
-    if (!start || !end) return false;
+    if (isNaN(start) || isNaN(end)) return false;
 
     let cursor = start;
     while (cursor < end) {
@@ -242,39 +239,27 @@ const GuestFormModal = ({
       return;
     }
 
-    // 입력값 검증
-    if (
-      !formData.checkInDate ||
-      !formData.checkInTime ||
-      !formData.checkOutDate ||
-      !formData.checkOutTime
-    ) {
-      alert('체크인/체크아웃 날짜와 시간을 모두 입력해주세요.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
+    if (!formData.checkInDate || !formData.checkOutDate) {
+      alert('체크인/체크아웃 날짜를 모두 입력해주세요.');
       setIsSubmitting(false);
       return;
     }
 
-    const checkInDateTime = parseDate(
+    const checkInDateTime = new Date(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
-    const checkOutDateTime = parseDate(
+    const checkOutDateTime = new Date(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
 
-    console.log('[GuestFormModal] checkInDateTime:', checkInDateTime);
-    console.log('[GuestFormModal] checkOutDateTime:', checkOutDateTime);
-
-    if (!checkInDateTime || !checkOutDateTime) {
-      alert('유효한 체크인/체크아웃 날짜와 시간을 입력해주세요.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
+    if (isNaN(checkInDateTime) || isNaN(checkOutDateTime)) {
+      alert('유효한 체크인/체크아웃 날짜를 입력해주세요.');
       setIsSubmitting(false);
       return;
     }
 
     if (checkInDateTime >= checkOutDateTime) {
-      alert('체크인 날짜/시간은 체크아웃보다 이전이어야 합니다.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
+      alert('체크인 날짜는 체크아웃보다 이전이어야 합니다.');
       setIsSubmitting(false);
       return;
     }
@@ -285,7 +270,6 @@ const GuestFormModal = ({
       checkInDateTime < startOfDay(new Date())
     ) {
       alert('현장예약은 과거 날짜로 생성할 수 없습니다.');
-      setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
@@ -320,7 +304,6 @@ const GuestFormModal = ({
         availabilityByDate
       );
       alert(detailedMsg);
-      setFormData((prev) => ({ ...prev, price: '0' }));
       setIsSubmitting(false);
       return;
     }
@@ -357,7 +340,6 @@ const GuestFormModal = ({
             error.message ||
             '예약 저장에 실패했습니다. 다시 시도해주세요.';
       alert(errorMessage);
-      setFormData((prev) => ({ ...prev, price: '0' }));
     } finally {
       setIsSubmitting(false);
     }
@@ -412,7 +394,7 @@ const GuestFormModal = ({
               />
             </label>
             <label htmlFor="checkInDate">
-              체크인 (오후 4시):
+              체크인: {formData.checkInDate} {formData.checkInTime}
               <input
                 id="checkInDate"
                 type="date"
@@ -426,7 +408,7 @@ const GuestFormModal = ({
           </div>
           <div className="modal-row">
             <label htmlFor="checkOutDate">
-              체크아웃 (오전 11시):
+              체크아웃: {formData.checkOutDate} {formData.checkOutTime}
               <input
                 id="checkOutDate"
                 type="date"
@@ -561,6 +543,7 @@ GuestFormModal.propTypes = {
     })
   ).isRequired,
   availabilityByDate: PropTypes.object.isRequired,
+  hotelSettings: PropTypes.object,
 };
 
 export default GuestFormModal;
