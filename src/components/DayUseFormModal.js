@@ -18,12 +18,12 @@ const DayUseFormModal = ({
     customerName: '',
     phoneNumber: '',
     checkInDate: '',
-    checkInTime: '16:00',
+    checkInTime: '',
     durationHours: 4,
     reservationDate: '',
     roomInfo: '',
     price: '0',
-    paymentMethod: '',
+    paymentMethod: 'Pending',
     specialRequests: '',
     roomNumber: '',
     manualPriceOverride: false,
@@ -37,13 +37,14 @@ const DayUseFormModal = ({
 
   useEffect(() => {
     const now = new Date();
-    const defaultCheckInDate = initialData?.checkInDate || format(now, 'yyyy-MM-dd');
+    const defaultCheckInDate = format(now, 'yyyy-MM-dd');
+    const defaultCheckInTime = format(now, 'HH:mm');
 
     if (initialData && initialData._id) {
-      // 기존 예약 수정 (OTA 또는 현장 대실)
+      // 기존 예약 수정
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
-      const duration = Math.round((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)); // 시간 차이 계산
+      const duration = Math.round((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60));
 
       setFormData({
         reservationNo: initialData.reservationNo || '',
@@ -61,46 +62,26 @@ const DayUseFormModal = ({
         manualPriceOverride: !!initialData.price,
       });
     } else {
-      // 신규 예약
+      // 신규 대실 예약
       const initialRoomInfo = initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom = filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) || filteredRoomTypes[0];
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
 
-      if (initialData?.siteName === '현장예약') {
-        // 현장 대실: 현재 시간으로 체크인 설정
-        setFormData({
-          reservationNo: initialData?.reservationNo || `${Date.now()}`,
-          customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
-          phoneNumber: hotelSettings?.phoneNumber || '',
-          checkInDate: format(now, 'yyyy-MM-dd'),
-          checkInTime: format(now, 'HH:mm'), // 현재 시간
-          durationHours: 4,
-          reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-          roomInfo: initialRoomInfo,
-          price: String(basePrice),
-          paymentMethod: initialData?.paymentMethod || 'Pending',
-          specialRequests: initialData?.specialRequests || '',
-          roomNumber: initialData?.roomNumber || '',
-          manualPriceOverride: false,
-        });
-      } else {
-        // OTA 대실 등
-        setFormData({
-          reservationNo: initialData?.reservationNo || `${Date.now()}`,
-          customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
-          phoneNumber: hotelSettings?.phoneNumber || '',
-          checkInDate: defaultCheckInDate,
-          checkInTime: initialData?.checkInTime || '16:00',
-          durationHours: 4,
-          reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-          roomInfo: initialRoomInfo,
-          price: String(basePrice),
-          paymentMethod: initialData?.paymentMethod || 'Pending',
-          specialRequests: initialData?.specialRequests || '',
-          roomNumber: initialData?.roomNumber || '',
-          manualPriceOverride: false,
-        });
-      }
+      setFormData({
+        reservationNo: initialData?.reservationNo || `${Date.now()}`,
+        customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+        phoneNumber: hotelSettings?.phoneNumber || '',
+        checkInDate: defaultCheckInDate,
+        checkInTime: defaultCheckInTime, // 현재 시간으로 설정
+        durationHours: 4,
+        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo: initialRoomInfo,
+        price: String(basePrice),
+        paymentMethod: 'Pending',
+        specialRequests: initialData?.specialRequests || '',
+        roomNumber: initialData?.roomNumber || '',
+        manualPriceOverride: false,
+      });
     }
   }, [initialData, filteredRoomTypes, hotelSettings]);
 
@@ -163,6 +144,8 @@ const DayUseFormModal = ({
       setIsSubmitting(false);
       return;
     }
+
+    // 체크아웃 시간 계산: 체크인 시간 + 사용 시간
     const checkOutDateTime = addHours(checkInDateTime, formData.durationHours);
 
     const tKey = formData.roomInfo.toLowerCase();

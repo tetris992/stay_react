@@ -463,14 +463,16 @@ const App = () => {
     const { price, isDefault } = extractPrice(res.priceString || res.price);
     let totalPrice = price;
     let isDefaultPriceFlag = isDefault;
+  
     if (!isOtaReservation(res) && totalPrice <= 0) {
       const roomType = matchRoomType(res.roomInfo);
       totalPrice = roomType?.price || 0;
       isDefaultPriceFlag = false;
     }
   
-    const parsedCheckInDate = new Date(res.checkIn); // 서버 데이터 그대로 사용
-    const parsedCheckOutDate = new Date(res.checkOut); // 서버 데이터 그대로 사용
+    // OTA 예약은 원본 시간 유지, 현장 예약은 고정 시간 적용
+    const parsedCheckInDate = new Date(res.checkIn);
+    const parsedCheckOutDate = new Date(res.checkOut);
   
     if (isNaN(parsedCheckInDate.getTime()) || isNaN(parsedCheckOutDate.getTime())) {
       console.warn('Invalid checkIn or checkOut date for reservation:', res);
@@ -479,6 +481,7 @@ const App = () => {
   
     let nightlyRates = [];
     let finalTotalPrice = 0;
+  
     if (parsedCheckOutDate > parsedCheckInDate) {
       const checkInDateOnly = startOfDay(parsedCheckInDate);
       const checkOutDateOnly = startOfDay(parsedCheckOutDate);
@@ -486,6 +489,7 @@ const App = () => {
         (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24)
       );
       const nights = days > 0 ? days : 1;
+  
       if (isDefaultPriceFlag) {
         totalPrice = 100000;
       }
@@ -505,12 +509,15 @@ const App = () => {
       finalTotalPrice = totalPrice;
     }
   
+    // OTA 예약은 원본 checkIn/checkOut 유지
     return {
       ...res,
       reservationNo: res.reservationNo || res._id,
       nightlyRates: nightlyRates.length > 0 ? nightlyRates : undefined,
       isDefaultPrice: isDefaultPriceFlag,
       totalPrice: finalTotalPrice,
+      checkIn: res.checkIn,  // 원본 유지
+      checkOut: res.checkOut, // 원본 유지
       parsedCheckInDate,
       parsedCheckOutDate,
     };
@@ -752,15 +759,31 @@ const App = () => {
           return;
         }
   
+        // OTA 예약 여부 확인
+        const isOTA = availableOTAs.includes(currentReservation.siteName);
+        const checkInTime = hotelSettings?.checkInTime || '16:00';
+        const checkOutTime = hotelSettings?.checkOutTime || '11:00';
+  
+        // 업데이트 데이터 준비
+        const updatedData = {
+          roomNumber: newRoomNumber,
+          roomInfo: newRoomInfo,
+          price: currentPrice || currentReservation.totalPrice,
+          checkIn: isOTA
+            ? currentReservation.checkIn // OTA는 원본 시간 유지
+            : currentReservation.type === 'dayUse'
+            ? currentReservation.checkIn // 대실은 원본 시간 유지
+            : `${format(new Date(currentReservation.checkIn), 'yyyy-MM-dd')}T${checkInTime}:00+09:00`, // 현장 숙박은 고정 시간
+          checkOut: isOTA
+            ? currentReservation.checkOut // OTA는 원본 시간 유지
+            : currentReservation.type === 'dayUse'
+            ? currentReservation.checkOut // 대실은 원본 시간 유지
+            : `${format(new Date(currentReservation.checkOut), 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`, // 현장 숙박은 고정 시간
+        };
+  
         const updatedReservation = await updateReservation(
           reservationId,
-          {
-            roomNumber: newRoomNumber,
-            roomInfo: newRoomInfo,
-            price: currentPrice || currentReservation.totalPrice,
-            checkIn: currentReservation.checkIn, // 원본 시간 유지
-            checkOut: currentReservation.checkOut, // 원본 시간 유지
-          },
+          updatedData,
           hotelId
         );
   
@@ -772,7 +795,8 @@ const App = () => {
           setUpdatedReservationId(reservationId);
           setTimeout(() => setUpdatedReservationId(null), 10000);
           console.log(
-            `[handleRoomChangeAndSync] Successfully updated reservation ${reservationId} to room ${newRoomNumber}`
+            `[handleRoomChangeAndSync] Successfully updated reservation ${reservationId} to room ${newRoomNumber}`,
+            updatedReservation
           );
           return updatedReservations;
         });
@@ -789,6 +813,8 @@ const App = () => {
       loadReservations,
       allReservations,
       setUpdatedReservationId,
+      hotelSettings,
+      // 'availableOTAs'를 의존성 배열에서 제거
     ]
   );
 
@@ -1774,10 +1800,9 @@ const onQuickCreate = (type) => {
   const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
 
   if (type === '대실') {
-    const checkIn = new Date(effectiveDate);
+    const checkIn = new Date(now); // 현재 시간으로 설정
     const checkInTime = format(checkIn, 'HH:mm');
-    const checkOut = addHours(checkIn, 4);
-    const checkOutTime = format(checkOut, 'HH:mm');
+    const checkOut = addHours(checkIn, 4); // 기본 4시간
     const customerName = `대실:${format(now, 'HH:mm:ss')}`;
     const basePrice = finalRoomTypes[0]?.price || 0;
     const price = Math.floor(basePrice * 0.5);
@@ -1788,7 +1813,7 @@ const onQuickCreate = (type) => {
       checkInDate: format(checkIn, 'yyyy-MM-dd'),
       checkInTime,
       checkOutDate: format(checkOut, 'yyyy-MM-dd'),
-      checkOutTime,
+      checkOutTime: format(checkOut, 'HH:mm'),
       reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
       roomInfo: finalRoomTypes[0]?.roomInfo || 'Standard',
       price: price.toString(),
@@ -1800,6 +1825,7 @@ const onQuickCreate = (type) => {
     });
     setShowGuestForm(true);
   } else {
+    // 기존 1박, 2박 등 로직 유지
     const checkIn = new Date(effectiveDate);
     const [checkInHour, checkInMinute] = (hotelSettings.checkInTime || '16:00').split(':');
     checkIn.setHours(parseInt(checkInHour), parseInt(checkInMinute), 0, 0);
@@ -1835,6 +1861,9 @@ const onQuickCreate = (type) => {
     setShowGuestForm(true);
   }
 };
+
+
+
   const combinedSync = () => {
     today();
     handleSync();

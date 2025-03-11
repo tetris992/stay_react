@@ -72,22 +72,35 @@ const DraggableReservationCard = ({
     return date;
   }, [reservation.checkOut, reservation._id]);
 
-  // UI 표시용 날짜+시간 문자열 (고정 시간 반영)
-  const displayCheckIn = useMemo(() => {
-    if (!checkInDate) return '정보 없음';
-    if (reservation.siteName === '현장예약') {
-      return `${format(checkInDate, 'yyyy-MM-dd')} ${checkInTime}`; // 현장 예약: 고정 시간
+// UI 표시용 날짜+시간 문자열
+const displayCheckIn = useMemo(() => {
+  if (!checkInDate) return '정보 없음';
+  if (reservation.siteName === '현장예약') {
+    if (reservation.type === 'dayUse') {
+      // 현장 대실: 원본 시간 표시
+      return format(checkInDate, 'yyyy-MM-dd HH:mm');
     }
-    return format(checkInDate, 'yyyy-MM-dd HH:mm'); // OTA: 원본 시간
-  }, [checkInDate, checkInTime, reservation.siteName]);
+    // 현장 숙박: 고정 시간 적용
+    return `${format(checkInDate, 'yyyy-MM-dd')} ${checkInTime}`;
+  }
+  // OTA: 원본 시간 표시
+  return format(checkInDate, 'yyyy-MM-dd HH:mm');
+}, [checkInDate, checkInTime, reservation.siteName, reservation.type]);
 
-  const displayCheckOut = useMemo(() => {
-    if (!checkOutDate) return '정보 없음';
-    if (reservation.siteName === '현장예약') {
-      return `${format(checkOutDate, 'yyyy-MM-dd')} ${checkOutTime}`; // 현장 예약: 고정 시간
+const displayCheckOut = useMemo(() => {
+  if (!checkOutDate) return '정보 없음';
+  if (reservation.siteName === '현장예약') {
+    if (reservation.type === 'dayUse') {
+      // 현장 대실: 원본 시간 표시
+      return format(checkOutDate, 'yyyy-MM-dd HH:mm');
     }
-    return format(checkOutDate, 'yyyy-MM-dd HH:mm'); // OTA: 원본 시간
-  }, [checkOutDate, checkOutTime, reservation.siteName]);
+    // 현장 숙박: 고정 시간 적용
+    return `${format(checkOutDate, 'yyyy-MM-dd')} ${checkOutTime}`;
+  }
+  // OTA: 원본 시간 표시
+  return format(checkOutDate, 'yyyy-MM-dd HH:mm');
+}, [checkOutDate, checkOutTime, reservation.siteName, reservation.type]);
+  
   // 드래그 가능 여부 체크
   const canDragMemo = useMemo(() => {
     if (
