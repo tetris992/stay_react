@@ -759,26 +759,24 @@ const App = () => {
           return;
         }
   
-        // OTA 예약 여부 확인
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         const checkInTime = hotelSettings?.checkInTime || '16:00';
         const checkOutTime = hotelSettings?.checkOutTime || '11:00';
   
-        // 업데이트 데이터 준비
         const updatedData = {
           roomNumber: newRoomNumber,
           roomInfo: newRoomInfo,
           price: currentPrice || currentReservation.totalPrice,
           checkIn: isOTA
-            ? currentReservation.checkIn // OTA는 원본 시간 유지
+            ? currentReservation.checkIn // 원본 문자열 유지
             : currentReservation.type === 'dayUse'
-            ? currentReservation.checkIn // 대실은 원본 시간 유지
-            : `${format(new Date(currentReservation.checkIn), 'yyyy-MM-dd')}T${checkInTime}:00+09:00`, // 현장 숙박은 고정 시간
+            ? currentReservation.checkIn // 대실은 원본 유지
+            : `${format(new Date(currentReservation.checkIn), 'yyyy-MM-dd')}T${checkInTime}:00+09:00`,
           checkOut: isOTA
-            ? currentReservation.checkOut // OTA는 원본 시간 유지
+            ? currentReservation.checkOut // 원본 문자열 유지
             : currentReservation.type === 'dayUse'
-            ? currentReservation.checkOut // 대실은 원본 시간 유지
-            : `${format(new Date(currentReservation.checkOut), 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`, // 현장 숙박은 고정 시간
+            ? currentReservation.checkOut // 대실은 원본 유지
+            : `${format(new Date(currentReservation.checkOut), 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`,
         };
   
         const updatedReservation = await updateReservation(
@@ -814,7 +812,6 @@ const App = () => {
       allReservations,
       setUpdatedReservationId,
       hotelSettings,
-      // 'availableOTAs'를 의존성 배열에서 제거
     ]
   );
 

@@ -44,7 +44,9 @@ const DayUseFormModal = ({
       // 기존 예약 수정
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
-      const duration = Math.round((checkOutDateObj - checkInDateObj) / (1000 * 60 * 60));
+      const duration = Math.round(
+        (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)
+      );
 
       setFormData({
         reservationNo: initialData.reservationNo || '',
@@ -71,12 +73,12 @@ const DayUseFormModal = ({
         reservationNo: initialData?.reservationNo || `${Date.now()}`,
         customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
         phoneNumber: hotelSettings?.phoneNumber || '',
-        checkInDate: defaultCheckInDate,
-        checkInTime: defaultCheckInTime, // 현재 시간으로 설정
-        durationHours: 4,
+        checkInDate: initialData?.checkInDate || defaultCheckInDate,
+        checkInTime: initialData?.checkInTime || defaultCheckInTime, // 현재 시간
+        durationHours: initialData?.durationHours || 4,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
-        price: String(basePrice),
+        price: String(initialData?.price || basePrice),
         paymentMethod: 'Pending',
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
@@ -245,7 +247,7 @@ const DayUseFormModal = ({
                 value={formData.checkInDate}
                 onChange={handleInputChange}
                 required
-                disabled={isSubmitting || (initialData?.siteName === '현장예약' && !initialData?._id)}
+                disabled={isSubmitting}
               />
               <input
                 type="time"
@@ -253,7 +255,7 @@ const DayUseFormModal = ({
                 value={formData.checkInTime}
                 onChange={handleInputChange}
                 required
-                disabled={isSubmitting || (initialData?.siteName === '현장예약' && !initialData?._id)}
+                disabled={isSubmitting}
               />
             </label>
           </div>
