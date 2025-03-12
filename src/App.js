@@ -843,7 +843,7 @@ const App = () => {
           console.warn(`No reservation found for ID: ${reservationId}`);
           return;
         }
-
+  
         if (
           currentReservation.roomNumber === newRoomNumber &&
           currentReservation.roomInfo === newRoomInfo
@@ -851,11 +851,14 @@ const App = () => {
           console.log(`No change in room assignment for ${reservationId}`);
           return;
         }
-
+  
+        // 이전 객실 번호가 없으면 '미배정'으로 표기
+        const oldRoom = currentReservation.roomNumber || '미배정';
+  
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         const checkInTime = hotelSettings?.checkInTime || '16:00';
         const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
+  
         const updatedData = {
           roomNumber: newRoomNumber,
           roomInfo: newRoomInfo,
@@ -864,26 +867,20 @@ const App = () => {
             ? currentReservation.checkIn // OTA는 원본 문자열 유지
             : currentReservation.type === 'dayUse'
             ? currentReservation.checkIn // 대실은 원본 유지
-            : `${format(
-                new Date(currentReservation.checkIn),
-                'yyyy-MM-dd'
-              )}T${checkInTime}:00+09:00`,
+            : `${format(new Date(currentReservation.checkIn), 'yyyy-MM-dd')}T${checkInTime}:00+09:00`,
           checkOut: isOTA
             ? currentReservation.checkOut // OTA는 원본 문자열 유지
             : currentReservation.type === 'dayUse'
             ? currentReservation.checkOut // 대실은 원본 유지
-            : `${format(
-                new Date(currentReservation.checkOut),
-                'yyyy-MM-dd'
-              )}T${checkOutTime}:00+09:00`,
+            : `${format(new Date(currentReservation.checkOut), 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`,
         };
-
+  
         const updatedReservation = await updateReservation(
           reservationId,
           updatedData,
           hotelId
         );
-
+  
         setAllReservations((prevReservations) => {
           const updatedReservations = prevReservations.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
@@ -891,10 +888,9 @@ const App = () => {
           filterReservationsByDate(updatedReservations, selectedDate);
           setUpdatedReservationId(reservationId);
           setTimeout(() => setUpdatedReservationId(null), 10000);
-          console.log(
-            `[handleRoomChangeAndSync] Successfully updated reservation ${reservationId} to room ${newRoomNumber}`,
-            updatedReservation
-          );
+  
+          const logMsg = `[handleRoomChangeAndSync] Successfully moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber}`;
+          console.log(logMsg, updatedReservation);
           return updatedReservations;
         });
       } catch (error) {
@@ -912,6 +908,7 @@ const App = () => {
       hotelSettings,
     ]
   );
+  
 
   // finalRoomTypes에서 'none' 제외
   const finalRoomTypes = useMemo(() => {
@@ -1629,6 +1626,16 @@ const App = () => {
         ) {
           const newlyCreatedIdFromServer = response.createdReservationIds[0];
           console.log('🔔 새 예약 ID:', newlyCreatedIdFromServer);
+          // 예약 생성 상세 정보를 로그에 기록
+          const reservationDetails = `예약 생성됨:
+  예약 ID: ${newlyCreatedIdFromServer}
+  고객명: ${data.customerName || '정보 없음'}
+  룸타입: ${data.roomInfo || '정보 없음'}
+  가격: ${data.price || '정보 없음'}
+  체크인: ${data.checkIn || '정보 없음'}
+  체크아웃: ${data.checkOut || '정보 없음'}`;
+          logMessage(reservationDetails);
+
           if (data.checkIn) {
             const parsedDate = parseDate(data.checkIn);
             setSelectedDate(parsedDate);
