@@ -305,3 +305,16 @@
     box-shadow: 0 0 10px #ff0000;
   }
 }
+
+.drop-conflict-overlay {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 100%;
+  opacity: 0; /* 기본 숨김 */
+}
+
+.drop-conflict-overlay.visible {
+  opacity: 1;
+}

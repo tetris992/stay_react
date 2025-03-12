@@ -37,8 +37,6 @@ const DayUseFormModal = ({
 
   useEffect(() => {
     const now = new Date();
-    const defaultCheckInDate = format(now, 'yyyy-MM-dd');
-    const defaultCheckInTime = format(now, 'HH:mm');
 
     if (initialData && initialData._id) {
       // 기존 예약 수정
@@ -51,12 +49,15 @@ const DayUseFormModal = ({
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
-        phoneNumber: initialData.phoneNumber || hotelSettings?.phoneNumber || '',
+        phoneNumber:
+          initialData.phoneNumber || hotelSettings?.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
         checkInTime: format(checkInDateObj, 'HH:mm'),
         durationHours: duration || 4,
-        reservationDate: initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
-        roomInfo: initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
+        reservationDate:
+          initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo:
+          initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
         paymentMethod: initialData.paymentMethod || 'Pending',
         specialRequests: initialData.specialRequests || '',
@@ -64,17 +65,23 @@ const DayUseFormModal = ({
         manualPriceOverride: !!initialData.price,
       });
     } else {
-      // 신규 대실 예약
-      const initialRoomInfo = initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
-      const selectedRoom = filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) || filteredRoomTypes[0];
+      // 신규 대실 예약: 여기서만 현재 시간에 기반한 기본값을 사용합니다.
+      const defaultCheckInDate = format(now, 'yyyy-MM-dd');
+      const defaultCheckInTime = format(now, 'HH:mm');
+      const initialRoomInfo =
+        initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
+      const selectedRoom =
+        filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
+        filteredRoomTypes[0];
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
 
       setFormData({
         reservationNo: initialData?.reservationNo || `${Date.now()}`,
-        customerName: initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
+        customerName:
+          initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
         phoneNumber: hotelSettings?.phoneNumber || '',
         checkInDate: initialData?.checkInDate || defaultCheckInDate,
-        checkInTime: initialData?.checkInTime || defaultCheckInTime, // 현재 시간
+        checkInTime: initialData?.checkInTime || defaultCheckInTime, // 현재 시각 그대로
         durationHours: initialData?.durationHours || 4,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
@@ -88,8 +95,15 @@ const DayUseFormModal = ({
   }, [initialData, filteredRoomTypes, hotelSettings]);
 
   useEffect(() => {
-    if (isSubmitting || formData.manualPriceOverride || (initialData && initialData._id)) return;
-    const selectedRoom = filteredRoomTypes.find((room) => room.roomInfo === formData.roomInfo);
+    if (
+      isSubmitting ||
+      formData.manualPriceOverride ||
+      (initialData && initialData._id)
+    )
+      return;
+    const selectedRoom = filteredRoomTypes.find(
+      (room) => room.roomInfo === formData.roomInfo
+    );
     const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
     const additionalHours = Math.max(formData.durationHours - 4, 0);
     const price = String(basePrice + additionalHours * 10000);
@@ -140,7 +154,9 @@ const DayUseFormModal = ({
       return;
     }
 
-    const checkInDateTime = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkInDateTime = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
     if (isNaN(checkInDateTime)) {
       alert('유효한 체크인 날짜와 시간을 입력해주세요.');
       setIsSubmitting(false);
@@ -199,7 +215,9 @@ const DayUseFormModal = ({
 
   const displayCheckOut = useMemo(() => {
     if (!formData.checkInDate || !formData.checkInTime) return '';
-    const checkIn = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkIn = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
     const checkOut = addHours(checkIn, formData.durationHours);
     return format(checkOut, 'yyyy-MM-dd HH:mm');
   }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
@@ -207,14 +225,23 @@ const DayUseFormModal = ({
   return ReactDOM.createPortal(
     <div className="dayuse-modal">
       <div className="dayuse-modal-card">
-        {isSubmitting && <div className="dayuse-modal-overlay-spinner">처리 중...</div>}
-        <span className="dayuse-close-button" onClick={onClose}>×</span>
+        {isSubmitting && (
+          <div className="dayuse-modal-overlay-spinner">처리 중...</div>
+        )}
+        <span className="dayuse-close-button" onClick={onClose}>
+          ×
+        </span>
         <h2>{initialData?._id ? '대실 예약 수정' : '대실 예약 입력'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="dayuse-modal-row">
             <label>
               예약번호:
-              <input type="text" name="reservationNo" value={formData.reservationNo} readOnly />
+              <input
+                type="text"
+                name="reservationNo"
+                value={formData.reservationNo}
+                readOnly
+              />
             </label>
             <label>
               예약자:
@@ -291,7 +318,12 @@ const DayUseFormModal = ({
             <label>
               객실타입:
               {initialData?._id ? (
-                <input type="text" value={formData.roomInfo} readOnly disabled />
+                <input
+                  type="text"
+                  value={formData.roomInfo}
+                  readOnly
+                  disabled
+                />
               ) : (
                 <select
                   name="roomInfo"
@@ -304,7 +336,11 @@ const DayUseFormModal = ({
                     <option
                       key={rt.roomInfo}
                       value={rt.roomInfo}
-                      style={{ color: isRoomTypeUnavailable(rt.roomInfo) ? 'red' : 'inherit' }}
+                      style={{
+                        color: isRoomTypeUnavailable(rt.roomInfo)
+                          ? 'red'
+                          : 'inherit',
+                      }}
                     >
                       {rt.roomInfo}
                     </option>

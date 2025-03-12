@@ -15,7 +15,7 @@ import DraggableReservationCard from './DraggableReservationCard';
 import { isCancelledStatus } from '../utils/isCancelledStatus';
 import { renderActionButtons } from '../utils/renderActionButtons';
 import MonthlyCalendar from './MonthlyCalendar';
-import { sortContainers, getPaymentMethodIcon } from '../utils/roomGridUtils'; // isOtaReservation 제거
+import { sortContainers, getPaymentMethodIcon } from '../utils/roomGridUtils';
 import { matchRoomType } from '../utils/matchRoomType';
 import {
   canMoveToRoom,
@@ -44,39 +44,65 @@ const ContainerCell = React.memo(
     selectedDate,
     hotelSettings,
   }) => {
-    const [dropAlert, setDropAlert] = useState(null);
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const [conflictMessage, setConflictMessage] = useState(null);
+    const timeoutRef = useRef(null);
+
+    const clearConflict = useCallback(() => {
+      setConflictMessage(null);
+      setIsDraggingOver(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    }, []);
 
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
-      drop: async (item) => {
+      drop: async (item, monitor) => {
+        if (!monitor.isOver({ shallow: true })) return;
+
         const {
           reservationId,
           reservation: draggedReservation,
           originalRoomNumber,
           originalRoomInfo,
         } = item;
-        if (cont.roomInfo && cont.roomNumber) {
-          const reservation = getReservationById(reservationId);
-          if (!reservation) {
-            console.warn(`No reservation found for ID: ${reservationId}`);
-            return;
-          }
 
-          if (
-            reservation.roomInfo === cont.roomInfo &&
-            reservation.roomNumber === cont.roomNumber
-          ) {
-            return;
-          }
+        if (conflictMessage) {
+          console.warn('[drop] 충돌 상태이므로 이동을 취소합니다.');
+          return;
+        }
 
-          const checkInDate = new Date(draggedReservation.checkIn);
-          const checkOutDate = new Date(draggedReservation.checkOut);
-          if (isNaN(checkInDate) || isNaN(checkOutDate)) {
-            console.error('Invalid date values for dragged reservation:', {
-              checkIn: draggedReservation.checkIn,
-              checkOut: draggedReservation.checkOut,
-            });
-            setDropAlert('드래그된 예약의 날짜 정보가 유효하지 않습니다.');
+        if (!cont.roomInfo || !cont.roomNumber) return;
+
+        const reservation = getReservationById(reservationId);
+        if (!reservation) {
+          console.warn(`No reservation found for ID: ${reservationId}`);
+          return;
+        }
+
+        if (
+          reservation.roomInfo === cont.roomInfo &&
+          reservation.roomNumber === cont.roomNumber
+        ) {
+          return;
+        }
+
+        const checkInDate = new Date(draggedReservation.checkIn);
+        const checkOutDate = new Date(draggedReservation.checkOut);
+        if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+          console.error('Invalid date values for dragged reservation:', {
+            checkIn: draggedReservation.checkIn,
+            checkOut: draggedReservation.checkOut,
+          });
+          return;
+        }
+
+        if (assignedReservations && assignedReservations.length > 0) {
+          const confirmSwap = window.confirm(
+            '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
+          );
+          if (!confirmSwap) {
             await handleEditExtended(reservationId, {
               roomInfo: originalRoomInfo,
               roomNumber: originalRoomNumber,
@@ -85,161 +111,206 @@ const ContainerCell = React.memo(
             return;
           }
 
-          const { isConflict, conflictReservation } = checkConflict(
-            { ...draggedReservation, checkIn: checkInDate, checkOut: checkOutDate },
+          const existingReservation = assignedReservations[0];
+          const existingCheckInDate = new Date(existingReservation.checkIn);
+          const existingCheckOutDate = new Date(existingReservation.checkOut);
+
+          const canSwap = canSwapReservations(
+            {
+              ...draggedReservation,
+              checkIn: checkInDate,
+              checkOut: checkOutDate,
+            },
+            {
+              ...existingReservation,
+              checkIn: existingCheckInDate,
+              checkOut: existingCheckOutDate,
+            },
+            fullReservations,
+            selectedDate
+          );
+          if (!canSwap) {
+            setConflictMessage(
+              '스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.'
+            );
+            timeoutRef.current = setTimeout(clearConflict, 3000);
+            await handleEditExtended(reservationId, {
+              roomInfo: originalRoomInfo,
+              roomNumber: originalRoomNumber,
+              manualAssignment: true,
+            });
+            return;
+          }
+
+          await handleRoomChangeAndSync(
+            reservationId,
             cont.roomNumber,
-            fullReservations
+            cont.roomInfo,
+            draggedReservation.totalPrice
+          );
+          await handleRoomChangeAndSync(
+            existingReservation._id,
+            draggedReservation.roomNumber,
+            draggedReservation.roomInfo,
+            existingReservation.totalPrice
+          );
+        } else {
+          await handleRoomChangeAndSync(
+            reservationId,
+            cont.roomNumber,
+            cont.roomInfo,
+            draggedReservation.totalPrice
           );
 
-          if (isConflict) {
-            const conflictCheckIn = format(checkInDate, 'yyyy-MM-dd HH:mm');
-            const conflictCheckOut = format(checkOutDate, 'yyyy-MM-dd HH:mm');
-            const conflictMsg = `🚫 예약을 이동할 수 없습니다.\n\n` +
-              `이동하려는 객실 (${cont.roomNumber})에 이미 예약이 있습니다.\n\n` +
-              `충돌 예약자: ${conflictReservation.customerName || '정보 없음'}\n` +
-              `예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
-            setDropAlert(conflictMsg);
+          const updatedReservations = fullReservations.map((r) =>
+            r._id === draggedReservation._id
+              ? {
+                  ...r,
+                  roomInfo: cont.roomInfo,
+                  roomNumber: cont.roomNumber,
+                }
+              : r
+          );
+
+          const viewingDateStart = startOfDay(selectedDate);
+          const viewingDateEnd = addDays(viewingDateStart, 1);
+          const selectedDates = [
+            format(addDays(selectedDate, -1), 'yyyy-MM-dd'),
+            format(selectedDate, 'yyyy-MM-dd'),
+            format(addDays(selectedDate, 1), 'yyyy-MM-dd'),
+          ];
+
+          const availabilityByDate = calculateRoomAvailability(
+            updatedReservations,
+            roomTypes,
+            viewingDateStart,
+            viewingDateEnd,
+            gridSettings,
+            selectedDates
+          );
+
+          const { canMove, conflictDays } = canMoveToRoom(
+            cont.roomNumber,
+            cont.roomInfo.toLowerCase(),
+            checkInDate,
+            checkOutDate,
+            availabilityByDate,
+            updatedReservations,
+            draggedReservation._id,
+            selectedDate,
+            draggedReservation
+          );
+
+          if (canMove) {
+            setAllReservations((prev) => {
+              const updated = prev.map((r) =>
+                r._id === draggedReservation._id
+                  ? {
+                      ...r,
+                      roomInfo: cont.roomInfo,
+                      roomNumber: cont.roomNumber,
+                      parsedCheckInDate: checkInDate,
+                      parsedCheckOutDate: checkOutDate,
+                    }
+                  : r
+              );
+              filterReservationsByDate(updated, selectedDate);
+              return updated;
+            });
+            console.log(
+              `Successfully moved reservation ${reservationId} to ${cont.roomNumber}`
+            );
+          } else {
+            const conflictMsg =
+              draggedReservation._id === conflictDays.conflictReservation?._id
+                ? `과거 체크인 예약은 현재 날짜에서 이동할 수 없습니다.\n체크인 날짜: ${format(
+                    checkInDate,
+                    'yyyy-MM-dd'
+                  )}`
+                : draggedReservation.type === 'dayUse'
+                ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(
+                    checkInDate,
+                    'yyyy-MM-dd HH:mm'
+                  )} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`
+                : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(
+                    ', '
+                  )} (해당 날짜에 이미 예약이 있습니다.)`;
+
+            setConflictMessage(conflictMsg);
             await handleEditExtended(reservationId, {
               roomInfo: originalRoomInfo,
               roomNumber: originalRoomNumber,
               manualAssignment: true,
             });
-            return;
-          }
-
-          const originalRoomInfoLocal = draggedReservation.roomInfo;
-          const originalRoomNumberLocal = draggedReservation.roomNumber;
-
-          if (assignedReservations && assignedReservations.length > 0) {
-            const confirmSwap = window.confirm(
-              '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
-            );
-            if (!confirmSwap) {
-              await handleEditExtended(reservationId, {
-                roomInfo: originalRoomInfoLocal,
-                roomNumber: originalRoomNumberLocal,
-                manualAssignment: true,
-              });
-              return;
-            }
-
-            const existingReservation = assignedReservations[0];
-            const existingCheckInDate = new Date(existingReservation.checkIn);
-            const existingCheckOutDate = new Date(existingReservation.checkOut);
-
-            if (
-              !canSwapReservations(
-                { ...draggedReservation, checkIn: checkInDate, checkOut: checkOutDate },
-                { ...existingReservation, checkIn: existingCheckInDate, checkOut: existingCheckOutDate },
-                fullReservations
-              )
-            ) {
-              setDropAlert('스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.');
-              await handleEditExtended(reservationId, {
-                roomInfo: originalRoomInfoLocal,
-                roomNumber: originalRoomNumberLocal,
-                manualAssignment: true,
-              });
-              return;
-            }
-
-            await handleRoomChangeAndSync(
-              reservationId,
-              cont.roomNumber,
-              cont.roomInfo,
-              draggedReservation.totalPrice
-            );
-            await handleRoomChangeAndSync(
-              existingReservation._id,
-              draggedReservation.roomNumber,
-              draggedReservation.roomInfo,
-              existingReservation.totalPrice
-            );
-          } else {
-            await handleRoomChangeAndSync(
-              reservationId,
-              cont.roomNumber,
-              cont.roomInfo,
-              draggedReservation.totalPrice
-            );
-
-            const updatedReservations = fullReservations.map((r) =>
-              r._id === draggedReservation._id
-                ? {
-                    ...r,
-                    roomInfo: cont.roomInfo,
-                    roomNumber: cont.roomNumber,
-                  }
-                : r
-            );
-
-            const viewingDateStart = startOfDay(selectedDate);
-            const viewingDateEnd = addDays(viewingDateStart, 1);
-            const selectedDates = [
-              format(addDays(selectedDate, -1), 'yyyy-MM-dd'),
-              format(selectedDate, 'yyyy-MM-dd'),
-              format(addDays(selectedDate, 1), 'yyyy-MM-dd'),
-            ];
-
-            const availabilityByDate = calculateRoomAvailability(
-              updatedReservations,
-              roomTypes,
-              viewingDateStart,
-              viewingDateEnd,
-              gridSettings,
-              selectedDates
-            );
-
-            const { canMove, conflictDays } = canMoveToRoom(
-              cont.roomNumber,
-              cont.roomInfo.toLowerCase(),
-              checkInDate,
-              checkOutDate,
-              availabilityByDate,
-              updatedReservations,
-              draggedReservation._id
-            );
-
-            if (canMove) {
-              setAllReservations((prev) => {
-                const updated = prev.map((r) =>
-                  r._id === draggedReservation._id
-                    ? {
-                        ...r,
-                        roomInfo: cont.roomInfo,
-                        roomNumber: cont.roomNumber,
-                        parsedCheckInDate: checkInDate,
-                        parsedCheckOutDate: checkOutDate,
-                      }
-                    : r
-                );
-                filterReservationsByDate(updated, selectedDate);
-                return updated;
-              });
-              console.log(
-                `Successfully moved reservation ${reservationId} to ${cont.roomNumber}`
-              );
-            } else {
-              const conflictMessage =
-                draggedReservation.type === 'dayUse'
-                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(checkInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`
-                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(', ')} (해당 날짜에 이미 예약이 있습니다.)`;
-              setDropAlert(conflictMessage);
-              await handleEditExtended(reservationId, {
-                roomInfo: originalRoomInfoLocal,
-                roomNumber: originalRoomNumberLocal,
-                manualAssignment: true,
-              });
-            }
+            timeoutRef.current = setTimeout(clearConflict, 3000);
           }
         }
-        setTimeout(() => setDropAlert(null), 5000); // 5초 후 알림 제거
+      },
+      hover: (item, monitor) => {
+        if (!monitor.isOver({ shallow: true })) return;
+
+        const { reservation: draggedReservation } = item;
+        if (!cont.roomInfo || !cont.roomNumber) return;
+
+        const checkInDate = new Date(draggedReservation.checkIn);
+        const checkOutDate = new Date(draggedReservation.checkOut);
+        if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+          clearConflict();
+          return;
+        }
+
+        const { isConflict, conflictReservation } = checkConflict(
+          {
+            ...draggedReservation,
+            checkIn: checkInDate,
+            checkOut: checkOutDate,
+          },
+          cont.roomNumber,
+          fullReservations,
+          selectedDate
+        );
+
+        if (isConflict) {
+          if (!isDraggingOver) {
+            const conflictMsg =
+              draggedReservation._id === conflictReservation._id
+                ? `🚫 과거 체크인 예약은 현재 날짜에서 이동할 수 없습니다.\n체크인 날짜: ${format(
+                    checkInDate,
+                    'yyyy-MM-dd'
+                  )}`
+                : `🚫 충돌 발생!\n이동하려는 객실 (${
+                    cont.roomNumber
+                  })에 예약이 있습니다.\n충돌 예약자: ${
+                    conflictReservation.customerName || '정보 없음'
+                  }\n예약 기간: ${format(
+                    checkInDate,
+                    'yyyy-MM-dd HH:mm'
+                  )} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`;
+
+            setConflictMessage(conflictMsg);
+            setIsDraggingOver(true);
+            timeoutRef.current = setTimeout(clearConflict, 3000);
+          }
+        } else if (isDraggingOver) {
+          clearConflict();
+        }
       },
       collect: (monitor) => ({
-        isOver: monitor.isOver(),
+        isOver: monitor.isOver({ shallow: true }),
         canDrop: monitor.canDrop(),
       }),
     });
+
+    useEffect(() => {
+      if (!isOver && isDraggingOver) {
+        timeoutRef.current = setTimeout(clearConflict, 3000);
+      }
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }, [isOver, isDraggingOver, clearConflict]);
 
     return (
       <div
@@ -255,9 +326,32 @@ const ContainerCell = React.memo(
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}
       >
-        {dropAlert && (
-          <div className="drop-alert" style={{ color: 'red', marginBottom: '5px' }}>
-            {dropAlert}
+        {conflictMessage && (
+          <div
+            className="drop-conflict-overlay"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255, 0, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+              color: 'red',
+              fontWeight: 'bold',
+              padding: '10px',
+              pointerEvents: 'none',
+              whiteSpace: 'pre-line',
+              fontSize: '0.9rem',
+              textAlign: 'center',
+              opacity: isDraggingOver ? 1 : 0,
+              transition: 'opacity 0.5s ease-out',
+            }}
+          >
+            {conflictMessage}
           </div>
         )}
         {children}
@@ -690,6 +784,7 @@ function RoomGrid({
                           isUnassigned={true}
                           handleDeleteClickHandler={handleDeleteClickHandler}
                           handleConfirmClickHandler={handleConfirmClickHandler}
+                          selectedDate={selectedDate}
                         />
                       )
                     )}
@@ -822,6 +917,7 @@ function RoomGrid({
                                     handleConfirmClickHandler={
                                       handleConfirmClickHandler
                                     }
+                                    selectedDate={selectedDate}
                                   />
                                 ))
                               )}
