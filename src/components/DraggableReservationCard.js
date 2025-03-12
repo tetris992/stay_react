@@ -13,7 +13,7 @@ import './DraggableReservationCard.css';
 const DraggableReservationCard = ({
   isUnassigned = false,
   reservation,
-  hotelId,
+  // hotelId,
   highlightedReservationIds,
   isSearching,
   flippedReservationIds,
@@ -50,14 +50,16 @@ const DraggableReservationCard = ({
 
   // 날짜 파싱 개선
   const checkInDate = useMemo(() => {
-    if (!reservation.checkIn) {
-      console.warn(`No checkIn for reservation ${reservation._id}`);
+    if (!reservation.checkIn || typeof reservation.checkIn !== 'string') {
+      console.warn(
+        `No or invalid checkIn for reservation ${reservation._id || 'unknown'}`
+      );
       return null;
     }
     const date = new Date(reservation.checkIn);
     if (isNaN(date.getTime())) {
       console.warn(
-        `Invalid checkIn for reservation ${reservation._id}:`,
+        `Invalid checkIn date for reservation ${reservation._id || 'unknown'}:`,
         reservation.checkIn
       );
       return null;
@@ -73,14 +75,18 @@ const DraggableReservationCard = ({
   }, [reservation.checkIn, reservation._id]);
 
   const checkOutDate = useMemo(() => {
-    if (!reservation.checkOut) {
-      console.warn(`No checkOut for reservation ${reservation._id}`);
+    if (!reservation.checkOut || typeof reservation.checkOut !== 'string') {
+      console.warn(
+        `No or invalid checkOut for reservation ${reservation._id || 'unknown'}`
+      );
       return null;
     }
     const date = new Date(reservation.checkOut);
     if (isNaN(date.getTime())) {
       console.warn(
-        `Invalid checkOut for reservation ${reservation._id}:`,
+        `Invalid checkOut date for reservation ${
+          reservation._id || 'unknown'
+        }:`,
         reservation.checkOut
       );
       return null;
@@ -135,24 +141,21 @@ const DraggableReservationCard = ({
       });
       return false;
     }
-
     if (!checkInDate || !checkOutDate) {
-      console.warn(`Invalid dates for reservation ${reservation._id}:`, {
-        checkIn: reservation.checkIn,
-        checkOut: reservation.checkOut,
-      });
+      console.warn(
+        `Invalid dates for reservation ${reservation._id || 'unknown'}:`,
+        { checkIn: reservation.checkIn, checkOut: reservation.checkOut }
+      );
       return false;
     }
-
     const currentDate = startOfDay(new Date());
     const checkInDateOnly = startOfDay(checkInDate);
     const selectedDateOnly = startOfDay(selectedDate);
 
-    // 선택된 날짜가 체크인 날짜보다 이후이고 연박 예약이면 드래그 불가
     if (checkInDateOnly < selectedDateOnly && diffDays > 0) {
       console.log(
         `Cannot drag reservation ${
-          reservation._id
+          reservation._id || 'unknown'
         }: Past check-in detected (Check-in: ${format(
           checkInDate,
           'yyyy-MM-dd'
@@ -165,52 +168,60 @@ const DraggableReservationCard = ({
     }
 
     let hasConflict = false;
-
-    if (isUnassigned) {
-      roomTypes.forEach((roomType) => {
-        const roomNumbers = roomType.roomNumbers || [];
-        roomNumbers.forEach((roomNumber) => {
-          const { isConflict } = checkConflict(
-            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
-            roomNumber,
-            allReservations,
-            selectedDate
-          );
-          if (isConflict) {
-            console.log(
-              `Conflict detected for unassigned room ${roomNumber} with ${reservation._id}`
-            );
-            hasConflict = true;
-          }
-        });
-      });
-    } else {
-      roomTypes.forEach((roomType) => {
-        if (roomType.roomInfo === reservation.roomInfo) return;
-        const roomNumbers = roomType.roomNumbers || [];
-        roomNumbers.forEach((roomNumber) => {
-          const { isConflict } = checkConflict(
-            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
-            roomNumber,
-            allReservations,
-            selectedDate
-          );
-          if (isConflict) {
-            console.log(
-              `Conflict detected for room ${roomNumber} with ${reservation._id}`
-            );
-            hasConflict = true;
-          }
-        });
+    const validReservations = allReservations.filter(
+      (res) =>
+        res &&
+        res.checkIn &&
+        res.checkOut &&
+        typeof res.checkIn === 'string' &&
+        typeof res.checkOut === 'string' &&
+        !isNaN(new Date(res.checkIn).getTime()) &&
+        !isNaN(new Date(res.checkOut).getTime())
+    );
+    if (validReservations.length !== allReservations.length) {
+      console.warn('Invalid reservations detected in allReservations:', {
+        invalidCount: allReservations.length - validReservations.length,
+        sampleInvalid: allReservations
+          .filter(
+            (res) =>
+              !res ||
+              !res.checkIn ||
+              !res.checkOut ||
+              typeof res.checkIn !== 'string' ||
+              typeof res.checkOut !== 'string' ||
+              isNaN(new Date(res.checkIn).getTime()) ||
+              isNaN(new Date(res.checkOut).getTime())
+          )
+          .slice(0, 5),
       });
     }
 
+    roomTypes.forEach((roomType) => {
+      const roomNumbers = roomType.roomNumbers || [];
+      roomNumbers.forEach((roomNumber) => {
+        if (checkInDate && checkOutDate) {
+          const { isConflict } = checkConflict(
+            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
+            roomNumber,
+            validReservations,
+            selectedDate
+          );
+          if (isConflict) {
+            console.log(
+              `Conflict detected for room ${roomNumber} with ${
+                reservation._id || 'unknown'
+              }`
+            );
+            hasConflict = true;
+          }
+        }
+      });
+    });
     return !hasConflict;
   }, [
     reservation,
     allReservations,
     roomTypes,
-    isUnassigned,
     checkInDate,
     checkOutDate,
     diffDays,
@@ -267,85 +278,76 @@ const DraggableReservationCard = ({
       setConflictDetails(null);
       return;
     }
-
-    let conflictInfo = null;
-
-    if (isUnassigned) {
-      roomTypes.forEach((roomType) => {
-        const roomNumbers = roomType.roomNumbers || [];
-        roomNumbers.forEach((roomNumber) => {
-          const { isConflict, conflictingReservation } = checkConflict(
-            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
-            roomNumber,
-            allReservations,
-            selectedDate
-          );
-          if (isConflict && !conflictInfo) {
-            const conflictCheckIn = conflictingReservation.checkIn
-              ? format(
-                  new Date(conflictingReservation.checkIn),
-                  'yyyy-MM-dd HH:mm'
-                )
-              : '정보 없음';
-            const conflictCheckOut = conflictingReservation.checkOut
-              ? format(
-                  new Date(conflictingReservation.checkOut),
-                  'yyyy-MM-dd HH:mm'
-                )
-              : '정보 없음';
-            conflictInfo = `객실 ${roomNumber} (${
-              roomType.roomInfo
-            })에서 예약 기간이 겹칩니다.\n충돌 예약자: ${
-              conflictingReservation.customerName || '정보 없음'
-            }\n예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
-          }
-        });
-      });
-    } else {
-      roomTypes.forEach((roomType) => {
-        if (roomType.roomInfo === reservation.roomInfo) return;
-        const roomNumbers = roomType.roomNumbers || [];
-        roomNumbers.forEach((roomNumber) => {
-          const { isConflict, conflictingReservation } = checkConflict(
-            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
-            roomNumber,
-            allReservations,
-            selectedDate
-          );
-          if (isConflict && !conflictInfo) {
-            const conflictCheckIn = conflictingReservation.checkIn
-              ? format(
-                  new Date(conflictingReservation.checkIn),
-                  'yyyy-MM-dd HH:mm'
-                )
-              : '정보 없음';
-            const conflictCheckOut = conflictingReservation.checkOut
-              ? format(
-                  new Date(conflictingReservation.checkOut),
-                  'yyyy-MM-dd HH:mm'
-                )
-              : '정보 없음';
-            conflictInfo = `객실 ${roomNumber} (${
-              roomType.roomInfo
-            })에서 예약 기간이 겹칩니다.\n충돌 예약자: ${
-              conflictingReservation.customerName || '정보 없음'
-            }\n예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
-          }
-        });
+    const validReservations = allReservations.filter(
+      (res) =>
+        res &&
+        res.checkIn &&
+        res.checkOut &&
+        typeof res.checkIn === 'string' &&
+        typeof res.checkOut === 'string' &&
+        !isNaN(new Date(res.checkIn).getTime()) &&
+        !isNaN(new Date(res.checkOut).getTime())
+    );
+    if (validReservations.length !== allReservations.length) {
+      console.warn('Invalid reservations detected in allReservations:', {
+        invalidCount: allReservations.length - validReservations.length,
+        sampleInvalid: allReservations
+          .filter(
+            (res) =>
+              !res ||
+              !res.checkIn ||
+              !res.checkOut ||
+              typeof res.checkIn !== 'string' ||
+              typeof res.checkOut !== 'string' ||
+              isNaN(new Date(res.checkIn).getTime()) ||
+              isNaN(new Date(res.checkOut).getTime())
+          )
+          .slice(0, 5),
       });
     }
 
+    let conflictInfo = null;
+    roomTypes.forEach((roomType) => {
+      const roomNumbers = roomType.roomNumbers || [];
+      roomNumbers.forEach((roomNumber) => {
+        if (checkInDate && checkOutDate) {
+          const { isConflict, conflictingReservation } = checkConflict(
+            { ...reservation, checkIn: checkInDate, checkOut: checkOutDate },
+            roomNumber,
+            validReservations,
+            selectedDate
+          );
+          if (isConflict && !conflictInfo && conflictingReservation) {
+            const conflictCheckIn = conflictingReservation?.checkIn
+              ? format(
+                  new Date(conflictingReservation.checkIn),
+                  'yyyy-MM-dd HH:mm'
+                )
+              : '정보 없음';
+            const conflictCheckOut = conflictingReservation?.checkOut
+              ? format(
+                  new Date(conflictingReservation.checkOut),
+                  'yyyy-MM-dd HH:mm'
+                )
+              : '정보 없음';
+            conflictInfo = `객실 ${roomNumber} (${
+              roomType.roomInfo
+            })에서 예약 기간이 겹칩니다.\n충돌 예약자: ${
+              conflictingReservation?.customerName || '정보 없음'
+            }\n예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
+          }
+        }
+      });
+    });
     setConflictDetails(conflictInfo);
   }, [
     reservation,
     allReservations,
     roomTypes,
-    isUnassigned,
     checkInDate,
     checkOutDate,
     selectedDate,
   ]);
-
   const [{ isDragging }, dragRef] = useDrag({
     type: 'RESERVATION',
     item: {
@@ -468,17 +470,19 @@ const DraggableReservationCard = ({
 
   const handleEditSave = (e) => {
     e.preventDefault();
-
+    if (!reservation) {
+      console.warn('예약 객체가 없어 저장을 수행할 수 없습니다.');
+      return;
+    }
     const updatedData = {
       customerName: editedValues.customerName,
       phoneNumber: editedValues.phoneNumber,
       paymentMethod: editedValues.paymentMethod,
       specialRequests: editedValues.specialRequests,
-      roomInfo: reservation.roomInfo,
-      roomNumber: editedValues.roomNumber || reservation.roomNumber,
-      price: editedValues.price || reservation.totalPrice,
+      roomInfo: reservation.roomInfo || '',
+      roomNumber: editedValues.roomNumber || reservation.roomNumber || '',
+      price: editedValues.price || reservation.totalPrice || 0,
     };
-
     if (reservation.siteName === '현장예약') {
       if (reservation.type === 'dayUse') {
         const currentTime = new Date();
@@ -488,7 +492,7 @@ const DraggableReservationCard = ({
         );
         const computedCheckOut = addHours(
           currentTime,
-          Number(editedValues.durationHours || 4) // 기본 4시간
+          Number(editedValues.durationHours || 4)
         );
         updatedData.checkOut = format(
           computedCheckOut,
@@ -508,7 +512,6 @@ const DraggableReservationCard = ({
       updatedData.checkIn = `${editedValues.checkInDate}T${originalCheckInTime}:00+09:00`;
       updatedData.checkOut = `${editedValues.checkOutDate}T${originalCheckOutTime}:00+09:00`;
     }
-
     onPartialUpdate(reservation._id, updatedData);
     setIsEditingCard(false);
     setEditedValues({});
