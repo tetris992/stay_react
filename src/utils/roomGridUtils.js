@@ -25,27 +25,15 @@ export function sortContainers(containers) {
 
 export function getBorderColor(reservation) {
   try {
-    if (
-      !reservation ||
-      !reservation.parsedCheckInDate ||
-      !reservation.parsedCheckOutDate
-    ) {
-      console.warn(
-        'Reservation data or dates are missing or invalid:',
-        reservation
-      );
+    if (!reservation || !reservation.checkIn || !reservation.checkOut) {
+      console.warn('Reservation data or dates are missing or invalid:', reservation);
       return '';
     }
 
-    const ci = reservation.parsedCheckInDate;
-    const co = reservation.parsedCheckOutDate;
+    const ci = new Date(reservation.checkIn);
+    const co = new Date(reservation.checkOut);
 
-    if (
-      !(ci instanceof Date) ||
-      !(co instanceof Date) ||
-      isNaN(ci.getTime()) ||
-      isNaN(co.getTime())
-    ) {
+    if (isNaN(ci.getTime()) || isNaN(co.getTime())) {
       console.warn('Invalid date objects:', { ci, co });
       return '';
     }

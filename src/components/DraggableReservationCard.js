@@ -47,60 +47,87 @@ const DraggableReservationCard = ({
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';
 
-  // 서버 데이터(UTC)를 Date 객체로 변환
+  // 날짜 파싱 개선
   const checkInDate = useMemo(() => {
-    const date = reservation.checkIn ? new Date(reservation.checkIn) : null;
+    if (!reservation.checkIn) {
+      console.warn(`No checkIn for reservation ${reservation._id}`);
+      return null;
+    }
+    const date = new Date(reservation.checkIn);
+    if (isNaN(date.getTime())) {
+      console.warn(
+        `Invalid checkIn for reservation ${reservation._id}:`,
+        reservation.checkIn
+      );
+      return null;
+    }
     if (process.env.NODE_ENV === 'development') {
       console.log(
         `[CheckIn] Reservation ID: ${reservation._id}, checkIn: ${
           reservation.checkIn
-        }, parsed: ${date?.toISOString()}`
+        }, parsed: ${date.toISOString()}`
       );
     }
     return date;
   }, [reservation.checkIn, reservation._id]);
 
   const checkOutDate = useMemo(() => {
-    const date = reservation.checkOut ? new Date(reservation.checkOut) : null;
+    if (!reservation.checkOut) {
+      console.warn(`No checkOut for reservation ${reservation._id}`);
+      return null;
+    }
+    const date = new Date(reservation.checkOut);
+    if (isNaN(date.getTime())) {
+      console.warn(
+        `Invalid checkOut for reservation ${reservation._id}:`,
+        reservation.checkOut
+      );
+      return null;
+    }
     if (process.env.NODE_ENV === 'development') {
       console.log(
         `[CheckOut] Reservation ID: ${reservation._id}, checkOut: ${
           reservation.checkOut
-        }, parsed: ${date?.toISOString()}`
+        }, parsed: ${date.toISOString()}`
       );
     }
     return date;
   }, [reservation.checkOut, reservation._id]);
 
-// UI 표시용 날짜+시간 문자열
-const displayCheckIn = useMemo(() => {
-  if (!checkInDate) return '정보 없음';
-  if (reservation.siteName === '현장예약') {
-    if (reservation.type === 'dayUse') {
-      // 현장 대실: 원본 시간 표시
-      return format(checkInDate, 'yyyy-MM-dd HH:mm');
+  // 표시용 날짜 포맷팅 개선 (KST 유지)
+  const displayCheckIn = useMemo(() => {
+    if (!checkInDate) return '정보 없음';
+    // 백엔드에서 KST로 제공되므로 직접 포맷팅
+    const [datePart, timePart] = reservation.checkIn.split('T');
+    const time = timePart.split('+')[0].substring(0, 5); // "HH:mm" 추출
+    if (reservation.siteName === '현장예약' && reservation.type !== 'dayUse') {
+      return `${datePart} ${checkInTime}`;
     }
-    // 현장 숙박: 고정 시간 적용
-    return `${format(checkInDate, 'yyyy-MM-dd')} ${checkInTime}`;
-  }
-  // OTA: 원본 시간 표시
-  return format(checkInDate, 'yyyy-MM-dd HH:mm');
-}, [checkInDate, checkInTime, reservation.siteName, reservation.type]);
+    return `${datePart} ${time}`;
+  }, [
+    checkInDate,
+    checkInTime,
+    reservation.siteName,
+    reservation.type,
+    reservation.checkIn,
+  ]);
 
-const displayCheckOut = useMemo(() => {
-  if (!checkOutDate) return '정보 없음';
-  if (reservation.siteName === '현장예약') {
-    if (reservation.type === 'dayUse') {
-      // 현장 대실: 원본 시간 표시
-      return format(checkOutDate, 'yyyy-MM-dd HH:mm');
+  const displayCheckOut = useMemo(() => {
+    if (!checkOutDate) return '정보 없음';
+    const [datePart, timePart] = reservation.checkOut.split('T');
+    const time = timePart.split('+')[0].substring(0, 5); // "HH:mm" 추출
+    if (reservation.siteName === '현장예약' && reservation.type !== 'dayUse') {
+      return `${datePart} ${checkOutTime}`;
     }
-    // 현장 숙박: 고정 시간 적용
-    return `${format(checkOutDate, 'yyyy-MM-dd')} ${checkOutTime}`;
-  }
-  // OTA: 원본 시간 표시
-  return format(checkOutDate, 'yyyy-MM-dd HH:mm');
-}, [checkOutDate, checkOutTime, reservation.siteName, reservation.type]);
-  
+    return `${datePart} ${time}`;
+  }, [
+    checkOutDate,
+    checkOutTime,
+    reservation.siteName,
+    reservation.type,
+    reservation.checkOut,
+  ]);
+
   // 드래그 가능 여부 체크
   const canDragMemo = useMemo(() => {
     if (
@@ -419,25 +446,19 @@ const displayCheckOut = useMemo(() => {
       price: editedValues.price || reservation.totalPrice,
     };
 
-    // 체크인/체크아웃 시간 처리
+    // 체크인/체크아웃 시간 처리 (문자열로 직접 생성)
     if (reservation.siteName === '현장예약') {
-      // 현장 예약: 고정 시간 적용
-      updatedData.checkIn = new Date(
-        `${editedValues.checkInDate}T${checkInTime}:00+09:00`
-      ).toISOString();
-      updatedData.checkOut = new Date(
-        `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`
-      ).toISOString();
+      updatedData.checkIn = `${editedValues.checkInDate}T${checkInTime}:00+09:00`;
+      updatedData.checkOut = `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`;
     } else {
-      // OTA: 원본 시간 유지 (날짜만 변경 시 원본 시간 결합)
-      const originalCheckInTime = format(checkInDate, 'HH:mm');
-      const originalCheckOutTime = format(checkOutDate, 'HH:mm');
-      updatedData.checkIn = new Date(
-        `${editedValues.checkInDate}T${originalCheckInTime}:00+09:00`
-      ).toISOString();
-      updatedData.checkOut = new Date(
-        `${editedValues.checkOutDate}T${originalCheckOutTime}:00+09:00`
-      ).toISOString();
+      const originalCheckInTime = checkInDate
+        ? format(checkInDate, 'HH:mm')
+        : '00:00';
+      const originalCheckOutTime = checkOutDate
+        ? format(checkOutDate, 'HH:mm')
+        : '00:00';
+      updatedData.checkIn = `${editedValues.checkInDate}T${originalCheckInTime}:00+09:00`;
+      updatedData.checkOut = `${editedValues.checkOutDate}T${originalCheckOutTime}:00+09:00`;
     }
 
     onPartialUpdate(reservation._id, updatedData);
@@ -588,10 +609,7 @@ const displayCheckOut = useMemo(() => {
                 <p>
                   예약일:{' '}
                   {reservation.reservationDate
-                    ? format(
-                        new Date(reservation.reservationDate),
-                        'yyyy-MM-dd'
-                      )
+                    ? reservation.reservationDate.split('\n')[0] // 첫 줄만 표시
                     : '정보 없음'}
                 </p>
                 {reservation.phoneNumber && (
