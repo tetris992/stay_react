@@ -276,15 +276,23 @@ const App = () => {
 
   const [labelsForOTA, setLabelsForOTA] = useState([]);
   const [dailySalesByOTA, setDailySalesByOTA] = useState({});
-  const [logs, setLogs] = useState([]); // 로그 상태 추가
+
+  const [logs, setLogs] = useState(() => {
+    const stored = localStorage.getItem('logs');
+    return stored ? JSON.parse(stored) : [];
+  });
   const [isLogViewerOpen, setIsLogViewerOpen] = useState(false); // 로그 뷰어 상태 추가
 
-  // 로그 수집 커스텀 함수
-  const log = useCallback(
+  const lastLogRef = useRef('');
+
+  // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않음
+  const logMessage = useCallback(
     (message) => {
+      if (message === lastLogRef.current) return;
+      lastLogRef.current = message;
       const timestamp = new Date().toISOString();
-      setLogs((prevLogs) => [
-        ...prevLogs,
+      setLogs((prev) => [
+        ...prev,
         {
           timestamp,
           message,
@@ -295,52 +303,33 @@ const App = () => {
     [selectedDate]
   );
 
-  // 선택된 날짜의 예약을 콘솔에 출력 (로그 상태에 추가)
+  // logs 상태 변경 시 로컬 스토리지에 저장 (새로고침 후에도 보존)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const logMessage =
-        `Reservations for Selected Date: ${format(
-          selectedDate,
-          'yyyy-MM-dd'
-        )}\n` +
-        activeReservations
-          .map(
-            (res) =>
-              `ID: ${res._id}, Customer: ${
-                res.customerName || '정보 없음'
-              }, CheckIn: ${format(
-                new Date(res.checkIn),
-                'yyyy-MM-dd HH:mm'
-              )}, CheckOut: ${format(
-                new Date(res.checkOut),
-                'yyyy-MM-dd HH:mm'
-              )}, RoomNumber: ${res.roomNumber || '미배정'}, RoomInfo: ${
-                res.roomInfo || '정보 없음'
-              }, Status: ${res.reservationStatus || '정보 없음'}`
-          )
-          .join('\n');
-      log(logMessage);
-    }
-  }, [activeReservations, selectedDate, log]);
+    localStorage.setItem('logs', JSON.stringify(logs));
+  }, [logs]);
 
-  // 객실 이동 및 기타 로그 수집
+  // 콘솔 로그 오버라이드: 이동, 삭제, 생성 이벤트만 기록
   useEffect(() => {
     const originalConsoleLog = console.log;
     console.log = (...args) => {
-      const message = args.join(' ');
+      const msg = args.join(' ');
       if (
-        message.includes('Successfully moved') ||
-        message.includes('Conflict detected') ||
-        message.includes('[Debug]')
+        msg.includes('Successfully moved') ||
+        // 삭제 관련 로그: 대소문자 구분없이 "deleted"가 포함된 경우
+        msg.toLowerCase().includes('deleted') ||
+        // 생성 관련 로그: "Successfully created", "Room created", 혹은 "새 예약"이 포함된 경우
+        msg.includes('Successfully created') ||
+        msg.includes('Room created') ||
+        msg.includes('새 예약')
       ) {
-        log(message);
+        logMessage(msg);
       }
       originalConsoleLog(...args);
     };
     return () => {
       console.log = originalConsoleLog;
     };
-  }, [log]);
+  }, [logMessage]);
 
   // 로그 뷰어 열기/닫기 함수
   const openLogViewer = () => setIsLogViewerOpen(true);
@@ -449,19 +438,31 @@ const App = () => {
     const filtered = reservationsData
       .filter((reservation) => {
         if (!reservation || !reservation.checkIn || !reservation.checkOut) {
-          console.warn('Invalid reservation data filtered out:', { _id: reservation?._id || 'unknown', reservation });
+          console.warn('Invalid reservation data filtered out:', {
+            _id: reservation?._id || 'unknown',
+            reservation,
+          });
           return false;
         }
         const checkInDate = new Date(reservation.checkIn);
         const checkOutDate = new Date(reservation.checkOut);
         if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-          console.warn('Invalid date parsing for reservation:', { _id: reservation?._id || 'unknown', checkIn: reservation.checkIn, checkOut: reservation.checkOut });
+          console.warn('Invalid date parsing for reservation:', {
+            _id: reservation?._id || 'unknown',
+            checkIn: reservation.checkIn,
+            checkOut: reservation.checkOut,
+          });
           return false;
         }
         const checkInDateOnly = startOfDay(checkInDate);
         const checkOutDateOnly = startOfDay(checkOutDate);
-        const isIncluded = selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') && selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
-        const isSameDayStay = format(checkInDateOnly, 'yyyy-MM-dd') === format(checkOutDateOnly, 'yyyy-MM-dd') && selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
+        const isIncluded =
+          selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
+          selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
+        const isSameDayStay =
+          format(checkInDateOnly, 'yyyy-MM-dd') ===
+            format(checkOutDateOnly, 'yyyy-MM-dd') &&
+          selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
         return isIncluded || isSameDayStay;
       })
       .filter((res) => res !== null);
@@ -475,12 +476,22 @@ const App = () => {
     const firstDayOfMonth = startOfMonth(date);
     const lastDayOfMonth = date;
     const monthlyReservations = reservationsData.filter((reservation) => {
-      if (isCancelledStatus(reservation.reservationStatus || '', reservation.customerName || '')) return false;
+      if (
+        isCancelledStatus(
+          reservation.reservationStatus || '',
+          reservation.customerName || ''
+        )
+      )
+        return false;
       if (!reservation.checkIn || !reservation.checkOut) return false;
       const checkInDate = new Date(reservation.checkIn);
       const checkOutDate = new Date(reservation.checkOut);
-      if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return false;
-      return checkOutDate > firstDayOfMonth && checkInDate < addDays(lastDayOfMonth, 1);
+      if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime()))
+        return false;
+      return (
+        checkOutDate > firstDayOfMonth &&
+        checkInDate < addDays(lastDayOfMonth, 1)
+      );
     });
     let monthlyTotalAmount = 0;
     monthlyReservations.forEach((reservation) => {
@@ -507,7 +518,8 @@ const App = () => {
       }
     });
     setMonthlySoldRooms(totalRoomsSold);
-    const avgPrice = totalRoomsSold > 0 ? Math.floor(monthlyTotalAmount / totalRoomsSold) : 0;
+    const avgPrice =
+      totalRoomsSold > 0 ? Math.floor(monthlyTotalAmount / totalRoomsSold) : 0;
     setAvgMonthlyRoomPrice(avgPrice);
     setRoomsSold(filtered.length);
     setLoadedReservations(filtered.map((res) => res._id));
@@ -530,56 +542,79 @@ const App = () => {
     return availableOTAs.includes(reservation.siteName);
   }
 
-  const processReservation = useCallback((res) => {
-    if (!res) {
-      console.warn('예약 데이터가 없습니다.');
-      return null;
-    }
-    if (!res.checkIn || !res.checkOut) {
-      console.warn(`예약 ${res._id || 'unknown'}에 필수 날짜(checkIn/checkOut)가 없습니다.`, res);
-      return null;
-    }
-    const checkInDate = new Date(res.checkIn);
-    const checkOutDate = new Date(res.checkOut);
-    if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-      console.warn('예약 날짜 파싱 오류:', { _id: res._id || 'unknown', checkIn: res.checkIn, checkOut: res.checkOut });
-      return null;
-    }
-    const { price, isDefault } = extractPrice(res.priceString || res.price || '0');
-    let totalPrice = price;
-    let isDefaultPriceFlag = isDefault;
-    if (!isOtaReservation(res) && totalPrice <= 0) {
-      const roomType = matchRoomType(res.roomInfo);
-      totalPrice = roomType?.price || 0;
-      isDefaultPriceFlag = false;
-    }
-    let nightlyRates = [];
-    const checkInDateOnly = startOfDay(checkInDate);
-    const checkOutDateOnly = startOfDay(checkOutDate);
-    const days = Math.floor((checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24));
-    const nights = days > 0 ? days : 1;
-    if (isDefaultPriceFlag) {
-      totalPrice = 100000;
-    }
-    const perNightPriceCalculated = calculatePerNightPrice(res, totalPrice, nights);
-    for (let i = 0; i < nights; i++) {
-      const date = addDays(checkInDateOnly, i);
-      nightlyRates.push({
-        date: format(date, 'yyyy-MM-dd'),
-        rate: perNightPriceCalculated,
-      });
-    }
-    const finalTotalPrice = nightlyRates.reduce((sum, nr) => sum + nr.rate, 0);
-    return {
-      ...res,
-      reservationNo: res.reservationNo || res._id,
-      nightlyRates: nightlyRates.length > 0 ? nightlyRates : undefined,
-      isDefaultPrice: isDefaultPriceFlag,
-      totalPrice: finalTotalPrice,
-      checkIn: res.checkIn,
-      checkOut: res.checkOut,
-    };
-  }, [calculatePerNightPrice]);
+  const processReservation = useCallback(
+    (res) => {
+      if (!res) {
+        console.warn('예약 데이터가 없습니다.');
+        return null;
+      }
+      if (!res.checkIn || !res.checkOut) {
+        console.warn(
+          `예약 ${
+            res._id || 'unknown'
+          }에 필수 날짜(checkIn/checkOut)가 없습니다.`,
+          res
+        );
+        return null;
+      }
+      const checkInDate = new Date(res.checkIn);
+      const checkOutDate = new Date(res.checkOut);
+      if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
+        console.warn('예약 날짜 파싱 오류:', {
+          _id: res._id || 'unknown',
+          checkIn: res.checkIn,
+          checkOut: res.checkOut,
+        });
+        return null;
+      }
+      const { price, isDefault } = extractPrice(
+        res.priceString || res.price || '0'
+      );
+      let totalPrice = price;
+      let isDefaultPriceFlag = isDefault;
+      if (!isOtaReservation(res) && totalPrice <= 0) {
+        const roomType = matchRoomType(res.roomInfo);
+        totalPrice = roomType?.price || 0;
+        isDefaultPriceFlag = false;
+      }
+      let nightlyRates = [];
+      const checkInDateOnly = startOfDay(checkInDate);
+      const checkOutDateOnly = startOfDay(checkOutDate);
+      const days = Math.floor(
+        (checkOutDateOnly - checkInDateOnly) / (1000 * 60 * 60 * 24)
+      );
+      const nights = days > 0 ? days : 1;
+      if (isDefaultPriceFlag) {
+        totalPrice = 100000;
+      }
+      const perNightPriceCalculated = calculatePerNightPrice(
+        res,
+        totalPrice,
+        nights
+      );
+      for (let i = 0; i < nights; i++) {
+        const date = addDays(checkInDateOnly, i);
+        nightlyRates.push({
+          date: format(date, 'yyyy-MM-dd'),
+          rate: perNightPriceCalculated,
+        });
+      }
+      const finalTotalPrice = nightlyRates.reduce(
+        (sum, nr) => sum + nr.rate,
+        0
+      );
+      return {
+        ...res,
+        reservationNo: res.reservationNo || res._id,
+        nightlyRates: nightlyRates.length > 0 ? nightlyRates : undefined,
+        isDefaultPrice: isDefaultPriceFlag,
+        totalPrice: finalTotalPrice,
+        checkIn: res.checkIn,
+        checkOut: res.checkOut,
+      };
+    },
+    [calculatePerNightPrice]
+  );
 
   const loadHotelSettings = useCallback(
     async (inputHotelId) => {
@@ -1113,7 +1148,9 @@ const App = () => {
 
       // WebSocket 이벤트 핸들러 설정
       const handleReservationCreated = (data) => {
-        console.log(`Received reservationCreated: ${data.reservation?._id || 'unknown'}`);
+        console.log(
+          `Received reservationCreated: ${data.reservation?._id || 'unknown'}`
+        );
         const newReservation = processReservation(data.reservation);
         if (newReservation) {
           setAllReservations((prev) => {
@@ -1123,7 +1160,10 @@ const App = () => {
             return updated;
           });
         } else {
-          console.error('Invalid reservation data from WebSocket, ignored:', data.reservation);
+          console.error(
+            'Invalid reservation data from WebSocket, ignored:',
+            data.reservation
+          );
         }
       };
 

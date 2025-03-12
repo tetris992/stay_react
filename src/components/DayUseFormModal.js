@@ -154,14 +154,17 @@ const DayUseFormModal = ({
       return;
     }
 
-    const checkInDateTime = new Date(
-      `${formData.checkInDate}T${formData.checkInTime}:00`
-    );
-    if (isNaN(checkInDateTime)) {
-      alert('유효한 체크인 날짜와 시간을 입력해주세요.');
-      setIsSubmitting(false);
-      return;
-    }
+  // --- (1) +09:00 붙여서 Date 생성 ---
+  // 예: "2025-03-13T02:37:00+09:00" 형태 => KST로 확실히 인식
+  const checkInDateTime = new Date(
+    `${formData.checkInDate}T${formData.checkInTime}:00+09:00`
+  );
+
+  if (isNaN(checkInDateTime.getTime())) {
+    alert('유효한 체크인 날짜와 시간을 입력해주세요.');
+    setIsSubmitting(false);
+    return;
+  }
 
     // 체크아웃 시간 계산: 체크인 시간 + 사용 시간
     const checkOutDateTime = addHours(checkInDateTime, formData.durationHours);

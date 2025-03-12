@@ -128,7 +128,6 @@ const DraggableReservationCard = ({
       : 0;
   }, [ciDateOnly, coDateOnly]);
 
-  // DraggableReservationCard.js 내 canDragMemo 훅
   const canDragMemo = useMemo(() => {
     if (
       !Array.isArray(roomTypes) ||
@@ -149,10 +148,19 @@ const DraggableReservationCard = ({
       return false;
     }
     const currentDate = startOfDay(new Date());
-    const checkInDateOnly = startOfDay(checkInDate);
-    const selectedDateOnly = startOfDay(selectedDate);
+    const checkInDay = startOfDay(checkInDate);
+    const checkOutDay = startOfDay(checkOutDate);
+    const selectedDay = startOfDay(selectedDate);
 
-    if (checkInDateOnly < selectedDateOnly && diffDays > 0) {
+    // 추가: 이미 체크아웃된 예약은 드래그 불가능
+    if (currentDate > checkOutDay) {
+      console.log(
+        `Reservation ${reservation._id || 'unknown'} has already checked out.`
+      );
+      return false;
+    }
+
+    if (checkInDay < selectedDay && diffDays > 0) {
       console.log(
         `Cannot drag reservation ${
           reservation._id || 'unknown'
@@ -160,7 +168,7 @@ const DraggableReservationCard = ({
           checkInDate,
           'yyyy-MM-dd'
         )}, Selected Date: ${format(
-          selectedDateOnly,
+          selectedDay,
           'yyyy-MM-dd'
         )}, Current Date: ${format(currentDate, 'yyyy-MM-dd')})`
       );
@@ -178,23 +186,6 @@ const DraggableReservationCard = ({
         !isNaN(new Date(res.checkIn).getTime()) &&
         !isNaN(new Date(res.checkOut).getTime())
     );
-    if (validReservations.length !== allReservations.length) {
-      console.warn('Invalid reservations detected in allReservations:', {
-        invalidCount: allReservations.length - validReservations.length,
-        sampleInvalid: allReservations
-          .filter(
-            (res) =>
-              !res ||
-              !res.checkIn ||
-              !res.checkOut ||
-              typeof res.checkIn !== 'string' ||
-              typeof res.checkOut !== 'string' ||
-              isNaN(new Date(res.checkIn).getTime()) ||
-              isNaN(new Date(res.checkOut).getTime())
-          )
-          .slice(0, 5),
-      });
-    }
 
     roomTypes.forEach((roomType) => {
       const roomNumbers = roomType.roomNumbers || [];
@@ -445,6 +436,17 @@ const DraggableReservationCard = ({
     .join(' ');
 
   const handleEditStart = () => {
+    const today = startOfDay(new Date());
+    const checkoutDay = checkOutDate ? startOfDay(checkOutDate) : null;
+    // 추가: 체크아웃 날짜가 지난 예약은 수정 불가능
+    if (checkoutDay && today > checkoutDay) {
+      console.warn(
+        `Reservation ${
+          reservation._id || 'unknown'
+        } has already checked out. Editing is not allowed.`
+      );
+      return;
+    }
     if (isOpen || isEditingMemo) return;
     setIsOpen(true);
     const initialForm = getInitialFormData(reservation, roomTypes);
