@@ -91,6 +91,14 @@ const QuickRangeModal = ({
   
     const nights = differenceInCalendarDays(checkOutDateTime, checkInDateTime);
     const tKey = formData.roomInfo.toLowerCase();
+  
+    // Find the selected room type data to use as fallback.
+    const selectedRoom = filteredRoomTypes.find(rt => rt.roomInfo === formData.roomInfo);
+    const totalStock = selectedRoom
+      ? (selectedRoom.stock || (selectedRoom.roomNumbers && selectedRoom.roomNumbers.length) || 0)
+      : 0;
+    const allRooms = selectedRoom?.roomNumbers || [];
+  
     let cursor = startOfDay(checkInDateTime);
     const endDay = startOfDay(checkOutDateTime);
     let commonRooms = null;
@@ -100,7 +108,8 @@ const QuickRangeModal = ({
   
     if (nights === 1) {
       const ds = format(cursor, 'yyyy-MM-dd');
-      const availForDay = availabilityByDate[ds]?.[tKey];
+      // If availability data for ds is missing, use full availability.
+      const availForDay = availabilityByDate[ds]?.[tKey] || { remain: totalStock, leftoverRooms: allRooms };
       console.log(`[1박 체크] ${ds} 가용성:`, availForDay);
       if (!availForDay || availForDay.remain <= 0) {
         console.warn(`[QuickRangeModal] No availability for ${ds}:`, availForDay);
@@ -112,7 +121,8 @@ const QuickRangeModal = ({
     } else {
       while (cursor < endDay) {
         const ds = format(cursor, 'yyyy-MM-dd');
-        const availForDay = availabilityByDate[ds]?.[tKey];
+        // Fallback: if availabilityByDate에 ds가 없으면 assume full availability.
+        const availForDay = availabilityByDate[ds]?.[tKey] || { remain: totalStock, leftoverRooms: allRooms };
         console.log(`[다중 박 체크] ${ds} 가용성:`, availForDay);
         if (!availForDay || availForDay.remain <= 0) {
           console.warn(`[QuickRangeModal] No availability for ${ds}:`, availForDay);
@@ -158,6 +168,7 @@ const QuickRangeModal = ({
       setIsSubmitting(false);
     }
   };
+  
 
   return ReactDOM.createPortal(
     <div className="quick-range-modal">
