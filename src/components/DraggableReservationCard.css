@@ -412,6 +412,8 @@
      [Memo Section inside Card Back]
   ========================================================================== */
 .reservation-list {
+  min-width: 310px;
+  /* width: auto; */
   position: relative;
 }
 

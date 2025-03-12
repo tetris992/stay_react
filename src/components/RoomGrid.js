@@ -44,6 +44,8 @@ const ContainerCell = React.memo(
     selectedDate,
     hotelSettings,
   }) => {
+    const [dropAlert, setDropAlert] = useState(null);
+
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: 'RESERVATION',
       drop: async (item) => {
@@ -74,9 +76,7 @@ const ContainerCell = React.memo(
               checkIn: draggedReservation.checkIn,
               checkOut: draggedReservation.checkOut,
             });
-            alert(
-              '드래그된 예약의 날짜 정보가 유효하지 않습니다. 이동이 취소되었습니다.'
-            );
+            setDropAlert('드래그된 예약의 날짜 정보가 유효하지 않습니다.');
             await handleEditExtended(reservationId, {
               roomInfo: originalRoomInfo,
               roomNumber: originalRoomNumber,
@@ -92,12 +92,13 @@ const ContainerCell = React.memo(
           );
 
           if (isConflict) {
-            alert(
-              `🚫 예약을 이동할 수 없습니다.\n\n` +
-                `이동하려는 객실 (${cont.roomNumber})에 이미 예약이 있습니다.\n\n` +
-                `충돌 예약자: ${conflictReservation.customerName || '정보 없음'}\n` +
-                `예약 기간: ${format(checkInDate, 'yyyy-MM-dd')} ~ ${format(checkOutDate, 'yyyy-MM-dd')}`
-            );
+            const conflictCheckIn = format(checkInDate, 'yyyy-MM-dd HH:mm');
+            const conflictCheckOut = format(checkOutDate, 'yyyy-MM-dd HH:mm');
+            const conflictMsg = `🚫 예약을 이동할 수 없습니다.\n\n` +
+              `이동하려는 객실 (${cont.roomNumber})에 이미 예약이 있습니다.\n\n` +
+              `충돌 예약자: ${conflictReservation.customerName || '정보 없음'}\n` +
+              `예약 기간: ${conflictCheckIn} ~ ${conflictCheckOut}`;
+            setDropAlert(conflictMsg);
             await handleEditExtended(reservationId, {
               roomInfo: originalRoomInfo,
               roomNumber: originalRoomNumber,
@@ -133,9 +134,7 @@ const ContainerCell = React.memo(
                 fullReservations
               )
             ) {
-              alert(
-                '스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.'
-              );
+              setDropAlert('스왑이 불가능합니다. 해당 기간에 충돌하는 예약이 있습니다.');
               await handleEditExtended(reservationId, {
                 roomInfo: originalRoomInfoLocal,
                 roomNumber: originalRoomNumberLocal,
@@ -221,19 +220,20 @@ const ContainerCell = React.memo(
                 `Successfully moved reservation ${reservationId} to ${cont.roomNumber}`
               );
             } else {
+              const conflictMessage =
+                draggedReservation.type === 'dayUse'
+                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(checkInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`
+                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(', ')} (해당 날짜에 이미 예약이 있습니다.)`;
+              setDropAlert(conflictMessage);
               await handleEditExtended(reservationId, {
                 roomInfo: originalRoomInfoLocal,
                 roomNumber: originalRoomNumberLocal,
                 manualAssignment: true,
               });
-              const conflictMessage =
-                draggedReservation.type === 'dayUse'
-                  ? `대실 예약 이동이 취소되었습니다.\n충돌 발생 시간: ${format(checkInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`
-                  : `예약 이동이 취소되었습니다.\n충돌 발생 날짜: ${conflictDays.join(', ')} (해당 날짜에 이미 예약이 있습니다.)`;
-              alert(conflictMessage);
             }
           }
         }
+        setTimeout(() => setDropAlert(null), 5000); // 5초 후 알림 제거
       },
       collect: (monitor) => ({
         isOver: monitor.isOver(),
@@ -255,6 +255,11 @@ const ContainerCell = React.memo(
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}
       >
+        {dropAlert && (
+          <div className="drop-alert" style={{ color: 'red', marginBottom: '5px' }}>
+            {dropAlert}
+          </div>
+        )}
         {children}
       </div>
     );
@@ -312,7 +317,8 @@ function RoomGrid({
   const [error, setError] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] = useState(false);
+  const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
+    useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
@@ -357,7 +363,8 @@ function RoomGrid({
         selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
         selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
       const isSameDayStay =
-        format(checkInDateOnly, 'yyyy-MM-dd') === format(checkOutDateOnly, 'yyyy-MM-dd') &&
+        format(checkInDateOnly, 'yyyy-MM-dd') ===
+          format(checkOutDateOnly, 'yyyy-MM-dd') &&
         selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
       return isIncluded || isSameDayStay;
     });
@@ -366,7 +373,9 @@ function RoomGrid({
   // 선택된 날짜의 예약을 콘솔에 출력
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.group(`Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`);
+      console.group(
+        `Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`
+      );
       console.table(
         filteredReservations.map((res) => ({
           ID: res._id,
@@ -524,7 +533,13 @@ function RoomGrid({
       filterReservationsByDate(reservations, selectedDate);
       setIsNewlyCreatedHighlighted(false);
     },
-    [onEdit, setAllReservations, filterReservationsByDate, reservations, selectedDate]
+    [
+      onEdit,
+      setAllReservations,
+      filterReservationsByDate,
+      reservations,
+      selectedDate,
+    ]
   );
 
   const closeModalHandler = useCallback(() => {
@@ -624,10 +639,17 @@ function RoomGrid({
           ) : (
             <>
               {showUnassignedPanel && unassignedReservations.length > 0 ? (
-                <div className="unassigned-section" style={{ marginBottom: '2rem' }}>
+                <div
+                  className="unassigned-section"
+                  style={{ marginBottom: '2rem' }}
+                >
                   <div
                     className="unassigned-header"
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
                   >
                     <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
                     <button
@@ -641,32 +663,36 @@ function RoomGrid({
                     className="unassigned-list"
                     style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
                   >
-                    {sortReservations(unassignedReservations).map((res, index) => (
-                      <DraggableReservationCard
-                        key={`${res._id || res.reservationNo}-${index}`}
-                        reservation={res}
-                        hotelId={hotelId}
-                        highlightedReservationIds={highlightedReservationIds || []}
-                        isSearching={isSearching || false}
-                        flippedReservationIds={flippedReservationIds}
-                        memos={memos || {}}
-                        memoRefs={memoRefs}
-                        handleCardFlip={handleCardFlip}
-                        openInvoiceModal={openInvoiceModalHandler}
-                        hotelSettings={hotelSettings}
-                        renderActionButtons={renderActionButtons}
-                        loadedReservations={loadedReservations || []}
-                        newlyCreatedId={newlyCreatedId}
-                        isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
-                        updatedReservationId={updatedReservationId}
-                        isUpdatedHighlighted={isUpdatedHighlighted}
-                        onPartialUpdate={onPartialUpdate}
-                        roomTypes={roomTypes}
-                        isUnassigned={true}
-                        handleDeleteClickHandler={handleDeleteClickHandler}
-                        handleConfirmClickHandler={handleConfirmClickHandler}
-                      />
-                    ))}
+                    {sortReservations(unassignedReservations).map(
+                      (res, index) => (
+                        <DraggableReservationCard
+                          key={`${res._id || res.reservationNo}-${index}`}
+                          reservation={res}
+                          hotelId={hotelId}
+                          highlightedReservationIds={
+                            highlightedReservationIds || []
+                          }
+                          isSearching={isSearching || false}
+                          flippedReservationIds={flippedReservationIds}
+                          memos={memos || {}}
+                          memoRefs={memoRefs}
+                          handleCardFlip={handleCardFlip}
+                          openInvoiceModal={openInvoiceModalHandler}
+                          hotelSettings={hotelSettings}
+                          renderActionButtons={renderActionButtons}
+                          loadedReservations={loadedReservations || []}
+                          newlyCreatedId={newlyCreatedId}
+                          isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                          updatedReservationId={updatedReservationId}
+                          isUpdatedHighlighted={isUpdatedHighlighted}
+                          onPartialUpdate={onPartialUpdate}
+                          roomTypes={roomTypes}
+                          isUnassigned={true}
+                          handleDeleteClickHandler={handleDeleteClickHandler}
+                          handleConfirmClickHandler={handleConfirmClickHandler}
+                        />
+                      )
+                    )}
                   </div>
                 </div>
               ) : (
@@ -674,7 +700,11 @@ function RoomGrid({
                   <button
                     className="unassigned-header-title-button"
                     onClick={() => setShowUnassignedPanel(true)}
-                    style={{ cursor: 'pointer', marginLeft: '50px', marginBottom: '15px' }}
+                    style={{
+                      cursor: 'pointer',
+                      marginLeft: '50px',
+                      marginBottom: '15px',
+                    }}
                   >
                     당일 미배정 열기
                   </button>
@@ -690,8 +720,10 @@ function RoomGrid({
                     </h3>
                     <div className="layout-grid">
                       {(floor.containers || []).map((cont) => {
-                        const reservationsForCont = floorReservations[cont.containerId] || [];
-                        const sortedReservations = sortReservations(reservationsForCont);
+                        const reservationsForCont =
+                          floorReservations[cont.containerId] || [];
+                        const sortedReservations =
+                          sortReservations(reservationsForCont);
                         return (
                           <ContainerCell
                             key={cont.containerId}
@@ -720,30 +752,54 @@ function RoomGrid({
                                 gap: '10px',
                               }}
                             >
-                              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', textAlign: 'left' }}>
+                              <span
+                                style={{
+                                  fontSize: '1.5rem',
+                                  fontWeight: 'bold',
+                                  textAlign: 'left',
+                                }}
+                              >
                                 {cont.roomNumber || '미설정'}
                               </span>
-                              <span style={{ fontSize: '1rem', color: 'gray', marginLeft: '15%' }}>
+                              <span
+                                style={{
+                                  fontSize: '1rem',
+                                  color: 'gray',
+                                  marginLeft: '15%',
+                                }}
+                              >
                                 {cont.roomInfo || '미설정'}
                               </span>
                             </div>
                             <div
                               className="reservation-list"
-                              style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '5px',
+                              }}
                             >
                               {sortedReservations.length === 0 ? (
-                                <div style={{ fontStyle: 'italic', color: '#999' }}>
+                                <div
+                                  style={{ fontStyle: 'italic', color: '#999' }}
+                                >
                                   예약 없음
                                 </div>
                               ) : (
                                 sortedReservations.map((rsv, index) => (
                                   <DraggableReservationCard
-                                    key={`${rsv._id || rsv.reservationNo}-${index}`}
+                                    key={`${
+                                      rsv._id || rsv.reservationNo
+                                    }-${index}`}
                                     reservation={rsv}
                                     hotelId={hotelId}
-                                    highlightedReservationIds={highlightedReservationIds}
+                                    highlightedReservationIds={
+                                      highlightedReservationIds
+                                    }
                                     isSearching={isSearching}
-                                    flippedReservationIds={flippedReservationIds}
+                                    flippedReservationIds={
+                                      flippedReservationIds
+                                    }
                                     memos={memos}
                                     memoRefs={memoRefs}
                                     handleCardFlip={handleCardFlip}
@@ -752,14 +808,20 @@ function RoomGrid({
                                     renderActionButtons={renderActionButtons}
                                     loadedReservations={loadedReservations}
                                     newlyCreatedId={newlyCreatedId}
-                                    isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                                    isNewlyCreatedHighlighted={
+                                      isNewlyCreatedHighlighted
+                                    }
                                     updatedReservationId={updatedReservationId}
                                     isUpdatedHighlighted={isUpdatedHighlighted}
                                     onPartialUpdate={onPartialUpdate}
                                     roomTypes={roomTypes}
                                     hotelSettings={hotelSettings}
-                                    handleDeleteClickHandler={handleDeleteClickHandler}
-                                    handleConfirmClickHandler={handleConfirmClickHandler}
+                                    handleDeleteClickHandler={
+                                      handleDeleteClickHandler
+                                    }
+                                    handleConfirmClickHandler={
+                                      handleConfirmClickHandler
+                                    }
                                   />
                                 ))
                               )}

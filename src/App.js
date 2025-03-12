@@ -34,7 +34,7 @@ import {
   differenceInCalendarDays,
   startOfDay,
   addHours,
-  addMonths,
+  // addMonths,
 } from 'date-fns';
 
 import { defaultRoomTypes } from './config/defaultRoomTypes';
@@ -858,17 +858,13 @@ const App = () => {
       return {};
     }
 
-    const safeToday =
-      today instanceof Date && !isNaN(today) ? today : new Date();
     const safeSelectedDate =
       selectedDate instanceof Date && !isNaN(selectedDate)
         ? parseDate(selectedDate.toISOString()) // KST로 파싱
         : parseDate(new Date().toISOString());
 
-    const calcFromDate = startOfDay(safeToday);
-    const calcToDate = startOfDay(
-      addDays(endOfMonth(addMonths(safeToday, 1)), 1)
-    );
+    const calcFromDate = startOfDay(safeSelectedDate); // 선택된 날짜로 변경
+    const calcToDate = startOfDay(addDays(safeSelectedDate, 1)); // 다음 날까지
     const selectedDates = [
       format(addDays(safeSelectedDate, -1), 'yyyy-MM-dd'),
       format(safeSelectedDate, 'yyyy-MM-dd'),
@@ -890,7 +886,7 @@ const App = () => {
       hotelSettings?.gridSettings || {},
       selectedDates
     );
-  }, [allReservations, finalRoomTypes, hotelSettings, selectedDate, today]);
+  }, [allReservations, finalRoomTypes, hotelSettings, selectedDate]);
 
   const handlePartialUpdate = useCallback(
     async (reservationId, updatedData) => {
