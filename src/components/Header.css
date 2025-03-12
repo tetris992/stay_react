@@ -3,12 +3,12 @@
 /* 헤더 전체 레이아웃 */
 .header {
   box-sizing: border-box;
-  position: fixed; /* 고정 위치 설정 */
+  position: fixed;
   top: 0;
-  left: 280px; /* 사이드바 너비만큼 왼쪽에서 시작 */
-  width: calc(100% - 280px); /* 전체 너비에서 사이드바 너비 제외 */
-  height: 140px; /* 헤더 높이 */
-  z-index: 10; /* 다른 요소보다 앞에 위치 */
+  left: 280px;
+  width: calc(100% - 280px);
+  height: 140px;
+  z-index: 10;
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
@@ -68,7 +68,6 @@
 /* 두 번째 줄: 헤더 하단 */
 .header-bottom {
   display: grid;
-  /* 기본에는 3열 (왼쪽: 추가 버튼, 중앙: OTA 상태, 오른쪽: Quick-create) */
   grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
 }
@@ -86,30 +85,35 @@
   gap: 10px;
 }
 
-.sort-button,
+/* 통합된 버튼 스타일 (memo-button, view-logs-button, view-toggle-button) */
 .memo-button {
   padding: 6px 12px;
   font-size: 1rem;
+  line-height: 1; /* 라인 높이를 텍스트 크기와 맞춤 */
   border: none;
   border-radius: 4px;
   cursor: pointer;
   background-color: #f0f0f0;
   color: #333333;
   display: flex;
-  align-items: center;
-  gap: 5px;
+  align-items: center; /* 수직 중앙 정렬 */
+  gap: 5px; /* 아이콘과 텍스트 간 간격 */
   transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.sort-button:hover,
 .memo-button:hover {
   background-color: #e0e0e0;
   transform: scale(1.05);
 }
 
-.sort-button.active,
 .memo-button.active {
   background-color: #d0d0d0;
+}
+
+/* 아이콘 스타일 조정 */
+.memo-button svg {
+  font-size: 1rem; /* 아이콘 크기와 텍스트 크기 일치 */
+  vertical-align: middle; /* 수직 정렬 보정 */
 }
 
 /* 헤더 중앙: OTA 상태 표시 */
@@ -167,18 +171,6 @@
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.monthly-view-button {
-  padding: 6px 12px;
-  font-size: 1.1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  background-color: #9662ace1;
-  color: #ffffff;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  white-space: nowrap;
-}
-
 .quick-button:hover {
   background-color: #007cb576;
   cursor: pointer;
@@ -191,25 +183,6 @@
 
 .quick-button-green:hover {
   background-color: #45a04979;
-}
-
-.view-toggle-button {
-  border: none;
-  margin-right: 15px;
-}
-.view-toggle-button:hover {
-  cursor: pointer;
-  color: blue
-}
-
-.view-logs-button {
-  border: none;
-  margin-right: 15px;
-}
-
-.view-logs-button:hover {
-  cursor: pointer;
-  color: red;
 }
 
 /* 투명도 효과 영역 */
@@ -228,19 +201,15 @@
 
 /* 반응형 디자인: 화면 폭 2200px 이하일 때 */
 @media (max-width: 2200px) {
-  /* OTA 상태를 숨김 */
   .header-ota-status {
     display: none;
   }
-  /* 헤더 하단 그리드를 2열(왼쪽: 추가 버튼, 오른쪽: Quick-create 영역)으로 재설정 */
   .header-bottom {
     grid-template-columns: 1fr 1fr;
   }
-  /* Quick-create 버튼 영역에서 월간뷰 버튼을 제외한 다른 quick 버튼들을 완전히 숨김 */
   .quick-create-buttons .quick-button:not(.monthly-view-button) {
     display: none !important;
   }
-  /* quick-create-buttons의 gap을 제거하여 빈공간 없이 정렬 */
   .quick-create-buttons {
     gap: 0;
     justify-content: flex-end;

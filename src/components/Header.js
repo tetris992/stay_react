@@ -25,7 +25,8 @@ function Header({
   isShining,
   isMonthlyView,
   toggleMonthlyView,
-  onViewLogs, // View Logs 핸들러 추가
+  onViewLogs,
+  isLogViewerOpen,
 }) {
   // selectedDate를 KST로 변환
   const kstDate = toZonedTime(selectedDate, 'Asia/Seoul');
@@ -139,7 +140,7 @@ function Header({
 
             {/* View Logs 버튼 */}
             <button
-              className="view-logs-button"
+              className={`memo-button ${isLogViewerOpen ? 'active' : ''}`} // active 상태 추가
               onClick={handleViewLogs}
               aria-label="로그 보기"
             >
@@ -148,7 +149,7 @@ function Header({
 
             {/* 월간/일간 뷰 전환 버튼 */}
             <button
-              className="view-toggle-button"
+              className={`memo-button ${isMonthlyView ? 'active' : ''}`} // active 상태 추가
               onClick={handleToggleMonthlyView}
               aria-label="월간/일간 뷰 전환"
             >
@@ -245,7 +246,8 @@ Header.propTypes = {
   flipAllMemos: PropTypes.bool.isRequired,
   isMonthlyView: PropTypes.bool.isRequired,
   toggleMonthlyView: PropTypes.func.isRequired,
-  onViewLogs: PropTypes.func.isRequired, // View Logs 핸들러 추가
+  onViewLogs: PropTypes.func.isRequired,
+  isLogViewerOpen: PropTypes.bool, // LogViewer 상태 추가
 };
 
 export default Header;
