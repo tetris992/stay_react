@@ -14,6 +14,7 @@ import { FaLock, FaLockOpen } from 'react-icons/fa';
 import './MonthlyCalendar.css';
 import { calculateRoomAvailability } from '../utils/availability';
 
+// 문자열 기반으로 가용 객실 메시지 생성
 const getDetailedAvailabilityMessage = (
   rangeStart,
   rangeEnd,
@@ -48,6 +49,7 @@ const MonthlyCalendar = ({
   );
 
   const today = startOfDay(new Date());
+  const todayStr = format(today, 'yyyy-MM-dd'); // 문자열로 오늘 날짜
   const calendarStart = today;
   const calendarEnd = endOfMonth(addMonths(today, 1));
 
@@ -67,8 +69,11 @@ const MonthlyCalendar = ({
   const unassignedDates = useMemo(() => {
     const dates = new Set();
     reservations.forEach((res) => {
-      if (!res.roomNumber && res.parsedCheckInDate) {
-        dates.add(format(res.parsedCheckInDate, 'MM/dd'));
+      if (!res.roomNumber && res.checkIn) {
+        const checkInDate = new Date(res.checkIn);
+        if (!isNaN(checkInDate.getTime())) {
+          dates.add(format(checkInDate, 'MM/dd'));
+        }
       }
     });
     return Array.from(dates).sort();
@@ -96,12 +101,14 @@ const MonthlyCalendar = ({
   }, [reservations, roomTypes, gridSettings, selectedDate, today]);
 
   const handleRoomTypeMouseDown = (day, roomInfo) => {
-    if (day < today) return;
+    const dayStr = format(day, 'yyyy-MM-dd');
+    if (dayStr < todayStr) return; // 문자열 비교
     setSelectedRange({ roomInfo, start: day, end: day });
   };
 
   const handleRoomTypeMouseEnter = (day, roomInfo) => {
-    if (!selectedRange || day < today || selectedRange.roomInfo !== roomInfo)
+    const dayStr = format(day, 'yyyy-MM-dd');
+    if (!selectedRange || dayStr < todayStr || selectedRange.roomInfo !== roomInfo)
       return;
     setSelectedRange((prev) => ({ ...prev, end: day }));
   };
@@ -112,11 +119,11 @@ const MonthlyCalendar = ({
       return;
     }
     console.log('[MonthlyCalendar] selectedRange:', selectedRange);
-  
+
     const { roomInfo, start, end } = selectedRange;
     const [rangeStart, rangeEnd] = [start, end].sort((a, b) => a - b);
     const tKey = roomInfo.toLowerCase();
-  
+
     let cursor = rangeStart;
     const shortageDays = [];
     while (cursor < rangeEnd) {
@@ -126,14 +133,14 @@ const MonthlyCalendar = ({
       if (!data || data.remain <= 0) shortageDays.push(ds);
       cursor = addDays(cursor, 1);
     }
-  
+
     if (shortageDays.length > 0) {
       console.log('[MonthlyCalendar] Shortage days detected:', shortageDays);
       alert(`선택 구간에 재고 부족: ${shortageDays.join(', ')}`);
       setSelectedRange(null);
       return;
     }
-  
+
     let commonRooms = null;
     cursor = rangeStart;
     while (cursor < rangeEnd) {
@@ -145,9 +152,9 @@ const MonthlyCalendar = ({
         : new Set(freeRooms);
       cursor = addDays(cursor, 1);
     }
-  
+
     console.log('[MonthlyCalendar] Calculated commonRooms:', commonRooms);
-  
+
     if (!commonRooms || commonRooms.size === 0) {
       const msg = getDetailedAvailabilityMessage(rangeStart, rangeEnd, tKey, availabilityByDate);
       console.log('[MonthlyCalendar] No common rooms, showing message:', msg);
@@ -155,7 +162,7 @@ const MonthlyCalendar = ({
       setSelectedRange(null);
       return;
     }
-  
+
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
     const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(rangeEnd, 'MM/dd')} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
     console.log('[MonthlyCalendar] Showing confirm dialog with message:', msg);
@@ -209,7 +216,7 @@ const MonthlyCalendar = ({
   const renderDayCell = (day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const isOutside = day < calendarStart || day > calendarEnd;
-    const isToday = dateStr === format(today, 'yyyy-MM-dd');
+    const isToday = dateStr === todayStr;
     const isWeekend = [0, 6].includes(day.getDay());
     const dayAvailability = availabilityByDate[dateStr] || {};
 
