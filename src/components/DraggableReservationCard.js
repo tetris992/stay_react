@@ -144,9 +144,9 @@ const DraggableReservationCard = ({
       return false;
     }
 
-    const currentDate = startOfDay(new Date()); // 실제 오늘 날짜
+    const currentDate = startOfDay(new Date());
     const checkInDateOnly = startOfDay(checkInDate);
-    const selectedDateOnly = startOfDay(selectedDate); // 화면에 표시된 날짜
+    const selectedDateOnly = startOfDay(selectedDate);
 
     // 선택된 날짜가 체크인 날짜보다 이후이고 연박 예약이면 드래그 불가
     if (checkInDateOnly < selectedDateOnly && diffDays > 0) {
@@ -214,7 +214,7 @@ const DraggableReservationCard = ({
     checkInDate,
     checkOutDate,
     diffDays,
-    selectedDate, // 의존성 추가
+    selectedDate,
   ]);
 
   // 표시용 날짜 포맷팅 개선 (KST 유지)
@@ -249,6 +249,14 @@ const DraggableReservationCard = ({
     reservation.type,
     reservation.checkOut,
   ]);
+
+  // 예약일 날짜만 표시
+  const displayReservationDate = useMemo(() => {
+    if (!reservation.reservationDate) return '정보 없음';
+    // "YYYY-MM-DD" 형식으로 날짜만 추출
+    const dateMatch = reservation.reservationDate.match(/^\d{4}-\d{2}-\d{2}/);
+    return dateMatch ? dateMatch[0] : '정보 없음';
+  }, [reservation.reservationDate]);
 
   useEffect(() => {
     if (
@@ -471,9 +479,7 @@ const DraggableReservationCard = ({
       price: editedValues.price || reservation.totalPrice,
     };
 
-    // 현장예약인 경우
     if (reservation.siteName === '현장예약') {
-      // 대실 예약(dayUse)의 경우: 확인 시 현재 시간 기준으로 체크인/체크아웃 시간 결정
       if (reservation.type === 'dayUse') {
         const currentTime = new Date();
         updatedData.checkIn = format(
@@ -489,12 +495,10 @@ const DraggableReservationCard = ({
           "yyyy-MM-dd'T'HH:mm:ss+09:00"
         );
       } else {
-        // 숙박 예약의 경우: 사용자가 입력한 날짜에 호텔 설정의 기본 체크인/체크아웃 시간 적용
         updatedData.checkIn = `${editedValues.checkInDate}T${checkInTime}:00+09:00`;
         updatedData.checkOut = `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`;
       }
     } else {
-      // OTA 등 다른 사이트 예약의 경우: 기존 예약의 체크인/체크아웃 시간을 그대로 사용
       const originalCheckInTime = checkInDate
         ? format(checkInDate, 'HH:mm')
         : '00:00';
@@ -650,12 +654,7 @@ const DraggableReservationCard = ({
                     ? `${reservation.roomInfo.substring(0, 21)}...`
                     : reservation.roomInfo || '정보 없음'}
                 </p>
-                <p>
-                  예약일:{' '}
-                  {reservation.reservationDate
-                    ? reservation.reservationDate.split('\n')[0]
-                    : '정보 없음'}
-                </p>
+                <p>예약일: {displayReservationDate}</p>
                 {reservation.phoneNumber && (
                   <p>전화번호: {reservation.phoneNumber}</p>
                 )}
