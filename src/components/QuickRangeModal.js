@@ -163,7 +163,7 @@ const QuickRangeModal = ({
     <div className="quick-range-modal">
       <div className="modal-card">
         <span className="close-button" onClick={onClose}>×</span>
-        <h2>퀵 레인지 예약</h2>
+        <h2>빠른 연박 예약</h2>
         <form onSubmit={handleSubmit}>
           <div className="modal-row">
             <label>

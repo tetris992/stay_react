@@ -314,20 +314,16 @@ const App = () => {
   const onQuickCreateRange = (start, end, roomType) => {
     console.log('[onQuickCreateRange] Received:', { start, end, roomType });
     if (!start || !end || !roomType) {
-      console.error('[onQuickCreateRange] Invalid arguments:', {
-        start,
-        end,
-        roomType,
-      });
+      console.error('[onQuickCreateRange] Invalid arguments:', { start, end, roomType });
       return;
     }
-
+  
     const checkInTime = hotelSettings.checkInTime || '16:00';
     const checkOutTime = hotelSettings.checkOutTime || '11:00';
-
+  
     const checkIn = `${format(start, 'yyyy-MM-dd')}T${checkInTime}:00+09:00`;
     const checkOut = `${format(end, 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`;
-
+  
     const guestData = {
       reservationNo: `현장예약-${uuidv4()}`,
       customerName: `현장:${format(new Date(), 'HH:mm:ss')}`,
@@ -344,11 +340,13 @@ const App = () => {
       checkIn, // 문자열
       checkOut, // 문자열
     };
-
+  
     setGuestFormData(guestData);
+    // 라우트를 일간 예약 화면으로 전환하여 월간 달력을 닫습니다.
+    navigate('/');
     setShowQuickRangeModal(true);
   };
-
+  
   // roomTypes와 activeReservations가 업데이트될 때마다 남은 재고 계산
 
   const remainingInventory = useMemo(() => {
