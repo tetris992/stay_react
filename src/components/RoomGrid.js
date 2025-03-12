@@ -23,6 +23,7 @@ import {
   calculateRoomAvailability,
 } from '../utils/availability';
 import { checkConflict } from '../utils/checkConflict';
+import LogViewer from './LogViewer';
 
 /* ===============================
    [B] ContainerCell
@@ -405,6 +406,9 @@ function RoomGrid({
   filterReservationsByDate,
   availabilityByDate,
   onQuickCreateRange,
+  logs, // 프롭으로 전달받음
+  isLogViewerOpen, // 프롭으로 전달받음
+  onCloseLogViewer, // 프롭으로 전달받음
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -943,6 +947,12 @@ function RoomGrid({
             hotelId={hotelId}
           />
         )}
+        {isLogViewerOpen && (
+        <LogViewer
+          logs={logs}
+          onClose={() => onCloseLogViewer()}
+        />
+      )}
       </div>
     </div>
   );
@@ -973,6 +983,15 @@ RoomGrid.propTypes = {
   filterReservationsByDate: PropTypes.func.isRequired,
   availabilityByDate: PropTypes.object,
   onQuickCreateRange: PropTypes.func.isRequired,
+  logs: PropTypes.arrayOf(
+    PropTypes.shape({
+      timestamp: PropTypes.string.isRequired,
+      message: PropTypes.string.isRequired,
+      selectedDate: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  isLogViewerOpen: PropTypes.bool.isRequired,
+  onCloseLogViewer: PropTypes.func.isRequired,
 };
 
 export default RoomGrid;

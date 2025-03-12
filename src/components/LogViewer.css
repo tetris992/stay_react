@@ -1,0 +1,49 @@
+.log-viewer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .log-viewer {
+    font-family: Arial, sans-serif;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  .log-viewer h2 {
+    margin: 0 0 10px 0;
+  }
+  
+  .log-viewer h3 {
+    margin: 10px 0 5px;
+  }
+  
+  .log-viewer p {
+    margin: 5px 0;
+    word-wrap: break-word;
+    max-width: 100%;
+    white-space: pre-wrap;
+  }
+  
+  /* 출력 시 A4 너비로 고정 */
+  @media print {
+    .log-viewer {
+      width: 794px !important; /* a4Width 값 사용 */
+      max-width: 794px !important;
+      height: auto;
+      max-height: none;
+      overflow: visible;
+    }
+  
+    .log-viewer-overlay {
+      position: static;
+      background: none;
+    }
+  }

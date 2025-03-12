@@ -276,6 +276,48 @@ const App = () => {
 
   const [labelsForOTA, setLabelsForOTA] = useState([]);
   const [dailySalesByOTA, setDailySalesByOTA] = useState({});
+  const [logs, setLogs] = useState([]); // 로그 상태 추가
+  const [isLogViewerOpen, setIsLogViewerOpen] = useState(false); // 로그 뷰어 상태 추가
+
+  // 로그 수집 커스텀 함수
+  const log = useCallback((message) => {
+    const timestamp = new Date().toISOString();
+    setLogs((prevLogs) => [
+      ...prevLogs,
+      { timestamp, message, selectedDate: format(selectedDate, 'yyyy-MM-dd') },
+    ]);
+  }, [selectedDate]);
+
+  // 선택된 날짜의 예약을 콘솔에 출력 (로그 상태에 추가)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const logMessage = `Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}\n` +
+        activeReservations.map((res) => (
+          `ID: ${res._id}, Customer: ${res.customerName || '정보 없음'}, CheckIn: ${format(new Date(res.checkIn), 'yyyy-MM-dd HH:mm')}, CheckOut: ${format(new Date(res.checkOut), 'yyyy-MM-dd HH:mm')}, RoomNumber: ${res.roomNumber || '미배정'}, RoomInfo: ${res.roomInfo || '정보 없음'}, Status: ${res.reservationStatus || '정보 없음'}`
+        )).join('\n');
+      log(logMessage);
+    }
+  }, [activeReservations, selectedDate, log]);
+
+  // 객실 이동 및 기타 로그 수집
+  useEffect(() => {
+    const originalConsoleLog = console.log;
+    console.log = (...args) => {
+      const message = args.join(' ');
+      if (message.includes('Successfully moved') || message.includes('Conflict detected') || message.includes('[Debug]')) {
+        log(message);
+      }
+      originalConsoleLog(...args);
+    };
+    return () => {
+      console.log = originalConsoleLog;
+    };
+  }, [log]);
+
+  // 로그 뷰어 열기/닫기 함수
+  const openLogViewer = () => setIsLogViewerOpen(true);
+  const closeLogViewer = () => setIsLogViewerOpen(false);
+
 
   useEffect(() => {
     if (allReservations.length > 0 && selectedDate) {
@@ -2147,6 +2189,7 @@ const App = () => {
                       lowStockRoomTypes={lowStockRoomTypes}
                       isMonthlyView={isMonthlyView}
                       toggleMonthlyView={toggleMonthlyView}
+                      onViewLogs={openLogViewer}
                     />
                     <SideBar
                       loading={loading}
@@ -2253,6 +2296,9 @@ const App = () => {
                               setIsMonthlyView={setIsMonthlyView} // 추가
                               toggleMonthlyView={toggleMonthlyView} // 추가
                               onQuickCreateRange={onQuickCreateRange}
+                              logs={logs}
+                              isLogViewerOpen={isLogViewerOpen} // 로그 뷰어 상태 전달
+                              onCloseLogViewer={closeLogViewer} // 로그 뷰어 닫기 함수 전달
                             />
                           </DndProvider>
                         </div>

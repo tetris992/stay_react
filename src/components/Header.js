@@ -6,6 +6,7 @@ import {
   faCaretRight,
   faStickyNote,
   faCalendarAlt,
+  faList, // 로그 뷰어 아이콘
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import { format } from 'date-fns';
@@ -24,6 +25,7 @@ function Header({
   isShining,
   isMonthlyView,
   toggleMonthlyView,
+  onViewLogs, // View Logs 핸들러 추가
 }) {
   // selectedDate를 KST로 변환
   const kstDate = toZonedTime(selectedDate, 'Asia/Seoul');
@@ -79,6 +81,15 @@ function Header({
     }
   };
 
+  const handleViewLogs = () => {
+    try {
+      onViewLogs();
+    } catch (error) {
+      console.error('[Header] Error on view logs:', error);
+      alert('로그 보기 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="header">
       {/* 첫 번째 줄: 날짜 네비게이션 */}
@@ -113,7 +124,7 @@ function Header({
         </div>
       </div>
 
-      {/* 두 번째 줄: 메모 버튼, OTA 상태, Quick-create 버튼 */}
+      {/* 두 번째 줄: 메모 버튼, View Logs 버튼, OTA 상태, Quick-create 버튼 */}
       <div className="header-bottom">
         <div className="header-left">
           <div className="additional-buttons">
@@ -124,6 +135,15 @@ function Header({
               aria-label="모든 방 카드 메모 플립"
             >
               <FontAwesomeIcon icon={faStickyNote} /> 메모
+            </button>
+
+            {/* View Logs 버튼 */}
+            <button
+              className="view-logs-button"
+              onClick={handleViewLogs}
+              aria-label="로그 보기"
+            >
+              <FontAwesomeIcon icon={faList} /> 로그보기
             </button>
 
             {/* 월간/일간 뷰 전환 버튼 */}
@@ -220,11 +240,12 @@ Header.propTypes = {
   onNextDay: PropTypes.func.isRequired,
   onQuickCreate: PropTypes.func.isRequired,
   isShining: PropTypes.bool.isRequired,
-  otaToggles: PropTypes.objectOf(PropTypes.bool).isRequired, // 더 구체적으로 정의
+  otaToggles: PropTypes.objectOf(PropTypes.bool).isRequired,
   onMemo: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
   isMonthlyView: PropTypes.bool.isRequired,
   toggleMonthlyView: PropTypes.func.isRequired,
+  onViewLogs: PropTypes.func.isRequired, // View Logs 핸들러 추가
 };
 
 export default Header;
