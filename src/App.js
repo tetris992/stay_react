@@ -276,48 +276,66 @@ const App = () => {
 
   const [labelsForOTA, setLabelsForOTA] = useState([]);
   const [dailySalesByOTA, setDailySalesByOTA] = useState({});
+  const MAX_LOGS = 1000; // 최대 로그 개수
 
   const [logs, setLogs] = useState(() => {
-    const stored = localStorage.getItem('logs');
-    return stored ? JSON.parse(stored) : [];
+    try {
+      const stored = localStorage.getItem('logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error('로그 파싱 실패:', e);
+      return [];
+    }
   });
-  const [isLogViewerOpen, setIsLogViewerOpen] = useState(false); // 로그 뷰어 상태 추가
-
+  const [isLogViewerOpen, setIsLogViewerOpen] = useState(false);
+  
   const lastLogRef = useRef('');
-
-  // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않음
+  
+  // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않음, 배열 길이 제한 적용
   const logMessage = useCallback(
     (message) => {
+      // 개발 환경에서만 로그 수집
+      if (process.env.NODE_ENV !== 'development') return;
       if (message === lastLogRef.current) return;
       lastLogRef.current = message;
       const timestamp = new Date().toISOString();
-      setLogs((prev) => [
-        ...prev,
-        {
-          timestamp,
-          message,
-          selectedDate: format(selectedDate, 'yyyy-MM-dd'),
-        },
-      ]);
+      setLogs((prev) => {
+        const newLogs = [
+          ...prev,
+          {
+            timestamp,
+            message,
+            selectedDate: format(selectedDate, 'yyyy-MM-dd'),
+          },
+        ];
+        // 최대 로그 개수 제한: 오래된 로그 삭제
+        if (newLogs.length > MAX_LOGS) {
+          return newLogs.slice(newLogs.length - MAX_LOGS);
+        }
+        return newLogs;
+      });
     },
     [selectedDate]
   );
-
-  // logs 상태 변경 시 로컬 스토리지에 저장 (새로고침 후에도 보존)
+  
+  // logs 상태 변경 시 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem('logs', JSON.stringify(logs));
+    try {
+      localStorage.setItem('logs', JSON.stringify(logs));
+    } catch (e) {
+      console.error('로그 저장 실패:', e);
+    }
   }, [logs]);
-
-  // 콘솔 로그 오버라이드: 이동, 삭제, 생성 이벤트만 기록
+  
+  // 콘솔 로그 오버라이드: 개발 환경에서만 적용
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
     const originalConsoleLog = console.log;
     console.log = (...args) => {
       const msg = args.join(' ');
       if (
         msg.includes('Successfully moved') ||
-        // 삭제 관련 로그: 대소문자 구분없이 "deleted"가 포함된 경우
         msg.toLowerCase().includes('deleted') ||
-        // 생성 관련 로그: "Successfully created", "Room created", 혹은 "새 예약"이 포함된 경우
         msg.includes('Successfully created') ||
         msg.includes('Room created') ||
         msg.includes('새 예약')
@@ -330,7 +348,7 @@ const App = () => {
       console.log = originalConsoleLog;
     };
   }, [logMessage]);
-
+  
   // 로그 뷰어 열기/닫기 함수
   const openLogViewer = () => setIsLogViewerOpen(true);
   const closeLogViewer = () => setIsLogViewerOpen(false);

@@ -179,6 +179,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 380px;
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -198,6 +199,7 @@
   left: 0;
   width: 100%;
   height: 100%;
+  min-height: 380px;
   background-color: rgb(240, 240, 240);
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;
@@ -413,6 +415,7 @@
   ========================================================================== */
 .reservation-list {
   min-width: 310px;
+  height: auto;
   /* width: auto; */
   position: relative;
 }
@@ -534,5 +537,5 @@
 .draggable-false {
   cursor: not-allowed !important;
   opacity: 0.7;
-  border: 2px dashed #ff4d4f; /* 충돌 시 빨간 점선 테두리 */
+  border: 3px dotted #5656a3; /* 충돌 시 빨간 점선 테두리 */
 }

@@ -324,7 +324,7 @@ const ContainerCell = React.memo(
           borderRadius: '8px',
           padding: '8px',
           position: 'relative',
-          minHeight: '380px',
+          minHeight: '390px',
           minWidth: '330px',
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}
@@ -832,7 +832,7 @@ function RoomGrid({
                 .map((floor) => (
                   <div key={floor.floorNum} className="floor-section">
                     <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                      {floor.floorNum}F
+                      {/* {floor.floorNum}F */}
                     </h3>
                     <div className="layout-grid">
                       {(floor.containers || []).map((cont) => {
