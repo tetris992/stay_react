@@ -611,6 +611,7 @@ const App = () => {
         totalPrice: finalTotalPrice,
         checkIn: res.checkIn,
         checkOut: res.checkOut,
+        paymentMethod: res.paymentMethod,
       };
     },
     [calculatePerNightPrice]
@@ -967,8 +968,7 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-
-      // 값 비교를 위해 null/undefined는 빈 문자열로 처리
+  
       const currentPrice = String(currentReservation.price ?? '');
       const updatedPrice = String(updatedData.price ?? '');
       const currentCheckOut = formatDate(
@@ -979,12 +979,9 @@ const App = () => {
         parseDate(updatedData.checkOut || currentReservation.checkOut),
         "yyyy-MM-dd'T'HH:mm:ss"
       );
-      const currentSpecialReq = (
-        currentReservation.specialRequests ?? ''
-      ).trim();
+      const currentSpecialReq = (currentReservation.specialRequests ?? '').trim();
       const updatedSpecialReq = (updatedData.specialRequests ?? '').trim();
-
-      // 변경된 내용만 기록 (변경되지 않은 항목은 생략)
+  
       let changes = [];
       if (currentPrice !== updatedPrice) {
         changes.push(`가격: ${currentPrice} -> ${updatedPrice}`);
@@ -992,7 +989,6 @@ const App = () => {
       if (currentCheckOut !== updatedCheckOut) {
         changes.push(`체크아웃: ${currentCheckOut} -> ${updatedCheckOut}`);
       }
-      // 둘 다 빈 문자열로 취급하여 "없음"으로 표시
       if ((currentSpecialReq || '없음') !== (updatedSpecialReq || '없음')) {
         changes.push(
           `특별요청: ${currentSpecialReq || '없음'} -> ${
@@ -1000,42 +996,44 @@ const App = () => {
           }`
         );
       }
-      // 고객명, 전화번호, 결제방법 등 다른 변경사항도 필요하면 추가
-
+      const currentPayment = currentReservation.paymentMethod || 'Pending';
+      const updatedPayment = updatedData.paymentMethod || 'Pending';
+      if (currentPayment !== updatedPayment) {
+        changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
+      }
+  
       if (changes.length === 0) {
         console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
         return;
       }
-
+  
       const changeLog = `예약 ${reservationId} 부분 업데이트됨:\n${changes.join(
         '\n'
       )}`;
-
+  
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = parseDate(newCheckIn);
         const newParsedCheckOutDate = parseDate(newCheckOut);
-
+  
         await updateReservation(
           reservationId,
           {
             ...updatedData,
             checkIn: formatDate(newParsedCheckInDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            checkOut: formatDate(
-              newParsedCheckOutDate,
-              "yyyy-MM-dd'T'HH:mm:ss"
-            ),
+            checkOut: formatDate(newParsedCheckOutDate, "yyyy-MM-dd'T'HH:mm:ss"),
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
             roomInfo: currentReservation.roomInfo,
             roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
             price: updatedData.price || currentReservation.totalPrice,
             totalPrice: updatedData.price || currentReservation.totalPrice,
+            paymentMethod: updatedData.paymentMethod || currentReservation.paymentMethod || 'Pending', // 명시적 보장
           },
           hotelId
         );
-
+  
         setUpdatedReservationId(reservationId);
         setTimeout(() => setUpdatedReservationId(null), 10000);
         console.log(changeLog);
@@ -1055,8 +1053,7 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-
-      // OTA 예약은 별도 처리
+  
       if (availableOTAs.includes(currentReservation.siteName)) {
         if (!updatedData.manualAssignment) {
           updatedData.roomNumber = '';
@@ -1065,13 +1062,11 @@ const App = () => {
           updatedData.price = currentReservation.price;
         }
       }
-
-      // roomInfo와 roomNumber가 동일하면, 다른 필드만 변경된 경우 handlePartialUpdate로 처리할 수 있음.
+  
       const roomChange =
         updatedData.roomNumber !== currentReservation.roomNumber;
-
+  
       let changes = [];
-      // 변경된 항목이 있을 때만 로그 메시지를 작성 (단, room 변경은 handleRoomChangeAndSync에서 처리)
       if (!roomChange) {
         const currentPrice = String(currentReservation.price ?? '');
         const updatedPrice = String(updatedData.price ?? '');
@@ -1099,14 +1094,12 @@ const App = () => {
         if (currentPhone !== updatedPhone) {
           changes.push(`전화번호: ${currentPhone} -> ${updatedPhone}`);
         }
-        const currentPayment = currentReservation.paymentMethod ?? '';
-        const updatedPayment = updatedData.paymentMethod ?? '';
+        const currentPayment = currentReservation.paymentMethod || 'Pending';
+        const updatedPayment = updatedData.paymentMethod || 'Pending';
         if (currentPayment !== updatedPayment) {
           changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
         }
-        const currentSpecialReq = (
-          currentReservation.specialRequests ?? ''
-        ).trim();
+        const currentSpecialReq = (currentReservation.specialRequests ?? '').trim();
         const updatedSpecialReq = (updatedData.specialRequests ?? '').trim();
         if ((currentSpecialReq || '없음') !== (updatedSpecialReq || '없음')) {
           changes.push(
@@ -1116,14 +1109,13 @@ const App = () => {
           );
         }
       }
-
+  
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = parseDate(newCheckIn);
         const newParsedCheckOutDate = parseDate(newCheckOut);
-
-        // 룸 번호가 변경되었다면, handleRoomChangeAndSync에서 이동 로그를 남김
+  
         if (roomChange) {
           await handleRoomChangeAndSync(
             reservationId,
@@ -1132,33 +1124,30 @@ const App = () => {
             updatedData.price || currentReservation.totalPrice
           );
         }
-
+  
         const updatedReservation = await updateReservation(
           reservationId,
           {
             ...updatedData,
             checkIn: formatDate(newParsedCheckInDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            checkOut: formatDate(
-              newParsedCheckOutDate,
-              "yyyy-MM-dd'T'HH:mm:ss"
-            ),
+            checkOut: formatDate(newParsedCheckOutDate, "yyyy-MM-dd'T'HH:mm:ss"),
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
             roomInfo: currentReservation.roomInfo,
             roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
             price: updatedData.price || currentReservation.totalPrice,
+            paymentMethod: updatedData.paymentMethod || currentReservation.paymentMethod || 'Pending', // 명시적 보장
           },
           hotelId
         );
-
-        const processedUpdatedReservation =
-          processReservation(updatedReservation);
+  
+        const processedUpdatedReservation = processReservation(updatedReservation);
         setAllReservations((prev) =>
           prev.map((res) =>
             res._id === reservationId ? processedUpdatedReservation : res
           )
         );
-
+  
         if (changes.length > 0) {
           const updateLog = `예약 ${reservationId} 수정됨:\n${changes.join(
             '\n'

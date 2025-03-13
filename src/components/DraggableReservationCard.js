@@ -9,6 +9,7 @@ import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import { renderActionButtons } from '../utils/renderActionButtons';
 import './DraggableReservationCard.css';
+import { getPaymentMethodIcon } from '../utils/roomGridUtils';
 
 const DraggableReservationCard = ({
   isUnassigned = false,
@@ -585,6 +586,10 @@ const DraggableReservationCard = ({
     }
     return getPriceForDisplay(reservation);
   }, [isEditingCard, editedValues.price, reservation]);
+  
+  const paymentMethodInfo = useMemo(() => {
+    return getPaymentMethodIcon(reservation.paymentMethod || 'Pending');
+  }, [reservation.paymentMethod]);
 
   return (
     <div
@@ -663,6 +668,15 @@ const DraggableReservationCard = ({
                 {reservation.phoneNumber && (
                   <p>전화번호: {reservation.phoneNumber}</p>
                 )}
+<p>
+                  결제방법:{' '}
+                  {paymentMethodInfo.icon && (
+                    <>
+                      {paymentMethodInfo.icon} {paymentMethodInfo.text}
+                    </>
+                  )}
+                </p>
+
                 <p>고객요청: {reservation.specialRequests || '없음'}</p>
               </div>
               <div className="site-info-footer">
@@ -818,12 +832,12 @@ const DraggableReservationCard = ({
               <label>
                 결제방법/상태:
                 <select
-                  value={editedValues.paymentMethod || 'Pending'}
+                  value={editedValues.paymentMethod || '미결제'}
                   onChange={(e) =>
                     handleFieldChange('paymentMethod', e.target.value)
                   }
                 >
-                  <option value="Pending">Pending</option>
+                  <option value="Pending">미결제</option>
                   <option value="Card">Card</option>
                   <option value="Cash">Cash</option>
                   <option value="Account Transfer">Account Transfer</option>

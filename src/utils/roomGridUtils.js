@@ -26,7 +26,10 @@ export function sortContainers(containers) {
 export function getBorderColor(reservation) {
   try {
     if (!reservation || !reservation.checkIn || !reservation.checkOut) {
-      console.warn('Reservation data or dates are missing or invalid:', reservation);
+      console.warn(
+        'Reservation data or dates are missing or invalid:',
+        reservation
+      );
       return '';
     }
 
@@ -69,15 +72,15 @@ export function getBorderColor(reservation) {
 export function getPaymentMethodIcon(pm) {
   switch (pm) {
     case 'Card':
-      return <FaCreditCard className="payment-icon" />;
+      return { icon: <FaCreditCard className="payment-icon" />, text: 'Card' };
     case 'Cash':
-      return <FaMoneyBillWave className="payment-icon" />;
+      return { icon: <FaMoneyBillWave className="payment-icon" />, text: 'Cash' };
     case 'Account Transfer':
-      return <FaUniversity className="payment-icon" />;
+      return { icon: <FaUniversity className="payment-icon" />, text: '계좌이체' };
     case 'Pending':
-      return <FaHourglassHalf className="payment-icon" />;
+      return { icon: <FaHourglassHalf className="payment-icon" />, text: '미결제' };
     default:
-      return null;
+      return { icon: null, text: '정보 없음' };
   }
 }
 
@@ -97,7 +100,7 @@ export function getInitialFormData(reservation, roomTypes, isDayUse = false) {
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: reservation?.roomInfo || roomTypes[0]?.roomInfo || 'Standard',
         price: String(basePrice),
-        paymentMethod: 'Pending',
+        paymentMethod: '미결제',
         specialRequests: '',
         manualPriceOverride: false,
       };
@@ -124,7 +127,7 @@ export function getInitialFormData(reservation, roomTypes, isDayUse = false) {
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: roomInfo,
         price: String(basePrice),
-        paymentMethod: 'Pending',
+        paymentMethod: '미결제',
         specialRequests: '',
         manualPriceOverride: false,
       };
@@ -159,7 +162,7 @@ export function getInitialFormData(reservation, roomTypes, isDayUse = false) {
     reservationDate: resDate,
     roomInfo: roomInfo,
     price: priceVal,
-    paymentMethod: reservation.paymentMethod || 'Pending',
+    paymentMethod: reservation.paymentMethod || '미결제',
     specialRequests: reservation.specialRequests || '',
     manualPriceOverride: !!reservation.price,
   };

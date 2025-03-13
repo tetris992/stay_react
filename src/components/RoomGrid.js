@@ -107,6 +107,8 @@ const ContainerCell = React.memo(
             await handleEditExtended(reservationId, {
               roomInfo: originalRoomInfo,
               roomNumber: originalRoomNumber,
+              checkIn: draggedReservation.checkIn, // 기존 체크인 값 전달
+              checkOut: draggedReservation.checkOut, // 기존 체크아웃 값 전달
               manualAssignment: true,
             });
             return;
@@ -440,32 +442,45 @@ function RoomGrid({
 
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
-    return reservations.filter((reservation) => {
-      if (
-        isCancelledStatus(
-          reservation.reservationStatus || '',
-          reservation.customerName || '',
-          reservation.roomInfo || '',
-          reservation.reservationNo || ''
-        )
-      ) {
-        return false;
-      }
-      const checkInDate = new Date(reservation.checkIn);
-      const checkOutDate = new Date(reservation.checkOut);
-      if (isNaN(checkInDate) || isNaN(checkOutDate)) return false;
-
-      const checkInDateOnly = startOfDay(checkInDate);
-      const checkOutDateOnly = startOfDay(checkOutDate);
-      const isIncluded =
-        selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
-        selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
-      const isSameDayStay =
-        format(checkInDateOnly, 'yyyy-MM-dd') ===
-          format(checkOutDateOnly, 'yyyy-MM-dd') &&
-        selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
-      return isIncluded || isSameDayStay;
-    });
+    return (
+      (reservations || [])
+        .filter((reservation) => reservation !== null && reservation !== undefined)
+        .filter((reservation) => reservation._id) // _id가 있는 항목만 필터링
+        .filter((reservation) => {
+          return !isCancelledStatus(
+            reservation.reservationStatus || '',
+            reservation.customerName || '',
+            reservation.roomInfo || '',
+            reservation.reservationNo || ''
+          );
+        })
+        .filter((reservation) => {
+          const checkInDate = new Date(reservation.checkIn);
+          const checkOutDate = new Date(reservation.checkOut);
+          if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+            console.warn('Invalid dates in reservation:', reservation);
+            return false;
+          }
+          return true;
+        })
+        .filter((reservation) => {
+          const checkInDate = new Date(reservation.checkIn);
+          const checkOutDate = new Date(reservation.checkOut);
+          const checkInDateOnly = startOfDay(checkInDate);
+          const checkOutDateOnly = startOfDay(checkOutDate);
+  
+          const isIncluded =
+            selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
+            selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
+  
+          const isSameDayStay =
+            format(checkInDateOnly, 'yyyy-MM-dd') ===
+              format(checkOutDateOnly, 'yyyy-MM-dd') &&
+            selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
+  
+          return isIncluded || isSameDayStay;
+        })
+    );
   }, [reservations, selectedDate]);
 
   // 선택된 날짜의 예약을 콘솔에 출력
@@ -673,8 +688,10 @@ function RoomGrid({
 
   const sortReservations = useCallback(
     (list) => {
+      // null/undefined 값들을 먼저 제거한 후 정렬
+      const validList = list.filter((r) => r !== null && r !== undefined);
       if (sortOrder === 'roomType') {
-        return [...list].sort((a, b) => {
+        return [...validList].sort((a, b) => {
           const aMatch = matchRoomType(a.roomInfo, roomTypes);
           const bMatch = matchRoomType(b.roomInfo, roomTypes);
           const getKey = (mObj, info) => {
@@ -695,7 +712,7 @@ function RoomGrid({
           return new Date(a.checkIn) - new Date(b.checkIn);
         });
       } else {
-        return [...list].sort((a, b) => {
+        return [...validList].sort((a, b) => {
           const A = new Date(a.checkIn);
           const B = new Date(b.checkIn);
           return sortOrder === 'newest'
@@ -878,52 +895,64 @@ function RoomGrid({
                                 gap: '5px',
                               }}
                             >
-                              {sortedReservations.length === 0 ? (
+                              {sortedReservations.filter(
+                                (rsv) => rsv !== null && rsv !== undefined
+                              ).length === 0 ? (
                                 <div
                                   style={{ fontStyle: 'italic', color: '#999' }}
                                 >
                                   예약 없음
                                 </div>
                               ) : (
-                                sortedReservations.map((rsv, index) => (
-                                  <DraggableReservationCard
-                                    key={`${
-                                      rsv._id || rsv.reservationNo
-                                    }-${index}`}
-                                    reservation={rsv}
-                                    hotelId={hotelId}
-                                    highlightedReservationIds={
-                                      highlightedReservationIds
-                                    }
-                                    isSearching={isSearching}
-                                    flippedReservationIds={
-                                      flippedReservationIds
-                                    }
-                                    memos={memos}
-                                    memoRefs={memoRefs}
-                                    handleCardFlip={handleCardFlip}
-                                    openInvoiceModal={openInvoiceModalHandler}
-                                    getPaymentMethodIcon={getPaymentMethodIcon}
-                                    renderActionButtons={renderActionButtons}
-                                    loadedReservations={loadedReservations}
-                                    newlyCreatedId={newlyCreatedId}
-                                    isNewlyCreatedHighlighted={
-                                      isNewlyCreatedHighlighted
-                                    }
-                                    updatedReservationId={updatedReservationId}
-                                    isUpdatedHighlighted={isUpdatedHighlighted}
-                                    onPartialUpdate={onPartialUpdate}
-                                    roomTypes={roomTypes}
-                                    hotelSettings={hotelSettings}
-                                    handleDeleteClickHandler={
-                                      handleDeleteClickHandler
-                                    }
-                                    handleConfirmClickHandler={
-                                      handleConfirmClickHandler
-                                    }
-                                    selectedDate={selectedDate}
-                                  />
-                                ))
+                                sortedReservations
+                                  .filter(
+                                    (rsv) => rsv !== null && rsv !== undefined
+                                  )
+                                  .map((rsv, index) => (
+                                    <DraggableReservationCard
+                                      key={`${
+                                        rsv._id || rsv.reservationNo
+                                      }-${index}`}
+                                      reservation={rsv}
+                                      hotelId={hotelId}
+                                      highlightedReservationIds={
+                                        highlightedReservationIds
+                                      }
+                                      isSearching={isSearching}
+                                      flippedReservationIds={
+                                        flippedReservationIds
+                                      }
+                                      memos={memos}
+                                      memoRefs={memoRefs}
+                                      handleCardFlip={handleCardFlip}
+                                      openInvoiceModal={openInvoiceModalHandler}
+                                      getPaymentMethodIcon={
+                                        getPaymentMethodIcon
+                                      }
+                                      renderActionButtons={renderActionButtons}
+                                      loadedReservations={loadedReservations}
+                                      newlyCreatedId={newlyCreatedId}
+                                      isNewlyCreatedHighlighted={
+                                        isNewlyCreatedHighlighted
+                                      }
+                                      updatedReservationId={
+                                        updatedReservationId
+                                      }
+                                      isUpdatedHighlighted={
+                                        isUpdatedHighlighted
+                                      }
+                                      onPartialUpdate={onPartialUpdate}
+                                      roomTypes={roomTypes}
+                                      hotelSettings={hotelSettings}
+                                      handleDeleteClickHandler={
+                                        handleDeleteClickHandler
+                                      }
+                                      handleConfirmClickHandler={
+                                        handleConfirmClickHandler
+                                      }
+                                      selectedDate={selectedDate}
+                                    />
+                                  ))
                               )}
                             </div>
                           </ContainerCell>
@@ -948,11 +977,8 @@ function RoomGrid({
           />
         )}
         {isLogViewerOpen && (
-        <LogViewer
-          logs={logs}
-          onClose={() => onCloseLogViewer()}
-        />
-      )}
+          <LogViewer logs={logs} onClose={() => onCloseLogViewer()} />
+        )}
       </div>
     </div>
   );

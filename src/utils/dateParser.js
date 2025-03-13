@@ -4,6 +4,9 @@ import { ko, enUS } from 'date-fns/locale';
 const parsedDateCache = {};
 
 const cleanString = (str) => {
+  if (typeof str !== 'string') {
+    str = String(str);
+  }
   return str
     .replace(/\([^)]*\)/g, '')
     .replace(/[-]+$/g, '')
@@ -12,7 +15,6 @@ const cleanString = (str) => {
     .replace(/미리예약/g, '')
     .trim();
 };
-
 /**
  * 날짜 문자열을 파싱하여 Date 객체로 반환
  * @param {string} dateString - 파싱할 날짜 문자열

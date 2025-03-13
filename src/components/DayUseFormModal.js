@@ -23,7 +23,7 @@ const DayUseFormModal = ({
     reservationDate: '',
     roomInfo: '',
     price: '0',
-    paymentMethod: 'Pending',
+    paymentMethod: '미결제',
     specialRequests: '',
     roomNumber: '',
     manualPriceOverride: false,
@@ -59,7 +59,7 @@ const DayUseFormModal = ({
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
-        paymentMethod: initialData.paymentMethod || 'Pending',
+        paymentMethod: initialData.paymentMethod || '미결제',
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: !!initialData.price,
@@ -86,7 +86,7 @@ const DayUseFormModal = ({
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(initialData?.price || basePrice),
-        paymentMethod: 'Pending',
+        paymentMethod: '미결제',
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
         manualPriceOverride: false,
@@ -376,7 +376,7 @@ const DayUseFormModal = ({
                 <option value="Card">Card</option>
                 <option value="Cash">Cash</option>
                 <option value="Account Transfer">Account Transfer</option>
-                <option value="Pending">Pending</option>
+                <option value="미결제">미결제</option>
               </select>
             </label>
             <label>
