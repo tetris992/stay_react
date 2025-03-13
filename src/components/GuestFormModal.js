@@ -492,8 +492,8 @@ const GuestFormModal = ({
               >
                 <option value="Card">Card</option>
                 <option value="Cash">Cash</option>
-                <option value="Account Transfer">Account Transfer</option>
-                <option value="Pending">Pending</option>
+                <option value="Account Transfer">계좌이체</option>
+                <option value="Pending">미결제</option>
               </select>
             </label>
             <label htmlFor="specialRequests">

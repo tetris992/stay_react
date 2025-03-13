@@ -12,6 +12,7 @@ const DayUseFormModal = ({
   roomTypes,
   availabilityByDate,
   hotelSettings,
+  selectedDate,
 }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
@@ -37,6 +38,9 @@ const DayUseFormModal = ({
 
   useEffect(() => {
     const now = new Date();
+    const effectiveSelectedDate = selectedDate || now; // selectedDate가 없으면 현재 날짜 사용
+    const defaultCheckInTime =
+      hotelSettings?.checkInTime || format(now, 'HH:mm'); // 기본 체크인 시간
 
     if (initialData && initialData._id) {
       // 기존 예약 수정
@@ -65,9 +69,10 @@ const DayUseFormModal = ({
         manualPriceOverride: !!initialData.price,
       });
     } else {
-      // 신규 대실 예약: 여기서만 현재 시간에 기반한 기본값을 사용합니다.
-      const defaultCheckInDate = format(now, 'yyyy-MM-dd');
-      const defaultCheckInTime = format(now, 'HH:mm');
+      // 신규 대실 예약: selectedDate를 기준으로 설정
+      const defaultCheckInDate =
+        initialData?.checkInDate || format(effectiveSelectedDate, 'yyyy-MM-dd');
+      const checkInTime = initialData?.checkInTime || defaultCheckInTime; // initialData 우선, 없으면 기본 시간
       const initialRoomInfo =
         initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
@@ -80,8 +85,8 @@ const DayUseFormModal = ({
         customerName:
           initialData?.customerName || `대실:${format(now, 'HH:mm:ss')}`,
         phoneNumber: hotelSettings?.phoneNumber || '',
-        checkInDate: initialData?.checkInDate || defaultCheckInDate,
-        checkInTime: initialData?.checkInTime || defaultCheckInTime, // 현재 시각 그대로
+        checkInDate: defaultCheckInDate,
+        checkInTime: checkInTime,
         durationHours: initialData?.durationHours || 4,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
@@ -92,7 +97,7 @@ const DayUseFormModal = ({
         manualPriceOverride: false,
       });
     }
-  }, [initialData, filteredRoomTypes, hotelSettings]);
+  }, [initialData, filteredRoomTypes, hotelSettings, selectedDate]);
 
   useEffect(() => {
     if (
@@ -154,19 +159,16 @@ const DayUseFormModal = ({
       return;
     }
 
-  // --- (1) +09:00 붙여서 Date 생성 ---
-  // 예: "2025-03-13T02:37:00+09:00" 형태 => KST로 확실히 인식
-  const checkInDateTime = new Date(
-    `${formData.checkInDate}T${formData.checkInTime}:00+09:00`
-  );
+    const checkInDateTime = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00+09:00`
+    );
 
-  if (isNaN(checkInDateTime.getTime())) {
-    alert('유효한 체크인 날짜와 시간을 입력해주세요.');
-    setIsSubmitting(false);
-    return;
-  }
+    if (isNaN(checkInDateTime.getTime())) {
+      alert('유효한 체크인 날짜와 시간을 입력해주세요.');
+      setIsSubmitting(false);
+      return;
+    }
 
-    // 체크아웃 시간 계산: 체크인 시간 + 사용 시간
     const checkOutDateTime = addHours(checkInDateTime, formData.durationHours);
 
     const tKey = formData.roomInfo.toLowerCase();
@@ -375,7 +377,7 @@ const DayUseFormModal = ({
               >
                 <option value="Card">Card</option>
                 <option value="Cash">Cash</option>
-                <option value="Account Transfer">Account Transfer</option>
+                <option value="Account Transfer">계좌이체</option>
                 <option value="미결제">미결제</option>
               </select>
             </label>
@@ -417,6 +419,7 @@ DayUseFormModal.propTypes = {
   ).isRequired,
   availabilityByDate: PropTypes.object.isRequired,
   hotelSettings: PropTypes.object.isRequired,
+  selectedDate: PropTypes.instanceOf(Date), // 유지
 };
 
 export default DayUseFormModal;

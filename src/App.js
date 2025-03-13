@@ -397,7 +397,7 @@ const App = () => {
       reservationDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
       roomInfo: roomType,
       price: '',
-      paymentMethod: 'Pending',
+      paymentMethod: '미결제',
       specialRequests: '',
       checkIn, // 문자열
       checkOut, // 문자열
@@ -968,7 +968,7 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-  
+
       const currentPrice = String(currentReservation.price ?? '');
       const updatedPrice = String(updatedData.price ?? '');
       const currentCheckOut = formatDate(
@@ -979,9 +979,11 @@ const App = () => {
         parseDate(updatedData.checkOut || currentReservation.checkOut),
         "yyyy-MM-dd'T'HH:mm:ss"
       );
-      const currentSpecialReq = (currentReservation.specialRequests ?? '').trim();
+      const currentSpecialReq = (
+        currentReservation.specialRequests ?? ''
+      ).trim();
       const updatedSpecialReq = (updatedData.specialRequests ?? '').trim();
-  
+
       let changes = [];
       if (currentPrice !== updatedPrice) {
         changes.push(`가격: ${currentPrice} -> ${updatedPrice}`);
@@ -996,44 +998,50 @@ const App = () => {
           }`
         );
       }
-      const currentPayment = currentReservation.paymentMethod || 'Pending';
-      const updatedPayment = updatedData.paymentMethod || 'Pending';
+      const currentPayment = currentReservation.paymentMethod || '미결제';
+      const updatedPayment = updatedData.paymentMethod || '미결제';
       if (currentPayment !== updatedPayment) {
         changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
       }
-  
+
       if (changes.length === 0) {
         console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
         return;
       }
-  
+
       const changeLog = `예약 ${reservationId} 부분 업데이트됨:\n${changes.join(
         '\n'
       )}`;
-  
+
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = parseDate(newCheckIn);
         const newParsedCheckOutDate = parseDate(newCheckOut);
-  
+
         await updateReservation(
           reservationId,
           {
             ...updatedData,
             checkIn: formatDate(newParsedCheckInDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            checkOut: formatDate(newParsedCheckOutDate, "yyyy-MM-dd'T'HH:mm:ss"),
+            checkOut: formatDate(
+              newParsedCheckOutDate,
+              "yyyy-MM-dd'T'HH:mm:ss"
+            ),
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
             roomInfo: currentReservation.roomInfo,
             roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
             price: updatedData.price || currentReservation.totalPrice,
             totalPrice: updatedData.price || currentReservation.totalPrice,
-            paymentMethod: updatedData.paymentMethod || currentReservation.paymentMethod || 'Pending', // 명시적 보장
+            paymentMethod:
+              updatedData.paymentMethod ||
+              currentReservation.paymentMethod ||
+              '미결제', // 명시적 보장
           },
           hotelId
         );
-  
+
         setUpdatedReservationId(reservationId);
         setTimeout(() => setUpdatedReservationId(null), 10000);
         console.log(changeLog);
@@ -1053,7 +1061,7 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-  
+
       if (availableOTAs.includes(currentReservation.siteName)) {
         if (!updatedData.manualAssignment) {
           updatedData.roomNumber = '';
@@ -1062,10 +1070,10 @@ const App = () => {
           updatedData.price = currentReservation.price;
         }
       }
-  
+
       const roomChange =
         updatedData.roomNumber !== currentReservation.roomNumber;
-  
+
       let changes = [];
       if (!roomChange) {
         const currentPrice = String(currentReservation.price ?? '');
@@ -1094,12 +1102,14 @@ const App = () => {
         if (currentPhone !== updatedPhone) {
           changes.push(`전화번호: ${currentPhone} -> ${updatedPhone}`);
         }
-        const currentPayment = currentReservation.paymentMethod || 'Pending';
-        const updatedPayment = updatedData.paymentMethod || 'Pending';
+        const currentPayment = currentReservation.paymentMethod || '미결제';
+        const updatedPayment = updatedData.paymentMethod || '미결제';
         if (currentPayment !== updatedPayment) {
           changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
         }
-        const currentSpecialReq = (currentReservation.specialRequests ?? '').trim();
+        const currentSpecialReq = (
+          currentReservation.specialRequests ?? ''
+        ).trim();
         const updatedSpecialReq = (updatedData.specialRequests ?? '').trim();
         if ((currentSpecialReq || '없음') !== (updatedSpecialReq || '없음')) {
           changes.push(
@@ -1109,13 +1119,13 @@ const App = () => {
           );
         }
       }
-  
+
       try {
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = parseDate(newCheckIn);
         const newParsedCheckOutDate = parseDate(newCheckOut);
-  
+
         if (roomChange) {
           await handleRoomChangeAndSync(
             reservationId,
@@ -1124,30 +1134,37 @@ const App = () => {
             updatedData.price || currentReservation.totalPrice
           );
         }
-  
+
         const updatedReservation = await updateReservation(
           reservationId,
           {
             ...updatedData,
             checkIn: formatDate(newParsedCheckInDate, "yyyy-MM-dd'T'HH:mm:ss"),
-            checkOut: formatDate(newParsedCheckOutDate, "yyyy-MM-dd'T'HH:mm:ss"),
+            checkOut: formatDate(
+              newParsedCheckOutDate,
+              "yyyy-MM-dd'T'HH:mm:ss"
+            ),
             parsedCheckInDate: newParsedCheckInDate,
             parsedCheckOutDate: newParsedCheckOutDate,
             roomInfo: currentReservation.roomInfo,
             roomNumber: updatedData.roomNumber || currentReservation.roomNumber,
             price: updatedData.price || currentReservation.totalPrice,
-            paymentMethod: updatedData.paymentMethod || currentReservation.paymentMethod || 'Pending', // 명시적 보장
+            paymentMethod:
+              updatedData.paymentMethod ||
+              currentReservation.paymentMethod ||
+              '미결제', // 명시적 보장
           },
           hotelId
         );
-  
-        const processedUpdatedReservation = processReservation(updatedReservation);
+
+        const processedUpdatedReservation =
+          processReservation(updatedReservation);
         setAllReservations((prev) =>
           prev.map((res) =>
             res._id === reservationId ? processedUpdatedReservation : res
           )
         );
-  
+
         if (changes.length > 0) {
           const updateLog = `예약 ${reservationId} 수정됨:\n${changes.join(
             '\n'
@@ -2022,7 +2039,7 @@ const App = () => {
       reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
       roomInfo: roomTypes[0]?.roomInfo || 'Standard',
       price: roomTypes[0]?.price.toString() || '',
-      paymentMethod: 'Pending',
+      paymentMethod: '미결제',
       specialRequests: '',
       checkIn, // 문자열로 저장
       checkOut, // 문자열로 저장
@@ -2040,8 +2057,14 @@ const App = () => {
     const checkOutTime = hotelSettings.checkOutTime || '11:00';
 
     if (type === '대실') {
-      const checkIn = format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00");
-      const checkOut = format(addHours(now, 4), "yyyy-MM-dd'T'HH:mm:ss+09:00");
+      // 체크인 날짜를 selectedDate로 설정, 시간은 현재 시간으로 설정
+      const checkInDateStr = format(effectiveDate, 'yyyy-MM-dd');
+      const checkInTimeStr = format(now, 'HH:mm'); // 현재 시간 (HH:mm)
+      const checkIn = `${checkInDateStr}T${checkInTimeStr}:00+09:00`;
+      const checkOut = format(
+        addHours(new Date(checkIn), 4),
+        "yyyy-MM-dd'T'HH:mm:ss+09:00"
+      );
       const customerName = `대실:${format(now, 'HH:mm:ss')}`;
       const basePrice = finalRoomTypes[0]?.price || 0;
       const price = Math.floor(basePrice * 0.5);
@@ -2049,14 +2072,14 @@ const App = () => {
       setGuestFormData({
         reservationNo: `${uuidv4()}`,
         customerName,
-        checkInDate: format(now, 'yyyy-MM-dd'),
-        checkInTime: format(now, 'HH:mm'),
-        checkOutDate: format(addHours(now, 4), 'yyyy-MM-dd'),
-        checkOutTime: format(addHours(now, 4), 'HH:mm'),
+        checkInDate: checkInDateStr,
+        checkInTime: checkInTimeStr,
+        checkOutDate: format(new Date(checkOut), 'yyyy-MM-dd'),
+        checkOutTime: format(new Date(checkOut), 'HH:mm'),
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: finalRoomTypes[0]?.roomInfo || 'Standard',
         price: price.toString(),
-        paymentMethod: 'Pending',
+        paymentMethod: '미결제',
         specialRequests: '',
         checkIn, // 문자열
         checkOut, // 문자열
@@ -2090,7 +2113,7 @@ const App = () => {
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: finalRoomTypes[0]?.roomInfo || 'Standard',
         price: basePrice.toString(),
-        paymentMethod: 'Pending',
+        paymentMethod: '미결제',
         specialRequests: '',
         checkIn, // 문자열
         checkOut, // 문자열
@@ -2456,7 +2479,8 @@ const App = () => {
                             onClose={() => setShowGuestForm(false)}
                             onSave={handleFormSave}
                             availabilityByDate={guestAvailability}
-                            hotelSettings={hotelSettings} // 호텔 설정 전달
+                            hotelSettings={hotelSettings}
+                            selectedDate={selectedDate} // 추가: selectedDate 전달
                           />
                         ))}
                       {showQuickRangeModal &&

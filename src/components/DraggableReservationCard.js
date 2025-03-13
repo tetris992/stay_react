@@ -586,7 +586,7 @@ const DraggableReservationCard = ({
     }
     return getPriceForDisplay(reservation);
   }, [isEditingCard, editedValues.price, reservation]);
-  
+
   const paymentMethodInfo = useMemo(() => {
     return getPaymentMethodIcon(reservation.paymentMethod || 'Pending');
   }, [reservation.paymentMethod]);
@@ -837,10 +837,10 @@ const DraggableReservationCard = ({
                     handleFieldChange('paymentMethod', e.target.value)
                   }
                 >
-                  <option value="Pending">미결제</option>
                   <option value="Card">Card</option>
                   <option value="Cash">Cash</option>
-                  <option value="Account Transfer">Account Transfer</option>
+                  <option value="Account Transfer">계좌이체</option>
+                  <option value="Pending">미결제</option>
                 </select>
               </label>
               <label>
