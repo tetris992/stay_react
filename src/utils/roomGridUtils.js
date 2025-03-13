@@ -72,13 +72,22 @@ export function getBorderColor(reservation) {
 export function getPaymentMethodIcon(pm) {
   switch (pm) {
     case 'Card':
-      return { icon: <FaCreditCard className="payment-icon" />, text: 'Card' };
+      return { icon: <FaCreditCard className="payment-icon" />, text: '카드' };
     case 'Cash':
-      return { icon: <FaMoneyBillWave className="payment-icon" />, text: 'Cash' };
+      return {
+        icon: <FaMoneyBillWave className="payment-icon" />,
+        text: '현금',
+      };
     case 'Account Transfer':
-      return { icon: <FaUniversity className="payment-icon" />, text: '계좌이체' };
+      return {
+        icon: <FaUniversity className="payment-icon" />,
+        text: '계좌이체',
+      };
     case 'Pending':
-      return { icon: <FaHourglassHalf className="payment-icon" />, text: '미결제' };
+      return {
+        icon: <FaHourglassHalf className="payment-icon" />,
+        text: '미결제',
+      };
     default:
       return { icon: null, text: '정보 없음' };
   }
