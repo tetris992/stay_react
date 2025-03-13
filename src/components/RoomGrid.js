@@ -324,7 +324,7 @@ const ContainerCell = React.memo(
           borderRadius: '8px',
           padding: '8px',
           position: 'relative',
-          minHeight: '360px',
+          minHeight: '380px',
           minWidth: '330px',
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}

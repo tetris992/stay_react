@@ -3,7 +3,7 @@
 :root {
   --card-width: 100%;
   --card-max-width: 320px;
-  --card-height: 370px;
+  --card-height: 380px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
@@ -120,7 +120,7 @@
 
 .room-card-inner {
   min-width: 320px;
-  max-height: 370px;
+  max-height: 380px;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;

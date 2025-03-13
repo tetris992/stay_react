@@ -4,7 +4,7 @@
 :root {
   /* 예약 카드 기본 크기 */
   --card-width: 310px;
-  --card-height: 370px;
+  --card-height: 380px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
