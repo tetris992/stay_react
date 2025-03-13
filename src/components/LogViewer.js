@@ -89,7 +89,7 @@ const LogViewer = ({ logs, onClose }) => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <h2 style={{ fontSize: '2em', margin: 0 }}>Room Logs</h2>
+            <h2 style={{ fontSize: '2em', margin: 0 }}>과거 내역확인</h2>
             <select
               value={sortOrder}
               onChange={handleSortChange}

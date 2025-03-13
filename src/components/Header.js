@@ -144,7 +144,7 @@ function Header({
               onClick={handleViewLogs}
               aria-label="로그 보기"
             >
-              <FontAwesomeIcon icon={faList} /> 로그보기
+              <FontAwesomeIcon icon={faList} /> 이전내역확인
             </button>
 
             {/* 월간/일간 뷰 전환 버튼 */}
