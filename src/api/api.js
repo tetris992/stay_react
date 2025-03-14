@@ -504,4 +504,59 @@ export const setCsrfToken = (token) => {
 // 토큰 관리 함수 공개
 export { getAccessToken, getCsrfToken };
 
+// 대실전용
+// export const createDayUseReservation = async (reservationData) => {
+//   try {
+//     const response = await api.post('/api/dayuse', reservationData);
+//     return response.data;
+//   } catch (error) {
+//     console.error('대실 예약 생성 실패:', error);
+//     throw error.response?.data || error;
+//   }
+// };
+
+// export const updateDayUseReservation = async (
+//   reservationId,
+//   updateData,
+//   hotelId
+// ) => {
+//   try {
+//     const response = await api.patch(
+//       `/api/dayuse/${encodeURIComponent(reservationId)}`,
+//       { ...updateData, hotelId }
+//     );
+//     return response.data;
+//   } catch (error) {
+//     console.error('대실 예약 수정 실패:', error);
+//     throw error.response?.data || error;
+//   }
+// };
+
+// export const deleteDayUseReservation = async (
+//   reservationId,
+//   hotelId,
+//   siteName
+// ) => {
+//   try {
+//     const response = await api.delete(
+//       `/api/dayuse/${encodeURIComponent(reservationId)}`,
+//       { params: { hotelId, siteName } }
+//     );
+//     return response.data;
+//   } catch (error) {
+//     console.error('대실 예약 삭제 실패:', error);
+//     throw error.response?.data || error;
+//   }
+// };
+
+// export const fetchDayUseReservations = async (hotelId) => {
+//   try {
+//     const response = await api.get('/api/dayuse', { params: { hotelId } });
+//     return Array.isArray(response.data) ? response.data : [];
+//   } catch (error) {
+//     console.error('대실 예약 정보 불러오기 실패:', error);
+//     throw error.response?.data || error;
+//   }
+// };
+
 export default api;

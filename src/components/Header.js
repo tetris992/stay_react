@@ -15,14 +15,12 @@ import { toZonedTime } from 'date-fns-tz';
 
 function Header({
   selectedDate,
-  onDateChange,
   onPrevDay,
   onNextDay,
   onQuickCreate,
   otaToggles,
   onMemo,
   flipAllMemos,
-  isShining,
   isMonthlyView,
   toggleMonthlyView,
   onViewLogs,

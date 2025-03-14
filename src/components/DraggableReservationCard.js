@@ -1,20 +1,78 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import { differenceInSeconds, format, addHours, startOfDay } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
 import { checkConflict } from '../utils/checkConflict';
-import { getBorderColor, getInitialFormData } from '../utils/roomGridUtils';
+import { getBorderColor } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
-import { renderActionButtons } from '../utils/renderActionButtons';
 import './DraggableReservationCard.css';
 import { getPaymentMethodIcon } from '../utils/roomGridUtils';
+
+// 남은 시간 표시를 위한 별도 컴포넌트
+const CountdownTimer = ({ checkOutDate, reservationId, newlyCreatedId }) => {
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    const calculateRemainingSeconds = () => {
+      if (!checkOutDate) {
+        setRemainingSeconds(null);
+        return;
+      }
+      const now = new Date();
+      const diffInSeconds = differenceInSeconds(checkOutDate, now);
+
+      if (diffInSeconds <= 0) {
+        setRemainingSeconds(0);
+        return;
+      }
+
+      setRemainingSeconds(diffInSeconds);
+    };
+
+    if (reservationId === newlyCreatedId || checkOutDate) {
+      calculateRemainingSeconds();
+      timerRef.current = setInterval(calculateRemainingSeconds, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [checkOutDate, reservationId, newlyCreatedId]);
+
+  const remainingTime = useMemo(() => {
+    if (remainingSeconds === null) return '계산 불가';
+    if (remainingSeconds <= 0) return '만료됨';
+
+    const hours = Math.floor(remainingSeconds / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = remainingSeconds % 60;
+    return `${hours}시간 ${minutes}분 ${seconds}초`;
+  }, [remainingSeconds]);
+
+  return (
+    <span className="countdown">
+      <span className={remainingTime === '만료됨' ? 'expired' : ''}>
+        ({remainingTime})
+      </span>
+    </span>
+  );
+};
+
+CountdownTimer.propTypes = {
+  checkOutDate: PropTypes.instanceOf(Date),
+  reservationId: PropTypes.string,
+  newlyCreatedId: PropTypes.string,
+};
 
 const DraggableReservationCard = ({
   isUnassigned = false,
   reservation,
-  // hotelId,
   highlightedReservationIds,
   isSearching,
   flippedReservationIds,
@@ -27,25 +85,22 @@ const DraggableReservationCard = ({
   email,
   handleDeleteClickHandler,
   handleConfirmClickHandler,
-  renderActionButtons: customRenderActionButtons,
   loadedReservations,
   newlyCreatedId,
   isNewlyCreatedHighlighted,
   updatedReservationId,
   isUpdatedHighlighted,
   onPartialUpdate,
+  onEdit,
   roomTypes,
   allReservations = [],
   selectedDate,
 }) => {
-  const [isEditingCard, setIsEditingCard] = useState(false);
-  const [editedValues, setEditedValues] = useState({});
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingMemo, setIsEditingMemo] = useState(false);
-  const [remainingTime, setRemainingTime] = useState('');
   const [conflictDetails, setConflictDetails] = useState(null);
 
-  // 호텔 설정에서 고정 시간 가져오기 (기본값 설정)
+  // 호텔 설정에서 고정 시간 가져오기 (대실에서는 무시)
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';
 
@@ -153,7 +208,6 @@ const DraggableReservationCard = ({
     const checkOutDay = startOfDay(checkOutDate);
     const selectedDay = startOfDay(selectedDate);
 
-    // 추가: 이미 체크아웃된 예약은 드래그 불가능
     if (currentDate > checkOutDay) {
       console.log(
         `Reservation ${reservation._id || 'unknown'} has already checked out.`
@@ -221,10 +275,22 @@ const DraggableReservationCard = ({
   ]);
 
   // 표시용 날짜 포맷팅 개선 (KST 유지)
+  const stayLabel = useMemo(() => {
+    if (diffDays === 0) return '(대실)';
+    else if (diffDays === 1 && reservation.customerName.includes('대실'))
+      return '(대실)';
+    else if (diffDays === 1) return '(1박)';
+    else if (diffDays >= 2) return `(${diffDays}박)`;
+    return '';
+  }, [diffDays, reservation.customerName]);
+
   const displayCheckIn = useMemo(() => {
+    if (!reservation.checkIn || reservation.checkIn === '') return '미정';
     if (!checkInDate) return '정보 없음';
     const [datePart, timePart] = reservation.checkIn.split('T');
-    const time = timePart.split('+')[0].substring(0, 5); // "HH:mm" 추출
+    const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
+    if (time === '00:00' && reservation.type === 'dayUse')
+      return `${datePart} (입실 대기)`;
     if (reservation.siteName === '현장예약' && reservation.type !== 'dayUse') {
       return `${datePart} ${checkInTime}`;
     }
@@ -238,9 +304,12 @@ const DraggableReservationCard = ({
   ]);
 
   const displayCheckOut = useMemo(() => {
+    if (!reservation.checkOut || reservation.checkOut === '') return '미정';
     if (!checkOutDate) return '정보 없음';
     const [datePart, timePart] = reservation.checkOut.split('T');
-    const time = timePart.split('+')[0].substring(0, 5); // "HH:mm" 추출
+    const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
+    if (time === '00:00' && reservation.type === 'dayUse')
+      return `${datePart} (입실 대기)`;
     if (reservation.siteName === '현장예약' && reservation.type !== 'dayUse') {
       return `${datePart} ${checkOutTime}`;
     }
@@ -256,10 +325,122 @@ const DraggableReservationCard = ({
   // 예약일 날짜만 표시
   const displayReservationDate = useMemo(() => {
     if (!reservation.reservationDate) return '정보 없음';
-    // "YYYY-MM-DD" 형식으로 날짜만 추출
     const dateMatch = reservation.reservationDate.match(/^\d{4}-\d{2}-\d{2}/);
     return dateMatch ? dateMatch[0] : '정보 없음';
   }, [reservation.reservationDate]);
+
+  // 대실 전용 버튼 핸들러
+  const handleCheckIn = useCallback(() => {
+    const now = new Date();
+    const checkInStr = format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00");
+    const durationHours =
+      reservation.duration || reservation.durationHours || 3;
+    const checkOutStr = format(
+      addHours(now, durationHours),
+      "yyyy-MM-dd'T'HH:mm:ss+09:00"
+    );
+    const updatedData = {
+      ...reservation,
+      checkIn: checkInStr,
+      checkOut: checkOutStr,
+      checkInTime: format(now, 'HH:mm'),
+      checkOutTime: format(new Date(checkOutStr), 'HH:mm'),
+      paymentMethod: 'Cash', // 대실 기본 결제 방법
+    };
+    console.log(
+      `[handleCheckIn] Updating reservation ${reservation._id}`,
+      updatedData
+    );
+    onPartialUpdate(reservation._id, updatedData);
+  }, [reservation, onPartialUpdate]);
+
+  const handleCheckOut = useCallback(() => {
+    const now = new Date();
+    const updatedData = {
+      ...reservation,
+      checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
+      checkOutTime: format(now, 'HH:mm'),
+      isCheckedOut: true, // 점유 제외를 위한 플래그 추가
+    };
+    console.log(
+      `[handleCheckOut] Updating reservation ${reservation._id}`,
+      updatedData
+    );
+    onPartialUpdate(reservation._id, updatedData);
+  }, [reservation, onPartialUpdate]);
+
+  const handleDelete = useCallback(() => {
+    if (window.confirm('대실 예약을 삭제하시겠습니까?')) {
+      console.log(`[handleDelete] Deleting reservation ${reservation._id}`);
+      handleDeleteClickHandler(reservation._id, reservation.siteName);
+    }
+  }, [reservation._id, reservation.siteName, handleDeleteClickHandler]);
+
+  // handleEditStart 함수
+  const handleEditStart = useCallback(
+    (reservationId) => {
+      const today = startOfDay(new Date());
+      const checkoutDay = checkOutDate ? startOfDay(checkOutDate) : null;
+      if (checkoutDay && today > checkoutDay) {
+        console.warn(
+          `Reservation ${
+            reservation._id || 'unknown'
+          } has already checked out. Editing is not allowed.`
+        );
+        return;
+      }
+      if (isOpen || isEditingMemo) return;
+      setIsOpen(true);
+
+      // checkOut이 null일 경우 기본값 설정
+      const defaultCheckOut = checkOutDate
+        ? reservation.checkOut
+        : format(addHours(new Date(), 3), "yyyy-MM-dd'T'HH:mm:ss+09:00"); // 기본 3시간 후
+
+      const initialData = {
+        ...reservation,
+        _id: reservation._id,
+        checkIn: reservation.checkIn,
+        checkOut: defaultCheckOut, // checkOut이 null일 경우 기본값 사용
+        checkInDate: checkInDate ? format(checkInDate, 'yyyy-MM-dd') : '',
+        checkInTime: checkInDate ? format(checkInDate, 'HH:mm') : '00:00',
+        checkOutDate: checkOutDate
+          ? format(checkOutDate, 'yyyy-MM-dd')
+          : format(addHours(new Date(), 3), 'yyyy-MM-dd'),
+        checkOutTime: checkOutDate
+          ? format(checkOutDate, 'HH:mm')
+          : format(addHours(new Date(), 3), 'HH:mm'),
+        duration: reservation.duration || reservation.durationHours || 3,
+        durationHours: reservation.duration || reservation.durationHours || 3,
+        type: reservation.type || 'stay',
+        reservationNo: reservation.reservationNo || reservation._id,
+        customerName: reservation.customerName || '',
+        phoneNumber: reservation.phoneNumber || '',
+        reservationDate:
+          reservation.reservationDate || format(new Date(), 'yyyy-MM-dd HH:mm'),
+        roomInfo: reservation.roomInfo || 'Standard',
+        price: String(reservation.price || reservation.totalPrice || 0),
+        paymentMethod:
+          reservation.paymentMethod ||
+          (reservation.type === 'dayUse' ? 'Cash' : 'Card'),
+        specialRequests: reservation.specialRequests || '',
+        roomNumber: reservation.roomNumber || '',
+      };
+      if (typeof onEdit === 'function') {
+        console.log(
+          `[DraggableReservationCard.js] Calling onEdit with reservationId: ${reservationId}, initialData:`,
+          initialData
+        );
+        onEdit(reservationId, initialData);
+      } else {
+        console.error(
+          `[DraggableReservationCard.js] onEdit is not a function. Received: ${typeof onEdit}, value:`,
+          onEdit
+        );
+      }
+    },
+    [checkOutDate, reservation, onEdit, checkInDate, isEditingMemo, isOpen]
+  );
 
   useEffect(() => {
     if (
@@ -340,6 +521,7 @@ const DraggableReservationCard = ({
     checkOutDate,
     selectedDate,
   ]);
+
   const [{ isDragging }, dragRef] = useDrag({
     type: 'RESERVATION',
     item: {
@@ -354,40 +536,10 @@ const DraggableReservationCard = ({
     },
     canDrag:
       !flippedReservationIds.has(reservation._id) &&
-      !isEditingCard &&
       !isEditingMemo &&
       canDragMemo,
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
-
-  useEffect(() => {
-    if (reservation.type !== 'dayUse') return;
-
-    const calculateRemainingTime = () => {
-      if (!checkOutDate) {
-        setRemainingTime('계산 불가');
-        return;
-      }
-      const now = new Date();
-      const diffInSeconds = differenceInSeconds(checkOutDate, now);
-
-      if (diffInSeconds <= 0) {
-        setRemainingTime('만료됨');
-        return;
-      }
-
-      const hours = Math.floor(diffInSeconds / 3600);
-      const minutes = Math.floor((diffInSeconds % 3600) / 60);
-      const seconds = diffInSeconds % 60;
-      setRemainingTime(`${hours}시간 ${minutes}분 ${seconds}초`);
-    };
-
-    if (reservation._id === newlyCreatedId || checkOutDate) {
-      calculateRemainingTime();
-      const interval = setInterval(calculateRemainingTime, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [reservation.type, newlyCreatedId, reservation._id, checkOutDate]);
 
   const toggleMemoEdit = (reservationId, newState) => {
     if (typeof newState === 'boolean') {
@@ -408,15 +560,6 @@ const DraggableReservationCard = ({
     reservation._id.includes('Canceled') ||
     (reservation.reservationStatus || '').toLowerCase() === 'cancelled';
 
-  const stayLabel = useMemo(() => {
-    if (diffDays === 0) return '(대실)';
-    else if (diffDays === 1 && reservation.customerName.includes('대실'))
-      return '(대실)';
-    else if (diffDays === 1) return '(1박)';
-    else if (diffDays >= 2) return `(${diffDays}박)`;
-    return '';
-  }, [diffDays, reservation.customerName]);
-
   const truncatedReservationNo = reservation.reservationNo
     ? reservation.reservationNo.length > 20
       ? `${reservation.reservationNo.substring(0, 20)}...`
@@ -430,128 +573,12 @@ const DraggableReservationCard = ({
     isUnassigned ? 'unassigned-card' : '',
     isHighlighted ? 'highlighted' : '',
     isNewlyCreated || isUpdated ? 'onsite-created' : '',
-    isEditingCard ? 'edit-mode' : '',
     !canDragMemo ? 'draggable-false' : '',
+    reservation.isCheckedOut ? 'checked-out' : '',
+    isOpen ? 'editing' : '',
   ]
     .filter(Boolean)
     .join(' ');
-
-  const handleEditStart = () => {
-    const today = startOfDay(new Date());
-    const checkoutDay = checkOutDate ? startOfDay(checkOutDate) : null;
-    // 추가: 체크아웃 날짜가 지난 예약은 수정 불가능
-    if (checkoutDay && today > checkoutDay) {
-      console.warn(
-        `Reservation ${
-          reservation._id || 'unknown'
-        } has already checked out. Editing is not allowed.`
-      );
-      return;
-    }
-    if (isOpen || isEditingMemo) return;
-    setIsOpen(true);
-    const initialForm = getInitialFormData(reservation, roomTypes);
-    setEditedValues({
-      ...initialForm,
-      price: reservation.price?.toString() || initialForm.price,
-      checkInDate: checkInDate
-        ? format(checkInDate, 'yyyy-MM-dd')
-        : initialForm.checkInDate,
-      checkOutDate: checkOutDate
-        ? format(checkOutDate, 'yyyy-MM-dd')
-        : initialForm.checkOutDate,
-      roomNumber: reservation.roomNumber,
-    });
-    setIsEditingCard(true);
-  };
-
-  const handleEditCancel = () => {
-    setIsEditingCard(false);
-    setEditedValues({});
-    setIsOpen(false);
-  };
-
-  const handleEditSave = (e) => {
-    e.preventDefault();
-    if (!reservation) {
-      console.warn('예약 객체가 없어 저장을 수행할 수 없습니다.');
-      return;
-    }
-    const updatedData = {
-      customerName: editedValues.customerName,
-      phoneNumber: editedValues.phoneNumber,
-      paymentMethod: editedValues.paymentMethod,
-      specialRequests: editedValues.specialRequests,
-      roomInfo: reservation.roomInfo || '',
-      roomNumber: editedValues.roomNumber || reservation.roomNumber || '',
-      price: editedValues.price || reservation.totalPrice || 0,
-    };
-    if (reservation.siteName === '현장예약') {
-      if (reservation.type === 'dayUse') {
-        const currentTime = new Date();
-        updatedData.checkIn = format(
-          currentTime,
-          "yyyy-MM-dd'T'HH:mm:ss+09:00"
-        );
-        const computedCheckOut = addHours(
-          currentTime,
-          Number(editedValues.durationHours || 4)
-        );
-        updatedData.checkOut = format(
-          computedCheckOut,
-          "yyyy-MM-dd'T'HH:mm:ss+09:00"
-        );
-      } else {
-        updatedData.checkIn = `${editedValues.checkInDate}T${checkInTime}:00+09:00`;
-        updatedData.checkOut = `${editedValues.checkOutDate}T${checkOutTime}:00+09:00`;
-      }
-    } else {
-      const originalCheckInTime = checkInDate
-        ? format(checkInDate, 'HH:mm')
-        : '00:00';
-      const originalCheckOutTime = checkOutDate
-        ? format(checkOutDate, 'HH:mm')
-        : '00:00';
-      updatedData.checkIn = `${editedValues.checkInDate}T${originalCheckInTime}:00+09:00`;
-      updatedData.checkOut = `${editedValues.checkOutDate}T${originalCheckOutTime}:00+09:00`;
-    }
-    onPartialUpdate(reservation._id, updatedData);
-    setIsEditingCard(false);
-    setEditedValues({});
-    setIsOpen(false);
-  };
-
-  const handleFieldChange = (field, value) => {
-    setEditedValues((prev) => {
-      const updated = { ...prev, [field]: value };
-      const fieldsAffectingPrice = ['checkInDate', 'checkOutDate'];
-
-      if (
-        fieldsAffectingPrice.includes(field) &&
-        reservation.siteName === '현장예약'
-      ) {
-        const ci = new Date(`${updated.checkInDate}T${checkInTime}:00+09:00`);
-        const co = new Date(`${updated.checkOutDate}T${checkOutTime}:00+09:00`);
-        const nights = Math.max(
-          1,
-          Math.ceil((co - ci) / (1000 * 60 * 60 * 24))
-        );
-        const selectedRoom = roomTypes.find(
-          (r) => r.roomInfo === reservation.roomInfo
-        );
-
-        if (selectedRoom && !updated.manualPriceOverride) {
-          const newPrice = selectedRoom.price * nights;
-          return {
-            ...updated,
-            price: newPrice.toString(),
-            manualPriceOverride: false,
-          };
-        }
-      }
-      return updated;
-    });
-  };
 
   const handleMemoChange = (reservationId, value) => {
     console.log(`Memo changed for ${reservationId}: ${value}`);
@@ -576,20 +603,78 @@ const DraggableReservationCard = ({
   const handleCardClick = (e) => {
     if (e.target.closest('.memo-component')) return;
     if (isUnassigned) return;
-    if (isDragging || isEditingCard || isEditingMemo) return;
+    if (isDragging || isEditingMemo) return;
     handleCardFlip(reservation._id);
   };
 
   const displayPrice = useMemo(() => {
-    if (isEditingCard && editedValues.price !== undefined) {
-      return editedValues.price;
-    }
     return getPriceForDisplay(reservation);
-  }, [isEditingCard, editedValues.price, reservation]);
+  }, [reservation]);
 
   const paymentMethodInfo = useMemo(() => {
-    return getPaymentMethodIcon(reservation.paymentMethod || 'Pending');
-  }, [reservation.paymentMethod]);
+    const defaultMethod = reservation.type === 'dayUse' ? 'Cash' : 'Card';
+    return getPaymentMethodIcon(reservation.paymentMethod || defaultMethod);
+  }, [reservation.type, reservation.paymentMethod]);
+
+  // 대실 전용 버튼 렌더링 함수 (메모이제이션 적용)
+  const renderDayUseButtons = useMemo(() => {
+    console.log(
+      `[renderDayUseButtons] checkIn: ${reservation.checkIn}, isCheckedOut: ${reservation.isCheckedOut}`
+    );
+    return (
+      <span className="button-group-wrapper">
+        {reservation.type === 'dayUse' && !reservation.checkIn?.trim() && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCheckIn();
+            }}
+            className="action-btn checkin-btn"
+          >
+            입실
+          </button>
+        )}
+        {reservation.checkIn?.trim() && !reservation.isCheckedOut && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCheckOut();
+            }}
+            className="action-btn checkout-btn"
+          >
+            퇴실
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditStart(reservation._id);
+          }}
+          className="action-btn edit-btn"
+        >
+          수정
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
+          className="action-btn delete-btn"
+        >
+          삭제
+        </button>
+      </span>
+    );
+  }, [
+    reservation.type,
+    reservation.checkIn,
+    reservation.isCheckedOut,
+    reservation._id,
+    handleCheckIn,
+    handleCheckOut,
+    handleDelete,
+    handleEditStart,
+  ]);
 
   return (
     <div
@@ -603,15 +688,12 @@ const DraggableReservationCard = ({
             '해당 기간에 이미 예약이 있어 이동할 수 없습니다.'
       }
       style={{
-        cursor:
-          isEditingCard || isEditingMemo || !canDragMemo
-            ? 'default'
-            : 'pointer',
+        cursor: isEditingMemo || !canDragMemo ? 'default' : 'pointer',
         transition: 'opacity 0.2s ease-in-out, transform 0.3s ease-in-out',
         opacity: isDragging ? 0.5 : 1,
-        transform: isEditingCard ? 'scale(1.2)' : 'scale(1)',
-        zIndex: isEditingCard ? 1000 : 'auto',
-        position: isEditingCard ? 'relative' : 'static',
+        transform: 'scale(1)',
+        zIndex: 'auto',
+        position: 'static',
         backgroundColor: isUnassigned ? '#f0f0f0' : undefined,
       }}
       onClick={handleCardClick}
@@ -619,7 +701,7 @@ const DraggableReservationCard = ({
       <div
         className={`flip-container ${isFlipped ? 'flipped' : ''}`}
         style={{
-          cursor: isEditingCard || isEditingMemo ? 'default' : 'pointer',
+          cursor: isEditingMemo ? 'default' : 'pointer',
           perspective: '1000px',
         }}
       >
@@ -633,30 +715,62 @@ const DraggableReservationCard = ({
                 <div className="card-header">
                   <h3 className="no-break">
                     <span className="stay-label">{stayLabel}</span>
-                    <span className="button-group-wrapper">
-                      {renderActionButtons({
-                        reservation,
-                        handleDeleteClickHandler,
-                        handleConfirmClickHandler,
-                        handleEditStart,
-                      })}
-                    </span>
+                    {/* 대실 전용 버튼 보장 */}
+                    {reservation.type === 'dayUse' && renderDayUseButtons}
+                    {reservation.type !== 'dayUse' && (
+                      <span className="button-group-wrapper">
+                        {reservation.reservationStatus !== 'Confirmed' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfirmClickHandler(reservation._id);
+                            }}
+                            className="action-btn confirm-btn"
+                            data-tooltip="확정"
+                          >
+                            확정
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStart(reservation._id);
+                          }}
+                          className="action-btn edit-btn"
+                          data-tooltip="수정"
+                        >
+                          수정
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClickHandler(
+                              reservation._id,
+                              reservation.siteName
+                            );
+                          }}
+                          className="action-btn delete-btn"
+                          data-tooltip="삭제"
+                        >
+                          삭제
+                        </button>
+                      </span>
+                    )}
                   </h3>
                 </div>
                 <p className="reservation-no">{truncatedReservationNo}</p>
-                <p>예약자: {reservation.customerName || '정보 없음'}</p>
+                <p>
+                  예약자: {reservation.customerName || '정보 없음'}{' '}
+                  {reservation.type === 'dayUse' && (
+                    <CountdownTimer
+                      checkOutDate={checkOutDate}
+                      reservationId={reservation._id}
+                      newlyCreatedId={newlyCreatedId}
+                    />
+                  )}
+                </p>
                 <p>체크인: {displayCheckIn}</p>
                 <p>체크아웃: {displayCheckOut}</p>
-                {reservation.type === 'dayUse' && (
-                  <p className="countdown">
-                    남은 시간:{' '}
-                    <span
-                      className={remainingTime === '만료됨' ? 'expired' : ''}
-                    >
-                      {remainingTime || '계산 중...'}
-                    </span>
-                  </p>
-                )}
                 <p>가격: {displayPrice}</p>
                 <p>
                   객실 정보:{' '}
@@ -668,7 +782,7 @@ const DraggableReservationCard = ({
                 {reservation.phoneNumber && (
                   <p>전화번호: {reservation.phoneNumber}</p>
                 )}
-<p>
+                <p className="payment-method">
                   결제방법:{' '}
                   {paymentMethodInfo.icon && (
                     <>
@@ -676,7 +790,6 @@ const DraggableReservationCard = ({
                     </>
                   )}
                 </p>
-
                 <p>고객요청: {reservation.specialRequests || '없음'}</p>
               </div>
               <div className="site-info-footer">
@@ -749,134 +862,12 @@ const DraggableReservationCard = ({
       {loadedReservations.includes(reservation._id) && (
         <div className="fade-in-overlay"></div>
       )}
-      {isEditingCard && (
-        <div className="edit-card-content">
-          <form onSubmit={handleEditSave}>
-            <div className="edit-card-header">
-              <h2>예약 수정</h2>
-              <button
-                type="button"
-                className="close-button"
-                onClick={handleEditCancel}
-              >
-                닫기
-              </button>
-            </div>
-            <div className="edit-card-row">
-              <label>
-                예약자:
-                <input
-                  type="text"
-                  value={editedValues.customerName}
-                  onChange={(e) =>
-                    handleFieldChange('customerName', e.target.value)
-                  }
-                  required
-                />
-              </label>
-              <label>
-                전화번호:
-                <input
-                  type="text"
-                  value={editedValues.phoneNumber}
-                  onChange={(e) =>
-                    handleFieldChange('phoneNumber', e.target.value)
-                  }
-                />
-              </label>
-            </div>
-            <div className="edit-card-row">
-              <label>
-                체크인 날짜:
-                <input
-                  type="date"
-                  value={editedValues.checkInDate}
-                  onChange={(e) =>
-                    handleFieldChange('checkInDate', e.target.value)
-                  }
-                />
-              </label>
-              <label>
-                체크아웃 날짜:
-                <input
-                  type="date"
-                  value={editedValues.checkOutDate}
-                  onChange={(e) =>
-                    handleFieldChange('checkOutDate', e.target.value)
-                  }
-                />
-              </label>
-            </div>
-            <div className="edit-card-row">
-              <label>
-                객실타입:
-                <input
-                  type="text"
-                  value={reservation.roomInfo}
-                  readOnly
-                  disabled
-                />
-              </label>
-              <label>
-                가격 (KRW):
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={editedValues.price}
-                  onChange={(e) => handleFieldChange('price', e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="edit-card-row">
-              <label>
-                결제방법/상태:
-                <select
-                  value={editedValues.paymentMethod || '미결제'}
-                  onChange={(e) =>
-                    handleFieldChange('paymentMethod', e.target.value)
-                  }
-                >
-                  <option value="Card">카드</option>
-                  <option value="Cash">현금</option>
-                  <option value="Account Transfer">계좌이체</option>
-                  <option value="Pending">미결제</option>
-                </select>
-              </label>
-              <label>
-                고객요청:
-                <input
-                  type="text"
-                  value={editedValues.specialRequests}
-                  onChange={(e) =>
-                    handleFieldChange('specialRequests', e.target.value)
-                  }
-                />
-              </label>
-            </div>
-            <div className="edit-card-actions">
-              <button type="submit" className="save-button">
-                저장
-              </button>
-              <button
-                type="button"
-                className="cancel-button"
-                onClick={handleEditCancel}
-              >
-                취소
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 };
 
 DraggableReservationCard.propTypes = {
   isUnassigned: PropTypes.bool,
-  reservation: PropTypes.object.isRequired,
-  hotelId: PropTypes.string.isRequired,
   highlightedReservationIds: PropTypes.array.isRequired,
   isSearching: PropTypes.bool,
   flippedReservationIds: PropTypes.instanceOf(Set).isRequired,
@@ -889,16 +880,28 @@ DraggableReservationCard.propTypes = {
   email: PropTypes.string,
   handleDeleteClickHandler: PropTypes.func.isRequired,
   handleConfirmClickHandler: PropTypes.func.isRequired,
-  renderActionButtons: PropTypes.func.isRequired,
   loadedReservations: PropTypes.array,
   newlyCreatedId: PropTypes.string,
   isNewlyCreatedHighlighted: PropTypes.bool,
   updatedReservationId: PropTypes.string,
   isUpdatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
   allReservations: PropTypes.array,
   selectedDate: PropTypes.instanceOf(Date),
+  reservation: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    checkIn: PropTypes.string.isRequired,
+    checkOut: PropTypes.string.isRequired,
+    customerName: PropTypes.string,
+    roomInfo: PropTypes.string,
+    reservationNo: PropTypes.string,
+    type: PropTypes.string,
+    duration: PropTypes.number,
+    durationHours: PropTypes.number,
+    isCheckedOut: PropTypes.bool,
+  }).isRequired,
 };
 
 export default DraggableReservationCard;

@@ -4,7 +4,7 @@ import {
   addDays,
   differenceInCalendarDays,
   areIntervalsOverlapping,
-  addMonths,
+  // addMonths,
 } from 'date-fns';
 
 export function calculateRoomAvailability(
@@ -12,29 +12,22 @@ export function calculateRoomAvailability(
   roomTypes,
   fromDate,
   toDate,
-  gridSettings = null
+  gridSettings = null,
+  selectedDates = []
 ) {
-  // 입력 날짜 유효성 검사
-  if (
-    !fromDate ||
-    !toDate ||
-    isNaN(new Date(fromDate)) ||
-    isNaN(new Date(toDate))
-  ) {
+  if (!fromDate || !toDate || isNaN(new Date(fromDate)) || isNaN(new Date(toDate))) {
     console.error('Invalid fromDate or toDate:', { fromDate, toDate });
     return {};
   }
 
-  // 최소 한 달 치 데이터 계산 (fromDate 기준으로 한 달)
   const calcFromDate = startOfDay(new Date(fromDate));
-  const calcToDate = startOfDay(addMonths(calcFromDate, 1));
+  const calcToDate = startOfDay(new Date(toDate));
   const numDays = differenceInCalendarDays(calcToDate, calcFromDate) + 1;
   const dateList = [];
   for (let i = 0; i < numDays; i++) {
     dateList.push(format(addDays(calcFromDate, i), 'yyyy-MM-dd'));
   }
 
-  // 1. 객실 타입별 정보 구성
   const roomDataByType = {};
   roomTypes.forEach((rt) => {
     const tKey = rt.roomInfo.toLowerCase();
@@ -42,21 +35,13 @@ export function calculateRoomAvailability(
     if ((!rooms || rooms.length === 0) && gridSettings?.floors) {
       rooms = gridSettings.floors
         .flatMap((floor) => floor.containers || [])
-        .filter((cell) => {
-          const cellTypeKey = (cell.roomInfo || 'standard').toLowerCase();
-          return (
-            cellTypeKey === tKey &&
-            cell.roomNumber &&
-            cell.roomNumber.trim() !== ''
-          );
-        })
+        .filter((cell) => cell.roomInfo.toLowerCase() === tKey && cell.roomNumber)
         .map((cell) => cell.roomNumber)
         .sort();
     }
-    roomDataByType[tKey] = { stock: rt.stock || 0, rooms };
+    roomDataByType[tKey] = { stock: rt.stock || rooms.length, rooms };
   });
 
-  // 2. 날짜별 사용량 초기화
   const usageByDate = {};
   dateList.forEach((ds) => {
     usageByDate[ds] = {};
@@ -66,21 +51,13 @@ export function calculateRoomAvailability(
     usageByDate[ds]['unassigned'] = { count: 0, assignedRooms: new Set() };
   });
 
-  // 3. 예약별 사용량 계산 (전체 기간 고려)
+  const now = new Date();
   reservations.forEach((res) => {
     const ci = new Date(res.checkIn);
-    const co = new Date(res.checkOut);
+    const co = res.checkOut ? new Date(res.checkOut) : null;
 
-    if (
-      !res.checkIn ||
-      !res.checkOut ||
-      isNaN(ci.getTime()) ||
-      isNaN(co.getTime())
-    ) {
-      console.warn(
-        '[calculateRoomAvailability] Invalid reservation dates:',
-        res
-      );
+    if (!res.checkIn || isNaN(ci.getTime())) {
+      console.warn('Invalid reservation dates:', res);
       return;
     }
 
@@ -90,32 +67,29 @@ export function calculateRoomAvailability(
     }
 
     const isDayUse = res.type === 'dayUse';
-    let resInterval;
-    if (isDayUse) {
-      resInterval = { start: ci, end: co };
-    }
+    const resInterval = { start: ci, end: co || addDays(ci, 1) }; // 체크아웃 없으면 기본 1일
 
     dateList.forEach((ds) => {
-      const dayStart = startOfDay(new Date(ds + 'T00:00:00+09:00')); // KST 기준
+      const dayStart = startOfDay(new Date(ds + 'T00:00:00+09:00'));
       const dayEnd = addDays(dayStart, 1);
 
       if (usageByDate[ds] && usageByDate[ds][typeKey]) {
         if (isDayUse) {
           const isSameDay = format(ci, 'yyyy-MM-dd') === ds;
           if (isSameDay) {
+            // 체크아웃 시간이 있고 현재 시간 이후면 점유 유지, 아니면 제외
+            if (co && co <= now) {
+              return; // 체크아웃 완료 시 점유 해제
+            }
             const overlapping = reservations.some((otherRes) => {
-              if (otherRes._id === res._id || otherRes.isCancelled)
-                return false;
+              if (otherRes._id === res._id || otherRes.isCancelled) return false;
               if (otherRes.roomNumber !== res.roomNumber) return false;
               if (otherRes.type !== 'dayUse') return false;
               const otherCi = new Date(otherRes.checkIn);
-              const otherCo = new Date(otherRes.checkOut);
-              if (isNaN(otherCi.getTime()) || isNaN(otherCo.getTime()))
-                return false;
+              const otherCo = otherRes.checkOut ? new Date(otherRes.checkOut) : addDays(otherCi, 1);
+              if (isNaN(otherCi.getTime()) || (otherCo && isNaN(otherCo.getTime()))) return false;
               const otherInterval = { start: otherCi, end: otherCo };
-              return areIntervalsOverlapping(resInterval, otherInterval, {
-                inclusive: false,
-              });
+              return areIntervalsOverlapping(resInterval, otherInterval, { inclusive: false });
             });
 
             if (!overlapping) {
@@ -123,72 +97,44 @@ export function calculateRoomAvailability(
               if (res.roomNumber) {
                 usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
               }
-              console.log(
-                `[Debug] DayUse ${ds} - Assigned ${res.roomNumber} to ${typeKey}`
-              );
             }
           }
         } else {
-          // 숙박 예약 로직 (변경 없음)
-          const coDay = format(co, 'yyyy-MM-dd');
-          const coTime = format(co, 'HH:mm');
-          const isSameDayReservation = ds === format(ci, 'yyyy-MM-dd');
-
+          const coDay = co ? format(co, 'yyyy-MM-dd') : null;
           if (
             ci <= dayEnd &&
-            co >= dayStart &&
-            (isSameDayReservation || !(ds === coDay && coTime >= '02:00'))
+            (!co || co >= dayStart) &&
+            (!coDay || ds !== coDay)
           ) {
             usageByDate[ds][typeKey].count++;
             if (res.roomNumber) {
               usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
             }
-            console.log(
-              `[Debug] Stay ${ds} - Assigned ${res.roomNumber} to ${typeKey}`
-            );
           }
         }
       }
     });
   });
 
-  // 4. 잔여 재고 계산 및 콘솔 출력 (모든 날짜 출력)
   const availability = {};
   dateList.forEach((ds) => {
     availability[ds] = {};
-    const isCurrent = ds === format(new Date(), 'yyyy-MM-dd');
-    if (isCurrent) {
-      console.log(`[calculateRoomAvailability] 날짜: ${ds} (현재) ===`);
-    } else {
-      console.log(`[calculateRoomAvailability] 날짜: ${ds} ===`);
-    }
     Object.entries(usageByDate[ds]).forEach(([typeKey, usage]) => {
       if (typeKey === 'unassigned') {
         availability[ds][typeKey] = usage.count;
-        console.log(
-          `availability.js:174   - ${typeKey}: 사용량=${usage.count}`
-        );
       } else {
         const allRooms = roomDataByType[typeKey]?.rooms || [];
         const assigned = Array.from(usage.assignedRooms);
         const totalStock = roomDataByType[typeKey]?.stock || allRooms.length;
-        const leftoverRooms = allRooms.filter(
-          (rnum) => !assigned.includes(rnum)
-        );
+        const leftoverRooms = allRooms.filter((rnum) => !assigned.includes(rnum));
         const remain = Math.max(totalStock - usage.count, 0);
         availability[ds][typeKey] = { remain, leftoverRooms };
-        console.log(`availability.js:174   - 객실 타입: ${typeKey}
-    총 재고: ${totalStock} (객실: ${allRooms.join(', ') || '없음'})
-    사용 중: ${usage.count} (객실: ${assigned.join(', ') || '없음'})
-    남은 객실: ${remain} (객실: ${leftoverRooms.join(', ') || '없음'})`);
       }
     });
   });
 
   return availability;
 }
-
-// 나머지 함수는 변경 없음 (getDetailedAvailabilityMessage, canSwapReservations, isRoomAvailableForPeriod, checkContainerOverlap, canMoveToRoom 유지)
 
 // 나머지 함수는 변경 없음
 export function getDetailedAvailabilityMessage(

@@ -3,7 +3,7 @@
 :root {
   --card-width: 100%;
   --card-max-width: 320px;
-  --card-height: 380px;
+  --card-height: 400px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
@@ -71,22 +71,13 @@
   background-color: rgb(220, 249, 220);
 }
 
-.room-card.edit-mode {
-  margin-left: 100px;
-  width: 500px;
-  height: 470px;
-  background: #ffffff;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  border: 2px solid #1a237e;
-  border-radius: 8px;
-  padding: 30px;
-  position: relative;
-  z-index: 1000;
-  transform: scale(1.2);
-  display: flex;
-  flex-direction: column;
-  overflow: visible !important;
-  font-weight: 700;
+.room-card.checked-out {
+  background-color: #e0e0e0;
+  opacity: 0.7;
+}
+
+.room-card.editing {
+  border: 2px dashed #007bff;
 }
 
 @keyframes highlightBlink {
@@ -120,7 +111,7 @@
 
 .room-card-inner {
   min-width: 320px;
-  max-height: 380px;
+  max-height: 400px;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;
@@ -179,7 +170,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 380px;
+  min-height: 400px;
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -199,7 +190,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  min-height: 380px;
+  min-height: 400px;
   background-color: rgb(240, 240, 240);
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;
@@ -237,6 +228,7 @@
 
 .stay-label {
   font-weight: bold;
+  margin-right: 10px;
 }
 
 .button-group-wrapper {
@@ -244,8 +236,8 @@
   justify-content: space-between;
   width: auto;
   height: 30px;
-  gap: 6px;
-  margin: 0px 15px;
+  gap: 5px;
+  margin: 0px 5px;
 }
 
 .site-info-footer {
@@ -271,10 +263,7 @@
   align-items: center;
   gap: 5px;
   font-weight: 500;
-}
-
-.payment-icon {
-  vertical-align: middle;
+  margin: 5px 0;
 }
 
 /* 카운트다운 스타일 */
@@ -290,6 +279,12 @@
   font-weight: bold;
 }
 
+.draggable-false {
+  cursor: not-allowed !important;
+  opacity: 0.7;
+  border: 3px dotted #5656a3; /* 충돌 시 빨간 점선 테두리 */
+}
+
 /* ==========================================================================
    [Action Buttons - Icon Based, Embossed]
 ========================================================================== */
@@ -299,24 +294,24 @@
   align-items: center;
   justify-content: flex-end;
   box-sizing: border-box;
-  width: 120px;
+  width: 100px;
   height: 28px;
   position: relative;
   overflow: visible;
 }
 
-.action-button {
-  font-size: 1rem;
+.action-btn {
+  font-size: 0.7rem;
   border: none;
   cursor: pointer;
-  padding: 6px;
+  padding: 4px 8px; /* 텍스트 크기에 맞게 조정 */
   height: 28px;
-  width: 28px;
+  width: 40px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 4px; /* 둥근 모서리 */
   font-weight: 600;
   position: relative;
   overflow: visible;
@@ -325,31 +320,55 @@
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2),
     0 1px 2px rgba(255, 255, 255, 0.5);
   border: 1px solid #e0e0e0;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.action-button:hover {
+.action-btn:hover {
   border: 1px solid #a4a4a4;
+  background-color: #f5f5f5;
 }
 
-.action-button svg {
-  color: #a3a3a3;
-  font-size: 1rem;
-  transition: color 0.3s ease;
+.action-btn.checkin-btn {
+  background-color: #4caf50;
+  color: white;
+}
+.action-btn.checkin-btn:hover {
+  background-color: #45a049;
 }
 
-.action-button.delete-button:hover svg {
-  color: #ff5252;
+.action-btn.checkout-btn {
+  background-color: #f44336;
+  color: white;
+}
+.action-btn.checkout-btn:hover {
+  background-color: #da190b;
 }
 
-.action-button.confirm-button:hover svg {
-  color: #4caf50;
+.action-btn.edit-btn {
+  background-color: #2196f3;
+  color: white;
+}
+.action-btn.edit-btn:hover {
+  background-color: #0d47a1;
 }
 
-.action-button.edit-button:hover svg {
-  color: #2196f3;
+.action-btn.delete-btn {
+  background-color: #ff9800;
+  color: white;
+}
+.action-btn.delete-btn:hover {
+  background-color: #f57c00;
 }
 
-.action-button:hover::after {
+.action-btn.confirm-btn {
+  background-color: #4caf50;
+  color: white;
+}
+.action-btn.confirm-btn:hover {
+  background-color: #45a049;
+}
+
+.action-btn:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   top: -15px;
@@ -367,26 +386,7 @@
   transition: opacity 0.3s ease;
 }
 
-.action-button:hover::after {
-  opacity: 1;
-}
-
-.button-group-wrapper {
-  display: flex;
-  justify-content: space-between;
-  width: auto;
-  height: 30px;
-  gap: 6px;
-  margin: 0px 15px;
-}
-
-.small-button {
-  opacity: 0.95;
-  font-size: 0.95rem;
-  padding: 6px 8px;
-}
-
-.small-button:hover {
+.action-btn:hover::after {
   opacity: 1;
 }
 
@@ -416,126 +416,5 @@
 .reservation-list {
   min-width: 310px;
   height: auto;
-  /* width: auto; */
   position: relative;
-}
-
-/* ==========================================================================
-     [Edit Mode] 객실 카드 수정모드
-  ========================================================================== */
-.edit-card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
-  background: #ffffff;
-  border-radius: 0;
-  box-sizing: border-box;
-  z-index: 10;
-}
-
-.edit-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-  padding: 5px 0;
-  border-bottom: 1px solid #ddd;
-}
-
-.edit-card-header h2 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1a237e;
-  margin: 0;
-}
-
-.edit-card-header .close-button {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  color: #666;
-  cursor: pointer;
-  transition: color 0.3s ease;
-}
-
-.edit-card-header .close-button:hover {
-  color: #d32f2f;
-}
-
-.edit-card-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 5px;
-}
-
-.edit-card-row label {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  font-weight: 500;
-  color: #333;
-  font-size: 0.9rem;
-}
-
-.edit-card-row input,
-.edit-card-row select {
-  margin-top: 5px;
-  padding: 6px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background-color: #fff;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.edit-card-row input:focus,
-.edit-card-row select:focus {
-  border-color: #1a237e;
-  box-shadow: 0 0 5px rgba(26, 35, 126, 0.2);
-  outline: none;
-}
-
-.edit-card-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-  padding-top: 5px;
-  border-top: 1px solid #ddd;
-}
-
-.edit-card-actions button {
-  font-size: 0.9rem;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  flex: 2;
-  max-width: 100px;
-  font-weight: 600;
-}
-
-/* DraggableReservationCard.css (부분 발췌) */
-
-/* 카운트다운 스타일 */
-.countdown {
-  font-weight: bold;
-  color: var(--countdown-color);
-  font-size: 0.9rem;
-  margin: 5px 0;
-}
-
-.countdown .expired {
-  color: var(--expired-color);
-  font-weight: bold;
-}
-
-.draggable-false {
-  cursor: not-allowed !important;
-  opacity: 0.7;
-  border: 3px dotted #5656a3; /* 충돌 시 빨간 점선 테두리 */
 }

@@ -324,7 +324,7 @@ const ContainerCell = React.memo(
           borderRadius: '8px',
           padding: '8px',
           position: 'relative',
-          minHeight: '390px',
+          minHeight: '400px',
           minWidth: '330px',
           backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
         }}
@@ -442,45 +442,45 @@ function RoomGrid({
 
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
-    return (
-      (reservations || [])
-        .filter((reservation) => reservation !== null && reservation !== undefined)
-        .filter((reservation) => reservation._id) // _id가 있는 항목만 필터링
-        .filter((reservation) => {
-          return !isCancelledStatus(
-            reservation.reservationStatus || '',
-            reservation.customerName || '',
-            reservation.roomInfo || '',
-            reservation.reservationNo || ''
-          );
-        })
-        .filter((reservation) => {
-          const checkInDate = new Date(reservation.checkIn);
-          const checkOutDate = new Date(reservation.checkOut);
-          if (isNaN(checkInDate) || isNaN(checkOutDate)) {
-            console.warn('Invalid dates in reservation:', reservation);
-            return false;
-          }
-          return true;
-        })
-        .filter((reservation) => {
-          const checkInDate = new Date(reservation.checkIn);
-          const checkOutDate = new Date(reservation.checkOut);
-          const checkInDateOnly = startOfDay(checkInDate);
-          const checkOutDateOnly = startOfDay(checkOutDate);
-  
-          const isIncluded =
-            selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
-            selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
-  
-          const isSameDayStay =
-            format(checkInDateOnly, 'yyyy-MM-dd') ===
-              format(checkOutDateOnly, 'yyyy-MM-dd') &&
-            selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
-  
-          return isIncluded || isSameDayStay;
-        })
-    );
+    return (reservations || [])
+      .filter(
+        (reservation) => reservation !== null && reservation !== undefined
+      )
+      .filter((reservation) => reservation._id) // _id가 있는 항목만 필터링
+      .filter((reservation) => {
+        return !isCancelledStatus(
+          reservation.reservationStatus || '',
+          reservation.customerName || '',
+          reservation.roomInfo || '',
+          reservation.reservationNo || ''
+        );
+      })
+      .filter((reservation) => {
+        const checkInDate = new Date(reservation.checkIn);
+        const checkOutDate = new Date(reservation.checkOut);
+        if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+          console.warn('Invalid dates in reservation:', reservation);
+          return false;
+        }
+        return true;
+      })
+      .filter((reservation) => {
+        const checkInDate = new Date(reservation.checkIn);
+        const checkOutDate = new Date(reservation.checkOut);
+        const checkInDateOnly = startOfDay(checkInDate);
+        const checkOutDateOnly = startOfDay(checkOutDate);
+
+        const isIncluded =
+          selectedDateString >= format(checkInDateOnly, 'yyyy-MM-dd') &&
+          selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
+
+        const isSameDayStay =
+          format(checkInDateOnly, 'yyyy-MM-dd') ===
+            format(checkOutDateOnly, 'yyyy-MM-dd') &&
+          selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
+
+        return isIncluded || isSameDayStay;
+      });
   }, [reservations, selectedDate]);
 
   // 선택된 날짜의 예약을 콘솔에 출력
@@ -792,6 +792,19 @@ function RoomGrid({
                           memos={memos || {}}
                           memoRefs={memoRefs}
                           handleCardFlip={handleCardFlip}
+                          onEdit={(reservationId, initialData) => {
+                            console.log(
+                              `[RoomGrid.js] onEdit prop received in unassigned: ${typeof onEdit}, value:`,
+                              onEdit
+                            );
+                            if (typeof onEdit === 'function') {
+                              onEdit(reservationId, initialData);
+                            } else {
+                              console.error(
+                                'onEdit is not a function in unassigned section'
+                              );
+                            }
+                          }}
                           openInvoiceModal={openInvoiceModalHandler}
                           hotelSettings={hotelSettings}
                           renderActionButtons={renderActionButtons}
@@ -942,6 +955,19 @@ function RoomGrid({
                                         isUpdatedHighlighted
                                       }
                                       onPartialUpdate={onPartialUpdate}
+                                      onEdit={(reservationId, initialData) => {
+                                        console.log(
+                                          `[RoomGrid.js] onEdit prop received in floor: ${typeof onEdit}, value:`,
+                                          onEdit
+                                        );
+                                        if (typeof onEdit === 'function') {
+                                          onEdit(reservationId, initialData);
+                                        } else {
+                                          console.error(
+                                            'onEdit is not a function in floor section'
+                                          );
+                                        }
+                                      }}
                                       roomTypes={roomTypes}
                                       hotelSettings={hotelSettings}
                                       handleDeleteClickHandler={

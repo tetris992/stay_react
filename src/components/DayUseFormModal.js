@@ -20,7 +20,7 @@ const DayUseFormModal = ({
     phoneNumber: '',
     checkInDate: '',
     checkInTime: '',
-    durationHours: 4,
+    durationHours: 3,
     reservationDate: '',
     roomInfo: '',
     price: '0',
@@ -51,10 +51,31 @@ const DayUseFormModal = ({
     const now = new Date();
     const effectiveSelectedDate = selectedDate || now;
 
+    console.log('[DayUseFormModal] Initial data:', initialData); // 디버깅 로그 추가
+
     if (initialData && initialData._id) {
       // [수정 모드] 기존 대실 예약
-      const checkInDateObj = new Date(initialData.checkIn);
-      const checkOutDateObj = new Date(initialData.checkOut);
+      const checkInDateObj = initialData.checkIn
+        ? new Date(initialData.checkIn)
+        : new Date();
+      const checkOutDateObj = initialData.checkOut
+        ? new Date(initialData.checkOut)
+        : addHours(checkInDateObj, 3); // checkOut이 없으면 기본 3시간 후
+      if (isNaN(checkInDateObj.getTime())) {
+        console.warn(
+          'Invalid checkIn date, using current date:',
+          initialData.checkIn
+        );
+        checkInDateObj.setTime(now.getTime());
+      }
+      if (isNaN(checkOutDateObj.getTime())) {
+        console.warn(
+          'Invalid checkOut date, using default (3 hours later):',
+          initialData.checkOut
+        );
+        checkOutDateObj.setTime(addHours(checkInDateObj, 3).getTime());
+      }
+
       const duration = Math.round(
         (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)
       );
@@ -64,8 +85,8 @@ const DayUseFormModal = ({
         customerName: initialData.customerName || '',
         phoneNumber: initialData.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
-        checkInTime: format(checkInDateObj, 'HH:mm'), // 기존 시간 그대로
-        durationHours: duration || 4,
+        checkInTime: format(checkInDateObj, 'HH:mm'), // 체크인 시간 설정
+        durationHours: duration || 3,
         reservationDate:
           initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo:
@@ -75,16 +96,16 @@ const DayUseFormModal = ({
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: !!initialData.price,
+        type: initialData.type || 'dayUse',
       });
     } else {
-      // [신규 대실 예약] 
+      // [신규 대실 예약]
       // - 호텔 설정의 checkInTime 무시
       // - checkInTime = "00:00" 으로 고정
       const defaultCheckInDate = format(effectiveSelectedDate, 'yyyy-MM-dd');
       const defaultCheckInTime = '00:00'; // <-- 호텔 설정과 무관하게 "00:00" 고정
 
-      const initialRoomInfo =
-        filteredRoomTypes[0]?.roomInfo || 'Standard';
+      const initialRoomInfo = filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
         filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
         filteredRoomTypes[0];
@@ -94,11 +115,11 @@ const DayUseFormModal = ({
 
       setFormData({
         reservationNo: `${Date.now()}`,
-        customerName: `대실:${format(now, 'HH:mm:ss')}`,
+        customerName: `현장대실`,
         phoneNumber: '',
         checkInDate: defaultCheckInDate,
-        checkInTime: defaultCheckInTime, 
-        durationHours: 4,
+        checkInTime: defaultCheckInTime,
+        durationHours: 3,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(basePrice),
@@ -106,6 +127,7 @@ const DayUseFormModal = ({
         specialRequests: '',
         roomNumber: '',
         manualPriceOverride: false,
+        type: 'dayUse',
       });
     }
   }, [initialData, filteredRoomTypes, hotelSettings, selectedDate]);
@@ -219,7 +241,7 @@ const DayUseFormModal = ({
       checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
       roomNumber: String(selectedRoomNumber),
       siteName: initialData?.siteName || '현장예약',
-      type: 'dayUse',
+      type: formData.type || 'dayUse',
       duration: formData.durationHours,
     };
 
@@ -245,7 +267,13 @@ const DayUseFormModal = ({
    */
   const displayCheckOut = useMemo(() => {
     if (!formData.checkInDate || !formData.checkInTime) return '';
-    const checkIn = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
+    const checkIn = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    if (isNaN(checkIn.getTime())) {
+      console.warn('Invalid checkIn date/time, returning empty string');
+      return '';
+    }
     const checkOut = addHours(checkIn, formData.durationHours);
     return format(checkOut, 'yyyy-MM-dd HH:mm');
   }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
@@ -447,7 +475,21 @@ const DayUseFormModal = ({
 DayUseFormModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
-  initialData: PropTypes.object,
+  initialData: PropTypes.shape({
+    _id: PropTypes.string,
+    checkIn: PropTypes.string,
+    checkOut: PropTypes.string,
+    reservationNo: PropTypes.string,
+    customerName: PropTypes.string,
+    phoneNumber: PropTypes.string,
+    reservationDate: PropTypes.string,
+    roomInfo: PropTypes.string,
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    paymentMethod: PropTypes.string,
+    specialRequests: PropTypes.string,
+    roomNumber: PropTypes.string,
+    type: PropTypes.string,
+  }),
   roomTypes: PropTypes.arrayOf(
     PropTypes.shape({
       roomInfo: PropTypes.string.isRequired,
