@@ -40,7 +40,7 @@ import {
 import { defaultRoomTypes } from './config/defaultRoomTypes';
 import availableOTAs from './config/availableOTAs';
 import SalesModal from './components/DailySalesModal.js';
-import { isCancelledStatus } from './utils/isCancelledStatus.js';
+// import { isCancelledStatus } from './utils/isCancelledStatus.js';
 import UnassignedReservationsPanel from './components/UnassignedReservationsPanel';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -83,12 +83,11 @@ function buildDailySalesByOTA(reservations, targetDate) {
     labels.push(formatDate(d, 'MM-dd')); // KST 기준 포맷팅
   }
   const categories = new Set([...availableOTAs, '현장예약', '대실', '기타']);
-  const dailySalesByOTA = {};
+  const dailySalesByOTA = {}; // 수정: 공백 제거
   categories.forEach((cat) => {
     dailySalesByOTA[cat] = new Array(numDays).fill(0);
   });
   reservations.forEach((res) => {
-    if (isCancelledStatus(res.reservationStatus, res.customerName)) return;
     let category = '기타';
     if (res.siteName === '현장예약') {
       category = '현장예약';
@@ -464,7 +463,7 @@ const App = () => {
         }
         const checkInDate = new Date(reservation.checkIn);
         const checkOutDate = new Date(reservation.checkOut);
-
+  
         if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
           console.warn('Invalid date parsing for reservation:', {
             _id: reservation?._id || 'unknown',
@@ -495,13 +494,6 @@ const App = () => {
     const firstDayOfMonth = startOfMonth(date);
     const lastDayOfMonth = date;
     const monthlyReservations = reservationsData.filter((reservation) => {
-      if (
-        isCancelledStatus(
-          reservation.reservationStatus || '',
-          reservation.customerName || ''
-        )
-      )
-        return false;
       if (!reservation.checkIn || !reservation.checkOut) return false;
       const checkInDate = new Date(reservation.checkIn);
       const checkOutDate = new Date(reservation.checkOut);
@@ -524,7 +516,7 @@ const App = () => {
       }
     });
     monthlyTotalAmount = Math.max(0, Math.round(monthlyTotalAmount));
-    setMonthlyTotal(monthlyTotalAmount);
+    setMonthlyTotal(monthlyTotalAmount); // 수정: setMonthlyTotal로 변경 및 세미콜론 추가
     let totalRoomsSold = 0;
     monthlyReservations.forEach((reservation) => {
       if (reservation.nightlyRates) {
@@ -591,7 +583,12 @@ const App = () => {
       let isDefaultPriceFlag = isDefault;
       if (!isOtaReservation(res) && totalPrice <= 0) {
         const roomType = matchRoomType(res.roomInfo);
-        totalPrice = roomType?.price || 0;
+        const basePrice = roomType?.price || 0;
+        if (res.type === 'dayUse' && res.durationHours) {
+          totalPrice = (basePrice / 2) * res.durationHours; // 대실 기본 단가 계산
+        } else {
+          totalPrice = basePrice;
+        }
         isDefaultPriceFlag = false;
       }
       let nightlyRates = [];
@@ -622,12 +619,12 @@ const App = () => {
       );
       return {
         ...res,
-        type: res.type || 'stay', // 기본값 'stay'
-        duration: res.type === 'dayUse' ? res.duration || 3 : undefined,
+        type: res.type || 'stay',
+        duration: res.type === 'dayUse' ? res.durationHours || 3 : undefined,
         reservationNo: res.reservationNo || res._id,
         nightlyRates: nightlyRates.length > 0 ? nightlyRates : undefined,
         isDefaultPrice: isDefaultPriceFlag,
-        totalPrice: finalTotalPrice,
+        totalPrice: res.type === 'dayUse' ? totalPrice : finalTotalPrice,
         checkIn: res.checkIn,
         checkOut: res.checkOut,
         paymentMethod: res.paymentMethod,
@@ -1071,14 +1068,14 @@ const App = () => {
     [allReservations, hotelId, loadReservations, logMessage]
   );
 
-  // App.js 내 handleEdit 수정
+
   const handleEdit = useCallback(
     async (reservationId, updatedData) => {
       const currentReservation = allReservations.find(
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-
+  
       try {
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         if (isOTA && !updatedData.manualAssignment) {
@@ -1095,7 +1092,7 @@ const App = () => {
             updatedData.price || currentReservation.totalPrice
           );
         }
-
+  
         // checkOut이 null인 경우 기본값 설정
         if (!updatedData.checkOut) {
           console.warn('checkOut is null, setting default value');
@@ -1112,21 +1109,51 @@ const App = () => {
             'HH:mm'
           );
         }
-
+  
+        // 대실의 경우 durationHours 변경에 따른 가격 재계산
+        if (currentReservation.type === 'dayUse' && updatedData.durationHours) {
+          const roomType = matchRoomType(currentReservation.roomInfo) || finalRoomTypes[0];
+          const basePricePerHour = (roomType?.price || 0) / 2; // 대실 기본 단가 (룸타입 가격의 절반)
+          const priceIncreasePerHour = 10000; // 1시간당 추가 요금
+          const newDurationHours = parseInt(updatedData.durationHours, 10) || 3;
+          const oldDurationHours = currentReservation.durationHours || 3;
+  
+          // 새로운 총 가격 계산: 기본 단가 * 시간 + 추가 요금
+          const newBasePrice = basePricePerHour * newDurationHours;
+          const oldBasePrice = basePricePerHour * oldDurationHours;
+          const priceDifference = (newBasePrice - oldBasePrice) + (priceIncreasePerHour * (newDurationHours - oldDurationHours));
+          updatedData.price = String(parseInt(currentReservation.price || newBasePrice) + priceDifference);
+          updatedData.totalPrice = updatedData.price; // 대실은 nightlyRates 없이 totalPrice 사용
+  
+          // 체크아웃 시간 업데이트
+          updatedData.checkOut = format(
+            addHours(new Date(updatedData.checkIn), newDurationHours),
+            "yyyy-MM-dd'T'HH:mm:ss+09:00"
+          );
+          updatedData.checkOutDate = format(
+            addHours(new Date(updatedData.checkIn), newDurationHours),
+            'yyyy-MM-dd'
+          );
+          updatedData.checkOutTime = format(
+            addHours(new Date(updatedData.checkIn), newDurationHours),
+            'HH:mm'
+          );
+        }
+  
         // 수정 모달 열기
         setGuestFormData(updatedData);
         setShowGuestForm(true);
-
+  
         const updatedReservationData = {
           ...updatedData,
           type: updatedData.type || currentReservation.type || 'stay',
           duration:
             updatedData.type === 'dayUse'
-              ? updatedData.durationHours || currentReservation.duration || 3
+              ? updatedData.durationHours || currentReservation.durationHours || 3
               : undefined,
         };
         await updateReservation(reservationId, updatedReservationData, hotelId);
-
+  
         // 상태 업데이트 최적화: 동일한 데이터면 업데이트 생략
         setAllReservations((prev) => {
           const processedUpdatedReservation = processReservation(
@@ -1145,7 +1172,7 @@ const App = () => {
             res._id === reservationId ? processedUpdatedReservation : res
           );
         });
-
+  
         const changes = [];
         if (currentReservation.price !== updatedData.price)
           changes.push(
@@ -1179,212 +1206,193 @@ const App = () => {
       handleRoomChangeAndSync,
       processReservation,
       logMessage,
+      finalRoomTypes,
     ]
   );
 
-  useEffect(() => {
-    if (isAuthenticated && hotelId) {
-      let socket = io(BASE_URL, {
-        withCredentials: true,
-        query: { hotelId, accessToken: localStorage.getItem('accessToken') },
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-      });
-
-      socket.on('connect', () => {
-        console.log('WebSocket connected at:', new Date().toISOString());
-        if (socket.rooms && !socket.rooms.has(hotelId)) {
-          socket.emit('joinHotel', hotelId);
-          console.log(`Joined hotel room: ${hotelId}`);
-        }
-      });
-
-      socket.on('disconnect', () => {
-        console.log('WebSocket disconnected at:', new Date().toISOString());
-      });
-
-      socket.on('reconnect', (attemptNumber) => {
-        console.log(
-          `WebSocket reconnected after attempt ${attemptNumber} at:`,
-          new Date().toISOString()
-        );
-        if (socket.rooms && !socket.rooms.has(hotelId)) {
-          socket.emit('joinHotel', hotelId);
-          console.log(`Rejoined hotel room: ${hotelId} after reconnect`);
-        }
-      });
-
-      // WebSocket 이벤트 핸들러 설정
-      const handleReservationCreated = (data) => {
-        console.log(
-          `Received reservationCreated: ${data.reservation?._id || 'unknown'}`
-        );
-        const newReservation = processReservation(data.reservation);
-        if (newReservation) {
-          setAllReservations((prev) => {
-            const updated = [...prev, newReservation];
-            const filtered = filterReservationsByDate(updated, selectedDate);
-            setActiveReservations(filtered);
-            return updated;
-          });
-        } else {
-          console.error(
-            'Invalid reservation data from WebSocket, ignored:',
-            data.reservation
-          );
-        }
-      };
-
-      const handleReservationUpdated = (data) => {
-        console.log(
-          `Received reservationUpdated: ${
-            data.reservation?._id || 'unknown'
-          } at ${new Date().toISOString()}`
-        );
-        const updatedReservation = processReservation(data.reservation);
-        if (updatedReservation) {
-          setAllReservations((prev) => {
-            const existingIndex = prev.findIndex(
-              (res) => res._id === updatedReservation._id
-            );
-            if (
-              existingIndex !== -1 &&
-              prev[existingIndex].updatedAt === updatedReservation.updatedAt
-            ) {
-              console.log(
-                `Duplicate update skipped for ${updatedReservation._id}`
-              );
-              return prev;
-            }
-            const updated = prev.map((res) =>
-              res._id === updatedReservation._id ? updatedReservation : res
-            );
-            console.log('Updated allReservations:', updated);
-            const filtered = filterReservationsByDate(updated, selectedDate);
-            setActiveReservations(filtered);
-            setUpdatedReservationId(updatedReservation._id);
-            setTimeout(() => setUpdatedReservationId(null), 10000);
-            return updated;
-          });
-        } else {
-          console.error(
-            'Invalid reservation data from WebSocket, ignored:',
-            data.reservation
-          );
-        }
-      };
-
-      const handleReservationDeleted = (data) => {
-        console.log(`Received reservationDeleted: ${data.reservationId}`);
+  const socketRef = useRef(null);
+  const [isJoinedHotel, setIsJoinedHotel] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false); // 연결 시도 상태 추가
+  
+  // 이벤트 핸들러 정의 (useCallback으로 최적화)
+  const handleReservationCreated = useCallback(
+    (data, callback) => {
+      console.log(`Received reservationCreated: ${data.reservation?._id || 'unknown'}`);
+      const newReservation = processReservation(data.reservation);
+      if (newReservation && isJoinedHotel) {
         setAllReservations((prev) => {
-          const updated = prev.filter((res) => res._id !== data.reservationId);
+          const updated = [...prev, newReservation];
           const filtered = filterReservationsByDate(updated, selectedDate);
           setActiveReservations(filtered);
           return updated;
         });
-      };
-
-      const handleForceLogout = (data) => {
-        console.log('Force logout received:', data.message);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('hotelId');
-        localStorage.removeItem('csrfToken');
-        document.cookie =
-          '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        document.cookie =
-          'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        setIsAuthenticated(false);
-        setHotelId('');
-        setHotelSettings(null);
-        setAllReservations([]);
-        setActiveReservations([]);
-        setRoomsSold(0);
-        setMonthlySoldRooms(0);
-        setAvgMonthlyRoomPrice(0);
-        setSelectedDate(parseDate(new Date().toISOString())); // KST로 파싱
-        setDailyTotal(0);
-        setOtaToggles(
-          availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
+        callback?.({ success: true });
+      } else {
+        console.error(
+          'Invalid reservation data from WebSocket or not joined:',
+          data.reservation
         );
-        navigate('/login', { replace: true });
-        alert(data.message);
-      };
-
-      socket.on('reservationCreated', handleReservationCreated);
-      socket.on('reservationUpdated', handleReservationUpdated);
-      socket.on('reservationDeleted', handleReservationDeleted);
-      socket.on('forceLogout', handleForceLogout);
-
-      return () => {
-        socket.off('connect');
-        socket.off('reservationCreated', handleReservationCreated);
-        socket.off('reservationUpdated', handleReservationUpdated);
-        socket.off('reservationDeleted', handleReservationDeleted);
-        socket.off('forceLogout', handleForceLogout);
-        socket.off('disconnect');
-        socket.off('reconnect');
-        socket.disconnect();
-        console.log(
-          'WebSocket cleanup completed at:',
-          new Date().toISOString()
-        );
-      };
-    }
-  }, [
-    isAuthenticated,
-    hotelId,
-    processReservation,
-    navigate,
-    filterReservationsByDate,
-    selectedDate,
-  ]); // selectedDate 제외
-
-  const socketRef = useRef(null);
-  const [isJoinedHotel, setIsJoinedHotel] = useState(false);
-
+        callback?.({
+          success: false,
+          error: isJoinedHotel ? 'Invalid reservation data' : 'Not joined to hotel room',
+        });
+      }
+    },
+    [processReservation, isJoinedHotel, filterReservationsByDate, selectedDate]
+  );
+  
+  const handleReservationUpdated = useCallback(
+    (data, callback) => {
+      console.log(
+        `Received reservationUpdated: ${
+          data.reservation?._id
+        } at ${new Date().toISOString()}, data:`,
+        JSON.stringify(data, null, 2)
+      );
+      const updatedReservation = processReservation(data.reservation);
+      if (updatedReservation && isJoinedHotel) {
+        setAllReservations((prev) => {
+          const existingIndex = prev.findIndex(
+            (res) => res._id === updatedReservation._id
+          );
+          if (
+            existingIndex !== -1 &&
+            prev[existingIndex].updatedAt === updatedReservation.updatedAt
+          ) {
+            console.log(`Duplicate update skipped for ${updatedReservation._id}`);
+            callback?.({ success: true });
+            return prev;
+          }
+          const updated = prev.map((res) =>
+            res._id === updatedReservation._id ? updatedReservation : res
+          );
+          const filtered = filterReservationsByDate(updated, selectedDate);
+          setActiveReservations(filtered);
+          setUpdatedReservationId(updatedReservation._id);
+          setTimeout(() => setUpdatedReservationId(null), 10000);
+          callback?.({ success: true });
+          return updated;
+        });
+      } else {
+        callback?.({
+          success: false,
+          error: isJoinedHotel ? 'Invalid reservation data' : 'Not joined to hotel room',
+        });
+      }
+    },
+    [processReservation, isJoinedHotel, filterReservationsByDate, selectedDate]
+  );
+  
+  const handleReservationDeleted = useCallback(
+    (data, callback) => {
+      console.log(`Received reservationDeleted: ${data.reservationId}`);
+      if (isJoinedHotel) {
+        setAllReservations((prev) => {
+          const updated = prev.filter((res) => res._id !== data.reservationId);
+          const filtered = filterReservationsByDate(updated, selectedDate);
+          setActiveReservations(filtered);
+          callback?.({ success: true });
+          return updated;
+        });
+      } else {
+        callback?.({ success: false, error: 'Not joined to hotel room' });
+      }
+    },
+    [isJoinedHotel, filterReservationsByDate, selectedDate]
+  );
+  
+  const handleForceLogout = useCallback(
+    (data, callback) => {
+      console.log('Force logout received:', data.message);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('hotelId');
+      localStorage.removeItem('csrfToken');
+      document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+      document.cookie =
+        'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+      setIsAuthenticated(false);
+      setHotelId('');
+      setHotelSettings(null);
+      setAllReservations([]);
+      setActiveReservations([]);
+      setRoomsSold(0);
+      setMonthlySoldRooms(0);
+      setAvgMonthlyRoomPrice(0);
+      setSelectedDate(new Date());
+      setDailyTotal(0);
+      setOtaToggles(
+        availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
+      );
+      navigate('/login', { replace: true });
+      alert(data.message);
+      callback?.({ success: true });
+      setIsJoinedHotel(false);
+    },
+    [navigate]
+  );
+  
+  // WebSocket 통합 로직
   useEffect(() => {
     let socketCleanup = () => {};
-
-    const initializeSocket = () => {
-      if (isAuthenticated && hotelId) {
-        // WebSocket 인스턴스 초기화 (한 번만 생성)
-        if (!socketRef.current) {
-          socketRef.current = io(BASE_URL, {
-            withCredentials: true,
-            query: { hotelId, accessToken: getAccessToken() },
-            reconnection: true,
-            reconnectionAttempts: Infinity,
-            reconnectionDelay: 500, // 재연결 지연 감소
-            reconnectionDelayMax: 3000, // 최대 재연결 지연 감소
-            randomizationFactor: 0.5,
-            timeout: 10000,
-            autoConnect: false, // 수동 연결
-            transports: ['websocket'],
-          });
-          console.log('[WebSocket] Initialized new socket instance');
+  
+    const initializeAndManageSocket = () => {
+      // 인증되지 않았거나 hotelId가 없으면 연결 해제
+      if (!isAuthenticated || !hotelId) {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          setIsJoinedHotel(false);
+          setIsConnecting(false);
         }
-
-        // 연결 상태 모니터링
+        return;
+      }
+  
+      // WebSocket 인스턴스 초기화 (한 번만 생성)
+      if (!socketRef.current) {
+        socketRef.current = io(BASE_URL, {
+          withCredentials: true,
+          query: { hotelId, accessToken: getAccessToken() },
+          reconnection: true,
+          reconnectionAttempts: Infinity,
+          reconnectionDelay: 500,
+          reconnectionDelayMax: 3000,
+          randomizationFactor: 0.5,
+          timeout: 10000,
+          autoConnect: false,
+          transports: ['websocket'],
+        });
+        console.log('[WebSocket] Initialized new socket instance');
+      }
+  
+      // WebSocket 상태 관리 함수
+      const manageConnection = () => {
+        setIsConnecting(true);
+  
         const handleConnect = () => {
           console.log('WebSocket connected at:', new Date().toISOString());
-          setIsJoinedHotel(false);
+          setIsConnecting(false);
+          setIsJoinedHotel(false); // 초기화
           socketRef.current.emit('joinHotel', hotelId, (ack) => {
             if (ack && ack.success) {
               console.log(`Successfully joined hotel room: ${hotelId}`);
               setIsJoinedHotel(true);
             } else {
-              console.warn('Failed to join hotel room:', ack?.error);
+              console.warn('Failed to join hotel room:', ack?.error || 'No ack');
               setIsJoinedHotel(false);
             }
           });
         };
-
+  
         const handleConnectError = (error) => {
           console.error('WebSocket connection error:', error.message);
+          setIsConnecting(false);
+          setIsJoinedHotel(false);
+          // 사용자에게 연결 실패 알림 (필요 시 추가)
+          // alert('WebSocket 연결에 실패했습니다. 네트워크 상태를 확인해주세요.');
         };
-
+  
         const handleDisconnect = (reason) => {
           console.log(
             'WebSocket disconnected at:',
@@ -1393,8 +1401,9 @@ const App = () => {
             reason
           );
           setIsJoinedHotel(false);
+          setIsConnecting(false);
         };
-
+  
         const handleReconnect = (attemptNumber) => {
           console.log(
             `WebSocket reconnected after attempt ${attemptNumber} at:`,
@@ -1406,132 +1415,30 @@ const App = () => {
               console.log(`Rejoined hotel room: ${hotelId} after reconnect`);
               setIsJoinedHotel(true);
             } else {
-              console.warn('Failed to rejoin hotel room:', ack?.error);
+              console.warn('Failed to rejoin hotel room:', ack?.error || 'No ack');
               setIsJoinedHotel(false);
             }
           });
         };
-
+  
         const handleReconnectAttempt = (attemptNumber) => {
           console.log(
             `Reconnection attempt #${attemptNumber} at:`,
             new Date().toISOString()
           );
         };
-
+  
         const handleReconnectFailed = () => {
           console.error('WebSocket reconnection failed after all attempts');
+          setIsConnecting(false);
           setIsJoinedHotel(false);
           loadReservations().catch((error) =>
             console.error('Fallback load failed:', error)
           );
+          // 사용자에게 재연결 실패 알림 (필요 시 추가)
+          // alert('WebSocket 재연결에 실패했습니다. 예약 데이터를 새로고침합니다.');
         };
-
-        // 이벤트 핸들러 정의
-        const handleReservationCreated = (data, callback) => {
-          console.log(`Received reservationCreated: ${data.reservation._id}`);
-          const newReservation = processReservation(data.reservation);
-          if (newReservation && isJoinedHotel) {
-            setAllReservations((prev) => {
-              const updated = [...prev, newReservation];
-              const filtered = filterReservationsByDate(updated, selectedDate);
-              setActiveReservations(filtered);
-              return updated;
-            });
-            callback?.({ success: true });
-          } else {
-            callback?.({
-              success: false,
-              error: 'Not joined to hotel room or invalid data',
-            });
-          }
-        };
-
-        const handleReservationUpdated = (data, callback) => {
-          console.log(
-            `Received reservationUpdated: ${
-              data.reservation._id
-            } at ${new Date().toISOString()}`
-          );
-          const updatedReservation = processReservation(data.reservation);
-          if (updatedReservation && isJoinedHotel) {
-            setAllReservations((prev) => {
-              const existingIndex = prev.findIndex(
-                (res) => res._id === updatedReservation._id
-              );
-              if (
-                existingIndex !== -1 &&
-                prev[existingIndex].updatedAt === updatedReservation.updatedAt
-              ) {
-                console.log(
-                  `Duplicate update skipped for ${updatedReservation._id}`
-                );
-                callback?.({ success: true });
-                return prev;
-              }
-              const updated = prev.map((res) =>
-                res._id === updatedReservation._id ? updatedReservation : res
-              );
-              const filtered = filterReservationsByDate(updated, selectedDate);
-              setActiveReservations(filtered);
-              setUpdatedReservationId(updatedReservation._id);
-              setTimeout(() => setUpdatedReservationId(null), 10000);
-              callback?.({ success: true });
-              return updated;
-            });
-          } else {
-            callback?.({
-              success: false,
-              error: 'Not joined to hotel room or invalid data',
-            });
-          }
-        };
-
-        const handleReservationDeleted = (data, callback) => {
-          console.log(`Received reservationDeleted: ${data.reservationId}`);
-          if (isJoinedHotel) {
-            setAllReservations((prev) => {
-              const updated = prev.filter(
-                (res) => res._id !== data.reservationId
-              );
-              const filtered = filterReservationsByDate(updated, selectedDate);
-              setActiveReservations(filtered);
-              callback?.({ success: true });
-              return updated;
-            });
-          } else {
-            callback?.({ success: false, error: 'Not joined to hotel room' });
-          }
-        };
-
-        const handleForceLogout = (data, callback) => {
-          console.log('Force logout received:', data.message);
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('hotelId');
-          localStorage.removeItem('csrfToken');
-          document.cookie =
-            '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-          document.cookie =
-            'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-          setIsAuthenticated(false);
-          setHotelId('');
-          setHotelSettings(null);
-          setAllReservations([]);
-          setActiveReservations([]);
-          setRoomsSold(0);
-          setMonthlySoldRooms(0);
-          setAvgMonthlyRoomPrice(0);
-          setSelectedDate(new Date());
-          setDailyTotal(0);
-          setOtaToggles(
-            availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
-          );
-          navigate('/login', { replace: true });
-          alert(data.message);
-          callback?.({ success: true });
-          setIsJoinedHotel(false);
-        };
-
+  
         // 이벤트 리스너 등록
         socketRef.current.on('connect', handleConnect);
         socketRef.current.on('connect_error', handleConnectError);
@@ -1543,13 +1450,13 @@ const App = () => {
         socketRef.current.on('reservationUpdated', handleReservationUpdated);
         socketRef.current.on('reservationDeleted', handleReservationDeleted);
         socketRef.current.on('forceLogout', handleForceLogout);
-
+  
         // 수동 연결 시작
-        if (!socketRef.current.connected) {
+        if (!socketRef.current.connected && !isConnecting) {
           socketRef.current.connect();
         }
-
-        // 정리 함수
+  
+        // 클린업 함수
         socketCleanup = () => {
           if (socketRef.current) {
             socketRef.current.off('connect', handleConnect);
@@ -1558,32 +1465,26 @@ const App = () => {
             socketRef.current.off('reconnect', handleReconnect);
             socketRef.current.off('reconnect_attempt', handleReconnectAttempt);
             socketRef.current.off('reconnect_failed', handleReconnectFailed);
-            socketRef.current.off(
-              'reservationCreated',
-              handleReservationCreated
-            );
-            socketRef.current.off(
-              'reservationUpdated',
-              handleReservationUpdated
-            );
-            socketRef.current.off(
-              'reservationDeleted',
-              handleReservationDeleted
-            );
+            socketRef.current.off('reservationCreated', handleReservationCreated);
+            socketRef.current.off('reservationUpdated', handleReservationUpdated);
+            socketRef.current.off('reservationDeleted', handleReservationDeleted);
             socketRef.current.off('forceLogout', handleForceLogout);
-            // 새로고침 시 disconnect 방지 (서버가 자연스럽게 종료 처리)
+            socketRef.current.disconnect();
             console.log(
-              'WebSocket cleanup completed at:',
+              'WebSocket cleanup and disconnected at:',
               new Date().toISOString()
             );
           }
           setIsJoinedHotel(false);
+          setIsConnecting(false);
         };
-      }
+      };
+  
+      manageConnection();
     };
-
-    initializeSocket();
-
+  
+    initializeAndManageSocket();
+  
     return socketCleanup;
   }, [
     isAuthenticated,
@@ -1593,7 +1494,11 @@ const App = () => {
     filterReservationsByDate,
     selectedDate,
     loadReservations,
-    isJoinedHotel,
+    handleReservationCreated,
+    handleReservationUpdated,
+    handleReservationDeleted,
+    handleForceLogout,
+    isConnecting,
   ]);
 
   const handlePrevDay = useCallback(() => {

@@ -145,7 +145,7 @@ const DayUseFormModal = ({
       (room) => room.roomInfo === formData.roomInfo
     );
     const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
-    const additionalHours = Math.max(formData.durationHours - 4, 0);
+    const additionalHours = Math.max(formData.durationHours - 3, 0);
     const price = String(basePrice + additionalHours * 10000);
     setFormData((prev) => ({ ...prev, price }));
   }, [
@@ -176,11 +176,22 @@ const DayUseFormModal = ({
    * 사용 시간(대실 시간) 버튼 증감 핸들러
    */
   const handleDurationChange = (increment) => {
-    setFormData((prev) => ({
-      ...prev,
-      durationHours: Math.max(1, prev.durationHours + increment),
-      manualPriceOverride: false,
-    }));
+    setFormData((prev) => {
+      const newDurationHours = Math.max(1, prev.durationHours + increment);
+      const selectedRoom = filteredRoomTypes.find(
+        (room) => room.roomInfo === prev.roomInfo
+      );
+      const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
+      const additionalHours = Math.max(newDurationHours - 3, 0);
+      const newPrice = String(basePrice + additionalHours * 10000);
+  
+      return {
+        ...prev,
+        durationHours: newDurationHours,
+        price: newPrice,
+        manualPriceOverride: false,
+      };
+    });
   };
 
   /**

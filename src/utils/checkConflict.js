@@ -1,59 +1,68 @@
-import { startOfDay, areIntervalsOverlapping, format } from 'date-fns';
+import { startOfDay, areIntervalsOverlapping } from 'date-fns';
 
-export const checkConflict = (draggedReservation, targetRoomNumber, fullReservations) => {
+export const checkConflict = (
+  draggedReservation,
+  targetRoomNumber,
+  fullReservations
+) => {
   const draggedCheckIn = new Date(draggedReservation.checkIn);
   const draggedCheckOut = new Date(draggedReservation.checkOut);
   const isDayUseDragged = draggedReservation.type === 'dayUse';
   const currentDate = startOfDay(new Date());
 
-  // 드래그된 예약의 체크인 날짜가 현재 날짜보다 과거이면 충돌로 간주
+  // 과거 체크인 예약은 이동 불가
   if (startOfDay(draggedCheckIn) < currentDate) {
     console.log(
-      `[checkConflict] Cannot drag reservation ${draggedReservation._id}: Past check-in detected (Check-in: ${format(
-        draggedCheckIn,
-        'yyyy-MM-dd'
-      )}, Current Date: ${format(currentDate, 'yyyy-MM-dd')})`
+      `[checkConflict] 예약 ${draggedReservation._id}는 과거 체크인 예약으로 이동할 수 없습니다.`
     );
     return { isConflict: true, conflictReservation: draggedReservation };
   }
+
+  const draggedInterval = {
+    start: draggedCheckIn,
+    end: isDayUseDragged
+      ? new Date(draggedCheckIn)
+      : startOfDay(draggedCheckOut),
+  };
 
   for (const reservation of fullReservations) {
     if (
       reservation.roomNumber !== targetRoomNumber ||
       reservation._id === draggedReservation._id ||
       reservation.isCancelled
-    )
+    ) {
       continue;
+    }
 
     const resCheckIn = new Date(reservation.checkIn);
     const resCheckOut = new Date(reservation.checkOut);
     const isDayUseRes = reservation.type === 'dayUse';
+    const resInterval = {
+      start: resCheckIn,
+      end: isDayUseRes ? new Date(resCheckIn) : startOfDay(resCheckOut),
+    };
 
     if (isDayUseDragged && isDayUseRes) {
-      const draggedInterval = { start: draggedCheckIn, end: draggedCheckOut };
-      const resInterval = { start: resCheckIn, end: resCheckOut };
       if (
-        areIntervalsOverlapping(draggedInterval, resInterval, { inclusive: false })
+        areIntervalsOverlapping(draggedInterval, resInterval, {
+          inclusive: false,
+        })
       ) {
         return { isConflict: true, conflictReservation: reservation };
       }
     } else {
-      const draggedCheckInDate = startOfDay(draggedCheckIn);
-      const draggedCheckOutDate = startOfDay(draggedCheckOut);
-      const resCheckInDate = startOfDay(resCheckIn);
-      const resCheckOutDate = startOfDay(resCheckOut);
-
-      if (
-        draggedCheckInDate < resCheckOutDate &&
-        draggedCheckOutDate > resCheckInDate
-      ) {
+      // 날짜 단위로 비교
+      const draggedCI = startOfDay(draggedCheckIn);
+      const draggedCO = startOfDay(draggedCheckOut);
+      const resCI = startOfDay(resCheckIn);
+      const resCO = startOfDay(resCheckOut);
+      if (draggedCI < resCO && draggedCO > resCI) {
         console.log(
-          `[checkConflict] Conflict detected between ${draggedReservation._id} and ${reservation._id} (Target Room: ${targetRoomNumber})`
+          `[checkConflict] 충돌 발생: 예약 ${draggedReservation._id}와 ${reservation._id}`
         );
         return { isConflict: true, conflictReservation: reservation };
       }
     }
   }
-
   return { isConflict: false };
 };

@@ -12,7 +12,7 @@ import { useDrop } from 'react-dnd';
 import './RoomGrid.css';
 import InvoiceModal from './InvoiceModal';
 import DraggableReservationCard from './DraggableReservationCard';
-import { isCancelledStatus } from '../utils/isCancelledStatus';
+// import { isCancelledStatus } from '../utils/isCancelledStatus';
 import { renderActionButtons } from '../utils/renderActionButtons';
 import MonthlyCalendar from './MonthlyCalendar';
 import { sortContainers, getPaymentMethodIcon } from '../utils/roomGridUtils';
@@ -71,6 +71,7 @@ const ContainerCell = React.memo(
 
         if (conflictMessage) {
           console.warn('[drop] 충돌 상태이므로 이동을 취소합니다.');
+          clearConflict();
           return;
         }
 
@@ -86,6 +87,7 @@ const ContainerCell = React.memo(
           reservation.roomInfo === cont.roomInfo &&
           reservation.roomNumber === cont.roomNumber
         ) {
+          clearConflict();
           return;
         }
 
@@ -96,6 +98,7 @@ const ContainerCell = React.memo(
             checkIn: draggedReservation.checkIn,
             checkOut: draggedReservation.checkOut,
           });
+          clearConflict();
           return;
         }
 
@@ -250,10 +253,16 @@ const ContainerCell = React.memo(
         }
       },
       hover: (item, monitor) => {
-        if (!monitor.isOver({ shallow: true })) return;
+        if (!monitor.isOver({ shallow: true })) {
+          clearConflict();
+          return;
+        }
 
         const { reservation: draggedReservation } = item;
-        if (!cont.roomInfo || !cont.roomNumber) return;
+        if (!cont.roomInfo || !cont.roomNumber) {
+          clearConflict();
+          return;
+        }
 
         const checkInDate = new Date(draggedReservation.checkIn);
         const checkOutDate = new Date(draggedReservation.checkOut);
@@ -262,7 +271,7 @@ const ContainerCell = React.memo(
           return;
         }
 
-        const { isConflict, conflictReservation } = checkConflict(
+        const { isConflict } = checkConflict(
           {
             ...draggedReservation,
             checkIn: checkInDate,
@@ -273,34 +282,18 @@ const ContainerCell = React.memo(
           selectedDate
         );
 
-        if (isConflict) {
-          if (!isDraggingOver) {
-            const conflictMsg =
-              draggedReservation._id === conflictReservation._id
-                ? `🚫 과거 체크인 예약은 현재 날짜에서 이동할 수 없습니다.\n체크인 날짜: ${format(
-                    checkInDate,
-                    'yyyy-MM-dd'
-                  )}`
-                : `🚫 충돌 발생!\n이동하려는 객실 (${
-                    cont.roomNumber
-                  })에 예약이 있습니다.\n충돌 예약자: ${
-                    conflictReservation.customerName || '정보 없음'
-                  }\n예약 기간: ${format(
-                    checkInDate,
-                    'yyyy-MM-dd HH:mm'
-                  )} ~ ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`;
-
-            setConflictMessage(conflictMsg);
-            setIsDraggingOver(true);
-            timeoutRef.current = setTimeout(clearConflict, 3000);
-          }
+        if (isConflict && !isDraggingOver) {
+          const conflictMsg = `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.`;
+          setConflictMessage(conflictMsg);
+          setIsDraggingOver(true);
+          timeoutRef.current = setTimeout(clearConflict, 3000);
         } else if (isDraggingOver) {
           clearConflict();
         }
       },
       collect: (monitor) => ({
         isOver: monitor.isOver({ shallow: true }),
-        canDrop: monitor.canDrop(),
+        canDrop: monitor.canDrop() && !conflictMessage,
       }),
     });
 
@@ -448,14 +441,6 @@ function RoomGrid({
       )
       .filter((reservation) => reservation._id) // _id가 있는 항목만 필터링
       .filter((reservation) => {
-        return !isCancelledStatus(
-          reservation.reservationStatus || '',
-          reservation.customerName || '',
-          reservation.roomInfo || '',
-          reservation.reservationNo || ''
-        );
-      })
-      .filter((reservation) => {
         const checkInDate = new Date(reservation.checkIn);
         const checkOutDate = new Date(reservation.checkOut);
         if (isNaN(checkInDate) || isNaN(checkOutDate)) {
@@ -486,7 +471,7 @@ function RoomGrid({
   // 선택된 날짜의 예약을 콘솔에 출력
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.group(
+      console.groupCollapsed(
         `Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`
       );
       console.table(
@@ -521,14 +506,7 @@ function RoomGrid({
   const unassignedReservations = useMemo(
     () =>
       reservations.filter(
-        (res) =>
-          (!res.roomNumber || res.roomNumber.trim() === '') &&
-          !isCancelledStatus(
-            res.reservationStatus || '',
-            res.customerName || '',
-            res.roomInfo || '',
-            res.reservationNo || ''
-          )
+        (res) => !res.roomNumber || res.roomNumber.trim() === ''
       ),
     [reservations]
   );

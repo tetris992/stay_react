@@ -207,14 +207,14 @@ const DraggableReservationCard = ({
     const checkInDay = startOfDay(checkInDate);
     const checkOutDay = startOfDay(checkOutDate);
     const selectedDay = startOfDay(selectedDate);
-
+  
     if (currentDate > checkOutDay) {
       console.log(
         `Reservation ${reservation._id || 'unknown'} has already checked out.`
       );
       return false;
     }
-
+  
     if (checkInDay < selectedDay && diffDays > 0) {
       console.log(
         `Cannot drag reservation ${
@@ -229,7 +229,7 @@ const DraggableReservationCard = ({
       );
       return false;
     }
-
+  
     let hasConflict = false;
     const validReservations = allReservations.filter(
       (res) =>
@@ -240,8 +240,8 @@ const DraggableReservationCard = ({
         typeof res.checkOut === 'string' &&
         !isNaN(new Date(res.checkIn).getTime()) &&
         !isNaN(new Date(res.checkOut).getTime())
-    );
-
+    ); // 취소 예약 필터링 로직 제거 (서버에 의존)
+  
     roomTypes.forEach((roomType) => {
       const roomNumbers = roomType.roomNumbers || [];
       roomNumbers.forEach((roomNumber) => {
@@ -376,7 +376,6 @@ const DraggableReservationCard = ({
     }
   }, [reservation._id, reservation.siteName, handleDeleteClickHandler]);
 
-  // handleEditStart 함수
   const handleEditStart = useCallback(
     (reservationId) => {
       const today = startOfDay(new Date());
@@ -391,17 +390,26 @@ const DraggableReservationCard = ({
       }
       if (isOpen || isEditingMemo) return;
       setIsOpen(true);
-
-      // checkOut이 null일 경우 기본값 설정
+  
       const defaultCheckOut = checkOutDate
         ? reservation.checkOut
-        : format(addHours(new Date(), 3), "yyyy-MM-dd'T'HH:mm:ss+09:00"); // 기본 3시간 후
-
+        : format(addHours(new Date(), 3), "yyyy-MM-dd'T'HH:mm:ss+09:00");
+  
+      let initialPrice = String(
+        reservation.price || reservation.totalPrice || 0
+      );
+      if (reservation.type === 'dayUse') {
+        const roomType = roomTypes.find((rt) => rt.roomInfo === reservation.roomInfo);
+        const basePricePerHour = (roomType?.price || 0) / 2;
+        const durationHours = reservation.duration || reservation.durationHours || 3;
+        initialPrice = String(basePricePerHour * durationHours);
+      }
+  
       const initialData = {
         ...reservation,
         _id: reservation._id,
         checkIn: reservation.checkIn,
-        checkOut: defaultCheckOut, // checkOut이 null일 경우 기본값 사용
+        checkOut: defaultCheckOut,
         checkInDate: checkInDate ? format(checkInDate, 'yyyy-MM-dd') : '',
         checkInTime: checkInDate ? format(checkInDate, 'HH:mm') : '00:00',
         checkOutDate: checkOutDate
@@ -419,12 +427,13 @@ const DraggableReservationCard = ({
         reservationDate:
           reservation.reservationDate || format(new Date(), 'yyyy-MM-dd HH:mm'),
         roomInfo: reservation.roomInfo || 'Standard',
-        price: String(reservation.price || reservation.totalPrice || 0),
+        price: initialPrice,
         paymentMethod:
           reservation.paymentMethod ||
           (reservation.type === 'dayUse' ? 'Cash' : 'Card'),
         specialRequests: reservation.specialRequests || '',
         roomNumber: reservation.roomNumber || '',
+        isCheckedOut: reservation.isCheckedOut || false,
       };
       if (typeof onEdit === 'function') {
         console.log(
@@ -439,7 +448,7 @@ const DraggableReservationCard = ({
         );
       }
     },
-    [checkOutDate, reservation, onEdit, checkInDate, isEditingMemo, isOpen]
+    [checkOutDate, reservation, onEdit, checkInDate, isEditingMemo, isOpen, roomTypes]
   );
 
   useEffect(() => {
