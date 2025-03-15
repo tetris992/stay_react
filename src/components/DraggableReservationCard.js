@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import { differenceInSeconds, format, addHours, startOfDay } from 'date-fns';
@@ -225,7 +231,10 @@ const DraggableReservationCard = ({
         `Invalid dates for reservation ${
           normalizedReservation._id || 'unknown'
         }:`,
-        { checkIn: normalizedReservation.checkIn, checkOut: normalizedReservation.checkOut }
+        {
+          checkIn: normalizedReservation.checkIn,
+          checkOut: normalizedReservation.checkOut,
+        }
       );
       return false;
     }
@@ -275,7 +284,11 @@ const DraggableReservationCard = ({
       roomNumbers.forEach((roomNumber) => {
         if (checkInDate && checkOutDate) {
           const { isConflict } = checkConflict(
-            { ...normalizedReservation, checkIn: checkInDate, checkOut: checkOutDate },
+            {
+              ...normalizedReservation,
+              checkIn: checkInDate,
+              checkOut: checkOutDate,
+            },
             roomNumber,
             validReservations,
             selectedDate
@@ -372,7 +385,8 @@ const DraggableReservationCard = ({
 
   const displayReservationDate = useMemo(() => {
     if (!normalizedReservation.reservationDate) return '정보 없음';
-    const dateMatch = normalizedReservation.reservationDate.match(/^\d{4}-\d{2}-\d{2}/);
+    const dateMatch =
+      normalizedReservation.reservationDate.match(/^\d{4}-\d{2}-\d{2}/);
     return dateMatch ? dateMatch[0] : '정보 없음';
   }, [normalizedReservation.reservationDate]);
 
@@ -400,7 +414,9 @@ const DraggableReservationCard = ({
     onPartialUpdate(normalizedReservation._id, updatedData)
       .then(() => {
         const updatedReservations = allReservations.map((res) =>
-          res._id === normalizedReservation._id ? { ...res, ...updatedData } : res
+          res._id === normalizedReservation._id
+            ? { ...res, ...updatedData }
+            : res
         );
         if (typeof filterReservationsByDate === 'function') {
           filterReservationsByDate(updatedReservations, selectedDate);
@@ -438,12 +454,15 @@ const DraggableReservationCard = ({
     );
     onPartialUpdate(normalizedReservation._id, updatedData)
       .then(() => {
-        const totalPrice = normalizedReservation.totalPrice || normalizedReservation.price || 0;
+        const totalPrice =
+          normalizedReservation.totalPrice || normalizedReservation.price || 0;
         if (typeof setDailyTotal === 'function') {
           setDailyTotal((prev) => prev + totalPrice);
         }
         const updatedReservations = allReservations.map((res) =>
-          res._id === normalizedReservation._id ? { ...res, ...updatedData } : res
+          res._id === normalizedReservation._id
+            ? { ...res, ...updatedData }
+            : res
         );
         if (typeof filterReservationsByDate === 'function') {
           filterReservationsByDate(updatedReservations, selectedDate);
@@ -788,7 +807,7 @@ const DraggableReservationCard = ({
               handleCheckIn();
             }}
             className="action-btn checkin-btn"
-            data-tooltip="입실"
+            data-tooltip="➖"
           >
             입실
           </button>
@@ -800,7 +819,7 @@ const DraggableReservationCard = ({
               handleCheckOut();
             }}
             className="action-btn checkout-btn"
-            data-tooltip="퇴실"
+            data-tooltip="➖"
           >
             퇴실
           </button>
@@ -811,7 +830,7 @@ const DraggableReservationCard = ({
             handleEditStart(normalizedReservation._id);
           }}
           className="action-btn edit-btn"
-          data-tooltip="수정"
+          data-tooltip="➖"
         >
           수정
         </button>
@@ -821,7 +840,7 @@ const DraggableReservationCard = ({
             handleDelete();
           }}
           className="action-btn delete-btn"
-          data-tooltip="삭제"
+          data-tooltip="➖"
         >
           삭제
         </button>
@@ -888,7 +907,7 @@ const DraggableReservationCard = ({
                               );
                             }}
                             className="action-btn confirm-btn"
-                            data-tooltip="확정"
+                            data-tooltip="➖"
                           >
                             확정
                           </button>
@@ -899,7 +918,7 @@ const DraggableReservationCard = ({
                             handleEditStart(normalizedReservation._id);
                           }}
                           className="action-btn edit-btn"
-                          data-tooltip="수정"
+                          data-tooltip="➖"
                         >
                           수정
                         </button>
@@ -912,7 +931,7 @@ const DraggableReservationCard = ({
                             );
                           }}
                           className="action-btn delete-btn"
-                          data-tooltip="삭제"
+                          data-tooltip="➖"
                         >
                           삭제
                         </button>
