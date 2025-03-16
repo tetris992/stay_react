@@ -1,10 +1,8 @@
-// src/components/SalesGraphModal.js
-
 import React from 'react';
 import Modal from 'react-modal';
 import { Bar, Line } from 'react-chartjs-2';
 import PropTypes from 'prop-types';
-import { FaTimes, FaPrint, FaDownload } from 'react-icons/fa'; // FaDownload 추가
+import { FaTimes, FaPrint, FaDownload } from 'react-icons/fa';
 import { format } from 'date-fns';
 import './SalesGraphModal.css';
 
@@ -42,12 +40,12 @@ Modal.setAppElement('#root');
 function SalesGraphModal({
   isOpen,
   onRequestClose,
-  dailySales, // { labels: string[], values: number[] }
-  monthlySales, // (사용하지 않음, 남겨둠)
+  dailySales,
+  monthlySales,
   monthlyDailyBreakdown = [],
   selectedDate,
-  dailySalesByOTA = {}, // { [category]: number[] } – 날짜별(OTA/현장예약/대실) 판매 건수
-  maxRooms, // 호텔의 최대 객실수 (y축 최대값)
+  dailySalesByOTA = {},
+  maxRooms,
 }) {
   // -------------------------
   // (1) 날짜별 판매/남은 객실수 스택형 막대그래프 관련 코드
@@ -59,15 +57,16 @@ function SalesGraphModal({
       : {};
   const otaCategories = Object.keys(safeDailySalesByOTA);
   const categoryColors = {
-    Yanolja: '#001F3F', // 야놀자: 진한 남색
-    GoodHotel: '#FF0000', // 여기어때호텔: 붉은색
-    GoodMotel: '#B22222', // 여기어때모텔: 약간 톤 다운된 붉은색 (firebrick)
-    Booking: '#3F4F61', // 부킹: 야놀자보다 낮은 채도의 남색
-    Agoda: '#87CEEB', // 아고다: 하늘색 (sky blue)
-    Expedia: '#000000', // 익스피디아: 검은색
-    CoolStay: '#FFC107', // 쿨스테이: 꿀벌 노란색 (amber)
-    현장예약: '#8A2BE2', // 기타: 기존 색상 유지
-    대실: '#2E8B57', // 기타: 기존 색상 유지
+    Yanolja: '#001F3F',
+    GoodHotel: '#FF0000',
+    GoodMotel: '#B22222',
+    Booking: '#3F4F61',
+    Agoda: '#87CEEB',
+    Expedia: '#000000',
+    CoolStay: '#FFC107',
+    현장숙박: '#8A2BE2',
+    현장대실: '#2E8B57',
+    기타: '#AAAAAA',
   };
 
   const totals = labels.map((_, idx) => {
@@ -265,11 +264,41 @@ function SalesGraphModal({
   // -------------------------
   // 인쇄 및 PDF 다운로드 핸들러
   // -------------------------
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const modalElement = document.querySelector('.sales-graph-modal');
+    if (modalElement) {
+      try {
+        // html2canvas로 모달 내용을 캡처
+        const canvas = await html2canvas(modalElement, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        // 새로운 창 생성
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>매출 그래프 인쇄</title>
+              <style>
+                body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+                img { max-width: 100%; height: auto; }
+              </style>
+            </head>
+            <body>
+              <img src="${imgData}" onload="window.print(); window.close();" />
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      } catch (error) {
+        console.error('인쇄 준비 중 오류 발생:', error);
+        alert('인쇄 중 오류가 발생했습니다. PDF 다운로드를 이용해 주세요.');
+      }
+    } else {
+      console.error('모달 요소를 찾을 수 없습니다.');
+      alert('모달 요소를 찾을 수 없습니다. 다시 시도해 주세요.');
+    }
   };
 
-  // PDF 다운로드 핸들러 (html2canvas와 jsPDF 사용)
   const handleDownloadPdf = async () => {
     const modalElement = document.querySelector('.sales-graph-modal');
     if (modalElement) {
@@ -279,7 +308,6 @@ function SalesGraphModal({
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        // 이미지의 종횡비 유지하며 전체 페이지에 맞춤
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save('sales_graph.pdf');
       } catch (error) {
@@ -298,29 +326,19 @@ function SalesGraphModal({
       className="sales-graph-modal"
       overlayClassName="sales-graph-modal-overlay"
     >
-      {/* 모달 닫기 버튼 */}
       <button className="close-button" onClick={onRequestClose}>
         <FaTimes />
       </button>
-
-      {/* 인쇄 버튼 */}
       <button className="print-button" onClick={handlePrint}>
         <FaPrint />
       </button>
-
-      {/* PDF 다운로드 버튼 (인쇄 버튼 옆에 배치) */}
       <button className="download-pdf-button" onClick={handleDownloadPdf}>
         <FaDownload />
       </button>
-
       <h2>매출 보드 - {formattedMonthYear}</h2>
-
-      {/* (1) 날짜별 판매/남은 객실수 스택형 막대그래프 */}
       <div className="chart-container">
         <Bar data={barData} options={barOptions} />
       </div>
-
-      {/* (2) 월간 일 매출 라인 차트 (누적매출 및 평균 매출 점선 포함) */}
       <div className="chart-container">
         <Line data={monthlyDailyLineData} options={monthlyDailyLineOptions} />
       </div>

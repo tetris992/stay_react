@@ -80,28 +80,40 @@ function buildDailySalesByOTA(reservations, targetDate) {
   const labels = [];
   for (let i = 0; i < numDays; i++) {
     const d = addDays(monthStart, i);
-    labels.push(formatDate(d, 'MM-dd')); // KST 기준 포맷팅
+    labels.push(formatDate(d, 'MM-dd'));
   }
-  const categories = new Set([
-    ...availableOTAs,
-    '현장숙박',
-    '현장대실',
-    '기타',
-  ]);
+  const categories = new Set([...availableOTAs, '현장숙박', '현장대실', '기타']);
   const dailySalesByOTA = {};
   categories.forEach((cat) => {
     dailySalesByOTA[cat] = new Array(numDays).fill(0);
   });
+
   reservations
-    .filter((res) => !res.manuallyCheckedOut) // 퇴실된 예약 제외
+    .filter((res) => !res.manuallyCheckedOut)
     .forEach((res) => {
       let category = '기타';
+      console.log(`Processing reservation ${res._id || res.reservationNo}: siteName=${res.siteName}, type=${res.type}, parsedCheckInDate=${res.parsedCheckInDate}, parsedCheckOutDate=${res.parsedCheckOutDate}`);
+
       if (res.siteName === '현장예약') {
         category = res.type === 'stay' ? '현장숙박' : '현장대실';
       } else if (availableOTAs.includes(res.siteName)) {
         category = res.siteName;
       }
-      if (!res.parsedCheckInDate || !res.parsedCheckOutDate) return;
+      console.log(`Assigned category: ${category}`);
+
+      // parsedCheckInDate 또는 parsedCheckOutDate가 없으면 checkIn/checkOut에서 파싱 시도
+      if (!res.parsedCheckInDate || !res.parsedCheckOutDate) {
+        console.warn(`Missing parsed dates for reservation ${res._id || res.reservationNo}, attempting to parse from checkIn/checkOut`, res);
+        const checkInDay = res.parsedCheckInDate ? new Date(res.parsedCheckInDate) : new Date(res.checkIn);
+        const checkOutDay = res.parsedCheckOutDate ? new Date(res.parsedCheckOutDate) : new Date(res.checkOut);
+        if (isNaN(checkInDay.getTime()) || isNaN(checkOutDay.getTime())) {
+          console.error(`Failed to parse dates for reservation ${res._id || res.reservationNo}`, { checkIn: res.checkIn, checkOut: res.checkOut });
+          return;
+        }
+        res.parsedCheckInDate = checkInDay;
+        res.parsedCheckOutDate = checkOutDay;
+      }
+
       const checkInDay = new Date(
         res.parsedCheckInDate.getFullYear(),
         res.parsedCheckInDate.getMonth(),
@@ -112,6 +124,7 @@ function buildDailySalesByOTA(reservations, targetDate) {
         res.parsedCheckOutDate.getMonth(),
         res.parsedCheckOutDate.getDate()
       );
+
       let cursor = checkInDay;
       while (cursor < checkOutDay) {
         if (cursor < monthStart) {
@@ -122,10 +135,13 @@ function buildDailySalesByOTA(reservations, targetDate) {
         const dayIndex = differenceInCalendarDays(cursor, monthStart);
         if (dayIndex >= 0 && dayIndex < numDays) {
           dailySalesByOTA[category][dayIndex]++;
+          console.log(`Incremented ${category} at index ${dayIndex} for ${res._id || res.reservationNo}`);
         }
         cursor = addDays(cursor, 1);
       }
     });
+
+  console.log('Final dailySalesByOTA:', dailySalesByOTA);
   return { labels, dailySalesByOTA };
 }
 
@@ -740,22 +756,82 @@ const App = () => {
     [] // 빈 배열로 변경
   );
 
-  // 예약 로드 통합
-  const loadReservations = useCallback(async () => {
-    if (!hotelId) return;
-    setLoading(true);
-    try {
-      const data = await fetchReservations(hotelId);
-      const processedReservations = data
-        .map(processReservation)
-        .filter((r) => r);
-      setAllReservations(processedReservations);
-      filterReservationsByDate(processedReservations, selectedDate);
-    } catch (error) {
-      console.error('Failed to load reservations:', error);
+// App.js
+const loadReservations = useCallback(async () => {
+  if (!hotelId) return;
+  setLoading(true);
+  try {
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+    const data = await fetchReservations(hotelId, {
+      startDate: format(monthStart, 'yyyy-MM-dd'),
+      endDate: format(monthEnd, 'yyyy-MM-dd'),
+    });
+    console.log('Raw data from fetchReservations:', data); // 백엔드 응답 로그
+    const processedReservations = data.map(processReservation).filter((r) => r);
+    console.log('Processed reservations:', processedReservations); // 처리된 데이터 로그
+    if (processedReservations.length === 0) {
+      console.warn('No reservations found for the selected month:', {
+        startDate: format(monthStart, 'yyyy-MM-dd'),
+        endDate: format(monthEnd, 'yyyy-MM-dd'),
+      });
     }
-    setLoading(false);
-  }, [filterReservationsByDate, selectedDate, hotelId, processReservation]);
+    setAllReservations(processedReservations);
+    filterReservationsByDate(processedReservations, selectedDate);
+  } catch (error) {
+    console.error('Failed to load reservations:', error);
+  }
+  setLoading(false);
+}, [filterReservationsByDate, selectedDate, hotelId, processReservation]);
+
+useEffect(() => {
+  if (allReservations.length > 0 && selectedDate) {
+    const { labels, dailySalesByOTA } = buildDailySalesByOTA(
+      allReservations,
+      selectedDate
+    );
+    console.log('Labels for OTA:', labels);
+    console.log('Daily Sales by OTA:', dailySalesByOTA);
+    setLabelsForOTA(labels);
+    setDailySalesByOTA(dailySalesByOTA);
+  } else {
+    console.log('No reservations to build dailySalesByOTA:', allReservations);
+    setLabelsForOTA(Array.from({ length: 31 }, (_, i) => `03-${i + 1}`));
+    setDailySalesByOTA({});
+  }
+}, [allReservations, selectedDate]);
+
+useEffect(() => {
+  if (allReservations.length > 0 && selectedDate) {
+    const breakdown = buildMonthlyDailyBreakdown(allReservations, selectedDate);
+    console.log('Monthly Daily Breakdown:', breakdown);
+    setMonthlyDailyBreakdown(breakdown);
+  } else {
+    console.log('No reservations to build monthlyDailyBreakdown:', allReservations);
+    setMonthlyDailyBreakdown(Array(31).fill(0));
+  }
+}, [allReservations, selectedDate]);
+
+useEffect(() => {
+  if (allReservations.length > 0 && selectedDate) {
+    const { labels, dailySalesByOTA } = buildDailySalesByOTA(
+      allReservations,
+      selectedDate
+    );
+    console.log('Labels for OTA:', labels);
+    console.log('Daily Sales by OTA:', dailySalesByOTA);
+    setLabelsForOTA(labels);
+    setDailySalesByOTA(dailySalesByOTA);
+  }
+}, [allReservations, selectedDate]);
+
+useEffect(() => {
+  if (allReservations.length > 0 && selectedDate) {
+    const breakdown = buildMonthlyDailyBreakdown(allReservations, selectedDate);
+    console.log('Monthly Daily Breakdown:', breakdown);
+    setMonthlyDailyBreakdown(breakdown);
+  }
+}, [allReservations, selectedDate]);
 
   const today = useCallback(() => {
     const currentDate = parseDate(new Date().toISOString()); // KST로 파싱
@@ -1915,6 +1991,7 @@ const App = () => {
 
   const occupancyRate =
     totalRooms > 0 ? Math.round((roomsSold / totalRooms) * 100) : 0;
+    console.log('Calculated occupancyRate in App.js:', occupancyRate);
 
   const openOnSiteReservationForm = () => {
     const now = new Date();

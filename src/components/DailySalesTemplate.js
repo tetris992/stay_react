@@ -30,17 +30,10 @@ const DailySalesTemplate = ({
     return format(date, 'yyyy-MM-dd');
   };
 
-  // 총합계 데이터 추출 (SideBar와 동일한 로직)
-  const totalSummary = dailySalesReport.find(
-    (item) => item.reservationId === 'totalSummary'
-  );
-  const paymentTotals = totalSummary?.paymentTotals || {
-    Cash: 0,
-    Card: 0,
-    OTA: 0,
-    Pending: 0,
-  };
-  const typeTotals = totalSummary?.typeTotals || { 현장숙박: 0, 현장대실: 0 };
+  // 총합계 데이터 추출
+  const totalSummary = dailySalesReport.find((item) => item.reservationId === 'totalSummary');
+  const paymentTotals = totalSummary?.paymentTotals || { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
+  const typeTotals = totalSummary?.typeTotals || { '현장숙박': 0, '현장대실': 0 };
 
   return (
     <div className="daily-sales-template">
@@ -53,88 +46,43 @@ const DailySalesTemplate = ({
 
       <table>
         <thead>
-          <tr>
-            <th>객실번호</th>
-            <th>사이트</th>
-            <th>예약자</th>
-            <th>객실타입</th>
-            <th>체크인 ~ 체크아웃</th>
-            <th>가격(1박기준)</th>
-            <th>결제방법</th>
-          </tr>
+          <tr><th>객실번호</th><th>사이트</th><th>예약자</th><th>객실타입</th><th>체크인 ~ 체크아웃</th><th>가격(1박기준)</th><th>결제방법</th></tr>
         </thead>
         <tbody>
           {dailySalesReport.length > 0 ? (
             dailySalesReport.map((sale) => {
-              if (sale.reservationId !== 'totalSummary') {
-                // 총합계 제외
-                const [rawCheckIn, rawCheckOut] =
-                  sale.checkInCheckOut.split(' ~ ');
-                const checkInDate = formatDateOnly(rawCheckIn);
-                const checkOutDate = formatDateOnly(rawCheckOut);
+              if (sale.reservationId === 'totalSummary') return null; // 총합계는 테이블에 표시하지 않음
+              const [rawCheckIn, rawCheckOut] = sale.checkInCheckOut.split(' ~ ');
+              const checkInDate = formatDateOnly(rawCheckIn);
+              const checkOutDate = formatDateOnly(rawCheckOut);
 
-                return (
-                  <tr key={sale.reservationId}>
-                    <td>{sale.roomNumber}</td>
-                    <td>{truncateText(sale.siteInfo, 15)}</td>
-                    <td>{truncateText(sale.customerName, 15)}</td>
-                    <td>{truncateText(sale.roomInfo, 15)}</td>
-                    <td>{`${checkInDate} ~ ${checkOutDate}`}</td>
-                    <td>₩{(sale.price || 0).toLocaleString()}</td>
-                    <td>
-                      {sale.paymentMethod === 'Card' ? (
-                        <>
-                          <FaCheckCircle
-                            className="payment-icon card"
-                            title="카드 결제"
-                          />
-                          {sale.paymentMethod}
-                        </>
-                      ) : sale.paymentMethod === 'Cash' ? (
-                        <>
-                          <FaCheckCircle
-                            className="payment-icon cash"
-                            title="현금 결제"
-                          />
-                          {sale.paymentMethod}
-                        </>
-                      ) : sale.paymentMethod === 'Account Transfer' ? (
-                        <>
-                          <FaCheckCircle
-                            className="payment-icon transfer"
-                            title="계좌 이체 결제"
-                          />
-                          {sale.paymentMethod}
-                        </>
-                      ) : sale.paymentMethod === 'Pending' ? (
-                        <>
-                          <FaExclamationCircle
-                            className="payment-icon pending"
-                            title="결제 대기"
-                          />
-                          {sale.paymentMethod}
-                        </>
-                      ) : sale.paymentMethod === 'OTA' ? (
-                        <>
-                          <FaCheckCircle
-                            className="payment-icon ota"
-                            title="OTA 결제"
-                          />
-                          {sale.paymentMethod}
-                        </>
-                      ) : (
-                        <span>정보 없음</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              }
-              return null;
+              return (
+                <tr key={sale.reservationId}>
+                  <td>{sale.roomNumber}</td>
+                  <td>{truncateText(sale.siteInfo, 15)}</td>
+                  <td>{truncateText(sale.customerName, 15)}</td>
+                  <td>{truncateText(sale.roomInfo, 15)}</td>
+                  <td>{`${checkInDate} ~ ${checkOutDate}`}</td>
+                  <td>₩{(sale.price || 0).toLocaleString()}</td>
+                  <td>{sale.paymentMethod === 'Card' ? (
+                      <><FaCheckCircle className="payment-icon card" title="카드 결제" />{sale.paymentMethod}</>
+                    ) : sale.paymentMethod === 'Cash' ? (
+                      <><FaCheckCircle className="payment-icon cash" title="현금 결제" />{sale.paymentMethod}</>
+                    ) : sale.paymentMethod === 'Account Transfer' ? (
+                      <><FaCheckCircle className="payment-icon transfer" title="계좌 이체 결제" />{sale.paymentMethod}</>
+                    ) : sale.paymentMethod === 'Pending' ? (
+                      <><FaExclamationCircle className="payment-icon pending" title="결제 대기" />{sale.paymentMethod}</>
+                    ) : sale.paymentMethod === 'OTA' ? (
+                      <><FaCheckCircle className="payment-icon ota" title="OTA 결제" />{sale.paymentMethod}</>
+                    ) : (
+                      <span>정보 없음</span>
+                    )}
+                  </td>
+                </tr>
+              );
             })
           ) : (
-            <tr>
-              <td colSpan="7">해당 날짜의 예약이 없습니다.</td>
-            </tr>
+            <tr><td colSpan="7">해당 날짜의 예약이 없습니다.</td></tr>
           )}
         </tbody>
       </table>
@@ -193,7 +141,7 @@ const DailySalesTemplate = ({
         </div>
       </div>
 
-      {/* 추가: SideBar의 세부 매출 내역 표시 */}
+      {/* 총합계 섹션 추가 */}
       <div className="total-summary">
         <h3>총합계</h3>
         <ul className="total-summary-list">
