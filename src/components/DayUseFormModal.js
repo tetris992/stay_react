@@ -50,9 +50,9 @@ const DayUseFormModal = ({
   useEffect(() => {
     const now = new Date();
     const effectiveSelectedDate = selectedDate || now;
-
+  
     console.log('[DayUseFormModal] Initial data:', initialData); // 디버깅 로그 추가
-
+  
     if (initialData && initialData._id) {
       // [수정 모드] 기존 대실 예약
       const checkInDateObj = initialData.checkIn
@@ -75,11 +75,11 @@ const DayUseFormModal = ({
         );
         checkOutDateObj.setTime(addHours(checkInDateObj, 3).getTime());
       }
-
+  
       const duration = Math.round(
         (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)
       );
-
+  
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
@@ -92,7 +92,7 @@ const DayUseFormModal = ({
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
-        paymentMethod: initialData.paymentMethod || '미결제',
+        paymentMethod: initialData.paymentMethod || 'Cash', // 대실은 기본값 "Cash"
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: !!initialData.price,
@@ -100,19 +100,17 @@ const DayUseFormModal = ({
       });
     } else {
       // [신규 대실 예약]
-      // - 호텔 설정의 checkInTime 무시
-      // - checkInTime = "00:00" 으로 고정
       const defaultCheckInDate = format(effectiveSelectedDate, 'yyyy-MM-dd');
-      const defaultCheckInTime = '00:00'; // <-- 호텔 설정과 무관하게 "00:00" 고정
-
+      const defaultCheckInTime = '00:00'; // 호텔 설정과 무관하게 "00:00" 고정
+  
       const initialRoomInfo = filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
         filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
         filteredRoomTypes[0];
-
+  
       // 기본적으로 대실은 객실 정가의 50%로 계산
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
-
+  
       setFormData({
         reservationNo: `${Date.now()}`,
         customerName: `현장대실`,
@@ -123,14 +121,14 @@ const DayUseFormModal = ({
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(basePrice),
-        paymentMethod: '미결제',
+        paymentMethod: initialData?.paymentMethod || 'Cash', // 대실은 기본값 "Cash"
         specialRequests: '',
         roomNumber: '',
         manualPriceOverride: false,
         type: 'dayUse',
       });
     }
-  }, [initialData, filteredRoomTypes, hotelSettings, selectedDate]);
+  }, [initialData, filteredRoomTypes, selectedDate]);
 
   // 신규 생성 시(수정 모드가 아니고, 수동 오버라이드가 아닐 때) 자동 가격 계산
   useEffect(() => {

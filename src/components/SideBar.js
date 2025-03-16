@@ -60,6 +60,7 @@ function SideBar({
   labelsForOTA,
   activeReservations,
   onMonthlyView,
+  dailySalesReport
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -251,13 +252,13 @@ function SideBar({
         monthlyDailyBreakdown={monthlyDailyBreakdown}
         openSalesModal={openSalesModal}
         openGraphModal={handleOpenGraphModal}
+        dailySalesReport={dailySalesReport} // 추가
       >
         <h4 className="section-title">
           <FaChartLine className="section-icon" />
           <span className="section-text">매출정보</span>
         </h4>
       </AccountingInfo>
-
       {/* OTA 설정 섹션 */}
       <div className="ota-settings-section">
         <div
@@ -376,6 +377,7 @@ SideBar.propTypes = {
   labelsForOTA: PropTypes.arrayOf(PropTypes.string).isRequired,
   activeReservations: PropTypes.arrayOf(PropTypes.object).isRequired,
   onMonthlyView: PropTypes.func.isRequired,
+  dailySalesReport: PropTypes.array.isRequired,
 };
 
 export default SideBar;

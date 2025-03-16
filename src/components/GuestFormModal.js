@@ -41,12 +41,23 @@ const GuestFormModal = ({
     [roomTypes]
   );
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'roomInfo' && initialData?._id) return;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'price' ? { manualPriceOverride: true } : {}),
+    }));
+  };
+
   useEffect(() => {
     const now = new Date();
     const defaultCheckInTime = hotelSettings?.checkInTime || '16:00';
     const defaultCheckOutTime = hotelSettings?.checkOutTime || '11:00';
 
     if (initialData && initialData._id) {
+      // 수정 모드: 기존 예약
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
       setFormData({
@@ -62,12 +73,15 @@ const GuestFormModal = ({
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(initialData.price || initialData.totalPrice || 0),
-        paymentMethod: initialData.paymentMethod || 'Pending',
+        paymentMethod:
+          initialData.paymentMethod ||
+          (initialData.type === 'dayUse' ? 'Cash' : 'Card'), // 기본값 설정
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: !!initialData.price,
       });
     } else {
+      // 신규 예약
       const defaultCheckIn = initialData?.checkInDate
         ? new Date(`${initialData.checkInDate}T${defaultCheckInTime}:00`)
         : new Date(
@@ -105,19 +119,52 @@ const GuestFormModal = ({
         customerName: initialData?.customerName || '',
         phoneNumber: initialData?.phoneNumber || '',
         checkInDate: checkInDateStr,
-        checkInTime: defaultCheckInTime, // 고정값
+        checkInTime: defaultCheckInTime,
         checkOutDate: checkOutDateStr,
-        checkOutTime: defaultCheckOutTime, // 고정값
+        checkOutTime: defaultCheckOutTime,
         reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo: initialRoomInfo,
         price: String(basePrice),
-        paymentMethod: initialData?.paymentMethod || 'Pending',
+        paymentMethod:
+          initialData?.paymentMethod ||
+          (initialData?.type === 'dayUse' ? 'Cash' : 'Card'), // initialData.paymentMethod 우선 사용
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
         manualPriceOverride: false,
       });
     }
   }, [initialData, filteredRoomTypes, hotelSettings]);
+
+  // 결제 방법 드롭다운 옵션에서 "Pending"을 "미결제"로 변경
+  <div className="modal-row">
+    <label htmlFor="paymentMethod">
+      결제방법/상태:
+      <select
+        id="paymentMethod"
+        name="paymentMethod"
+        value={formData.paymentMethod}
+        onChange={handleInputChange}
+        required
+        disabled={isSubmitting}
+      >
+        <option value="Card">카드</option>
+        <option value="Cash">현금</option>
+        <option value="Account Transfer">계좌이체</option>
+        <option value="미결제">미결제</option>
+      </select>
+    </label>
+    <label htmlFor="specialRequests">
+      고객요청:
+      <input
+        id="specialRequests"
+        type="text"
+        name="specialRequests"
+        value={formData.specialRequests}
+        onChange={handleInputChange}
+        disabled={isSubmitting}
+      />
+    </label>
+  </div>;
 
   useEffect(() => {
     if (
@@ -168,16 +215,6 @@ const GuestFormModal = ({
     formData.checkInTime, // 의존성 추가
     formData.checkOutTime, // 의존성 추가
   ]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'roomInfo' && initialData?._id) return;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'price' ? { manualPriceOverride: true } : {}),
-    }));
-  };
 
   const handleCheckInDateChange = (e) => {
     const selectedDate = e.target.value;

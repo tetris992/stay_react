@@ -1,5 +1,3 @@
-// src/components/AccountingInfo.js
-
 import React from 'react';
 import { FaFileAlt, FaChartLine } from 'react-icons/fa';
 import PropTypes from 'prop-types';
@@ -14,23 +12,26 @@ function AccountingInfo({
   monthlySoldRooms,
   dailyBreakdown,
   monthlyDailyBreakdown,
-  openSalesModal, // 기존 매출 상세 모달 열기용 prop
-  openGraphModal, // 새로 추가: 그래프 모달 열기용 prop
+  openSalesModal,
+  openGraphModal,
+  dailySalesReport,
 }) {
+  // 결제 방법별 및 숙박/대실별 합계 계산 (방어 코드 추가)
+  const totalSummary = dailySalesReport?.find((item) => item.reservationId === 'totalSummary');
+  const paymentTotals = totalSummary?.paymentTotals || { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
+  const typeTotals = totalSummary?.typeTotals || { '현장숙박': 0, '현장대실': 0 };
+
   return (
     <div className="accounting-info">
       <h4 className="accounting-title">
         매출 정보
         <div className='accounting-buttons'>
-          {' '}
-          {/* 기존 SalesModal 열기 버튼 */}
           <button className="sales-button" onClick={openSalesModal}>
             <FaFileAlt className="sales-icon" />
           </button>
-          {/* 새로 추가한 그래프 모달 열기 버튼 */}
           {openGraphModal && (
             <button className="sales-button" onClick={openGraphModal}>
-              <FaChartLine className="sales-icon"  style={{ marginRight: '5px' }} />
+              <FaChartLine className="sales-icon" style={{ marginRight: '5px' }} />
             </button>
           )}
         </div>
@@ -59,11 +60,27 @@ function AccountingInfo({
           <span>월 판매 객실 수: </span>
           {monthlySoldRooms}
         </li>
+        {/* 결제 방법별 매출 */}
+        <li>
+          <span>현금 매출: </span>₩{paymentTotals.Cash.toLocaleString()}
+        </li>
+        <li>
+          <span>카드 매출: </span>₩{paymentTotals.Card.toLocaleString()}
+        </li>
+        <li>
+          <span>OTA 매출: </span>₩{paymentTotals.OTA.toLocaleString()}
+        </li>
+        <li>
+          <span>미결제 매출: </span>₩{paymentTotals.Pending.toLocaleString()}
+        </li>
+        {/* 숙박/대실별 매출 */}
+        <li>
+          <span>현장숙박 매출: </span>₩{typeTotals['현장숙박'].toLocaleString()}
+        </li>
+        <li>
+          <span>현장대실 매출: </span>₩{typeTotals['현장대실'].toLocaleString()}
+        </li>
       </ul>
-
-      {/* 일 매출 상세보기 토글 버튼 */}
-
-      {/* 일 매출 상세 정보 */}
     </div>
   );
 }
@@ -76,8 +93,9 @@ AccountingInfo.propTypes = {
   avgMonthlyRoomPrice: PropTypes.number.isRequired,
   monthlySoldRooms: PropTypes.number.isRequired,
   dailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
-  openSalesModal: PropTypes.func.isRequired, // 기존 상세 모달 콜백
-  openGraphModal: PropTypes.func, // 새로 추가된 그래프 모달 콜백
+  openSalesModal: PropTypes.func.isRequired,
+  openGraphModal: PropTypes.func,
+  dailySalesReport: PropTypes.array.isRequired,
 };
 
 export default AccountingInfo;
