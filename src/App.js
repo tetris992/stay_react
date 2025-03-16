@@ -1070,7 +1070,7 @@ const App = () => {
 
 
   const handleEdit = useCallback(
-    async (reservationId, updatedData) => {
+    async (reservationId, updatedData, onComplete) => { // onComplete 콜백 추가
       const currentReservation = allReservations.find(
         (res) => res._id === reservationId
       );
@@ -1113,19 +1113,17 @@ const App = () => {
         // 대실의 경우 durationHours 변경에 따른 가격 재계산
         if (currentReservation.type === 'dayUse' && updatedData.durationHours) {
           const roomType = matchRoomType(currentReservation.roomInfo) || finalRoomTypes[0];
-          const basePricePerHour = (roomType?.price || 0) / 2; // 대실 기본 단가 (룸타입 가격의 절반)
-          const priceIncreasePerHour = 10000; // 1시간당 추가 요금
+          const basePricePerHour = (roomType?.price || 0) / 2;
+          const priceIncreasePerHour = 10000;
           const newDurationHours = parseInt(updatedData.durationHours, 10) || 3;
           const oldDurationHours = currentReservation.durationHours || 3;
   
-          // 새로운 총 가격 계산: 기본 단가 * 시간 + 추가 요금
           const newBasePrice = basePricePerHour * newDurationHours;
           const oldBasePrice = basePricePerHour * oldDurationHours;
           const priceDifference = (newBasePrice - oldBasePrice) + (priceIncreasePerHour * (newDurationHours - oldDurationHours));
           updatedData.price = String(parseInt(currentReservation.price || newBasePrice) + priceDifference);
-          updatedData.totalPrice = updatedData.price; // 대실은 nightlyRates 없이 totalPrice 사용
+          updatedData.totalPrice = updatedData.price;
   
-          // 체크아웃 시간 업데이트
           updatedData.checkOut = format(
             addHours(new Date(updatedData.checkIn), newDurationHours),
             "yyyy-MM-dd'T'HH:mm:ss+09:00"
@@ -1143,51 +1141,13 @@ const App = () => {
         // 수정 모달 열기
         setGuestFormData(updatedData);
         setShowGuestForm(true);
-  
-        const updatedReservationData = {
-          ...updatedData,
-          type: updatedData.type || currentReservation.type || 'stay',
-          duration:
-            updatedData.type === 'dayUse'
-              ? updatedData.durationHours || currentReservation.durationHours || 3
-              : undefined,
-        };
-        await updateReservation(reservationId, updatedReservationData, hotelId);
-  
-        // 상태 업데이트 최적화: 동일한 데이터면 업데이트 생략
-        setAllReservations((prev) => {
-          const processedUpdatedReservation = processReservation(
-            updatedReservationData
-          );
-          const existingReservation = prev.find(
-            (res) => res._id === reservationId
-          );
-          if (
-            JSON.stringify(existingReservation) ===
-            JSON.stringify(processedUpdatedReservation)
-          ) {
-            return prev; // 동일하면 업데이트 생략
-          }
-          return prev.map((res) =>
-            res._id === reservationId ? processedUpdatedReservation : res
-          );
-        });
-  
-        const changes = [];
-        if (currentReservation.price !== updatedData.price)
-          changes.push(
-            `가격: ${currentReservation.price} -> ${updatedData.price}`
-          );
-        if (currentReservation.checkOut !== updatedData.checkOut)
-          changes.push(
-            `체크아웃: ${currentReservation.checkOut} -> ${updatedData.checkOut}`
-          );
-        if (changes.length > 0) {
-          const updateLog = `예약 ${reservationId} 수정됨:\n${changes.join(
-            '\n'
-          )}`;
-          console.log(updateLog);
-          logMessage(updateLog);
+
+        // 콜백을 모달이 닫힐 때 호출하도록 상태에 저장
+        if (typeof onComplete === 'function') {
+          setGuestFormData((prev) => ({
+            ...prev,
+            onComplete, // 임시로 guestFormData에 저장
+          }));
         }
       } catch (error) {
         console.error(`Failed to update reservation ${reservationId}:`, error);
@@ -1197,15 +1157,15 @@ const App = () => {
             : '예약 수정에 실패했습니다.'
         );
         await loadReservations();
+        if (typeof onComplete === 'function') {
+          onComplete(); // 오류 발생 시에도 수정 모드 종료
+        }
       }
     },
     [
       allReservations,
-      hotelId,
       loadReservations,
       handleRoomChangeAndSync,
-      processReservation,
-      logMessage,
       finalRoomTypes,
     ]
   );
@@ -1583,9 +1543,9 @@ const App = () => {
         reservations: [
           {
             ...data,
-            type: data.type || 'stay', // 기본값 'stay'
+            type: data.type || 'stay',
             duration:
-              data.type === 'dayUse' ? data.durationHours || 3 : undefined, // 대실일 경우 duration 설정
+              data.type === 'dayUse' ? data.durationHours || 3 : undefined,
           },
         ],
         hotelId,
@@ -1599,9 +1559,20 @@ const App = () => {
         console.log(
           `${data.type === 'dayUse' ? '대실' : '숙박'} 예약이 수정되었습니다.`
         );
+  
+        // 상태 업데이트
+        setAllReservations((prev) => {
+          const processedUpdatedReservation = processReservation(
+            reservationData.reservations[0]
+          );
+          const updated = prev.map((res) =>
+            res._id === reservationId ? processedUpdatedReservation : res
+          );
+          filterReservationsByDate(updated, selectedDate);
+          return updated;
+        });
       } else {
         const response = await saveOnSiteReservation(reservationData);
-        console.log('[handleFormSave] API Response:', response);
         if (
           response &&
           Array.isArray(response.createdReservationIds) &&
@@ -1627,7 +1598,12 @@ const App = () => {
           throw new Error('예약 ID가 반환되지 않았습니다.');
         }
       }
+  
+      // 모달 닫기 및 수정 모드 종료
       setShowGuestForm(false);
+      if (data.onComplete && typeof data.onComplete === 'function') {
+        data.onComplete(); // DraggableReservationCard의 isOpen을 false로 설정
+      }
       await loadReservations();
     } catch (error) {
       console.error('[handleFormSave] Error saving reservation:', error);
@@ -1638,6 +1614,10 @@ const App = () => {
             error.message ||
             '현장 예약 저장에 실패했습니다.';
       alert(message);
+      setShowGuestForm(false);
+      if (data.onComplete && typeof data.onComplete === 'function') {
+        data.onComplete(); // 오류 시에도 수정 모드 종료
+      }
     }
   };
 

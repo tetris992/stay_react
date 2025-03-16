@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import PropTypes from 'prop-types';
 import { format, startOfDay, addDays } from 'date-fns';
 import { useDrop } from 'react-dnd';
@@ -10,7 +16,11 @@ import { renderActionButtons } from '../utils/renderActionButtons';
 import MonthlyCalendar from './MonthlyCalendar';
 import { sortContainers, getPaymentMethodIcon } from '../utils/roomGridUtils';
 import { matchRoomType } from '../utils/matchRoomType';
-import { canMoveToRoom, canSwapReservations, calculateRoomAvailability } from '../utils/availability';
+import {
+  canMoveToRoom,
+  canSwapReservations,
+  calculateRoomAvailability,
+} from '../utils/availability';
 import { checkConflict } from '../utils/checkConflict';
 import LogViewer from './LogViewer';
 
@@ -74,7 +84,8 @@ const ContainerCell = React.memo(
 
         if (
           reservation.roomInfo === cont.roomInfo &&
-          reservation.roomNumber === cont.roomNumber
+          reservation.roomNumber === cont.roomNumber &&
+          !reservation.manuallyCheckedOut // 퇴실된 예약 제외
         ) {
           clearConflict();
           return;
@@ -106,7 +117,14 @@ const ContainerCell = React.memo(
             return;
           }
 
-          const existingReservation = assignedReservations[0];
+          const existingReservation = assignedReservations.find(
+            (res) => !res.manuallyCheckedOut
+          ); // 퇴실된 예약 제외
+          if (!existingReservation) {
+            clearConflict();
+            return;
+          }
+
           const existingCheckInDate = new Date(existingReservation.checkIn);
           const existingCheckOutDate = new Date(existingReservation.checkOut);
 
@@ -121,7 +139,7 @@ const ContainerCell = React.memo(
               checkIn: existingCheckInDate,
               checkOut: existingCheckOutDate,
             },
-            fullReservations,
+            fullReservations.filter((res) => !res.manuallyCheckedOut),
             selectedDate
           );
           if (!canSwap) {
@@ -176,7 +194,7 @@ const ContainerCell = React.memo(
           ];
 
           const availabilityByDate = calculateRoomAvailability(
-            updatedReservations,
+            updatedReservations.filter((r) => !r.manuallyCheckedOut),
             roomTypes,
             viewingDateStart,
             viewingDateEnd,
@@ -190,7 +208,7 @@ const ContainerCell = React.memo(
             checkInDate,
             checkOutDate,
             availabilityByDate,
-            updatedReservations,
+            updatedReservations.filter((r) => !r.manuallyCheckedOut),
             draggedReservation._id,
             selectedDate,
             draggedReservation
@@ -260,6 +278,9 @@ const ContainerCell = React.memo(
           return;
         }
 
+        const activeReservations = fullReservations.filter(
+          (res) => !res.manuallyCheckedOut
+        );
         const { isConflict } = checkConflict(
           {
             ...draggedReservation,
@@ -267,7 +288,7 @@ const ContainerCell = React.memo(
             checkOut: checkOutDate,
           },
           cont.roomNumber,
-          fullReservations,
+          activeReservations,
           selectedDate
         );
 
@@ -286,17 +307,17 @@ const ContainerCell = React.memo(
       }),
     });
 
-    // 퇴실된 대실 수 계산
     const checkedOutCount = useMemo(() => {
       const uniqueCheckedOut = new Set();
       fullReservations.forEach((res) => {
         if (
           res.type === 'dayUse' &&
-          res.isCheckedOut &&
+          res.manuallyCheckedOut &&
           res.roomNumber === cont.roomNumber &&
-          format(new Date(res.checkOut), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
+          format(new Date(res.checkOut), 'yyyy-MM-dd') ===
+            format(selectedDate, 'yyyy-MM-dd')
         ) {
-          uniqueCheckedOut.add(res._id); // 고유 ID로 중복 제거
+          uniqueCheckedOut.add(res._id);
         }
       });
       return uniqueCheckedOut.size;
@@ -415,7 +436,7 @@ ContainerCell.propTypes = {
   cont: PropTypes.object.isRequired,
   onEdit: PropTypes.func.isRequired,
   getReservationById: PropTypes.func.isRequired,
-  children: PropTypes.node,
+  children: PropTypes.node, // children을 node로 변경
   assignedReservations: PropTypes.array,
   fullReservations: PropTypes.array.isRequired,
   roomTypes: PropTypes.array.isRequired,
@@ -465,11 +486,11 @@ function RoomGrid({
   const [error, setError] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] = useState(false);
+  const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
+    useState(false);
   const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
-  const [dailyTotal, setDailyTotal] = useState(0); // 매출 상태 추가
 
   const invoiceRef = useRef();
   const gridRef = useRef();
@@ -491,7 +512,9 @@ function RoomGrid({
   const filteredReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return (reservations || [])
-      .filter((reservation) => reservation !== null && reservation !== undefined)
+      .filter(
+        (reservation) => reservation !== null && reservation !== undefined
+      )
       .filter((reservation) => reservation._id)
       .filter((reservation) => {
         const checkInDate = new Date(reservation.checkIn);
@@ -503,8 +526,8 @@ function RoomGrid({
         return true;
       })
       .filter((reservation) => {
-        // 퇴실된 대실 예약 제외
-        if (reservation.type === 'dayUse' && reservation.isCheckedOut) {
+        // 퇴실된 예약 제외 (manuallyCheckedOut 기반)
+        if (reservation.manuallyCheckedOut) {
           return false;
         }
 
@@ -518,7 +541,8 @@ function RoomGrid({
           selectedDateString < format(checkOutDateOnly, 'yyyy-MM-dd');
 
         const isSameDayStay =
-          format(checkInDateOnly, 'yyyy-MM-dd') === format(checkOutDateOnly, 'yyyy-MM-dd') &&
+          format(checkInDateOnly, 'yyyy-MM-dd') ===
+            format(checkOutDateOnly, 'yyyy-MM-dd') &&
           selectedDateString === format(checkInDateOnly, 'yyyy-MM-dd');
 
         return isIncluded || isSameDayStay;
@@ -527,7 +551,9 @@ function RoomGrid({
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.groupCollapsed(`Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`);
+      console.groupCollapsed(
+        `Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`
+      );
       console.table(
         filteredReservations.map((res) => ({
           ID: res._id,
@@ -539,6 +565,7 @@ function RoomGrid({
           Status: res.reservationStatus || '정보 없음',
           isCheckedIn: res.isCheckedIn || false,
           isCheckedOut: res.isCheckedOut || false,
+          manuallyCheckedOut: res.manuallyCheckedOut || false,
           Type: res.type || 'Unknown',
         }))
       );
@@ -561,7 +588,10 @@ function RoomGrid({
   }, [floors, filteredReservations]);
 
   const unassignedReservations = useMemo(
-    () => reservations.filter((res) => !res.roomNumber || res.roomNumber.trim() === ''),
+    () =>
+      reservations.filter(
+        (res) => !res.roomNumber || res.roomNumber.trim() === ''
+      ),
     [reservations]
   );
 
@@ -583,7 +613,9 @@ function RoomGrid({
   useEffect(() => {
     if (newlyCreatedId) {
       setIsNewlyCreatedHighlighted(true);
-      const card = document.querySelector(`.room-card[data-id="${newlyCreatedId}"]`);
+      const card = document.querySelector(
+        `.room-card[data-id="${newlyCreatedId}"]`
+      );
       if (card) {
         card.classList.add('onsite-created');
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -599,7 +631,9 @@ function RoomGrid({
   useEffect(() => {
     if (updatedReservationId) {
       setIsUpdatedHighlighted(true);
-      const card = document.querySelector(`.room-card[data-id="${updatedReservationId}"]`);
+      const card = document.querySelector(
+        `.room-card[data-id="${updatedReservationId}"]`
+      );
       if (card) {
         card.classList.add('onsite-created');
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -664,17 +698,30 @@ function RoomGrid({
   };
 
   const handleEditExtended = useCallback(
-    async (reservationId, updatedData) => {
-      await onEdit(reservationId, updatedData);
-      setAllReservations((prev) =>
-        prev.map((res) =>
-          res._id === reservationId ? { ...res, ...updatedData } : res
-        )
-      );
-      filterReservationsByDate(reservations, selectedDate);
-      setIsNewlyCreatedHighlighted(false);
+    async (reservationId, updatedData, onComplete) => {
+      try {
+        await onEdit(reservationId, updatedData);
+        setAllReservations((prev) =>
+          prev.map((res) =>
+            res._id === reservationId ? { ...res, ...updatedData } : res
+          )
+        );
+        filterReservationsByDate(reservations, selectedDate);
+        setIsNewlyCreatedHighlighted(false);
+        if (typeof onComplete === 'function') {
+          onComplete();
+        }
+      } catch (error) {
+        console.error(`Failed to edit reservation ${reservationId}:`, error);
+      }
     },
-    [onEdit, setAllReservations, filterReservationsByDate, reservations, selectedDate]
+    [
+      onEdit,
+      setAllReservations,
+      filterReservationsByDate,
+      reservations,
+      selectedDate,
+    ]
   );
 
   const closeModalHandler = useCallback(() => {
@@ -717,7 +764,11 @@ function RoomGrid({
           const bMatch = matchRoomType(b.roomInfo, roomTypes);
           const getKey = (mObj, info) => {
             const infoStr = info || '';
-            if (!mObj || !infoStr || (infoStr.toLowerCase && infoStr.toLowerCase().includes('대실'))) {
+            if (
+              !mObj ||
+              !infoStr ||
+              (infoStr.toLowerCase && infoStr.toLowerCase().includes('대실'))
+            ) {
               return 'zzz';
             }
             return mObj.roomInfo ? mObj.roomInfo.toLowerCase() : '';
@@ -745,12 +796,15 @@ function RoomGrid({
   const toggleMonthlyView = () => setIsMonthlyView(!isMonthlyView);
 
   return (
-    <div style={{ display: 'flex', width: '100%', boxSizing: 'border-box', position: 'relative' }}>
+    <div
+      style={{
+        display: 'flex',
+        width: '100%',
+        boxSizing: 'border-box',
+        position: 'relative',
+      }}
+    >
       <div className="grid-wrapper" ref={gridRef} style={{ flex: 1 }}>
-        {/* 매출 총액 표시 추가 */}
-        <div style={{ padding: '10px', backgroundColor: '#f0f4f8', borderRadius: '8px', marginBottom: '10px' }}>
-          <h3>오늘의 매출: {dailyTotal.toLocaleString()}원</h3>
-        </div>
         <div>
           {isMonthlyView ? (
             <MonthlyCalendar
@@ -768,135 +822,215 @@ function RoomGrid({
           ) : (
             <>
               {showUnassignedPanel && unassignedReservations.length > 0 ? (
-                <div className="unassigned-section" style={{ marginBottom: '2rem' }}>
-                  <div className="unassigned-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
-                    <button className="unassigned-header-title-button" onClick={() => setShowUnassignedPanel(false)}>닫기</button>
-                  </div>
-                  <div className="unassigned-list" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {sortReservations(unassignedReservations).map((res, index) => (
-                      <DraggableReservationCard
-                        key={`${res._id || res.reservationNo}-${index}`}
-                        reservation={res}
-                        hotelId={hotelId}
-                        highlightedReservationIds={highlightedReservationIds || []}
-                        isSearching={isSearching || false}
-                        flippedReservationIds={flippedReservationIds}
-                        memos={memos || {}}
-                        memoRefs={memoRefs}
-                        handleCardFlip={handleCardFlip}
-                        onEdit={(reservationId, initialData) => {
-                          console.log(`[RoomGrid.js] onEdit prop received in unassigned: ${typeof onEdit}, value:`, onEdit);
-                          if (typeof onEdit === 'function') {
-                            onEdit(reservationId, initialData);
-                          } else {
-                            console.error('onEdit is not a function in unassigned section');
-                          }
-                        }}
-                        openInvoiceModal={openInvoiceModalHandler}
-                        hotelSettings={hotelSettings}
-                        renderActionButtons={renderActionButtons}
-                        loadedReservations={loadedReservations || []}
-                        newlyCreatedId={newlyCreatedId}
-                        isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
-                        updatedReservationId={updatedReservationId}
-                        isUpdatedHighlighted={isUpdatedHighlighted}
-                        onPartialUpdate={onPartialUpdate}
-                        roomTypes={roomTypes}
-                        isUnassigned={true}
-                        handleDeleteClickHandler={handleDeleteClickHandler}
-                        handleConfirmClickHandler={handleConfirmClickHandler}
-                        selectedDate={selectedDate}
-                        filterReservationsByDate={filterReservationsByDate}
-                        allReservations={reservations}
-                        setDailyTotal={setDailyTotal}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : unassignedReservations.length > 0 && (
-                <button
-                  className="unassigned-header-title-button"
-                  onClick={() => setShowUnassignedPanel(true)}
-                  style={{ cursor: 'pointer', marginLeft: '50px', marginBottom: '15px' }}
+                <div
+                  className="unassigned-section"
+                  style={{ marginBottom: '2rem' }}
                 >
-                  당일 미배정 열기
-                </button>
-              )}
-              {floors.slice().reverse().map((floor) => (
-                <div key={floor.floorNum} className="floor-section">
-                  <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>{/* {floor.floorNum}F */}</h3>
-                  <div className="layout-grid">
-                    {(floor.containers || []).map((cont) => {
-                      const reservationsForCont = floorReservations[cont.containerId] || [];
-                      const sortedReservations = sortReservations(reservationsForCont);
-                      return (
-                        <ContainerCell
-                          key={cont.containerId}
-                          cont={cont}
-                          onEdit={onEdit}
-                          getReservationById={getReservationById}
-                          assignedReservations={reservationsForCont}
-                          fullReservations={reservations}
-                          roomTypes={roomTypes}
-                          gridSettings={hotelSettings?.gridSettings}
-                          handleEditExtended={handleEditExtended}
-                          handleRoomChangeAndSync={handleRoomChangeAndSync}
-                          setAllReservations={setAllReservations}
-                          filterReservationsByDate={filterReservationsByDate}
-                          selectedDate={selectedDate}
+                  <div
+                    className="unassigned-header"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <h3>당일 미배정 예약: {unassignedReservations.length}건</h3>
+                    <button
+                      className="unassigned-header-title-button"
+                      onClick={() => setShowUnassignedPanel(false)}
+                    >
+                      닫기
+                    </button>
+                  </div>
+                  <div
+                    className="unassigned-list"
+                    style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}
+                  >
+                    {sortReservations(unassignedReservations).map(
+                      (res, index) => (
+                        <DraggableReservationCard
+                          key={`${res._id || res.reservationNo}-${index}`}
+                          reservation={res}
+                          hotelId={hotelId}
+                          highlightedReservationIds={
+                            highlightedReservationIds || []
+                          }
+                          isSearching={isSearching || false}
+                          flippedReservationIds={flippedReservationIds}
+                          memos={memos || {}}
+                          memoRefs={memoRefs}
+                          handleCardFlip={handleCardFlip}
+                          onEdit={(reservationId, initialData) => {
+                            console.log(
+                              `[RoomGrid.js] onEdit prop received in unassigned: ${typeof onEdit}, value:`,
+                              onEdit
+                            );
+                            if (typeof onEdit === 'function') {
+                              onEdit(reservationId, initialData);
+                            } else {
+                              console.error(
+                                'onEdit is not a function in unassigned section'
+                              );
+                            }
+                          }}
+                          openInvoiceModal={openInvoiceModalHandler}
                           hotelSettings={hotelSettings}
-                        >
-                          <div className="reservation-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            {sortedReservations.filter(rsv => rsv !== null && rsv !== undefined).length === 0 ? (
-                              <div style={{ fontStyle: 'italic', color: '#999' }}>예약 없음</div>
-                            ) : (
-                              sortedReservations.filter(rsv => rsv !== null && rsv !== undefined).map((rsv, index) => (
-                                <DraggableReservationCard
-                                  key={`${rsv._id || rsv.reservationNo}-${index}`}
-                                  reservation={rsv}
-                                  hotelId={hotelId}
-                                  highlightedReservationIds={highlightedReservationIds}
-                                  isSearching={isSearching}
-                                  flippedReservationIds={flippedReservationIds}
-                                  memos={memos}
-                                  memoRefs={memoRefs}
-                                  handleCardFlip={handleCardFlip}
-                                  openInvoiceModal={openInvoiceModalHandler}
-                                  getPaymentMethodIcon={getPaymentMethodIcon}
-                                  renderActionButtons={renderActionButtons}
-                                  loadedReservations={loadedReservations}
-                                  newlyCreatedId={newlyCreatedId}
-                                  isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
-                                  updatedReservationId={updatedReservationId}
-                                  isUpdatedHighlighted={isUpdatedHighlighted}
-                                  onPartialUpdate={onPartialUpdate}
-                                  onEdit={(reservationId, initialData) => {
-                                    console.log(`[RoomGrid.js] onEdit prop received in floor: ${typeof onEdit}, value:`, onEdit);
-                                    if (typeof onEdit === 'function') {
-                                      onEdit(reservationId, initialData);
-                                    } else {
-                                      console.error('onEdit is not a function in floor section');
-                                    }
-                                  }}
-                                  roomTypes={roomTypes}
-                                  hotelSettings={hotelSettings}
-                                  handleDeleteClickHandler={handleDeleteClickHandler}
-                                  handleConfirmClickHandler={handleConfirmClickHandler}
-                                  selectedDate={selectedDate}
-                                  filterReservationsByDate={filterReservationsByDate}
-                                  allReservations={reservations}
-                                  setDailyTotal={setDailyTotal}
-                                />
-                              ))
-                            )}
-                          </div>
-                        </ContainerCell>
-                      );
-                    })}
+                          renderActionButtons={renderActionButtons}
+                          loadedReservations={loadedReservations || []}
+                          newlyCreatedId={newlyCreatedId}
+                          isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                          updatedReservationId={updatedReservationId}
+                          isUpdatedHighlighted={isUpdatedHighlighted}
+                          onPartialUpdate={onPartialUpdate}
+                          roomTypes={roomTypes}
+                          isUnassigned={true}
+                          handleDeleteClickHandler={handleDeleteClickHandler}
+                          handleConfirmClickHandler={handleConfirmClickHandler}
+                          selectedDate={selectedDate}
+                          filterReservationsByDate={filterReservationsByDate}
+                          allReservations={reservations}
+                        />
+                      )
+                    )}
                   </div>
                 </div>
-              ))}
+              ) : (
+                unassignedReservations.length > 0 && (
+                  <button
+                    className="unassigned-header-title-button"
+                    onClick={() => setShowUnassignedPanel(true)}
+                    style={{
+                      cursor: 'pointer',
+                      marginLeft: '50px',
+                      marginBottom: '15px',
+                    }}
+                  >
+                    당일 미배정 열기
+                  </button>
+                )
+              )}
+              {floors
+                .slice()
+                .reverse()
+                .map((floor) => (
+                  <div key={floor.floorNum} className="floor-section">
+                    <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
+                      {/* {floor.floorNum}F */}
+                    </h3>
+                    <div className="layout-grid">
+                      {(floor.containers || []).map((cont) => {
+                        const reservationsForCont =
+                          floorReservations[cont.containerId] || [];
+                        const sortedReservations =
+                          sortReservations(reservationsForCont);
+                        return (
+                          <ContainerCell
+                            key={cont.containerId}
+                            cont={cont}
+                            onEdit={onEdit}
+                            getReservationById={getReservationById}
+                            assignedReservations={reservationsForCont}
+                            fullReservations={reservations}
+                            roomTypes={roomTypes}
+                            gridSettings={hotelSettings?.gridSettings}
+                            handleEditExtended={handleEditExtended}
+                            handleRoomChangeAndSync={handleRoomChangeAndSync}
+                            setAllReservations={setAllReservations}
+                            filterReservationsByDate={filterReservationsByDate}
+                            selectedDate={selectedDate}
+                            hotelSettings={hotelSettings}
+                          >
+                            <div
+                              className="reservation-list"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '5px',
+                              }}
+                            >
+                              {sortedReservations.filter(
+                                (rsv) => rsv !== null && rsv !== undefined
+                              ).length === 0 ? (
+                                <div
+                                  style={{ fontStyle: 'italic', color: '#999' }}
+                                >
+                                  예약 없음
+                                </div>
+                              ) : (
+                                sortedReservations
+                                  .filter(
+                                    (rsv) => rsv !== null && rsv !== undefined
+                                  )
+                                  .map((rsv, index) => (
+                                    <DraggableReservationCard
+                                      key={`${
+                                        rsv._id || rsv.reservationNo
+                                      }-${index}`}
+                                      reservation={rsv}
+                                      hotelId={hotelId}
+                                      highlightedReservationIds={
+                                        highlightedReservationIds
+                                      }
+                                      isSearching={isSearching}
+                                      flippedReservationIds={
+                                        flippedReservationIds
+                                      }
+                                      memos={memos}
+                                      memoRefs={memoRefs}
+                                      handleCardFlip={handleCardFlip}
+                                      openInvoiceModal={openInvoiceModalHandler}
+                                      getPaymentMethodIcon={
+                                        getPaymentMethodIcon
+                                      }
+                                      renderActionButtons={renderActionButtons}
+                                      loadedReservations={loadedReservations}
+                                      newlyCreatedId={newlyCreatedId}
+                                      isNewlyCreatedHighlighted={
+                                        isNewlyCreatedHighlighted
+                                      }
+                                      updatedReservationId={
+                                        updatedReservationId
+                                      }
+                                      isUpdatedHighlighted={
+                                        isUpdatedHighlighted
+                                      }
+                                      onPartialUpdate={onPartialUpdate}
+                                      onEdit={(reservationId, initialData) => {
+                                        console.log(
+                                          `[RoomGrid.js] onEdit prop received in floor: ${typeof onEdit}, value:`,
+                                          onEdit
+                                        );
+                                        if (typeof onEdit === 'function') {
+                                          onEdit(reservationId, initialData);
+                                        } else {
+                                          console.error(
+                                            'onEdit is not a function in floor section'
+                                          );
+                                        }
+                                      }}
+                                      roomTypes={roomTypes}
+                                      hotelSettings={hotelSettings}
+                                      handleDeleteClickHandler={
+                                        handleDeleteClickHandler
+                                      }
+                                      handleConfirmClickHandler={
+                                        handleConfirmClickHandler
+                                      }
+                                      selectedDate={selectedDate}
+                                      filterReservationsByDate={
+                                        filterReservationsByDate
+                                      }
+                                      allReservations={reservations}
+                                    />
+                                  ))
+                              )}
+                            </div>
+                          </ContainerCell>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
             </>
           )}
         </div>
@@ -912,7 +1046,9 @@ function RoomGrid({
             hotelId={hotelId}
           />
         )}
-        {isLogViewerOpen && <LogViewer logs={logs} onClose={() => onCloseLogViewer()} />}
+        {isLogViewerOpen && (
+          <LogViewer logs={logs} onClose={() => onCloseLogViewer()} />
+        )}
       </div>
     </div>
   );

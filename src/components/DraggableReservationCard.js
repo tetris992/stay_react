@@ -436,52 +436,54 @@ const DraggableReservationCard = ({
     selectedDate,
   ]);
 
-  const handleCheckOut = useCallback(() => {
-    const now = new Date();
-    const updatedData = {
-      ...normalizedReservation,
-      checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
-      checkOutTime: format(now, 'HH:mm'),
-      isCheckedOut: true,
-    };
-    console.log(
-      `[handleCheckOut] Updating reservation ${
-        normalizedReservation._id
-      }, isCheckedOut: ${updatedData.isCheckedOut}, totalPrice: ${
-        normalizedReservation.totalPrice || 0
-      }`,
-      updatedData
-    );
-    onPartialUpdate(normalizedReservation._id, updatedData)
-      .then(() => {
-        const totalPrice =
-          normalizedReservation.totalPrice || normalizedReservation.price || 0;
-        if (typeof setDailyTotal === 'function') {
-          setDailyTotal((prev) => prev + totalPrice);
-        }
-        const updatedReservations = allReservations.map((res) =>
-          res._id === normalizedReservation._id
-            ? { ...res, ...updatedData }
-            : res
-        );
-        if (typeof filterReservationsByDate === 'function') {
-          filterReservationsByDate(updatedReservations, selectedDate);
-        }
-      })
-      .catch((error) => {
-        console.error(
-          `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
-          error
-        );
-      });
-  }, [
-    normalizedReservation,
-    onPartialUpdate,
-    allReservations,
-    filterReservationsByDate,
-    selectedDate,
-    setDailyTotal,
-  ]);
+// DraggableReservationCard.js
+const handleCheckOut = useCallback(() => {
+  const now = new Date();
+  const updatedData = {
+    ...normalizedReservation,
+    checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
+    checkOutTime: format(now, 'HH:mm'),
+    isCheckedOut: true,
+    manuallyCheckedOut: true, // 백엔드에 전달
+  };
+  console.log(
+    `[handleCheckOut] Updating reservation ${
+      normalizedReservation._id
+    }, isCheckedOut: ${updatedData.isCheckedOut}, totalPrice: ${
+      normalizedReservation.totalPrice || 0
+    }`,
+    updatedData
+  );
+  onPartialUpdate(normalizedReservation._id, updatedData)
+    .then(() => {
+      const totalPrice =
+        normalizedReservation.totalPrice || normalizedReservation.price || 0;
+      if (typeof setDailyTotal === 'function') {
+        setDailyTotal((prev) => prev + totalPrice); // 한 번만 반영
+      }
+      const updatedReservations = allReservations.map((res) =>
+        res._id === normalizedReservation._id
+          ? { ...res, ...updatedData }
+          : res
+      );
+      if (typeof filterReservationsByDate === 'function') {
+        filterReservationsByDate(updatedReservations, selectedDate);
+      }
+    })
+    .catch((error) => {
+      console.error(
+        `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
+        error
+      );
+    });
+}, [
+  normalizedReservation,
+  onPartialUpdate,
+  allReservations,
+  filterReservationsByDate,
+  selectedDate,
+  setDailyTotal,
+]);
 
   const handleDelete = useCallback(() => {
     if (window.confirm('예약을 삭제하시겠습니까?')) {
@@ -587,12 +589,16 @@ const DraggableReservationCard = ({
           `[DraggableReservationCard.js] Calling onEdit with reservationId: ${reservationId}, initialData:`,
           initialData
         );
-        onEdit(reservationId, initialData);
+        onEdit(reservationId, initialData, () => {
+          // 수정 완료 후 상태 초기화
+          setIsOpen(false);
+        });
       } else {
         console.error(
           `[DraggableReservationCard.js] onEdit is not a function. Received: ${typeof onEdit}, value:`,
           onEdit
         );
+        setIsOpen(false); // 실패 시에도 초기화
       }
     },
     [
