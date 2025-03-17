@@ -1,5 +1,8 @@
 /* DraggableReservationCard.css */
 
+/* ==========================================================================
+   [Root Variables]
+========================================================================== */
 :root {
   --card-width: 100%;
   --card-max-width: 320px;
@@ -21,6 +24,14 @@
   --color-primary-soft-green: #4caf50; /* 연한 초록색 (대실) */
   --countdown-color: #2196f3; /* 카운트다운 색상 */
   --expired-color: #d32f2f; /* 만료된 카운트다운 색상 */
+
+  /* 버튼 색상 변수 (무채색 계열) */
+  --button-bg-default: #e0e0e0; /* 기본 버튼 배경색 (희미한 회색) */
+  --button-bg-hover: #d0d0d0; /* 호버 시 배경색 (약간 더 진한 회색) */
+  --button-text-default: #666; /* 기본 텍스트 색상 (약간 어두운 회색) */
+  --button-text-hover: #555; /* 호버 시 텍스트 색상 (더 진한 회색) */
+  --button-shadow-default: 0 2px 4px rgba(0, 0, 0, 0.1); /* 기본 그림자 */
+  --button-shadow-hover: 0 3px 6px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 */
 }
 
 /* 테두리 색상 클래스 정의 */
@@ -102,8 +113,8 @@
 }
 
 /* ==========================================================================
-     [Flip Effect]
-  ========================================================================== */
+   [Flip Effect]
+========================================================================== */
 .flip-container {
   perspective: 1000px;
   height: 100%;
@@ -163,8 +174,8 @@
 }
 
 /* ==========================================================================
-     [Card Content]
-  ========================================================================== */
+   [Card Content]
+========================================================================== */
 .content-footer-wrapper {
   box-sizing: border-box;
   display: flex;
@@ -304,7 +315,7 @@
 .action-btn {
   font-size: 0.7rem;
   border: none;
-  cursor: pointer;
+  cursor: pointer; /* 손 모양 커서 */
   padding: 4px 8px; /* 텍스트 크기에 맞게 조정 */
   height: 28px;
   width: 40px;
@@ -317,73 +328,73 @@
   position: relative;
   overflow: visible;
   z-index: 2;
-  background-color: #fff;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2),
-    0 1px 2px rgba(255, 255, 255, 0.5);
-  border: 1px solid #e0e0e0;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  border: none;
+  background-color: var(--button-bg-default); /* 기본 무채색 (희미한 회색) */
+  color: var(--button-text-default); /* 기본 텍스트 색상 (약간 어두운 회색) */
+  box-shadow: var(--button-shadow-default); /* 기본 그림자 */
+  transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: auto; /* 클릭 가능성을 명확히 */
 }
 
 .action-btn:hover {
-  border: 1px solid #a4a4a4;
-  background-color: #f5f5f5;
-  border: none;
+  background-color: var(--button-bg-hover); /* 호버 시 더 진한 회색 */
+  color: var(--button-text-hover); /* 호버 시 더 진한 텍스트 색상 */
+  box-shadow: var(--button-shadow-hover); /* 호버 시 그림자 강화 */
 }
 
+/* 특정 버튼 스타일 (기능별 약간의 색상 차이) */
 .action-btn.checkin-btn {
-  background-color: #4caf4f79;
-  color: white;
+  background-color: #d3d3d3; /* 더 밝은 회색 (입실 버튼) */
+  color: var(--button-text-default);
+  cursor: pointer; /* 손 모양 커서 */
 }
+
 .action-btn.checkin-btn:hover {
-  background-color: #45a049;
-  border: none;
+  background-color: #c3c3c3; /* 호버 시 약간 더 진한 회색 */
+  color: var(--button-text-hover);
 }
 
 .action-btn.checkout-btn {
-  background-color: #f443367b;
-  color: white;
+  background-color: #c9c9c9; /* 약간 어두운 회색 (퇴실 버튼) */
+  color: var(--button-text-default);
+  cursor: pointer; /* 손 모양 커서 */
 }
+
 .action-btn.checkout-btn:hover {
-  background-color: #da190b;
-  border: none;
+  background-color: #b9b9b9; /* 호버 시 더 진한 회색 */
+  color: var(--button-text-hover);
 }
 
 .action-btn.edit-btn {
-  background-color: #319ef782;
-  color: white;
+  background-color: #d6d6d6; /* 약간 더 밝은 회색 (수정 버튼) */
+  color: var(--button-text-default);
+  cursor: pointer; /* 손 모양 커서 */
 }
+
 .action-btn.edit-btn:hover {
-  background-color: #0d47a1;
-  border: none;
+  background-color: #c6c6c6; /* 호버 시 더 진한 회색 */
+  color: var(--button-text-hover);
 }
 
 .action-btn.delete-btn {
-  background-color: #ff990076;
-  color: white;
+  background-color: #cccccc; /* 중간 회색 (삭제 버튼) */
+  color: var(--button-text-default);
+  cursor: pointer; /* 손 모양 커서 */
 }
+
 .action-btn.delete-btn:hover {
-  background-color: #f57c00;
-  border: none;
+  background-color: #bcbcbc; /* 호버 시 더 진한 회색 */
+  color: var(--button-text-hover);
 }
 
-.action-btn.confirm-btn {
-  background-color: #4caf4f6f;
-  color: white;
-}
-.action-btn.confirm-btn:hover {
-  background-color: #45a049;
-  border: none;
-}
-
+/* 툴팁 스타일 (기존 유지, 색상 조정) */
 .action-btn:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   top: -15px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(252, 230, 230, 0.1);
-  color: #858585;
+  background-color: rgba(0, 0, 0, 0.8); /* 툴팁 배경 색상 (검정 투명) */
+  color: #ffffff; /* 툴팁 텍스트 색상 */
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.6rem;
@@ -399,28 +410,29 @@
 }
 
 /* ==========================================================================
-     [Invoice Button]
-  ========================================================================== */
+   [Invoice Button]
+========================================================================== */
 .invoice-icon-button-back {
   background: transparent;
   border: none;
-  cursor: pointer;
-  color: #666e76;
+  cursor: pointer; /* 손 모양 커서 */
+  color: var(--button-text-default); /* 무채색 텍스트 */
   font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.3s ease, transform 0.2s ease;
+  pointer-events: auto; /* 클릭 가능성을 명확히 */
 }
 
 .invoice-icon-button-back:hover {
-  color: rgb(186, 32, 233);
-  transform: scale(1.5);
+  color: var(--button-text-hover); /* 호버 시 더 진한 회색 */
+  transform: scale(1.2); /* 약간 확대 */
 }
 
 /* ==========================================================================
-     [Memo Section inside Card Back]
-  ========================================================================== */
+   [Memo Section inside Card Back]
+========================================================================== */
 .reservation-list {
   min-width: 310px;
   height: auto;

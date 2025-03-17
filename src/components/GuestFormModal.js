@@ -9,6 +9,7 @@ import {
 } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
+import { payPerNight } from '../api/api'; // payPerNight 임포트 추가
 
 const GuestFormModal = ({
   onClose,
@@ -16,40 +17,40 @@ const GuestFormModal = ({
   initialData,
   roomTypes,
   availabilityByDate,
-  hotelSettings, // 호텔 설정에서 고정된 시간 가져옴
+  hotelSettings,
+  hotelId,
+  selectedDate,
+  setAllReservations,
+  processReservation,
+  filterReservationsByDate,
+  allReservations,
+  setNewlyCreatedId,
 }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
     customerName: '',
     phoneNumber: '',
     checkInDate: '',
-    checkInTime: '', // 고정값으로만 사용
+    checkInTime: '',
     checkOutDate: '',
-    checkOutTime: '', // 고정값으로만 사용
+    checkOutTime: '',
     reservationDate: '',
     roomInfo: '',
     price: '0',
     paymentMethod: '',
+    paymentDetails: [],
     specialRequests: '',
     roomNumber: '',
     manualPriceOverride: false,
+    remainingBalance: 0,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [reservationId, setReservationId] = useState(null);
   const filteredRoomTypes = useMemo(
     () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
     [roomTypes]
   );
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'roomInfo' && initialData?._id) return;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'price' ? { manualPriceOverride: true } : {}),
-    }));
-  };
 
   useEffect(() => {
     const now = new Date();
@@ -57,31 +58,37 @@ const GuestFormModal = ({
     const defaultCheckOutTime = hotelSettings?.checkOutTime || '11:00';
 
     if (initialData && initialData._id) {
-      // 수정 모드: 기존 예약
       const checkInDateObj = new Date(initialData.checkIn);
       const checkOutDateObj = new Date(initialData.checkOut);
+      const totalPrice = initialData.price || initialData.totalPrice || 0;
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
         phoneNumber: initialData.phoneNumber || '',
         checkInDate: format(checkInDateObj, 'yyyy-MM-dd'),
-        checkInTime: format(checkInDateObj, 'HH:mm'), // 서버 값 유지
+        checkInTime: format(checkInDateObj, 'HH:mm'),
         checkOutDate: format(checkOutDateObj, 'yyyy-MM-dd'),
-        checkOutTime: format(checkOutDateObj, 'HH:mm'), // 서버 값 유지
+        checkOutTime: format(checkOutDateObj, 'HH:mm'),
         reservationDate:
           initialData.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
-        price: String(initialData.price || initialData.totalPrice || 0),
+        price: String(totalPrice),
         paymentMethod:
           initialData.paymentMethod ||
-          (initialData.type === 'dayUse' ? 'Cash' : 'Card'), // 기본값 설정
+          (initialData.type === 'dayUse' ? 'Cash' : 'Card'),
+        paymentDetails: initialData.paymentHistory || [],
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: !!initialData.price,
+        remainingBalance: initialData.remainingBalance || totalPrice,
       });
+      setShowPaymentDetails(
+        initialData.paymentMethod === 'Various' ||
+          initialData.paymentMethod?.includes('PerNight')
+      );
+      setReservationId(initialData._id);
     } else {
-      // 신규 예약
       const defaultCheckIn = initialData?.checkInDate
         ? new Date(`${initialData.checkInDate}T${defaultCheckInTime}:00`)
         : new Date(
@@ -95,7 +102,6 @@ const GuestFormModal = ({
       const defaultCheckOut = initialData?.checkOutDate
         ? new Date(`${initialData.checkOutDate}T${defaultCheckOutTime}:00`)
         : addDays(defaultCheckIn, 1);
-
       defaultCheckOut.setHours(
         parseInt(defaultCheckOutTime.split(':')[0]),
         parseInt(defaultCheckOutTime.split(':')[1]),
@@ -105,7 +111,6 @@ const GuestFormModal = ({
 
       const checkInDateStr = format(defaultCheckIn, 'yyyy-MM-dd');
       const checkOutDateStr = format(defaultCheckOut, 'yyyy-MM-dd');
-
       const initialRoomInfo =
         initialData?.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
@@ -127,94 +132,65 @@ const GuestFormModal = ({
         price: String(basePrice),
         paymentMethod:
           initialData?.paymentMethod ||
-          (initialData?.type === 'dayUse' ? 'Cash' : 'Card'), // initialData.paymentMethod 우선 사용
+          (initialData?.type === 'dayUse' ? 'Cash' : 'Card'),
+        paymentDetails:
+          initialData?.paymentMethod === 'Various'
+            ? [
+                {
+                  method: 'Cash',
+                  amount: 0,
+                  date: format(now, 'yyyy-MM-dd'),
+                  timestamp: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
+                },
+              ]
+            : [],
         specialRequests: initialData?.specialRequests || '',
         roomNumber: initialData?.roomNumber || '',
         manualPriceOverride: false,
+        remainingBalance: basePrice,
       });
+      setReservationId(null);
     }
-  }, [initialData, filteredRoomTypes, hotelSettings]);
-
-  // 결제 방법 드롭다운 옵션에서 "Pending"을 "미결제"로 변경
-  <div className="modal-row">
-    <label htmlFor="paymentMethod">
-      결제방법/상태:
-      <select
-        id="paymentMethod"
-        name="paymentMethod"
-        value={formData.paymentMethod}
-        onChange={handleInputChange}
-        required
-        disabled={isSubmitting}
-      >
-        <option value="Card">카드</option>
-        <option value="Cash">현금</option>
-        <option value="Account Transfer">계좌이체</option>
-        <option value="미결제">미결제</option>
-      </select>
-    </label>
-    <label htmlFor="specialRequests">
-      고객요청:
-      <input
-        id="specialRequests"
-        type="text"
-        name="specialRequests"
-        value={formData.specialRequests}
-        onChange={handleInputChange}
-        disabled={isSubmitting}
-      />
-    </label>
-  </div>;
-
-  useEffect(() => {
-    if (
-      isSubmitting ||
-      formData.manualPriceOverride ||
-      (initialData && initialData._id)
-    )
-      return;
-
-    if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
-      const checkInDateObj = new Date(
-        `${formData.checkInDate}T${formData.checkInTime}:00`
-      );
-      const checkOutDateObj = new Date(
-        `${formData.checkOutDate}T${formData.checkOutTime}:00`
-      );
-
-      if (
-        checkInDateObj &&
-        checkOutDateObj &&
-        !isNaN(checkInDateObj) &&
-        !isNaN(checkOutDateObj)
-      ) {
-        const nights = differenceInCalendarDays(
-          checkOutDateObj,
-          checkInDateObj
-        );
-        const selectedRoom = filteredRoomTypes.find(
-          (room) => room.roomInfo === formData.roomInfo
-        );
-        const nightlyPrice = selectedRoom?.price || 0;
-        const totalPrice = String(nightlyPrice * Math.max(nights, 1));
-
-        setFormData((prev) => ({
-          ...prev,
-          price: totalPrice,
-        }));
-      }
+    if (!hotelId) {
+      console.error('[GuestFormModal] hotelId is undefined, closing modal');
+      onClose();
+    } else {
+      console.log('[GuestFormModal] Initial hotelId:', hotelId);
     }
-  }, [
-    formData.checkInDate,
-    formData.checkOutDate,
-    formData.roomInfo,
-    formData.manualPriceOverride,
-    filteredRoomTypes,
-    isSubmitting,
-    initialData,
-    formData.checkInTime, // 의존성 추가
-    formData.checkOutTime, // 의존성 추가
-  ]);
+  }, [initialData, filteredRoomTypes, hotelSettings, hotelId, onClose]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'roomInfo' && initialData?._id) return;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'price'
+        ? { manualPriceOverride: true, remainingBalance: Number(value) }
+        : {}),
+      ...(name === 'paymentMethod' && value === 'Various'
+        ? {
+            paymentDetails:
+              prev.paymentDetails.length > 0
+                ? prev.paymentDetails
+                : [
+                    {
+                      method: 'Cash',
+                      amount: 0,
+                      date: format(new Date(), 'yyyy-MM-dd'),
+                      timestamp: format(
+                        new Date(),
+                        "yyyy-MM-dd'T'HH:mm:ss+09:00"
+                      ),
+                    },
+                  ],
+          }
+        : { paymentDetails: [] }),
+    }));
+    if (name === 'paymentMethod') {
+      setShowPaymentDetails(value === 'Various' || value.includes('PerNight'));
+    }
+  };
 
   const handleCheckInDateChange = (e) => {
     const selectedDate = e.target.value;
@@ -239,28 +215,228 @@ const GuestFormModal = ({
       !formData.checkOutDate ||
       !formData.checkInTime ||
       !formData.checkOutTime
-    ) {
+    )
       return false;
-    }
     const start = new Date(
       `${formData.checkInDate}T${formData.checkInTime}:00`
     );
     const end = new Date(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
-
     if (isNaN(start) || isNaN(end)) return false;
 
     let cursor = start;
     while (cursor < end) {
       const ds = format(cursor, 'yyyy-MM-dd');
       const availForDay = availabilityByDate[ds]?.[roomInfo.toLowerCase()];
-      if (!availForDay || availForDay.remain <= 0) {
-        return true;
-      }
+      if (!availForDay || availForDay.remain <= 0) return true;
       cursor = addDays(cursor, 1);
     }
     return false;
+  };
+
+  useEffect(() => {
+    if (
+      isSubmitting ||
+      formData.manualPriceOverride ||
+      (initialData && initialData._id)
+    )
+      return;
+
+    if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
+      const checkInDateObj = new Date(
+        `${formData.checkInDate}T${formData.checkInTime}:00`
+      );
+      const checkOutDateObj = new Date(
+        `${formData.checkOutDate}T${formData.checkOutTime}:00`
+      );
+      if (
+        checkInDateObj &&
+        checkOutDateObj &&
+        !isNaN(checkInDateObj) &&
+        !isNaN(checkOutDateObj)
+      ) {
+        const nights = differenceInCalendarDays(
+          checkOutDateObj,
+          checkInDateObj
+        );
+        const selectedRoom = filteredRoomTypes.find(
+          (room) => room.roomInfo === formData.roomInfo
+        );
+        const nightlyPrice = selectedRoom?.price || 0;
+        const totalPrice = String(nightlyPrice * Math.max(nights, 1));
+        setFormData((prev) => ({
+          ...prev,
+          price: totalPrice,
+          remainingBalance: Number(totalPrice),
+        }));
+      }
+    }
+  }, [
+    formData.checkInDate,
+    formData.checkOutDate,
+    formData.roomInfo,
+    formData.manualPriceOverride,
+    filteredRoomTypes,
+    isSubmitting,
+    initialData,
+    formData.checkInTime,
+    formData.checkOutTime,
+  ]);
+
+  const handleAddPaymentDetail = () => {
+    setFormData((prev) => {
+      const newPaymentDetails = [
+        ...prev.paymentDetails,
+        {
+          method: 'Cash',
+          amount: 0,
+          timestamp: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss+09:00"),
+          date: format(new Date(), 'yyyy-MM-dd'),
+        },
+      ];
+      return {
+        ...prev,
+        paymentDetails: newPaymentDetails,
+        remainingBalance:
+          Number(prev.price) -
+          newPaymentDetails.reduce(
+            (sum, detail) => sum + Number(detail.amount || 0),
+            0
+          ),
+      };
+    });
+  };
+
+  const handlePaymentDetailChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updatedDetails = [...prev.paymentDetails];
+      updatedDetails[index] = { ...updatedDetails[index], [field]: value };
+      const totalPaid = updatedDetails.reduce(
+        (sum, detail) => sum + Number(detail.amount || 0),
+        0
+      );
+      return {
+        ...prev,
+        paymentDetails: updatedDetails,
+        remainingBalance: Number(prev.price) - totalPaid,
+      };
+    });
+  };
+
+  const handleRemovePaymentDetail = (index) => {
+    setFormData((prev) => {
+      const updatedDetails = prev.paymentDetails.filter((_, i) => i !== index);
+      const totalPaid = updatedDetails.reduce(
+        (sum, detail) => sum + Number(detail.amount || 0),
+        0
+      );
+      return {
+        ...prev,
+        paymentDetails: updatedDetails,
+        remainingBalance: Number(prev.price) - totalPaid,
+      };
+    });
+  };
+
+  const handlePayPerNightClick = async () => {
+    console.log(
+      '[handlePayPerNightClick] hotelId:',
+      hotelId,
+      'reservationId:',
+      reservationId
+    );
+    if (!reservationId) {
+      alert('먼저 예약을 저장해주세요.');
+      return;
+    }
+
+    if (!hotelId) {
+      alert('호텔 ID가 없습니다. 다시 시도해주세요.');
+      console.error('[handlePayPerNightClick] hotelId is undefined or invalid');
+      return;
+    }
+
+    if (
+      !formData.paymentMethod ||
+      !formData.paymentDetails ||
+      formData.paymentDetails.length === 0
+    ) {
+      alert(
+        '결제 방법 또는 결제 기록이 설정되지 않았습니다. 먼저 예약을 저장하고 결제 세부 사항을 추가하세요.'
+      );
+      return;
+    }
+
+    const checkInDateTime = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = new Date(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
+    const nights = Math.floor(
+      differenceInCalendarDays(checkOutDateTime, checkInDateTime)
+    );
+    if (nights <= 1) {
+      alert('연박 예약만 1박씩 결제 가능합니다.');
+      return;
+    }
+    const perNightPrice = Math.round(Number(formData.price) / nights);
+    if (isNaN(perNightPrice) || perNightPrice <= 0) {
+      alert('유효한 1박 결제 금액을 계산할 수 없습니다.');
+      return;
+    }
+    const paymentMethod =
+      formData.paymentMethod === 'PerNight(Card)' ? 'Card' : 'Cash';
+
+    try {
+      console.log('[handlePayPerNightClick] Calling payPerNight with:', {
+        reservationId,
+        hotelId,
+        amount: perNightPrice,
+        method: paymentMethod,
+      });
+      const response = await payPerNight(
+        reservationId,
+        hotelId,
+        perNightPrice,
+        paymentMethod
+      );
+      console.log('[handlePayPerNightClick] Full Response:', response);
+
+      if (response && response.reservation) {
+        setFormData((prev) => ({
+          ...prev,
+          paymentDetails: response.reservation.paymentHistory || [],
+          paymentMethod:
+            response.reservation.paymentMethod || prev.paymentMethod,
+          remainingBalance: response.reservation.remainingBalance || 0,
+        }));
+        alert(
+          `1박 결제 성공. 남은 금액: ${response.reservation.remainingBalance}원`
+        );
+        setAllReservations((prev) =>
+          prev.map((res) =>
+            res._id === reservationId
+              ? processReservation(response.reservation)
+              : res
+          )
+        );
+        filterReservationsByDate(allReservations, selectedDate);
+      } else {
+        throw new Error(
+          '응답에서 reservation 객체를 찾을 수 없습니다. 응답: ' +
+            JSON.stringify(response)
+        );
+      }
+    } catch (error) {
+      console.error(`1박 결제 실패 (${reservationId}):`, error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        '1박 결제에 실패했습니다. 서버 로그를 확인해주세요.';
+      alert(errorMessage);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -288,7 +464,6 @@ const GuestFormModal = ({
     const checkOutDateTime = new Date(
       `${formData.checkOutDate}T${formData.checkOutTime}:00`
     );
-
     if (isNaN(checkInDateTime) || isNaN(checkOutDateTime)) {
       alert('유효한 체크인/체크아웃 날짜를 입력해주세요.');
       setIsSubmitting(false);
@@ -322,13 +497,11 @@ const GuestFormModal = ({
         missingDates.push(ds);
       } else {
         const freeRooms = availForDay.leftoverRooms || [];
-        if (!commonRooms) {
-          commonRooms = new Set(freeRooms);
-        } else {
+        if (!commonRooms) commonRooms = new Set(freeRooms);
+        else
           commonRooms = new Set(
             [...commonRooms].filter((room) => freeRooms.includes(room))
           );
-        }
       }
       cursor = addDays(cursor, 1);
     }
@@ -348,26 +521,117 @@ const GuestFormModal = ({
     const selectedRoomNumber =
       formData.roomNumber ||
       [...commonRooms].sort((a, b) => parseInt(a) - parseInt(b))[0];
+    const nights = differenceInCalendarDays(checkOutDateTime, checkInDateTime);
+    const isPerNightPayment =
+      formData.paymentMethod.includes('PerNight') && nights > 1;
+
+    if (
+      formData.paymentMethod === 'Various' &&
+      formData.paymentDetails.length === 0
+    ) {
+      alert(
+        '다양한 결제는 최소 한 건의 결제 기록이 필요합니다. "결제 추가" 버튼을 사용하세요.'
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (
+      formData.paymentMethod === 'Various' &&
+      formData.paymentDetails.length > 0
+    ) {
+      const totalPaid = formData.paymentDetails.reduce(
+        (sum, detail) => sum + Number(detail.amount || 0),
+        0
+      );
+      if (totalPaid > numericPrice) {
+        alert(
+          `분할 결제 금액(${totalPaid}원)이 총 금액(${numericPrice}원)을 초과합니다.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+      const isValid = formData.paymentDetails.every(
+        (detail) =>
+          detail.date &&
+          detail.amount !== undefined &&
+          detail.amount >= 0 &&
+          detail.timestamp &&
+          detail.method
+      );
+      if (!isValid) {
+        alert(
+          '결제 기록에 date, amount, timestamp, method가 모두 필요하며, amount는 0 이상이어야 합니다.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     const finalData = {
       ...formData,
       price: numericPrice,
-      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
-      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
+      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss") + '+09:00',
+      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss") + '+09:00',
       roomNumber: String(selectedRoomNumber),
       siteName: '현장예약',
+      type: 'stay',
+      isPerNightPayment,
+      paymentMethod: formData.paymentMethod,
+      paymentHistory: formData.paymentDetails,
+      remainingBalance: formData.remainingBalance,
     };
 
     console.log('[GuestFormModal] Submitting finalData:', finalData);
     try {
+      let newReservationId;
       if (initialData?._id) {
-        await onSave(initialData._id, finalData);
+        const response = await onSave(initialData._id, finalData);
+        console.log('[GuestFormModal] Update response:', response);
+        newReservationId = initialData._id;
         console.log('[GuestFormModal] Save successful for:', initialData._id);
       } else {
-        await onSave(null, finalData);
-        console.log('[GuestFormModal] New reservation saved:', finalData);
+        const response = await onSave(null, finalData);
+        console.log('[GuestFormModal] Save response received:', response); // 디버깅 로그 수정
+
+        if (
+          response &&
+          response.createdReservationIds &&
+          Array.isArray(response.createdReservationIds) &&
+          response.createdReservationIds.length > 0
+        ) {
+          newReservationId = response.createdReservationIds[0];
+          console.log(
+            '[GuestFormModal] New reservation saved with ID:',
+            newReservationId
+          );
+        } else if (
+          response &&
+          response.message &&
+          response.message.includes('successfully')
+        ) {
+          newReservationId = finalData.reservationNo || `${Date.now()}`;
+          console.warn(
+            '[GuestFormModal] No createdReservationIds, using temporary ID:',
+            newReservationId
+          );
+        } else if (response === undefined) {
+          console.error(
+            '[GuestFormModal] Response is undefined, attempting fallback'
+          );
+          newReservationId = finalData.reservationNo || `${Date.now()}`;
+          console.warn('[GuestFormModal] Fallback ID used:', newReservationId);
+        } else {
+          console.error('[GuestFormModal] Unexpected response:', response);
+          throw new Error(
+            '응답에서 createdReservationIds를 찾을 수 없습니다. 서버 응답: ' +
+              JSON.stringify(response)
+          );
+        }
       }
+      setReservationId(newReservationId);
       onClose();
+      // 상태 업데이트는 handleFormSave에서 처리하므로 여기서 중복 호출 제거
     } catch (error) {
       console.error('[GuestFormModal] Save Error:', error);
       const errorMessage =
@@ -381,6 +645,157 @@ const GuestFormModal = ({
       setIsSubmitting(false);
     }
   };
+
+  const renderPaymentMethodDropdown = () => {
+    const checkInDateObj = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateObj = new Date(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
+    const nights = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
+
+    return (
+      <div className="modal-row">
+        <label htmlFor="paymentMethod">
+          결제방법/상태:
+          <select
+            id="paymentMethod"
+            name="paymentMethod"
+            value={formData.paymentMethod}
+            onChange={handleInputChange}
+            required
+            disabled={isSubmitting}
+          >
+            <option value="Card">카드</option>
+            <option value="Cash">현금</option>
+            <option value="Account Transfer">계좌이체</option>
+            <option value="Pending">미결제</option>
+            {nights > 1 && (
+              <>
+                <option value="PerNight(Card)">1박씩(카드)</option>
+                <option value="PerNight(Cash)">1박씩(현금)</option>
+                <option value="Various">다양한 결제</option>
+              </>
+            )}
+          </select>
+        </label>
+        <label htmlFor="specialRequests">
+          고객요청:
+          <input
+            id="specialRequests"
+            type="text"
+            name="specialRequests"
+            value={formData.specialRequests}
+            onChange={handleInputChange}
+            disabled={isSubmitting}
+          />
+        </label>
+      </div>
+    );
+  };
+
+  const renderPaymentDetails = () => {
+    if (!showPaymentDetails) return null;
+    const perNightPrice = Math.round(
+      parseFloat(formData.price) /
+        differenceInCalendarDays(
+          new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`),
+          new Date(`${formData.checkInDate}T${formData.checkInTime}:00`)
+        )
+    );
+
+    if (formData.paymentMethod.includes('PerNight')) {
+      return (
+        <div className="modal-row payment-details">
+          <h4>1박 금액: {perNightPrice}원</h4>
+          {reservationId && (
+            <button
+              type="button"
+              onClick={handlePayPerNightClick}
+              disabled={isSubmitting}
+            >
+              결제+1
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="modal-row payment-details">
+        <h4>다양한 결제 설정</h4>
+        {formData.paymentDetails.map((detail, index) => (
+          <div key={index} className="payment-detail-row">
+            <select
+              value={detail.method}
+              onChange={(e) =>
+                handlePaymentDetailChange(index, 'method', e.target.value)
+              }
+              disabled={isSubmitting}
+            >
+              <option value="Cash">현금</option>
+              <option value="Card">카드</option>
+              <option value="Account Transfer">계좌이체</option>
+            </select>
+            <input
+              type="number"
+              value={detail.amount || 0}
+              onChange={(e) =>
+                handlePaymentDetailChange(index, 'amount', e.target.value)
+              }
+              placeholder="금액"
+              min="0"
+              disabled={isSubmitting}
+            />
+            <input
+              type="date"
+              value={detail.date || ''}
+              onChange={(e) =>
+                handlePaymentDetailChange(index, 'date', e.target.value)
+              }
+              disabled={isSubmitting}
+            />
+            <input
+              type="datetime-local"
+              value={
+                detail.timestamp
+                  ? new Date(detail.timestamp).toISOString().slice(0, 16)
+                  : ''
+              }
+              onChange={(e) =>
+                handlePaymentDetailChange(
+                  index,
+                  'timestamp',
+                  e.target.value + ':00+09:00'
+                )
+              }
+              disabled={isSubmitting}
+            />
+            <button
+              type="button"
+              onClick={() => handleRemovePaymentDetail(index)}
+              disabled={isSubmitting}
+            >
+              제거
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={handleAddPaymentDetail}
+          disabled={isSubmitting}
+        >
+          결제 추가
+        </button>
+      </div>
+    );
+  };
+
+  const isPerNightPayment = formData.paymentMethod.includes('PerNight');
+  const isSaveDisabled =
+    formData.paymentMethod === 'Various' &&
+    formData.paymentDetails.length === 0;
 
   return ReactDOM.createPortal(
     <div className="guest-form-modal">
@@ -496,7 +911,7 @@ const GuestFormModal = ({
                         value={rt.roomInfo}
                         style={{ color: unavailable ? 'red' : 'inherit' }}
                       >
-                        {rt.roomInfo}
+                        {rt.roomInfo} ({rt.price}원)
                       </option>
                     );
                   })}
@@ -504,7 +919,8 @@ const GuestFormModal = ({
               )}
             </label>
             <label htmlFor="price">
-              가격 (KRW):
+              총가격: {formData.price}
+              {isPerNightPayment && ` (잔여: ${formData.remainingBalance}원)`}
               <input
                 id="price"
                 type="number"
@@ -516,35 +932,8 @@ const GuestFormModal = ({
               />
             </label>
           </div>
-          <div className="modal-row">
-            <label htmlFor="paymentMethod">
-              결제방법/상태:
-              <select
-                id="paymentMethod"
-                name="paymentMethod"
-                value={formData.paymentMethod}
-                onChange={handleInputChange}
-                required
-                disabled={isSubmitting}
-              >
-                <option value="Card">카드</option>
-                <option value="Cash">현금</option>
-                <option value="Account Transfer">계좌이체</option>
-                <option value="Pending">미결제</option>
-              </select>
-            </label>
-            <label htmlFor="specialRequests">
-              고객요청:
-              <input
-                id="specialRequests"
-                type="text"
-                name="specialRequests"
-                value={formData.specialRequests}
-                onChange={handleInputChange}
-                disabled={isSubmitting}
-              />
-            </label>
-          </div>
+          {renderPaymentMethodDropdown()}
+          {renderPaymentDetails()}
           <div className="guest-form-actions">
             <button
               type="button"
@@ -557,7 +946,7 @@ const GuestFormModal = ({
             <button
               type="submit"
               className="guest-form-button guest-form-save"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSaveDisabled}
             >
               {isSubmitting ? '처리 중...' : '저장'}
             </button>
@@ -581,6 +970,13 @@ GuestFormModal.propTypes = {
   ).isRequired,
   availabilityByDate: PropTypes.object.isRequired,
   hotelSettings: PropTypes.object,
+  hotelId: PropTypes.string.isRequired,
+  selectedDate: PropTypes.instanceOf(Date),
+  setAllReservations: PropTypes.func.isRequired,
+  processReservation: PropTypes.func.isRequired,
+  filterReservationsByDate: PropTypes.func.isRequired,
+  allReservations: PropTypes.array.isRequired,
+  setNewlyCreatedId: PropTypes.func.isRequired,
 };
 
 export default GuestFormModal;

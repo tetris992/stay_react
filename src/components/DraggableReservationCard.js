@@ -119,6 +119,7 @@ const DraggableReservationCard = ({
   selectedDate,
   filterReservationsByDate,
   setDailyTotal,
+  setAllReservations,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditingMemo, setIsEditingMemo] = useState(false);
@@ -400,31 +401,99 @@ const DraggableReservationCard = ({
     );
     const updatedData = {
       ...normalizedReservation,
-      checkIn: checkInStr,
-      checkOut: checkOutStr,
+      checkIn: normalizedReservation.isCheckedIn
+        ? normalizedReservation.checkIn
+        : checkInStr,
+      checkOut: normalizedReservation.isCheckedIn
+        ? normalizedReservation.checkOut
+        : checkOutStr,
       checkInTime: format(now, 'HH:mm'),
       checkOutTime: format(new Date(checkOutStr), 'HH:mm'),
       paymentMethod: 'Cash',
       isCheckedIn: true,
+      isCheckedOut: false, // 입실 시 퇴실 상태 초기화
     };
     console.log(
-      `[handleCheckIn] Updating reservation ${normalizedReservation._id}, isCheckedIn: ${updatedData.isCheckedIn}, checkIn: ${checkInStr}, checkOut: ${checkOutStr}, duration: ${durationHours}`,
+      `[handleCheckIn] Updating ${normalizedReservation._id}`,
       updatedData
     );
     onPartialUpdate(normalizedReservation._id, updatedData)
       .then(() => {
-        const updatedReservations = allReservations.map((res) =>
-          res._id === normalizedReservation._id
-            ? { ...res, ...updatedData }
-            : res
-        );
+        if (typeof setAllReservations === 'function') {
+          setAllReservations((prev) =>
+            prev.map((res) =>
+              res._id === normalizedReservation._id
+                ? { ...res, ...updatedData }
+                : res
+            )
+          );
+        }
         if (typeof filterReservationsByDate === 'function') {
-          filterReservationsByDate(updatedReservations, selectedDate);
+          filterReservationsByDate(
+            allReservations.map((res) =>
+              res._id === normalizedReservation._id
+                ? { ...res, ...updatedData }
+                : res
+            ),
+            selectedDate
+          );
+        }
+      })
+      .catch((error) => console.error(`[handleCheckIn] Error:`, error));
+  }, [
+    normalizedReservation,
+    onPartialUpdate,
+    allReservations,
+    filterReservationsByDate,
+    selectedDate,
+    setAllReservations,
+  ]);
+
+  const handleCheckOut = useCallback(() => {
+    const now = new Date();
+    const updatedData = {
+      ...normalizedReservation,
+      checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
+      checkOutTime: format(now, 'HH:mm'),
+      isCheckedOut: true,
+      manuallyCheckedOut: true, // 명시적으로 설정
+      roomNumber: '', // 점유 해제
+      isCheckedIn: false, // 입실 상태 초기화
+    };
+    console.log(
+      `[handleCheckOut] Updating reservation ${
+        normalizedReservation._id
+      }, isCheckedOut: ${updatedData.isCheckedOut}, totalPrice: ${
+        normalizedReservation.totalPrice || 0
+      }`,
+      updatedData
+    );
+    onPartialUpdate(normalizedReservation._id, updatedData)
+      .then(() => {
+        // 매출은 RoomGrid.js에서 계산하므로 여기서는 상태만 업데이트
+        if (typeof setAllReservations === 'function') {
+          setAllReservations((prev) =>
+            prev.map((res) =>
+              res._id === normalizedReservation._id
+                ? { ...res, ...updatedData }
+                : res
+            )
+          );
+        }
+        if (typeof filterReservationsByDate === 'function') {
+          filterReservationsByDate(
+            allReservations.map((res) =>
+              res._id === normalizedReservation._id
+                ? { ...res, ...updatedData }
+                : res
+            ),
+            selectedDate
+          );
         }
       })
       .catch((error) => {
         console.error(
-          `[handleCheckIn] Failed to update reservation ${normalizedReservation._id}:`,
+          `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
           error
         );
       });
@@ -434,56 +503,8 @@ const DraggableReservationCard = ({
     allReservations,
     filterReservationsByDate,
     selectedDate,
+    setAllReservations,
   ]);
-
-// DraggableReservationCard.js
-const handleCheckOut = useCallback(() => {
-  const now = new Date();
-  const updatedData = {
-    ...normalizedReservation,
-    checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
-    checkOutTime: format(now, 'HH:mm'),
-    isCheckedOut: true,
-    manuallyCheckedOut: true, // 백엔드에 전달
-  };
-  console.log(
-    `[handleCheckOut] Updating reservation ${
-      normalizedReservation._id
-    }, isCheckedOut: ${updatedData.isCheckedOut}, totalPrice: ${
-      normalizedReservation.totalPrice || 0
-    }`,
-    updatedData
-  );
-  onPartialUpdate(normalizedReservation._id, updatedData)
-    .then(() => {
-      const totalPrice =
-        normalizedReservation.totalPrice || normalizedReservation.price || 0;
-      if (typeof setDailyTotal === 'function') {
-        setDailyTotal((prev) => prev + totalPrice); // 한 번만 반영
-      }
-      const updatedReservations = allReservations.map((res) =>
-        res._id === normalizedReservation._id
-          ? { ...res, ...updatedData }
-          : res
-      );
-      if (typeof filterReservationsByDate === 'function') {
-        filterReservationsByDate(updatedReservations, selectedDate);
-      }
-    })
-    .catch((error) => {
-      console.error(
-        `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
-        error
-      );
-    });
-}, [
-  normalizedReservation,
-  onPartialUpdate,
-  allReservations,
-  filterReservationsByDate,
-  selectedDate,
-  setDailyTotal,
-]);
 
   const handleDelete = useCallback(() => {
     if (window.confirm('예약을 삭제하시겠습니까?')) {
@@ -806,6 +827,26 @@ const handleCheckOut = useCallback(() => {
     );
     return (
       <span className="button-group-wrapper">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditStart(normalizedReservation._id);
+          }}
+          className="action-btn edit-btn"
+          data-tooltip="➖"
+        >
+          수정
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
+          className="action-btn delete-btn"
+          data-tooltip="➖"
+        >
+          삭제
+        </button>
         {isDayUse && !isCheckedIn && (
           <button
             onClick={(e) => {
@@ -830,26 +871,6 @@ const handleCheckOut = useCallback(() => {
             퇴실
           </button>
         )}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditStart(normalizedReservation._id);
-          }}
-          className="action-btn edit-btn"
-          data-tooltip="➖"
-        >
-          수정
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete();
-          }}
-          className="action-btn delete-btn"
-          data-tooltip="➖"
-        >
-          삭제
-        </button>
       </span>
     );
   }, [
@@ -903,21 +924,6 @@ const handleCheckOut = useCallback(() => {
                       renderDayUseButtons}
                     {normalizedReservation.type !== 'dayUse' && (
                       <span className="button-group-wrapper">
-                        {normalizedReservation.reservationStatus !==
-                          'Confirmed' && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfirmClickHandler(
-                                normalizedReservation._id
-                              );
-                            }}
-                            className="action-btn confirm-btn"
-                            data-tooltip="➖"
-                          >
-                            확정
-                          </button>
-                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -941,6 +947,21 @@ const handleCheckOut = useCallback(() => {
                         >
                           삭제
                         </button>
+                        {normalizedReservation.reservationStatus !==
+                          'Confirmed' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfirmClickHandler(
+                                normalizedReservation._id
+                              );
+                            }}
+                            className="action-btn confirm-btn"
+                            data-tooltip="➖"
+                          >
+                            확정
+                          </button>
+                        )}
                       </span>
                     )}
                   </h3>
@@ -1087,7 +1108,7 @@ DraggableReservationCard.propTypes = {
   allReservations: PropTypes.array,
   selectedDate: PropTypes.instanceOf(Date),
   filterReservationsByDate: PropTypes.func,
-  setDailyTotal: PropTypes.func,
+  setDailyTotal: PropTypes.func.isRequired,
   reservation: PropTypes.shape({
     _id: PropTypes.string.isRequired,
     checkIn: PropTypes.string,
