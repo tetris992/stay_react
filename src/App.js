@@ -666,6 +666,20 @@ const App = () => {
     [calculatePerNightPrice]
   );
 
+  const handleSelectUnassignedReservation = (reservation) => {
+    if (!reservation.checkIn) {
+      console.warn(`No checkIn date for reservation ${reservation._id}`);
+      return;
+    }
+    const checkInDate = new Date(reservation.checkIn);
+    if (isNaN(checkInDate.getTime())) {
+      console.warn(`Invalid checkIn date for reservation ${reservation._id}:`, reservation.checkIn);
+      return;
+    }
+    setSelectedDate(checkInDate);
+    filterReservationsByDate(allReservations, checkInDate);
+  };
+
   const loadHotelSettings = useCallback(
     async (inputHotelId) => {
       try {
@@ -2440,6 +2454,7 @@ const openOnSiteReservationForm = () => {
                       {/* 고정 영역으로 미배정 예약 패널 렌더링 */}
                       <UnassignedReservationsPanel
                         reservations={allReservations}
+                        onSelectReservation={handleSelectUnassignedReservation}
                       />
                       <div className="split-view-layout">
                         <div className="left-pane">

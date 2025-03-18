@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { parseDate, formatDate } from '../utils/dateParser'; // dateParser.js 경로에 맞게 조정
+import PropTypes from 'prop-types'; // PropTypes 임포트 추가
+import { parseDate, formatDate } from '../utils/dateParser';
 
-const UnassignedReservationsPanel = ({ reservations }) => {
+const UnassignedReservationsPanel = ({ reservations, onSelectReservation }) => {
   const unassigned = useMemo(
     () =>
       reservations.filter(
@@ -16,7 +17,7 @@ const UnassignedReservationsPanel = ({ reservations }) => {
       if (res.checkIn) {
         const parsedDate = parseDate(res.checkIn);
         if (parsedDate) {
-          dates.add(formatDate(parsedDate, 'MM/dd')); // KST 기준으로 포맷팅
+          dates.add(formatDate(parsedDate, 'MM/dd'));
         }
       }
     });
@@ -35,7 +36,7 @@ const UnassignedReservationsPanel = ({ reservations }) => {
       }}
     >
       <h3 className="unassigned-reservations-list_all">
-        미배정 예약: {unassigned.length}건{' '}
+        미배정 OTA 예약: {unassigned.length}건{' '}
         {unassignedDates.length > 0 && (
           <span style={{ fontSize: '0.9rem', color: 'red' }}>
             (날짜: {unassignedDates.join(', ')})
@@ -54,23 +55,36 @@ const UnassignedReservationsPanel = ({ reservations }) => {
         {unassigned.map((res) => (
           <li
             key={res._id}
+            onClick={() => onSelectReservation && onSelectReservation(res)}
             style={{
               border: '1px solid #ccc',
               padding: '8px',
               display: 'flex',
               alignItems: 'center',
+              cursor: 'pointer',
             }}
           >
             <span style={{ marginRight: '4px' }}>#</span>
             <span>
               {res.customerName} - 체크인:{' '}
-              {res.checkIn ? formatDate(parseDate(res.checkIn), 'MM/dd') : '미정'}
+              {res.checkIn
+                ? formatDate(parseDate(res.checkIn), 'MM/dd')
+                : '미정'}
             </span>
           </li>
         ))}
       </ul>
     </div>
   );
+};
+
+UnassignedReservationsPanel.propTypes = {
+  reservations: PropTypes.array.isRequired,
+  onSelectReservation: PropTypes.func,
+};
+
+UnassignedReservationsPanel.defaultProps = {
+  onSelectReservation: () => {},
 };
 
 export default UnassignedReservationsPanel;

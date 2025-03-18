@@ -216,6 +216,10 @@ const DraggableReservationCard = ({
   }, [ciDateOnly, coDateOnly]);
 
   const canDragMemo = useMemo(() => {
+      // 수정 부분: 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
+  if (!normalizedReservation.roomNumber || normalizedReservation.roomNumber.trim() === '') {
+    return true;
+  }
     if (
       !Array.isArray(roomTypes) ||
       !Array.isArray(allReservations) ||

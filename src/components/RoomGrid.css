@@ -71,3 +71,7 @@
   font-size: 1.4rem;
   color: red;
 }
+
+.unassigned-reservations-list_all {
+  margin: 5px;
+}
