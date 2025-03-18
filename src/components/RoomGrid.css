@@ -305,3 +305,14 @@
     box-shadow: 0 0 10px #ff0000;
   }
 }
+
+
+.checked-out-count {
+  font-style: italic;
+  font-size: 1.4rem;
+  color: red;
+}
+
+.unassigned-reservations-list_all {
+  margin: 5px;
+}
