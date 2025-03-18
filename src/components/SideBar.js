@@ -48,7 +48,6 @@ function SideBar({
   monthlyDailyBreakdown,
   openSalesModal,
   hotelId,
-  hotelSettings,
   otaToggles,
   onToggleOTA,
   searchCriteria,
@@ -58,9 +57,8 @@ function SideBar({
   needsConsent,
   dailySalesByOTA,
   labelsForOTA,
-  activeReservations,
   onMonthlyView,
-  dailySalesReport
+  dailySalesReport,
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);

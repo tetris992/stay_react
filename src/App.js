@@ -1736,6 +1736,7 @@ useEffect(() => {
       if (reservationId) {
         await updateReservation(reservationId, reservationData.reservations[0], hotelId);
         console.log('[handleFormSave] Update successful for reservation:', reservationId);
+        setLoadedReservations((prev) => prev.filter((id) => id !== reservationId)); // 점선 제거
       } else {
         let response = await saveOnSiteReservation(reservationData);
         console.log('[handleFormSave] API Response:', response);
@@ -1763,6 +1764,7 @@ useEffect(() => {
       alert(error.response?.status === 403 ? 'CSRF 오류: 새로고침 후 시도' : error.message || '저장 실패');
       setShowGuestForm(false);
       if (data.onComplete && typeof data.onComplete === 'function') data.onComplete();
+      setLoadedReservations((prev) => prev.filter((id) => id !== reservationId)); // 오류 발생 시에도 점선 제거
     }
   };
   
@@ -2548,6 +2550,7 @@ const openOnSiteReservationForm = () => {
                             availabilityByDate={guestAvailability}
                             selectedDate={selectedDate} // 추가
                             hotelId={hotelId}
+                            setLoadedReservations={setLoadedReservations}
                           />
                         ) : (
                           <DayUseFormModal
@@ -2560,6 +2563,7 @@ const openOnSiteReservationForm = () => {
                             selectedDate={selectedDate}
                             allReservations={allReservations} // 추가: 점유 계산에 필요
                             hotelId={hotelId}
+                            setLoadedReservations={setLoadedReservations}
                           />
                         ))}
                       {showQuickRangeModal &&

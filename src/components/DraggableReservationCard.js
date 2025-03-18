@@ -461,7 +461,7 @@ const DraggableReservationCard = ({
       checkOutTime: format(now, 'HH:mm'),
       isCheckedOut: true,
       manuallyCheckedOut: true, // 명시적으로 설정
-      roomNumber: '', // 점유 해제
+      // roomNumber: '', // 이 줄을 제거하여 roomNumber를 유지
       isCheckedIn: false, // 입실 상태 초기화
     };
     console.log(
@@ -474,7 +474,6 @@ const DraggableReservationCard = ({
     );
     onPartialUpdate(normalizedReservation._id, updatedData)
       .then(() => {
-        // 매출은 RoomGrid.js에서 계산하므로 여기서는 상태만 업데이트
         if (typeof setAllReservations === 'function') {
           setAllReservations((prev) =>
             prev.map((res) =>
@@ -509,7 +508,6 @@ const DraggableReservationCard = ({
     selectedDate,
     setAllReservations,
   ]);
-
   const handleDelete = useCallback(() => {
     if (window.confirm('예약을 삭제하시겠습니까?')) {
       console.log(

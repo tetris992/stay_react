@@ -318,14 +318,16 @@ const ContainerCell = React.memo(
           format(new Date(res.checkOut), 'yyyy-MM-dd') ===
             format(selectedDate, 'yyyy-MM-dd')
         ) {
-          uniqueCheckedOut.add(res._id); // 고유 ID로 중복 제거
+          uniqueCheckedOut.add(res._id);
         }
       });
       console.log(
         `[ContainerCell] checkedOutCount for ${cont.roomNumber} on ${format(
           selectedDate,
           'yyyy-MM-dd'
-        )}: ${uniqueCheckedOut.size}`
+        )}: ${uniqueCheckedOut.size}, fullReservations length: ${
+          fullReservations.length
+        }`
       );
       return uniqueCheckedOut.size;
     }, [fullReservations, cont.roomNumber, selectedDate]);
@@ -741,6 +743,7 @@ function RoomGrid({
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
     return (fullReservations || [])
       .filter((res) => !res.roomNumber || res.roomNumber.trim() === '') // 미배정 예약 필터링
+      .filter((res) => !res.manuallyCheckedOut) // 퇴실된 예약 제외
       .filter((res) => {
         const checkInDate = new Date(res.checkIn);
         const checkOutDate = new Date(res.checkOut);

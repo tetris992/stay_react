@@ -53,7 +53,7 @@ const UnassignedReservationsPanel = ({ reservations, onSelectReservation }) => {
         }}
       >
         {unassigned.map((res) => (
-          <li
+          <li className='reservation-list-li'
             key={res._id}
             onClick={() => onSelectReservation && onSelectReservation(res)}
             style={{

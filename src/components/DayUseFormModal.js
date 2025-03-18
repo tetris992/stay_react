@@ -11,7 +11,6 @@ const DayUseFormModal = ({
   initialData,
   roomTypes,
   availabilityByDate,
-  hotelSettings,
   selectedDate,
 }) => {
   const [formData, setFormData] = useState({
