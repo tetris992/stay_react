@@ -100,7 +100,7 @@ export function calculateRoomAvailability(
             if (res.roomNumber) {
               usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
             }
-            console.log(`[calculateRoomAvailability] DayUse ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
+            // console.log(`[calculateRoomAvailability] DayUse ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
           }
         } else {
           if (ci < dayEnd && occupancyEnd > dayStart) {
@@ -108,7 +108,7 @@ export function calculateRoomAvailability(
             if (res.roomNumber) {
               usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
             }
-            console.log(`[calculateRoomAvailability] Stay ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
+            // console.log(`[calculateRoomAvailability] Stay ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
           }
         }
       }

@@ -6,7 +6,6 @@ import { FaTimes, FaPrint, FaDownload } from 'react-icons/fa';
 import { format } from 'date-fns';
 import './SalesGraphModal.css';
 
-// 추가: jsPDF와 html2canvas 임포트
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -22,7 +21,6 @@ import {
   Legend,
 } from 'chart.js';
 
-// Chart.js 기본 플러그인 등록
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -34,7 +32,6 @@ ChartJS.register(
   Legend
 );
 
-// 모달 루트 설정
 Modal.setAppElement('#root');
 
 function SalesGraphModal({
@@ -47,9 +44,6 @@ function SalesGraphModal({
   dailySalesByOTA = {},
   maxRooms,
 }) {
-  // -------------------------
-  // (1) 날짜별 판매/남은 객실수 스택형 막대그래프 관련 코드
-  // -------------------------
   const labels = dailySales.labels || [];
   const safeDailySalesByOTA =
     dailySalesByOTA && typeof dailySalesByOTA === 'object'
@@ -152,14 +146,13 @@ function SalesGraphModal({
     },
   };
 
-  // -------------------------
-  // (2) 월간 일 매출 라인 차트 관련 코드
-  // -------------------------
   const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown)
     ? monthlyDailyBreakdown
     : [];
 
-  const cumulativeSales = safeMonthlyDailyBreakdown.reduce((acc, curr, idx) => {
+  const dailyTotals = safeMonthlyDailyBreakdown.map((day) => day.Total || 0);
+
+  const cumulativeSales = dailyTotals.reduce((acc, curr, idx) => {
     if (idx === 0) {
       acc.push(curr);
     } else {
@@ -168,14 +161,9 @@ function SalesGraphModal({
     return acc;
   }, []);
 
-  const totalMonthlySales = safeMonthlyDailyBreakdown.reduce(
-    (sum, curr) => sum + curr,
-    0
-  );
+  const totalMonthlySales = dailyTotals.reduce((sum, curr) => sum + curr, 0);
   const averageDailySales =
-    safeMonthlyDailyBreakdown.length > 0
-      ? totalMonthlySales / safeMonthlyDailyBreakdown.length
-      : 0;
+    dailyTotals.length > 0 ? totalMonthlySales / dailyTotals.length : 0;
 
   const lineLabels = safeMonthlyDailyBreakdown.map((_, idx) => `${idx + 1}일`);
 
@@ -197,7 +185,7 @@ function SalesGraphModal({
     datasets: [
       {
         label: '일 매출',
-        data: safeMonthlyDailyBreakdown,
+        data: dailyTotals,
         borderColor: '#FF6384',
         backgroundColor: '#FF6384',
         fill: false,
@@ -261,18 +249,13 @@ function SalesGraphModal({
     },
   };
 
-  // -------------------------
-  // 인쇄 및 PDF 다운로드 핸들러
-  // -------------------------
   const handlePrint = async () => {
     const modalElement = document.querySelector('.sales-graph-modal');
     if (modalElement) {
       try {
-        // html2canvas로 모달 내용을 캡처
         const canvas = await html2canvas(modalElement, { scale: 2 });
         const imgData = canvas.toDataURL('image/png');
 
-        // 새로운 창 생성
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
           <html>
@@ -357,7 +340,17 @@ SalesGraphModal.propTypes = {
     labels: PropTypes.arrayOf(PropTypes.string),
     values: PropTypes.arrayOf(PropTypes.number),
   }),
-  monthlyDailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
+  monthlyDailyBreakdown: PropTypes.arrayOf(
+    PropTypes.shape({
+      Total: PropTypes.number,
+      Cash: PropTypes.number,
+      Card: PropTypes.number,
+      OTA: PropTypes.number,
+      Pending: PropTypes.number,
+      현장숙박: PropTypes.number,
+      현장대실: PropTypes.number,
+    })
+  ).isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   dailySalesByOTA: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number)),
   maxRooms: PropTypes.number.isRequired,

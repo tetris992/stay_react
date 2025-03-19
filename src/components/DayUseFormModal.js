@@ -12,6 +12,7 @@ const DayUseFormModal = ({
   roomTypes,
   availabilityByDate,
   selectedDate,
+  setLoadedReservations,
 }) => {
   const [formData, setFormData] = useState({
     reservationNo: '',
@@ -49,9 +50,9 @@ const DayUseFormModal = ({
   useEffect(() => {
     const now = new Date();
     const effectiveSelectedDate = selectedDate || now;
-  
+
     console.log('[DayUseFormModal] Initial data:', initialData); // 디버깅 로그 추가
-  
+
     if (initialData && initialData._id) {
       // [수정 모드] 기존 대실 예약
       const checkInDateObj = initialData.checkIn
@@ -74,11 +75,11 @@ const DayUseFormModal = ({
         );
         checkOutDateObj.setTime(addHours(checkInDateObj, 3).getTime());
       }
-  
+
       const duration = Math.round(
         (checkOutDateObj - checkInDateObj) / (1000 * 60 * 60)
       );
-  
+
       setFormData({
         reservationNo: initialData.reservationNo || '',
         customerName: initialData.customerName || '',
@@ -101,15 +102,15 @@ const DayUseFormModal = ({
       // [신규 대실 예약]
       const defaultCheckInDate = format(effectiveSelectedDate, 'yyyy-MM-dd');
       const defaultCheckInTime = '00:00'; // 호텔 설정과 무관하게 "00:00" 고정
-  
+
       const initialRoomInfo = filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
         filteredRoomTypes.find((rt) => rt.roomInfo === initialRoomInfo) ||
         filteredRoomTypes[0];
-  
+
       // 기본적으로 대실은 객실 정가의 50%로 계산
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
-  
+
       setFormData({
         reservationNo: `${Date.now()}`,
         customerName: `현장대실`,
@@ -181,7 +182,7 @@ const DayUseFormModal = ({
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
       const additionalHours = Math.max(newDurationHours - 3, 0);
       const newPrice = String(basePrice + additionalHours * 10000);
-  
+
       return {
         ...prev,
         durationHours: newDurationHours,
@@ -286,13 +287,25 @@ const DayUseFormModal = ({
     return format(checkOut, 'yyyy-MM-dd HH:mm');
   }, [formData.checkInDate, formData.checkInTime, formData.durationHours]);
 
+  const handleClose = () => {
+    console.log(
+      `Closing DayUseFormModal, removing ${initialData?._id} from loadedReservations`
+    );
+    if (initialData?._id && setLoadedReservations) {
+      setLoadedReservations((prev) =>
+        prev.filter((id) => id !== initialData._id)
+      );
+    }
+    onClose();
+  };
+
   return ReactDOM.createPortal(
     <div className="dayuse-modal">
       <div className="dayuse-modal-card">
         {isSubmitting && (
           <div className="dayuse-modal-overlay-spinner">처리 중...</div>
         )}
-        <span className="dayuse-close-button" onClick={onClose}>
+        <span className="dayuse-close-button" onClick={handleClose}>
           ×
         </span>
         <h2>{initialData?._id ? '대실 예약 수정' : '대실 예약 입력'}</h2>
@@ -507,6 +520,7 @@ DayUseFormModal.propTypes = {
   availabilityByDate: PropTypes.object.isRequired,
   hotelSettings: PropTypes.object.isRequired,
   selectedDate: PropTypes.instanceOf(Date),
+  setLoadedReservations: PropTypes.func,
 };
 
 export default DayUseFormModal;

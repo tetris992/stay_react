@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import PropTypes from 'prop-types'; // PropTypes 임포트 추가
 import { parseDate, formatDate } from '../utils/dateParser';
 
-const UnassignedReservationsPanel = ({ reservations, onSelectReservation }) => {
+const UnassignedReservationsPanel = ({
+  reservations = [],
+  onSelectReservation,
+}) => {
   const unassigned = useMemo(
     () =>
       reservations.filter(
@@ -53,7 +56,8 @@ const UnassignedReservationsPanel = ({ reservations, onSelectReservation }) => {
         }}
       >
         {unassigned.map((res) => (
-          <li className='reservation-list-li'
+          <li
+            className="reservation-list-li"
             key={res._id}
             onClick={() => onSelectReservation && onSelectReservation(res)}
             style={{
@@ -80,11 +84,7 @@ const UnassignedReservationsPanel = ({ reservations, onSelectReservation }) => {
 
 UnassignedReservationsPanel.propTypes = {
   reservations: PropTypes.array.isRequired,
-  onSelectReservation: PropTypes.func,
-};
-
-UnassignedReservationsPanel.defaultProps = {
-  onSelectReservation: () => {},
+  onSelectReservation: PropTypes.func.isRequired,
 };
 
 export default UnassignedReservationsPanel;

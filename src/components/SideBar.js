@@ -4,7 +4,7 @@ import AccountingInfo from './AccountingInfo';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
-import { toZonedTime } from 'date-fns-tz'; // utcToZonedTime → toZonedTime으로 변경
+import { toZonedTime } from 'date-fns-tz';
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css';
 import logo from '../assets/StaySync.svg';
@@ -78,8 +78,8 @@ function SideBar({
 
   const handleDateChangeInternal = (date) => {
     try {
-      const kstDate = toZonedTime(date, 'Asia/Seoul'); // toZonedTime 사용
-      console.log('[SideBar] Date changed to:', kstDate); // 디버깅 로그
+      const kstDate = toZonedTime(date, 'Asia/Seoul');
+      console.log('[SideBar] Date changed to:', kstDate);
       onDateChange(kstDate);
     } catch (error) {
       console.error('[SideBar] Date change error:', error);
@@ -120,7 +120,7 @@ function SideBar({
   const handleCloseGraphModal = () => setIsGraphModalOpen(false);
 
   const dailySales = { labels: labelsForOTA, values: [] };
-  const monthlySales = { labels: ['현재월'], values: [monthlyTotal] };
+  const monthlySales = { labels: ['현재월'], values: [monthlyTotal.total] };
 
   return (
     <div
@@ -128,7 +128,6 @@ function SideBar({
         highlightEffect === 'blink' ? 'highlight-blink' : ''
       }`}
     >
-      {/* 로고 섹션 */}
       <div className="sidebar-header">
         <a
           href="https://staysync.framer.ai/"
@@ -139,7 +138,6 @@ function SideBar({
         </a>
       </div>
 
-      {/* 검색 섹션 */}
       <Search
         searchCriteria={searchCriteria}
         setSearchCriteria={setSearchCriteria}
@@ -151,7 +149,6 @@ function SideBar({
         triggerVisualEffect={triggerVisualEffect}
       />
 
-      {/* 동기화, 설정, 로그아웃 등 버튼 섹션 */}
       <div className="sync-section">
         <button
           className={`settings-button ${needsConsent ? 'blink-button' : ''}`}
@@ -203,7 +200,6 @@ function SideBar({
         </button>
       </div>
 
-      {/* 날짜 선택 섹션 */}
       <div className="date-picker-section">
         <h4 className="section-title">
           <FaCalendarAlt className="section-icon" />
@@ -222,7 +218,6 @@ function SideBar({
         </div>
       </div>
 
-      {/* 객실 상태 섹션 */}
       <div className="room-status-section">
         <h4 className="section-title">
           <FaBed className="section-icon" />
@@ -238,7 +233,6 @@ function SideBar({
         </div>
       </div>
 
-      {/* 매출 정보 섹션 */}
       <AccountingInfo
         dailyTotal={dailyTotal}
         monthlyTotal={monthlyTotal}
@@ -250,14 +244,15 @@ function SideBar({
         monthlyDailyBreakdown={monthlyDailyBreakdown}
         openSalesModal={openSalesModal}
         openGraphModal={handleOpenGraphModal}
-        dailySalesReport={dailySalesReport} // 추가
+        dailySalesReport={dailySalesReport}
+        selectedDate={selectedDate}
       >
         <h4 className="section-title">
           <FaChartLine className="section-icon" />
           <span className="section-text">매출정보</span>
         </h4>
       </AccountingInfo>
-      {/* OTA 설정 섹션 */}
+
       <div className="ota-settings-section">
         <div
           className="ota-settings-header"
@@ -287,7 +282,6 @@ function SideBar({
         )}
       </div>
 
-      {/* 매출 그래프 모달 */}
       <SalesGraphModal
         isOpen={isGraphModalOpen}
         onRequestClose={handleCloseGraphModal}
@@ -300,7 +294,6 @@ function SideBar({
         aria-label="매출 그래프 모달"
       />
 
-      {/* Footer */}
       <div className="sidebar-footer">
         <div className="footer-divider" />
         <p>
@@ -335,8 +328,17 @@ SideBar.propTypes = {
   loading: PropTypes.bool.isRequired,
   onSync: PropTypes.func.isRequired,
   setIsShining: PropTypes.func.isRequired,
-  dailyTotal: PropTypes.number.isRequired,
-  monthlyTotal: PropTypes.number.isRequired,
+  dailyTotal: PropTypes.shape({
+    total: PropTypes.number,
+    paymentTotals: PropTypes.object,
+    typeTotals: PropTypes.object,
+    dailyBreakdown: PropTypes.array,
+  }).isRequired,
+  monthlyTotal: PropTypes.shape({
+    total: PropTypes.number,
+    paymentTotals: PropTypes.object,
+    typeTotals: PropTypes.object,
+  }).isRequired,
   roomsSold: PropTypes.number.isRequired,
   occupancyRate: PropTypes.number.isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,
@@ -347,7 +349,17 @@ SideBar.propTypes = {
   avgMonthlyRoomPrice: PropTypes.number.isRequired,
   onLogout: PropTypes.func.isRequired,
   dailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
-  monthlyDailyBreakdown: PropTypes.arrayOf(PropTypes.number).isRequired,
+  monthlyDailyBreakdown: PropTypes.arrayOf(
+    PropTypes.shape({
+      Total: PropTypes.number,
+      Cash: PropTypes.number,
+      Card: PropTypes.number,
+      OTA: PropTypes.number,
+      Pending: PropTypes.number,
+      현장숙박: PropTypes.number,
+      현장대실: PropTypes.number,
+    })
+  ).isRequired,
   openSalesModal: PropTypes.func.isRequired,
   hotelId: PropTypes.string.isRequired,
   hotelSettings: PropTypes.shape({
@@ -370,8 +382,7 @@ SideBar.propTypes = {
   executeSearch: PropTypes.func.isRequired,
   onShowCanceledModal: PropTypes.func.isRequired,
   needsConsent: PropTypes.bool.isRequired,
-  dailySalesByOTA: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number))
-    .isRequired,
+  dailySalesByOTA: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number)).isRequired,
   labelsForOTA: PropTypes.arrayOf(PropTypes.string).isRequired,
   activeReservations: PropTypes.arrayOf(PropTypes.object).isRequired,
   onMonthlyView: PropTypes.func.isRequired,

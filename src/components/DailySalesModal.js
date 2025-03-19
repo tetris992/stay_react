@@ -15,7 +15,6 @@ const DailySalesModal = ({
   onRequestClose,
   dailySalesReport,
   dailyTotal,
-  monthlySales,
   selectedDate,
   totalRooms,
   occupancyRate,
@@ -69,7 +68,6 @@ const DailySalesModal = ({
     const content = componentRef.current;
     const printFrame = document.createElement('iframe');
 
-    // iframe을 임시로 생성하여 콘텐츠 추가
     printFrame.style.position = 'fixed';
     printFrame.style.right = '100%';
     printFrame.style.width = '0';
@@ -122,7 +120,7 @@ const DailySalesModal = ({
           onClick={onRequestClose}
           aria-label="매출 정보 닫기"
         >
-          &times;
+          ×
         </button>
         <div className="modal-actions">
           <button
@@ -147,8 +145,7 @@ const DailySalesModal = ({
       <div id="daily-sales-content" ref={componentRef}>
         <DailySalesTemplate
           dailySalesReport={dailySalesReport}
-          dailyTotal={dailyTotal}
-          monthlySales={monthlySales}
+          dailyTotal={dailyTotal.total || 0} // 객체에서 total 추출
           selectedDate={selectedDate}
           totalRooms={totalRooms}
           remainingRooms={remainingRooms}
@@ -164,8 +161,12 @@ DailySalesModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onRequestClose: PropTypes.func.isRequired,
   dailySalesReport: PropTypes.array.isRequired,
-  dailyTotal: PropTypes.number.isRequired,
-  monthlySales: PropTypes.number.isRequired,
+  dailyTotal: PropTypes.shape({
+    total: PropTypes.number,
+    paymentTotals: PropTypes.object,
+    typeTotals: PropTypes.object,
+    dailyBreakdown: PropTypes.object,
+  }).isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   totalRooms: PropTypes.number.isRequired,
   remainingRooms: PropTypes.number.isRequired,

@@ -34,7 +34,7 @@ function ScrapeNowButton({ hotelId, activeOTAs = [] }) {
     return new Promise((resolve, reject) => {
       const EXTENSION_ID =
         process.env.REACT_APP_EXTENSION_ID ||
-        'cnoicicjafgmfcnjclhlehfpojfaelag';
+        'cnoicicjafgmfcnjclhlehfpojfaelag';  // 개발자 gplklapgkbfogdohhjcidcdkbdaolbib  배포용  cnoicicjafgmfcnjclhlehfpojfaelag
       const action =
         ACTION_MAP[otaName] || `TRIGGER_${otaName.toUpperCase()}_SCRAPE`;
 

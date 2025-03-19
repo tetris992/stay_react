@@ -321,14 +321,14 @@ const ContainerCell = React.memo(
           uniqueCheckedOut.add(res._id);
         }
       });
-      console.log(
-        `[ContainerCell] checkedOutCount for ${cont.roomNumber} on ${format(
-          selectedDate,
-          'yyyy-MM-dd'
-        )}: ${uniqueCheckedOut.size}, fullReservations length: ${
-          fullReservations.length
-        }`
-      );
+      // console.log(
+      //   `[ContainerCell] checkedOutCount for ${cont.roomNumber} on ${format(
+      //     selectedDate,
+      //     'yyyy-MM-dd'
+      //   )}: ${uniqueCheckedOut.size}, fullReservations length: ${
+      //     fullReservations.length
+      //   }`
+      // );
       return uniqueCheckedOut.size;
     }, [fullReservations, cont.roomNumber, selectedDate]);
 
@@ -564,44 +564,21 @@ function RoomGrid({
     setDailyTotal(dailyTotal);
   }, [dailyTotal, setDailyTotal]);
 
-  // 매출 계산 (퇴실된 대실 포함)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.groupCollapsed(
-        `Reservations for Selected Date: ${format(selectedDate, 'yyyy-MM-dd')}`
-      );
-
-      // 모든 예약 데이터 준비 (퇴실된 예약 포함)
       const reservationDetails = fullReservations
         .map((res) => {
           const checkInDate = new Date(res.checkIn);
           const checkOutDate = new Date(res.checkOut);
-
-          // 날짜 유효성 검사
           if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-            console.warn('Invalid dates in reservation:', res);
-            return null; // 유효하지 않은 데이터는 제외
+            return null;
           }
-
-          const nights =
-            Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) ||
-            1;
-
-          let dailyRate;
-          if (res.type === 'dayUse') {
-            dailyRate = res.totalPrice || res.price || 0; // 대실은 총 금액을 하루 요금으로 사용
-          } else if (res.nightlyRates?.length > 0) {
-            dailyRate =
-              res.nightlyRates.reduce(
-                (sum, rate) => sum + (rate.rate || 0),
-                0
-              ) / res.nightlyRates.length;
-          } else {
-            dailyRate = (res.totalPrice || res.price || 0) / nights;
-          }
-
-          const totalPrice = res.totalPrice || res.price || 0;
-
+          const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) || 1;
+          let dailyRate = res.type === 'dayUse'
+            ? (res.totalPrice || res.price || 0)
+            : res.nightlyRates?.length > 0
+              ? res.nightlyRates[0].rate || (res.totalPrice || res.price || 0) / nights
+              : (res.totalPrice || res.price || 0) / nights;
           return {
             ID: res._id,
             Customer: res.customerName || '정보 없음',
@@ -609,121 +586,154 @@ function RoomGrid({
             CheckOut: format(checkOutDate, 'yyyy-MM-dd HH:mm'),
             RoomNumber: res.roomNumber || '미배정',
             RoomInfo: res.roomInfo || '정보 없음',
-            Status: res.reservationStatus || 'Pending',
-            isCheckedIn: res.isCheckedIn || false, // 데이터베이스에서 가져온 값 사용
-            isCheckedOut:
-              res.isCheckedOut ||
-              (res.type === 'dayUse' && res.manuallyCheckedOut) ||
-              false, // 대실은 manuallyCheckedOut이 true면 체크아웃으로 간주
-            manuallyCheckedOut: res.manuallyCheckedOut || false,
             Type: res.type || 'Unknown',
-            DailyRate: Number.isNaN(dailyRate) ? 0 : Math.round(dailyRate), // NaN 방지
-            TotalPrice: totalPrice,
+            Status: res.reservationStatus || 'Pending',
+            isCheckedOut: res.isCheckedOut || (res.type === 'dayUse' && res.manuallyCheckedOut) || false,
+            DailyRate: Number.isNaN(dailyRate) ? 0 : Math.round(dailyRate),
+            TotalPrice: res.totalPrice || res.price || 0,
             Nights: nights,
+            PaymentMethod: res.siteName && res.siteName !== '현장예약' ? 'OTA' : res.paymentMethod || 'Pending',
+            SiteInfo: res.siteName === '현장예약' ? (res.type === 'stay' ? '현장숙박' : '현장대실') : res.siteName || '기타',
           };
         })
         .filter((res) => res !== null);
-
-      // 데일리 합계 계산 (퇴실된 대실 포함)
+  
+      const totalRooms = hotelSettings?.totalRooms || 0;
+      const roomsSold = reservationDetails.length;
+      const remainingRooms = totalRooms - roomsSold;
+      const availabilityInfo = (availabilityByDate && availabilityByDate[format(selectedDate, 'yyyy-MM-dd')]) || {};
+  
       const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
+      const selectedDateStart = startOfDay(selectedDate);
+      const selectedDateEnd = addDays(selectedDateStart, 1);
+  
+      const paymentTotals = { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
+      const typeTotals = { 현장숙박: 0, 현장대실: 0 };
+  
       const newDailyTotal = reservationDetails.reduce((sum, res) => {
         const checkInDate = new Date(res.CheckIn);
         const checkOutDate = new Date(res.CheckOut);
-        const selectedDateStart = startOfDay(selectedDate);
-        const selectedDateEnd = addDays(selectedDateStart, 1);
-
-        if (
-          checkInDate < selectedDateEnd &&
-          checkOutDate >= selectedDateStart &&
-          (res.Type !== 'dayUse' || res.manuallyCheckedOut)
-        ) {
-          return sum + (res.DailyRate || 0);
+        if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return sum;
+  
+        if (checkInDate < selectedDateEnd && checkOutDate > selectedDateStart) {
+          const overlapDays = Math.min(
+            Math.ceil((Math.min(checkOutDate, selectedDateEnd) - Math.max(checkInDate, selectedDateStart)) / (1000 * 60 * 60 * 24)),
+            res.Nights
+          );
+          const dailyContribution = res.Type === 'dayUse' ? res.TotalPrice : res.DailyRate * (overlapDays > 0 ? 1 : 0);
+  
+          if (res.Type === 'dayUse') {
+            if (res.isCheckedOut && format(checkOutDate, 'yyyy-MM-dd') === selectedDateString) {
+              paymentTotals[res.PaymentMethod] += dailyContribution;
+              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
+                typeTotals[res.SiteInfo] += dailyContribution;
+              }
+              return sum + dailyContribution;
+            }
+          } else {
+            if (format(checkOutDate, 'yyyy-MM-dd') !== selectedDateString) {
+              paymentTotals[res.PaymentMethod] += dailyContribution;
+              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
+                typeTotals[res.SiteInfo] += dailyContribution;
+              }
+              return sum + dailyContribution;
+            }
+          }
         }
         return sum;
       }, 0);
-
-      // 총 매출 계산
-      const totalPriceSum = reservationDetails.reduce(
-        (sum, res) => sum + (res.TotalPrice || 0),
-        0
-      );
-
-      // 날짜별 매출 계산
+  
       const dailyBreakdown = {};
+      const dailyBreakdownDetails = {};
       reservationDetails.forEach((res) => {
         const checkInDate = new Date(res.CheckIn);
         const checkOutDate = new Date(res.CheckOut);
         let cursor = startOfDay(checkInDate);
-        while (cursor <= checkOutDate) {
+        while (cursor < checkOutDate) {
           const dateStr = format(cursor, 'yyyy-MM-dd');
           if (!dailyBreakdown[dateStr]) {
-            dailyBreakdown[dateStr] = 0;
+            dailyBreakdown[dateStr] = {
+              Total: 0,
+              Cash: 0,
+              Card: 0,
+              OTA: 0,
+              Pending: 0,
+              현장숙박: 0,
+              현장대실: 0,
+            };
           }
-          if (res.Type === 'dayUse' && res.manuallyCheckedOut) {
-            if (dateStr === selectedDateString) {
-              dailyBreakdown[dateStr] += res.DailyRate || 0;
+          if (!dailyBreakdownDetails[dateStr]) dailyBreakdownDetails[dateStr] = [];
+          if (res.Type === 'dayUse' && res.isCheckedOut) {
+            if (dateStr === format(checkOutDate, 'yyyy-MM-dd')) {
+              dailyBreakdown[dateStr].Total += res.TotalPrice;
+              dailyBreakdown[dateStr][res.PaymentMethod] += res.TotalPrice;
+              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
+                dailyBreakdown[dateStr][res.SiteInfo] += res.TotalPrice;
+              }
+              dailyBreakdownDetails[dateStr].push({
+                reservationId: res.ID,
+                type: 'dayUse',
+                date: dateStr,
+                amount: res.TotalPrice,
+                paymentMethod: res.PaymentMethod,
+                siteInfo: res.SiteInfo,
+              });
             }
-          } else if (checkInDate <= cursor && checkOutDate >= cursor) {
-            dailyBreakdown[dateStr] += res.DailyRate || 0;
+          } else if (checkInDate <= cursor) {
+            dailyBreakdown[dateStr].Total += res.DailyRate;
+            dailyBreakdown[dateStr][res.PaymentMethod] += res.DailyRate;
+            if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
+              dailyBreakdown[dateStr][res.SiteInfo] += res.DailyRate;
+            }
+            dailyBreakdownDetails[dateStr].push({
+              reservationId: res.ID,
+              type: 'stay',
+              date: dateStr,
+              amount: res.DailyRate,
+              paymentMethod: res.PaymentMethod,
+              siteInfo: res.SiteInfo,
+            });
           }
           cursor = addDays(cursor, 1);
         }
       });
-
-      // 콘솔 테이블 출력 (합계 행 추가)
-      const tableDataWithTotal = [
-        ...reservationDetails,
-        {
-          ID: '합계',
-          Customer: '-',
-          CheckIn: '-',
-          CheckOut: '-',
-          RoomNumber: '-',
-          RoomInfo: '-',
-          Status: '-',
-          isCheckedIn: '-',
-          isCheckedOut: '-',
-          manuallyCheckedOut: '-',
-          Type: '-',
-          DailyRate: newDailyTotal,
-          TotalPrice: totalPriceSum,
-          Nights: '-',
-        },
-      ];
-      console.table(tableDataWithTotal);
-
-      // 매출 정보 출력
+  
+      console.table({
+        'Selected Date': format(selectedDate, 'yyyy-MM-dd'),
+        'Total Reservations': reservationDetails.length,
+        'Total Rooms': totalRooms,
+        'Rooms Sold': roomsSold,
+        'Remaining Rooms': remainingRooms,
+        'Availability': Object.entries(availabilityInfo).length > 0 ? Object.entries(availabilityInfo).map(([type, data]) => ({
+          RoomType: type,
+          Remaining: data.remain || 0,
+          LeftoverRooms: (data.leftoverRooms || []).join(', ') || '없음',
+        })) : [{ RoomType: 'N/A', Remaining: 0, LeftoverRooms: 'N/A' }],
+        'Daily Total': newDailyTotal.toLocaleString() + '원',
+        'Payment Totals': paymentTotals,
+        'Type Totals': typeTotals,
+        'Daily Breakdown': dailyBreakdown[format(selectedDate, 'yyyy-MM-dd')] || {},
+        'Details': reservationDetails.length > 0 ? reservationDetails : 'No reservations for this date',
+      });
+  
       console.log(`[매출 정보] ${format(selectedDate, 'yyyy-MM-dd')}`);
       console.log(`데일리 합계: ${newDailyTotal.toLocaleString()}원`);
-      console.log(`토탈 합계: ${totalPriceSum.toLocaleString()}원`);
-      console.log('[날짜별 매출]:');
-      Object.entries(dailyBreakdown).forEach(([date, amount]) => {
-        console.log(`${date}: ${amount.toLocaleString()}원`);
-      });
-      console.log('[예약별 매출 세부 사항]:');
-      reservationDetails.forEach((res) => {
-        const checkInDate = new Date(res.CheckIn);
-        const checkOutDate = new Date(res.CheckOut);
-        const selectedDateStart = startOfDay(selectedDate);
-        const selectedDateEnd = addDays(selectedDateStart, 1);
-        const revenueContribution =
-          checkInDate < selectedDateEnd && checkOutDate >= selectedDateStart
-            ? res.DailyRate
-            : 0;
-        console.log(
-          `${res.ID} (${res.Type}): 객실 ${
-            res.RoomNumber
-          }, 일일 요금 ${res.DailyRate.toLocaleString()}원, ` +
-            `전체 요금 ${res.TotalPrice.toLocaleString()}원, 당일 기여 매출 ${revenueContribution.toLocaleString()}원, ` +
-            `퇴실 여부: ${res.manuallyCheckedOut}`
-        );
-      });
-
-      console.groupEnd();
-      setDailyTotalLocal(newDailyTotal); // 상태 업데이트
-      setDailyTotal(newDailyTotal); // 상위 컴포넌트 상태 업데이트
+      console.log('결제 방법별 합계:', paymentTotals);
+      console.log('예약 유형별 합계:', typeTotals);
+      console.log('[날짜별 매출]:', dailyBreakdown);
+      console.log('[날짜별 매출 상세]:', dailyBreakdownDetails);
+      console.table(
+        Object.entries(dailyBreakdownDetails).map(([date, details]) => ({
+          Date: date,
+          Total: details.reduce((sum, d) => sum + d.amount, 0),
+          Details: details.map(d => `${d.reservationId} (${d.type}): ${d.amount}원 (${d.paymentMethod}, ${d.siteInfo})`).join('; '),
+        }))
+      );
+  
+      setDailyTotalLocal(newDailyTotal);
+      setDailyTotal({ total: newDailyTotal, paymentTotals, typeTotals, dailyBreakdown });
     }
-  }, [fullReservations, selectedDate, setDailyTotal]);
+  }, [fullReservations, selectedDate, setDailyTotal, availabilityByDate, hotelSettings?.totalRooms]);
 
   const floorReservations = useMemo(() => {
     const map = {};
