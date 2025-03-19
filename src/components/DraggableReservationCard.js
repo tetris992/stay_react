@@ -118,7 +118,6 @@ const DraggableReservationCard = ({
   allReservations = [],
   selectedDate,
   filterReservationsByDate,
-  setDailyTotal,
   setAllReservations,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -216,10 +215,13 @@ const DraggableReservationCard = ({
   }, [ciDateOnly, coDateOnly]);
 
   const canDragMemo = useMemo(() => {
-      // 수정 부분: 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
-  if (!normalizedReservation.roomNumber || normalizedReservation.roomNumber.trim() === '') {
-    return true;
-  }
+    // 수정 부분: 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
+    if (
+      !normalizedReservation.roomNumber ||
+      normalizedReservation.roomNumber.trim() === ''
+    ) {
+      return true;
+    }
     if (
       !Array.isArray(roomTypes) ||
       !Array.isArray(allReservations) ||
@@ -1110,7 +1112,6 @@ DraggableReservationCard.propTypes = {
   allReservations: PropTypes.array,
   selectedDate: PropTypes.instanceOf(Date),
   filterReservationsByDate: PropTypes.func,
-  setDailyTotal: PropTypes.func.isRequired,
   reservation: PropTypes.shape({
     _id: PropTypes.string.isRequired,
     checkIn: PropTypes.string,

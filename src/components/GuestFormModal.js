@@ -9,7 +9,7 @@ import {
 } from 'date-fns';
 import PropTypes from 'prop-types';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
-import { payPerNight } from '../api/api'; // payPerNight 임포트 추가
+import { payPerNight } from '../api/api';
 
 const GuestFormModal = ({
   onClose,
@@ -80,7 +80,7 @@ const GuestFormModal = ({
         paymentDetails: initialData.paymentHistory || [],
         specialRequests: initialData.specialRequests || '',
         roomNumber: initialData.roomNumber || '',
-        manualPriceOverride: !!initialData.price,
+        manualPriceOverride: false, // 초기에는 false로 설정
         remainingBalance: initialData.remainingBalance || totalPrice,
       });
       setShowPaymentDetails(
@@ -236,12 +236,7 @@ const GuestFormModal = ({
   };
 
   useEffect(() => {
-    if (
-      isSubmitting ||
-      formData.manualPriceOverride ||
-      (initialData && initialData._id)
-    )
-      return;
+    if (isSubmitting) return;
 
     if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
       const checkInDateObj = new Date(
@@ -256,20 +251,38 @@ const GuestFormModal = ({
         !isNaN(checkInDateObj) &&
         !isNaN(checkOutDateObj)
       ) {
-        const nights = differenceInCalendarDays(
-          checkOutDateObj,
-          checkInDateObj
-        );
-        const selectedRoom = filteredRoomTypes.find(
-          (room) => room.roomInfo === formData.roomInfo
-        );
-        const nightlyPrice = selectedRoom?.price || 0;
-        const totalPrice = String(nightlyPrice * Math.max(nights, 1));
-        setFormData((prev) => ({
-          ...prev,
-          price: totalPrice,
-          remainingBalance: Number(totalPrice),
-        }));
+        const nights = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
+        let nightlyPrice;
+
+        // 기존 예약이 있는 경우: 초기 1박당 요금을 계산
+        if (initialData && initialData._id) {
+          const initialCheckIn = new Date(initialData.checkIn);
+          const initialCheckOut = new Date(initialData.checkOut);
+          const initialNights = differenceInCalendarDays(
+            initialCheckOut,
+            initialCheckIn
+          );
+          const initialTotalPrice = Number(
+            initialData.price || initialData.totalPrice || 0
+          );
+          nightlyPrice = initialTotalPrice / Math.max(initialNights, 1);
+        } else {
+          // 신규 예약: 객실 타입의 기본 요금 사용
+          const selectedRoom = filteredRoomTypes.find(
+            (room) => room.roomInfo === formData.roomInfo
+          );
+          nightlyPrice = selectedRoom?.price || 0;
+        }
+
+        // manualPriceOverride가 false일 때만 가격을 재계산
+        if (!formData.manualPriceOverride) {
+          const totalPrice = String(nightlyPrice * Math.max(nights, 1));
+          setFormData((prev) => ({
+            ...prev,
+            price: totalPrice,
+            remainingBalance: Number(totalPrice),
+          }));
+        }
       }
     }
   }, [
@@ -592,7 +605,7 @@ const GuestFormModal = ({
         console.log('[GuestFormModal] Save successful for:', initialData._id);
       } else {
         const response = await onSave(null, finalData);
-        console.log('[GuestFormModal] Save response received:', response); // 디버깅 로그 수정
+        console.log('[GuestFormModal] Save response received:', response);
 
         if (
           response &&
@@ -631,7 +644,6 @@ const GuestFormModal = ({
       }
       setReservationId(newReservationId);
       onClose();
-      // 상태 업데이트는 handleFormSave에서 처리하므로 여기서 중복 호출 제거
     } catch (error) {
       console.error('[GuestFormModal] Save Error:', error);
       const errorMessage =
