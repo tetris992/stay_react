@@ -321,14 +321,6 @@ const ContainerCell = React.memo(
           uniqueCheckedOut.add(res._id);
         }
       });
-      // console.log(
-      //   `[ContainerCell] checkedOutCount for ${cont.roomNumber} on ${format(
-      //     selectedDate,
-      //     'yyyy-MM-dd'
-      //   )}: ${uniqueCheckedOut.size}, fullReservations length: ${
-      //     fullReservations.length
-      //   }`
-      // );
       return uniqueCheckedOut.size;
     }, [fullReservations, cont.roomNumber, selectedDate]);
 
@@ -489,7 +481,6 @@ function RoomGrid({
   logs,
   isLogViewerOpen,
   onCloseLogViewer,
-  setDailyTotal,
   fullReservations,
   allReservations,
 }) {
@@ -500,10 +491,8 @@ function RoomGrid({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
     useState(false);
-  // const [showUnassignedPanel, setShowUnassignedPanel] = useState(true);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
-  const [dailyTotal, setDailyTotalLocal] = useState(0);
 
   const invoiceRef = useRef();
   const gridRef = useRef();
@@ -558,182 +547,6 @@ function RoomGrid({
         return isIncluded || isSameDayStay;
       });
   }, [reservations, selectedDate]);
-
-  // setDailyTotal을 통해 상위 상태 업데이트
-  useEffect(() => {
-    setDailyTotal(dailyTotal);
-  }, [dailyTotal, setDailyTotal]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const reservationDetails = fullReservations
-        .map((res) => {
-          const checkInDate = new Date(res.checkIn);
-          const checkOutDate = new Date(res.checkOut);
-          if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) {
-            return null;
-          }
-          const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) || 1;
-          let dailyRate = res.type === 'dayUse'
-            ? (res.totalPrice || res.price || 0)
-            : res.nightlyRates?.length > 0
-              ? res.nightlyRates[0].rate || (res.totalPrice || res.price || 0) / nights
-              : (res.totalPrice || res.price || 0) / nights;
-          return {
-            ID: res._id,
-            Customer: res.customerName || '정보 없음',
-            CheckIn: format(checkInDate, 'yyyy-MM-dd HH:mm'),
-            CheckOut: format(checkOutDate, 'yyyy-MM-dd HH:mm'),
-            RoomNumber: res.roomNumber || '미배정',
-            RoomInfo: res.roomInfo || '정보 없음',
-            Type: res.type || 'Unknown',
-            Status: res.reservationStatus || 'Pending',
-            isCheckedOut: res.isCheckedOut || (res.type === 'dayUse' && res.manuallyCheckedOut) || false,
-            DailyRate: Number.isNaN(dailyRate) ? 0 : Math.round(dailyRate),
-            TotalPrice: res.totalPrice || res.price || 0,
-            Nights: nights,
-            PaymentMethod: res.siteName && res.siteName !== '현장예약' ? 'OTA' : res.paymentMethod || 'Pending',
-            SiteInfo: res.siteName === '현장예약' ? (res.type === 'stay' ? '현장숙박' : '현장대실') : res.siteName || '기타',
-          };
-        })
-        .filter((res) => res !== null);
-  
-      const totalRooms = hotelSettings?.totalRooms || 0;
-      const roomsSold = reservationDetails.length;
-      const remainingRooms = totalRooms - roomsSold;
-      const availabilityInfo = (availabilityByDate && availabilityByDate[format(selectedDate, 'yyyy-MM-dd')]) || {};
-  
-      const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
-      const selectedDateStart = startOfDay(selectedDate);
-      const selectedDateEnd = addDays(selectedDateStart, 1);
-  
-      const paymentTotals = { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
-      const typeTotals = { 현장숙박: 0, 현장대실: 0 };
-  
-      const newDailyTotal = reservationDetails.reduce((sum, res) => {
-        const checkInDate = new Date(res.CheckIn);
-        const checkOutDate = new Date(res.CheckOut);
-        if (isNaN(checkInDate.getTime()) || isNaN(checkOutDate.getTime())) return sum;
-  
-        if (checkInDate < selectedDateEnd && checkOutDate > selectedDateStart) {
-          const overlapDays = Math.min(
-            Math.ceil((Math.min(checkOutDate, selectedDateEnd) - Math.max(checkInDate, selectedDateStart)) / (1000 * 60 * 60 * 24)),
-            res.Nights
-          );
-          const dailyContribution = res.Type === 'dayUse' ? res.TotalPrice : res.DailyRate * (overlapDays > 0 ? 1 : 0);
-  
-          if (res.Type === 'dayUse') {
-            if (res.isCheckedOut && format(checkOutDate, 'yyyy-MM-dd') === selectedDateString) {
-              paymentTotals[res.PaymentMethod] += dailyContribution;
-              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
-                typeTotals[res.SiteInfo] += dailyContribution;
-              }
-              return sum + dailyContribution;
-            }
-          } else {
-            if (format(checkOutDate, 'yyyy-MM-dd') !== selectedDateString) {
-              paymentTotals[res.PaymentMethod] += dailyContribution;
-              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
-                typeTotals[res.SiteInfo] += dailyContribution;
-              }
-              return sum + dailyContribution;
-            }
-          }
-        }
-        return sum;
-      }, 0);
-  
-      const dailyBreakdown = {};
-      const dailyBreakdownDetails = {};
-      reservationDetails.forEach((res) => {
-        const checkInDate = new Date(res.CheckIn);
-        const checkOutDate = new Date(res.CheckOut);
-        let cursor = startOfDay(checkInDate);
-        while (cursor < checkOutDate) {
-          const dateStr = format(cursor, 'yyyy-MM-dd');
-          if (!dailyBreakdown[dateStr]) {
-            dailyBreakdown[dateStr] = {
-              Total: 0,
-              Cash: 0,
-              Card: 0,
-              OTA: 0,
-              Pending: 0,
-              현장숙박: 0,
-              현장대실: 0,
-            };
-          }
-          if (!dailyBreakdownDetails[dateStr]) dailyBreakdownDetails[dateStr] = [];
-          if (res.Type === 'dayUse' && res.isCheckedOut) {
-            if (dateStr === format(checkOutDate, 'yyyy-MM-dd')) {
-              dailyBreakdown[dateStr].Total += res.TotalPrice;
-              dailyBreakdown[dateStr][res.PaymentMethod] += res.TotalPrice;
-              if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
-                dailyBreakdown[dateStr][res.SiteInfo] += res.TotalPrice;
-              }
-              dailyBreakdownDetails[dateStr].push({
-                reservationId: res.ID,
-                type: 'dayUse',
-                date: dateStr,
-                amount: res.TotalPrice,
-                paymentMethod: res.PaymentMethod,
-                siteInfo: res.SiteInfo,
-              });
-            }
-          } else if (checkInDate <= cursor) {
-            dailyBreakdown[dateStr].Total += res.DailyRate;
-            dailyBreakdown[dateStr][res.PaymentMethod] += res.DailyRate;
-            if (res.SiteInfo === '현장숙박' || res.SiteInfo === '현장대실') {
-              dailyBreakdown[dateStr][res.SiteInfo] += res.DailyRate;
-            }
-            dailyBreakdownDetails[dateStr].push({
-              reservationId: res.ID,
-              type: 'stay',
-              date: dateStr,
-              amount: res.DailyRate,
-              paymentMethod: res.PaymentMethod,
-              siteInfo: res.SiteInfo,
-            });
-          }
-          cursor = addDays(cursor, 1);
-        }
-      });
-  
-      console.table({
-        'Selected Date': format(selectedDate, 'yyyy-MM-dd'),
-        'Total Reservations': reservationDetails.length,
-        'Total Rooms': totalRooms,
-        'Rooms Sold': roomsSold,
-        'Remaining Rooms': remainingRooms,
-        'Availability': Object.entries(availabilityInfo).length > 0 ? Object.entries(availabilityInfo).map(([type, data]) => ({
-          RoomType: type,
-          Remaining: data.remain || 0,
-          LeftoverRooms: (data.leftoverRooms || []).join(', ') || '없음',
-        })) : [{ RoomType: 'N/A', Remaining: 0, LeftoverRooms: 'N/A' }],
-        'Daily Total': newDailyTotal.toLocaleString() + '원',
-        'Payment Totals': paymentTotals,
-        'Type Totals': typeTotals,
-        'Daily Breakdown': dailyBreakdown[format(selectedDate, 'yyyy-MM-dd')] || {},
-        'Details': reservationDetails.length > 0 ? reservationDetails : 'No reservations for this date',
-      });
-  
-      console.log(`[매출 정보] ${format(selectedDate, 'yyyy-MM-dd')}`);
-      console.log(`데일리 합계: ${newDailyTotal.toLocaleString()}원`);
-      console.log('결제 방법별 합계:', paymentTotals);
-      console.log('예약 유형별 합계:', typeTotals);
-      console.log('[날짜별 매출]:', dailyBreakdown);
-      console.log('[날짜별 매출 상세]:', dailyBreakdownDetails);
-      console.table(
-        Object.entries(dailyBreakdownDetails).map(([date, details]) => ({
-          Date: date,
-          Total: details.reduce((sum, d) => sum + d.amount, 0),
-          Details: details.map(d => `${d.reservationId} (${d.type}): ${d.amount}원 (${d.paymentMethod}, ${d.siteInfo})`).join('; '),
-        }))
-      );
-  
-      setDailyTotalLocal(newDailyTotal);
-      setDailyTotal({ total: newDailyTotal, paymentTotals, typeTotals, dailyBreakdown });
-    }
-  }, [fullReservations, selectedDate, setDailyTotal, availabilityByDate, hotelSettings?.totalRooms]);
 
   const floorReservations = useMemo(() => {
     const map = {};
@@ -986,7 +799,7 @@ function RoomGrid({
             marginBottom: '10px',
           }}
         >
-          {/* <h3>오늘의 매출: {dailyTotal.toLocaleString()}원</h3> */}
+          {/* 매출 표시 제거: App.js에서 SideBar로 전달됨 */}
         </div>
         <div>
           {isMonthlyView ? (
@@ -1065,7 +878,6 @@ function RoomGrid({
                             selectedDate={selectedDate}
                             filterReservationsByDate={filterReservationsByDate}
                             allReservations={reservations}
-                            setDailyTotal={setDailyTotal}
                             setAllReservations={setAllReservations}
                             fullReservations={fullReservations}
                           />
@@ -1187,7 +999,6 @@ function RoomGrid({
                                         filterReservationsByDate
                                       }
                                       allReservations={allReservations}
-                                      setDailyTotal={setDailyTotal}
                                       setAllReservations={setAllReservations}
                                       fullReservations={fullReservations}
                                     />
@@ -1224,7 +1035,6 @@ function RoomGrid({
 }
 
 RoomGrid.propTypes = {
-  setDailyTotal: PropTypes.func.isRequired,
   reservations: PropTypes.array.isRequired,
   onDelete: PropTypes.func.isRequired,
   onConfirm: PropTypes.func.isRequired,

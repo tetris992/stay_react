@@ -5,7 +5,7 @@ import {
   FaChevronDown,
   FaChevronUp,
 } from 'react-icons/fa';
-import { format } from 'date-fns';
+// import { format } from 'date-fns';
 import PropTypes from 'prop-types';
 import './AccountingInfo.css';
 
@@ -45,7 +45,10 @@ function AccountingInfo({
 
   // dailyTotal과 monthlyTotal에서 total 값 추출
   const dailyTotalValue =
-    typeof dailyTotal === 'object' ? dailyTotal.total || 0 : dailyTotal || 0;
+  typeof dailyTotal === 'object' && dailyTotal.total !== undefined
+    ? dailyTotal.total
+    : 0;
+
   const monthlyTotalValue =
     typeof monthlyTotal === 'object'
       ? monthlyTotal.total || 0
@@ -108,10 +111,10 @@ function AccountingInfo({
               cursor: 'pointer',
             }}
           >
-            {showMonthlyDetails ? <FaChevronUp /> : <FaChevronDown />}
+            {/* {showMonthlyDetails ? <FaChevronUp /> : <FaChevronDown />} */}
           </button>
         </li>
-        {showMonthlyDetails &&
+        {/* {showMonthlyDetails &&
           monthlyDailyBreakdown &&
           monthlyDailyBreakdown.length > 0 && (
             <li>
@@ -135,7 +138,7 @@ function AccountingInfo({
                 )}
               </ul>
             </li>
-          )}
+          )} */}
         <li>
           <span>일 판매 객실 수: </span>
           {roomsSold}
@@ -179,15 +182,12 @@ function AccountingInfo({
 }
 
 AccountingInfo.propTypes = {
-  dailyTotal: PropTypes.oneOfType([
-    PropTypes.number,
-    PropTypes.shape({
-      total: PropTypes.number,
-      paymentTotals: PropTypes.object,
-      typeTotals: PropTypes.object,
-      dailyBreakdown: PropTypes.array,
-    }),
-  ]).isRequired,
+  dailyTotal: PropTypes.shape({
+    total: PropTypes.number.isRequired,
+    paymentTotals: PropTypes.object.isRequired,
+    typeTotals: PropTypes.object.isRequired,
+    dailyBreakdown: PropTypes.array.isRequired,
+  }).isRequired,
   monthlyTotal: PropTypes.oneOfType([
     PropTypes.number,
     PropTypes.shape({

@@ -47,6 +47,7 @@ const DayUseFormModal = ({
     return !availForDay || availForDay.remain <= 0;
   };
 
+  /* DayUseFormModal.js 내부, useEffect 수정 */
   useEffect(() => {
     const now = new Date();
     const effectiveSelectedDate = selectedDate || now;
@@ -100,8 +101,10 @@ const DayUseFormModal = ({
       });
     } else {
       // [신규 대실 예약]
-      const defaultCheckInDate = format(effectiveSelectedDate, 'yyyy-MM-dd');
-      const defaultCheckInTime = '00:00'; // 호텔 설정과 무관하게 "00:00" 고정
+      const defaultCheckInDate =
+        initialData?.checkInDate || format(effectiveSelectedDate, 'yyyy-MM-dd');
+      const defaultCheckInTime =
+        initialData?.checkInTime || format(now, 'HH:mm');
 
       const initialRoomInfo = filteredRoomTypes[0]?.roomInfo || 'Standard';
       const selectedRoom =
@@ -112,19 +115,21 @@ const DayUseFormModal = ({
       const basePrice = Math.floor((selectedRoom?.price || 0) * 0.5);
 
       setFormData({
-        reservationNo: `${Date.now()}`,
-        customerName: `현장대실`,
-        phoneNumber: '',
+        reservationNo: initialData?.reservationNo || `${Date.now()}`,
+        customerName:
+          initialData?.customerName || `현장대실:${format(now, 'HH:mm:ss')}`,
+        phoneNumber: initialData?.phoneNumber || '',
         checkInDate: defaultCheckInDate,
         checkInTime: defaultCheckInTime,
-        durationHours: 3,
-        reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-        roomInfo: initialRoomInfo,
-        price: String(basePrice),
+        durationHours: initialData?.durationHours || 3,
+        reservationDate:
+          initialData?.reservationDate || format(now, 'yyyy-MM-dd HH:mm'),
+        roomInfo: initialData?.roomInfo || initialRoomInfo,
+        price: initialData?.price || String(basePrice),
         paymentMethod: initialData?.paymentMethod || 'Cash', // 대실은 기본값 "Cash"
-        specialRequests: '',
-        roomNumber: '',
-        manualPriceOverride: false,
+        specialRequests: initialData?.specialRequests || '',
+        roomNumber: initialData?.roomNumber || '',
+        manualPriceOverride: initialData?.manualPriceOverride || false,
         type: 'dayUse',
       });
     }

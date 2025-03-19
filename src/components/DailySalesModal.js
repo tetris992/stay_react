@@ -20,6 +20,7 @@ const DailySalesModal = ({
   occupancyRate,
   remainingRooms,
   dailyAverageRoomPrice,
+  monthlySales,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const componentRef = useRef();
@@ -145,7 +146,8 @@ const DailySalesModal = ({
       <div id="daily-sales-content" ref={componentRef}>
         <DailySalesTemplate
           dailySalesReport={dailySalesReport}
-          dailyTotal={dailyTotal.total || 0} // 객체에서 total 추출
+          dailyTotal={dailyTotal.total || 0}
+          monthlySales={monthlySales} 
           selectedDate={selectedDate}
           totalRooms={totalRooms}
           remainingRooms={remainingRooms}
@@ -165,7 +167,7 @@ DailySalesModal.propTypes = {
     total: PropTypes.number,
     paymentTotals: PropTypes.object,
     typeTotals: PropTypes.object,
-    dailyBreakdown: PropTypes.object,
+    dailyBreakdown: PropTypes.array.isRequired, 
   }).isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   totalRooms: PropTypes.number.isRequired,

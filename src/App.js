@@ -197,7 +197,12 @@ const App = () => {
   const [loadedReservations, setLoadedReservations] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeReservations, setActiveReservations] = useState([]);
-  const [dailyTotal, setDailyTotal] = useState(0);
+  const [dailyTotal, setDailyTotal] = useState({
+    total: 0,
+    paymentTotals: { Cash: 0, Card: 0, OTA: 0, Pending: 0 },
+    typeTotals: { 현장숙박: 0, 현장대실: 0 },
+    dailyBreakdown: [],
+  });
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [memos, setMemos] = useState({});
@@ -215,7 +220,8 @@ const App = () => {
   const [monthlySoldRooms, setMonthlySoldRooms] = useState(0);
   const [avgMonthlyRoomPrice, setAvgMonthlyRoomPrice] = useState(0);
   const dailyAverageRoomPrice =
-    roomsSold > 0 ? Math.floor(dailyTotal / roomsSold) : 0;
+    roomsSold > 0 ? Math.floor(dailyTotal.total / roomsSold) : 0;
+
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   // const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
@@ -482,7 +488,9 @@ const App = () => {
         monthlyPaymentTotals,
         monthlyTypeTotals,
       } = buildMonthlyDailyBreakdown(allReservations, selectedDate);
+
       setMonthlyDailyBreakdown(dailyTotals);
+
       setMonthlyTotal({
         total: monthlyTotal,
         paymentTotals: monthlyPaymentTotals,
@@ -634,18 +642,15 @@ const App = () => {
         return (isIncluded || isSameDayStay) && !reservation.manuallyCheckedOut;
       })
       .filter((res) => res !== null);
-
+  
     setActiveReservations(filtered);
-    const breakdown = filtered.map((reservation) => {
-      return reservation.nightlyRates?.[0]?.rate || reservation.totalPrice || 0;
-    });
-    setDailyBreakdown(breakdown);
-
-    // 일 매출 계산
+  
+    // 일별 매출 계산
     let dailyTotalAmount = 0;
     let dailyPaymentTotals = { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
     let dailyTypeTotals = { 현장숙박: 0, 현장대실: 0 };
-
+    const breakdown = [];
+  
     filtered.forEach((reservation) => {
       const checkInDate = new Date(reservation.checkIn);
       const checkOutDate = new Date(reservation.checkOut);
@@ -653,13 +658,7 @@ const App = () => {
         1,
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
       );
-      const amount =
-        reservation.type === 'dayUse'
-          ? reservation.totalPrice || reservation.price || 0
-          : (reservation.nightlyRates?.[0]?.rate ||
-              reservation.totalPrice ||
-              0) * nights;
-
+  
       const paymentMethod =
         reservation.siteName && reservation.siteName !== '현장예약'
           ? 'OTA'
@@ -670,31 +669,59 @@ const App = () => {
             ? '현장숙박'
             : '현장대실'
           : '기타';
-
-      // 체크인 날짜에만 매출 반영
-      if (format(checkInDate, 'yyyy-MM-dd') === selectedDateString) {
-        dailyTotalAmount += amount;
-        dailyPaymentTotals[paymentMethod] += amount;
-        if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
-          dailyTypeTotals[siteInfo] += amount;
+  
+      if (reservation.type === 'dayUse') {
+        // 대실 예약: 체크인 날짜에만 매출 반영
+        const amount = reservation.totalPrice || reservation.price || 0;
+        if (format(checkInDate, 'yyyy-MM-dd') === selectedDateString) {
+          dailyTotalAmount += amount;
+          dailyPaymentTotals[paymentMethod] += amount;
+          if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
+            dailyTypeTotals[siteInfo] += amount;
+          }
+          breakdown.push(amount);
+        }
+      } else {
+        // 숙박 예약: 각 날짜에 1박당 매출 분배
+        const totalAmount =
+          (reservation.nightlyRates?.[0]?.rate || reservation.totalPrice || 0) *
+          nights;
+        const dailyRate = totalAmount / nights;
+  
+        let currentDate = startOfDay(checkInDate);
+        const endDate = startOfDay(checkOutDate);
+  
+        while (currentDate < endDate) {
+          const currentDateString = format(currentDate, 'yyyy-MM-dd');
+          if (currentDateString === selectedDateString) {
+            dailyTotalAmount += dailyRate;
+            dailyPaymentTotals[paymentMethod] += dailyRate;
+            if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
+              dailyTypeTotals[siteInfo] += dailyRate;
+            }
+            breakdown.push(dailyRate);
+          }
+          currentDate = addDays(currentDate, 1);
         }
       }
     });
-
+  
     const dailyTotalObj = {
       total: dailyTotalAmount,
       paymentTotals: dailyPaymentTotals,
       typeTotals: dailyTypeTotals,
       dailyBreakdown: breakdown,
     };
-
+  
     console.log(
       `[filterReservationsByDate] Calculated dailyTotal for ${selectedDateString}:`,
       dailyTotalObj
     );
-
+  
     setDailyTotal(dailyTotalObj);
-
+    setDailyBreakdown(breakdown);
+  
+    // 월별 매출 계산
     const firstDayOfMonth = startOfMonth(date);
     const lastDayOfMonth = date;
     const monthlyReservations = reservationsData.filter((reservation) => {
@@ -708,10 +735,11 @@ const App = () => {
         checkInDate < addDays(lastDayOfMonth, 1)
       );
     });
+  
     let monthlyTotalAmount = 0;
     let monthlyPaymentTotals = { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
     let monthlyTypeTotals = { 현장숙박: 0, 현장대실: 0 };
-
+  
     monthlyReservations.forEach((reservation) => {
       const checkInDate = new Date(reservation.checkIn);
       const checkOutDate = new Date(reservation.checkOut);
@@ -719,13 +747,7 @@ const App = () => {
         1,
         Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
       );
-      const amount =
-        reservation.type === 'dayUse'
-          ? reservation.totalPrice || reservation.price || 0
-          : (reservation.nightlyRates?.[0]?.rate ||
-              reservation.totalPrice ||
-              0) * nights;
-
+  
       const paymentMethod =
         reservation.siteName && reservation.siteName !== '현장예약'
           ? 'OTA'
@@ -736,23 +758,48 @@ const App = () => {
             ? '현장숙박'
             : '현장대실'
           : '기타';
-
-      if (checkInDate >= firstDayOfMonth && checkInDate <= lastDayOfMonth) {
-        monthlyTotalAmount += amount;
-        monthlyPaymentTotals[paymentMethod] += amount;
-        if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
-          monthlyTypeTotals[siteInfo] += amount;
+  
+      if (reservation.type === 'dayUse') {
+        const amount = reservation.totalPrice || reservation.price || 0;
+        if (checkInDate >= firstDayOfMonth && checkInDate <= lastDayOfMonth) {
+          monthlyTotalAmount += amount;
+          monthlyPaymentTotals[paymentMethod] += amount;
+          if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
+            monthlyTypeTotals[siteInfo] += amount;
+          }
+        }
+      } else {
+        const totalAmount =
+          (reservation.nightlyRates?.[0]?.rate || reservation.totalPrice || 0) *
+          nights;
+        const dailyRate = totalAmount / nights;
+  
+        let currentDate = startOfDay(checkInDate);
+        const endDate = startOfDay(checkOutDate);
+  
+        while (currentDate < endDate) {
+          if (
+            currentDate >= firstDayOfMonth &&
+            currentDate <= lastDayOfMonth
+          ) {
+            monthlyTotalAmount += dailyRate;
+            monthlyPaymentTotals[paymentMethod] += dailyRate;
+            if (siteInfo === '현장숙박' || siteInfo === '현장대실') {
+              monthlyTypeTotals[siteInfo] += dailyRate;
+            }
+          }
+          currentDate = addDays(currentDate, 1);
         }
       }
     });
-
+  
     monthlyTotalAmount = Math.max(0, Math.round(monthlyTotalAmount));
     setMonthlyTotal({
       total: monthlyTotalAmount,
       paymentTotals: monthlyPaymentTotals,
       typeTotals: monthlyTypeTotals,
     });
-
+  
     let totalRoomsSold = 0;
     monthlyReservations.forEach((reservation) => {
       if (reservation.nightlyRates) {
@@ -1083,17 +1130,6 @@ const App = () => {
       setDailySalesByOTA(dailySalesByOTA);
     }
   }, [allReservations, selectedDate]);
-
-  useEffect(() => {
-    if (allReservations.length > 0 && selectedDate) {
-      const breakdown = buildMonthlyDailyBreakdown(
-        allReservations,
-        selectedDate
-      );
-      console.log('Monthly Daily Breakdown:', breakdown);
-      setMonthlyDailyBreakdown(breakdown);
-    }
-  }, [allReservations, selectedDate, buildMonthlyDailyBreakdown]);
 
   const today = useCallback(() => {
     const currentDate = parseDate(new Date().toISOString()); // KST로 파싱
@@ -1712,7 +1748,12 @@ const App = () => {
       setMonthlySoldRooms(0);
       setAvgMonthlyRoomPrice(0);
       setSelectedDate(new Date());
-      setDailyTotal(0);
+      setDailyTotal({
+        total: 0,
+        paymentTotals: { Cash: 0, Card: 0, OTA: 0, Pending: 0 },
+        typeTotals: { 현장숙박: 0, 현장대실: 0 },
+        dailyBreakdown: [],
+      });
       setOtaToggles(
         availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
       );
@@ -2295,7 +2336,12 @@ const App = () => {
     setMonthlySoldRooms(0);
     setAvgMonthlyRoomPrice(0);
     setSelectedDate(parseDate(new Date().toISOString())); // KST로 파싱
-    setDailyTotal(0);
+    setDailyTotal({
+      total: 0,
+      paymentTotals: { Cash: 0, Card: 0, OTA: 0, Pending: 0 },
+      typeTotals: { 현장숙박: 0, 현장대실: 0 },
+      dailyBreakdown: [],
+    });
     setOtaToggles(
       availableOTAs.reduce((acc, ota) => ({ ...acc, [ota]: false }), {})
     );
@@ -2440,8 +2486,7 @@ const App = () => {
 
   const createDayUseReservation = () => {
     const now = new Date();
-    const todayStart = startOfDay(now);
-    const effectiveDate = selectedDate < todayStart ? todayStart : selectedDate;
+    const effectiveDate = selectedDate; // selectedDate를 직접 사용
 
     const checkInDateStr = format(effectiveDate, 'yyyy-MM-dd');
     const customerName = `현장대실:${format(now, 'HH:mm:ss')}`;
@@ -2458,7 +2503,7 @@ const App = () => {
     setGuestFormData({
       reservationNo: `${uuidv4()}`,
       customerName,
-      checkInDate: checkInDateStr,
+      checkInDate: checkInDateStr, // 명확히 설정
       checkInTime: format(now, 'HH:mm'),
       checkOutDate: format(new Date(checkOut), 'yyyy-MM-dd'),
       checkOutTime: format(new Date(checkOut), 'HH:mm'),
@@ -2888,7 +2933,7 @@ const App = () => {
                       dailySalesReport={dailySalesReport}
                       dailySales={{ labels: labelsForOTA, values: [] }}
                       dailyTotal={dailyTotal}
-                      // monthlySales={monthlySales}
+                      monthlySales={monthlyTotal.total}
                       selectedDate={selectedDate}
                       totalRooms={totalRooms}
                       remainingRooms={remainingRooms}

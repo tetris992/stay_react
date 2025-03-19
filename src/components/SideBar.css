@@ -421,7 +421,9 @@ margin-bottom: 10px;
 /* Accounting Info */
 .accounting-info {
   width: 100%;
-  height: 500px;
+  min-height: 1000px;
+  height: auto;
+  overflow-y: auto;
   font-size: 1rem;
   border: none;
 }
