@@ -18,6 +18,7 @@ const getCsrfToken = () => localStorage.getItem('csrfToken');
 api.interceptors.request.use(
   (config) => {
     console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
+    console.log('[api.js] Request Body:', config.data); // 요청 본문 로그 추가
     const token = localStorage.getItem('accessToken');
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;

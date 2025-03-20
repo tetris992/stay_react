@@ -102,6 +102,29 @@ const ContainerCell = React.memo(
           return;
         }
 
+        // 먼저 checkConflict로 충돌 여부 확인
+        const activeReservations = fullReservations.filter(
+          (res) => !res.manuallyCheckedOut
+        );
+        const { isConflict, conflictReservation } = checkConflict(
+          {
+            ...draggedReservation,
+            checkIn: checkInDate,
+            checkOut: checkOutDate,
+          },
+          cont.roomNumber,
+          activeReservations
+        );
+
+        if (isConflict) {
+          const conflictMsg = conflictReservation
+            ? `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.\n충돌 예약: ${conflictReservation.customerName || '정보 없음'} (${format(new Date(conflictReservation.checkIn), 'yyyy-MM-dd')} ~ ${format(new Date(conflictReservation.checkOut), 'yyyy-MM-dd')})`
+            : '🚫 충돌 발생!\n과거 체크인 예약은 이동할 수 없습니다.';
+          setConflictMessage(conflictMsg);
+          timeoutRef.current = setTimeout(clearConflict, 3000);
+          return;
+        }
+
         if (assignedReservations && assignedReservations.length > 0) {
           const confirmSwap = window.confirm(
             '이미 해당 방에 예약이 있습니다. 두 예약의 위치를 교체하시겠습니까?'
@@ -139,8 +162,7 @@ const ContainerCell = React.memo(
               checkIn: existingCheckInDate,
               checkOut: existingCheckOutDate,
             },
-            fullReservations.filter((res) => !res.manuallyCheckedOut),
-            selectedDate
+            fullReservations.filter((res) => !res.manuallyCheckedOut)
           );
           if (!canSwap) {
             setConflictMessage(
@@ -159,20 +181,23 @@ const ContainerCell = React.memo(
             reservationId,
             cont.roomNumber,
             cont.roomInfo,
-            draggedReservation.totalPrice
+            draggedReservation.totalPrice,
+            selectedDate
           );
           await handleRoomChangeAndSync(
             existingReservation._id,
             draggedReservation.roomNumber,
             draggedReservation.roomInfo,
-            existingReservation.totalPrice
+            existingReservation.totalPrice,
+            selectedDate
           );
         } else {
           await handleRoomChangeAndSync(
             reservationId,
             cont.roomNumber,
             cont.roomInfo,
-            draggedReservation.totalPrice
+            draggedReservation.totalPrice,
+            selectedDate
           );
 
           const updatedReservations = fullReservations.map((r) =>
@@ -209,9 +234,7 @@ const ContainerCell = React.memo(
             checkOutDate,
             availabilityByDate,
             updatedReservations.filter((r) => !r.manuallyCheckedOut),
-            draggedReservation._id,
-            selectedDate,
-            draggedReservation
+            draggedReservation._id
           );
 
           if (canMove) {
@@ -281,19 +304,20 @@ const ContainerCell = React.memo(
         const activeReservations = fullReservations.filter(
           (res) => !res.manuallyCheckedOut
         );
-        const { isConflict } = checkConflict(
+        const { isConflict, conflictReservation } = checkConflict(
           {
             ...draggedReservation,
             checkIn: checkInDate,
             checkOut: checkOutDate,
           },
           cont.roomNumber,
-          activeReservations,
-          selectedDate
+          activeReservations
         );
 
         if (isConflict && !isDraggingOver) {
-          const conflictMsg = `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.`;
+          const conflictMsg = conflictReservation
+            ? `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.\n충돌 예약: ${conflictReservation.customerName || '정보 없음'} (${format(new Date(conflictReservation.checkIn), 'yyyy-MM-dd')} ~ ${format(new Date(conflictReservation.checkOut), 'yyyy-MM-dd')})`
+            : '🚫 충돌 발생!\n과거 체크인 예약은 이동할 수 없습니다.';
           setConflictMessage(conflictMsg);
           setIsDraggingOver(true);
           timeoutRef.current = setTimeout(clearConflict, 3000);

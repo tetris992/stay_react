@@ -17,72 +17,74 @@ import './DraggableReservationCard.css';
 import { getPaymentMethodIcon } from '../utils/roomGridUtils';
 
 // 남은 시간 표시를 위한 별도 컴포넌트
-const CountdownTimer = ({
-  checkOutDate,
-  reservationId,
-  newlyCreatedId,
-  isCheckedIn,
-  duration,
-}) => {
-  const [remainingSeconds, setRemainingSeconds] = useState(null);
-  const timerRef = useRef(null);
+const CountdownTimer = React.memo(
+  ({
+    checkOutDate,
+    reservationId,
+    newlyCreatedId,
+    isCheckedIn,
+    duration,
+  }) => {
+    const [remainingMinutes, setRemainingMinutes] = useState(null);
+    const timerRef = useRef(null);
 
-  useEffect(() => {
-    const calculateRemainingSeconds = () => {
-      if (!checkOutDate || !isCheckedIn) {
-        setRemainingSeconds(null);
-        return;
+    useEffect(() => {
+      const calculateRemainingMinutes = () => {
+        if (!checkOutDate || !isCheckedIn) {
+          setRemainingMinutes(null);
+          return;
+        }
+        const now = new Date();
+        const diffInSeconds = differenceInSeconds(checkOutDate, now);
+
+        if (diffInSeconds <= 0) {
+          setRemainingMinutes(0);
+          return;
+        }
+
+        const minutes = Math.floor(diffInSeconds / 60); // 초를 분으로 변환
+        setRemainingMinutes(minutes);
+      };
+
+      if (isCheckedIn && checkOutDate) {
+        calculateRemainingMinutes();
+        timerRef.current = setInterval(calculateRemainingMinutes, 60000); // 1분 간격으로 업데이트
+      } else if (!isCheckedIn && duration) {
+        const durationInMinutes = duration * 60; // 시간을 분으로 변환
+        setRemainingMinutes(durationInMinutes);
       }
-      const now = new Date();
-      const diffInSeconds = differenceInSeconds(checkOutDate, now);
 
-      if (diffInSeconds <= 0) {
-        setRemainingSeconds(0);
-        return;
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }, [checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration]);
+
+    const remainingTime = useMemo(() => {
+      if (!isCheckedIn && !duration) return '00:00'; // 입실 전, duration 없음
+      if (!isCheckedIn && duration) {
+        const hours = Math.floor(duration);
+        return `${hours}시간`; // 입실 전 duration 표시
       }
+      if (remainingMinutes === null) return '계산 불가';
+      if (remainingMinutes <= 0) return '만료됨';
 
-      setRemainingSeconds(diffInSeconds);
-    };
+      const hours = Math.floor(remainingMinutes / 60);
+      const minutes = remainingMinutes % 60;
+      return `${hours}시간 ${minutes}분`; // 초 단위 제거
+    }, [remainingMinutes, isCheckedIn, duration]);
 
-    if (isCheckedIn && checkOutDate) {
-      calculateRemainingSeconds();
-      timerRef.current = setInterval(calculateRemainingSeconds, 1000);
-    } else if (!isCheckedIn && duration) {
-      const durationInSeconds = duration * 3600;
-      setRemainingSeconds(durationInSeconds);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration]);
-
-  const remainingTime = useMemo(() => {
-    if (!isCheckedIn && !duration) return '00:00'; // 입실 전, duration 없음
-    if (!isCheckedIn && duration) {
-      const hours = Math.floor(duration);
-      return `${hours}시간`; // 입실 전 duration 표시
-    }
-    if (remainingSeconds === null) return '계산 불가';
-    if (remainingSeconds <= 0) return '만료됨';
-
-    const hours = Math.floor(remainingSeconds / 3600);
-    const minutes = Math.floor((remainingSeconds % 3600) / 60);
-    const seconds = remainingSeconds % 60;
-    return `${hours}시간 ${minutes}분 ${seconds}초`;
-  }, [remainingSeconds, isCheckedIn, duration]);
-
-  return (
-    <span className="countdown">
-      <span className={remainingSeconds === 0 ? 'expired' : ''}>
-        ({remainingTime})
+    return (
+      <span className="countdown">
+        <span className={remainingMinutes === 0 ? 'expired' : ''}>
+          ({remainingTime})
+        </span>
       </span>
-    </span>
-  );
-};
+    );
+  }
+);
 
 CountdownTimer.propTypes = {
   checkOutDate: PropTypes.instanceOf(Date),
@@ -91,8 +93,8 @@ CountdownTimer.propTypes = {
   isCheckedIn: PropTypes.bool.isRequired,
   duration: PropTypes.number,
 };
-
-const DraggableReservationCard = ({
+const DraggableReservationCard = 
+({
   isUnassigned = false,
   reservation,
   highlightedReservationIds,
@@ -215,7 +217,7 @@ const DraggableReservationCard = ({
   }, [ciDateOnly, coDateOnly]);
 
   const canDragMemo = useMemo(() => {
-    // 수정 부분: 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
+    // 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
     if (
       !normalizedReservation.roomNumber ||
       normalizedReservation.roomNumber.trim() === ''
@@ -246,10 +248,9 @@ const DraggableReservationCard = ({
       return false;
     }
     const currentDate = startOfDay(new Date());
-    const checkInDay = startOfDay(checkInDate);
     const checkOutDay = startOfDay(checkOutDate);
-    const selectedDay = startOfDay(selectedDate);
-
+  
+    // 체크아웃 날짜가 현재 날짜보다 이전인 경우 드래그 불가
     if (currentDate > checkOutDay) {
       console.log(
         `Reservation ${
@@ -258,23 +259,8 @@ const DraggableReservationCard = ({
       );
       return false;
     }
-
-    if (diffDays > 0) {
-      if (checkInDay.getTime() === selectedDay.getTime()) {
-        return true;
-      } else if (checkInDay < selectedDay) {
-        console.log(
-          `Cannot drag reservation ${
-            normalizedReservation._id || 'unknown'
-          }: Past check-in day detected (Check-in: ${format(
-            checkInDay,
-            'yyyy-MM-dd'
-          )}, Selected Date: ${format(selectedDay, 'yyyy-MM-dd')})`
-        );
-        return false;
-      }
-    }
-
+  
+    // 충돌 여부는 checkConflict 로직에 의존
     let hasConflict = false;
     const validReservations = allReservations.filter(
       (res) =>
@@ -286,31 +272,30 @@ const DraggableReservationCard = ({
         !isNaN(new Date(res.checkIn).getTime()) &&
         !isNaN(new Date(res.checkOut).getTime())
     );
-    roomTypes.forEach((roomType) => {
-      const roomNumbers = roomType.roomNumbers || [];
-      roomNumbers.forEach((roomNumber) => {
-        if (checkInDate && checkOutDate) {
-          const { isConflict } = checkConflict(
-            {
-              ...normalizedReservation,
-              checkIn: checkInDate,
-              checkOut: checkOutDate,
-            },
-            roomNumber,
-            validReservations,
-            selectedDate
-          );
-          if (isConflict) {
-            console.log(
-              `Conflict detected for room ${roomNumber} with ${
-                normalizedReservation._id || 'unknown'
-              }`
-            );
-            hasConflict = true;
-          }
-        }
-      });
-    });
+  
+    // 현재 예약이 배정된 객실에 대해서만 충돌 검사
+    const currentRoomNumber = normalizedReservation.roomNumber;
+    if (checkInDate && checkOutDate && currentRoomNumber) {
+      const { isConflict } = checkConflict(
+        {
+          ...normalizedReservation,
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+        },
+        currentRoomNumber,
+        validReservations,
+        selectedDate
+      );
+      if (isConflict) {
+        console.log(
+          `Conflict detected for room ${currentRoomNumber} with ${
+            normalizedReservation._id || 'unknown'
+          }`
+        );
+        hasConflict = true;
+      }
+    }
+  
     return !hasConflict;
   }, [
     normalizedReservation,
@@ -319,7 +304,6 @@ const DraggableReservationCard = ({
     checkInDate,
     checkOutDate,
     selectedDate,
-    diffDays,
   ]);
 
   const stayLabel = useMemo(() => {
@@ -398,11 +382,15 @@ const DraggableReservationCard = ({
   }, [normalizedReservation.reservationDate]);
 
   const handleCheckIn = useCallback(() => {
-    const now = new Date();
-    const checkInStr = format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00");
+    const reservationCheckIn = new Date(normalizedReservation.checkIn);
+    const currentDate = startOfDay(new Date());
+    const isToday = startOfDay(reservationCheckIn) <= currentDate;
+  
+    const baseDate = isToday ? new Date() : reservationCheckIn;
+    const checkInStr = format(baseDate, "yyyy-MM-dd'T'HH:mm:ss+09:00");
     const durationHours = normalizedReservation.duration || 3;
     const checkOutStr = format(
-      addHours(now, durationHours),
+      addHours(baseDate, durationHours),
       "yyyy-MM-dd'T'HH:mm:ss+09:00"
     );
     const updatedData = {
@@ -413,11 +401,11 @@ const DraggableReservationCard = ({
       checkOut: normalizedReservation.isCheckedIn
         ? normalizedReservation.checkOut
         : checkOutStr,
-      checkInTime: format(now, 'HH:mm'),
+      checkInTime: format(baseDate, 'HH:mm'),
       checkOutTime: format(new Date(checkOutStr), 'HH:mm'),
       paymentMethod: 'Cash',
       isCheckedIn: true,
-      isCheckedOut: false, // 입실 시 퇴실 상태 초기화
+      isCheckedOut: false,
     };
     console.log(
       `[handleCheckIn] Updating ${normalizedReservation._id}`,
@@ -826,8 +814,14 @@ const DraggableReservationCard = ({
     const isCheckedIn = normalizedReservation.isCheckedIn;
     const isCheckedOut = normalizedReservation.isCheckedOut;
     const duration = normalizedReservation.duration || 3;
+  
+    // 체크인 날짜가 현재 날짜와 같은지 확인
+    const currentDate = startOfDay(new Date());
+    const checkInDay = checkInDate ? startOfDay(checkInDate) : null;
+    const isCheckInToday = checkInDay && currentDate.getTime() === checkInDay.getTime();
+  
     console.log(
-      `[renderDayUseButtons] Reservation ID: ${normalizedReservation._id}, type: ${normalizedReservation.type}, isCheckedIn: ${isCheckedIn}, isCheckedOut: ${isCheckedOut}, duration: ${duration}`
+      `[renderDayUseButtons] Reservation ID: ${normalizedReservation._id}, type: ${normalizedReservation.type}, isCheckedIn: ${isCheckedIn}, isCheckedOut: ${isCheckedOut}, duration: ${duration}, isCheckInToday: ${isCheckInToday}`
     );
     return (
       <span className="button-group-wrapper">
@@ -851,7 +845,7 @@ const DraggableReservationCard = ({
         >
           삭제
         </button>
-        {isDayUse && !isCheckedIn && (
+        {isDayUse && !isCheckedIn && isCheckInToday && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -879,6 +873,7 @@ const DraggableReservationCard = ({
     );
   }, [
     normalizedReservation,
+    checkInDate,
     handleCheckIn,
     handleCheckOut,
     handleEditStart,
