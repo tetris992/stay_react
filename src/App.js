@@ -330,95 +330,140 @@ const App = () => {
           reservations: [],
           checkedOutReservations: [],
         };
-
+      
         allRooms.forEach((roomNumber) => {
-          const isAssigned =
-            availabilityData.assignedRooms.includes(roomNumber);
-          const isCheckedOut =
-            availabilityData.checkedOutRooms.includes(roomNumber);
-          const reservation = isAssigned
-            ? availabilityData.reservations.find(
-                (res) => res.roomNumber === roomNumber
-              )
-            : isCheckedOut
-            ? availabilityData.checkedOutReservations.find(
-                (res) => res.roomNumber === roomNumber
-              )
-            : null;
-
-          // 디버깅 로그 추가
-          if (reservation) {
-            console.log('Reservation for room', roomNumber, ':', reservation);
-          }
-
-          // 연박 수 계산
-          let nights = 1;
-          let dailyRate = 0;
-          let totalAmount = 0;
-          if (reservation) {
-            const checkInDate = new Date(reservation.checkIn);
-            const checkOutDate = new Date(reservation.checkOut);
-            if (
-              !isNaN(checkInDate.getTime()) &&
-              !isNaN(checkOutDate.getTime())
-            ) {
-              nights = Math.max(
-                1,
-                Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
-              );
-              totalAmount = Number(
-                reservation.totalPrice || reservation.price || 0
-              );
-              dailyRate =
-                reservation.type === 'dayUse'
-                  ? totalAmount
-                  : totalAmount / nights;
-            } else {
-              console.warn('Invalid dates for reservation:', reservation);
+          const isAssigned = availabilityData.assignedRooms.includes(roomNumber);
+          const isCheckedOut = availabilityData.checkedOutRooms.includes(roomNumber);
+      
+          // 점유된 예약 처리
+          if (isAssigned) {
+            const reservation = availabilityData.reservations.find(
+              (res) => res.roomNumber === roomNumber
+            );
+            if (reservation) {
+              const checkInDate = new Date(reservation.checkIn);
+              const checkOutDate = new Date(reservation.checkOut);
+              let nights = 1;
+              let dailyRate = 0;
+              let totalAmount = 0;
+              if (
+                !isNaN(checkInDate.getTime()) &&
+                !isNaN(checkOutDate.getTime())
+              ) {
+                nights = Math.max(
+                  1,
+                  Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
+                );
+                totalAmount = Number(
+                  reservation.totalPrice || reservation.price || 0
+                );
+                dailyRate =
+                  reservation.type === 'dayUse'
+                    ? totalAmount
+                    : totalAmount / nights;
+              } else {
+                console.warn('Invalid dates for assigned reservation:', reservation);
+              }
+      
+              integratedTable.push({
+                날짜: selectedDateStr,
+                객실타입: roomType.roomInfo,
+                객실번호: roomNumber,
+                상태: '점유',
+                예약ID: reservation._id || reservation.id || '-',
+                고객명: reservation.customerName || '정보 없음',
+                '체크인-체크아웃': `${format(checkInDate, 'yyyy-MM-dd HH:mm')} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
+                '당일 1박 금액': Math.round(dailyRate),
+                '전체 금액': totalAmount,
+                결제방법:
+                  reservation.siteName && reservation.siteName !== '현장예약'
+                    ? 'OTA'
+                    : reservation.paymentMethod || 'Pending',
+                예약유형:
+                  reservation.siteName === '현장예약'
+                    ? reservation.type === 'stay'
+                      ? '현장숙박'
+                      : '현장대실'
+                    : reservation.siteName || '기타',
+                숙박타입: reservation.type === 'dayUse' ? '대실' : '숙박',
+              });
             }
           }
-
-          integratedTable.push({
-            날짜: selectedDateStr,
-            객실타입: roomType.roomInfo,
-            객실번호: roomNumber,
-            상태: isAssigned ? '점유' : isCheckedOut ? '퇴실' : '빈방',
-            예약ID: reservation
-              ? reservation._id || reservation.id || '-'
-              : '-',
-            고객명: reservation ? reservation.customerName || '정보 없음' : '-',
-            '체크인-체크아웃': reservation
-              ? `${format(
-                  new Date(reservation.checkIn),
-                  'yyyy-MM-dd HH:mm'
-                )} - ${format(
-                  new Date(reservation.checkOut),
-                  'yyyy-MM-dd HH:mm'
-                )}`
-              : '-',
-            '당일 1박 금액': reservation ? Math.round(dailyRate) : 0,
-            '전체 금액': reservation ? totalAmount : 0,
-            결제방법: reservation
-              ? reservation.siteName && reservation.siteName !== '현장예약'
-                ? 'OTA'
-                : reservation.paymentMethod || 'Pending'
-              : '-',
-            예약유형: reservation
-              ? reservation.siteName === '현장예약'
-                ? reservation.type === 'stay'
-                  ? '현장숙박'
-                  : '현장대실'
-                : reservation.siteName || '기타'
-              : '-',
-            숙박타입: reservation
-              ? reservation.type === 'dayUse'
-                ? '대실'
-                : '숙박'
-              : '-',
-          });
+      
+          // 퇴실된 예약 처리
+          if (isCheckedOut) {
+            const reservation = availabilityData.checkedOutReservations.find(
+              (res) => res.roomNumber === roomNumber
+            );
+            if (reservation) {
+              const checkInDate = new Date(reservation.checkIn);
+              const checkOutDate = new Date(reservation.checkOut);
+              let nights = 1;
+              let dailyRate = 0;
+              let totalAmount = 0;
+              if (
+                !isNaN(checkInDate.getTime()) &&
+                !isNaN(checkOutDate.getTime())
+              ) {
+                nights = Math.max(
+                  1,
+                  Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
+                );
+                totalAmount = Number(
+                  reservation.totalPrice || reservation.price || 0
+                );
+                dailyRate =
+                  reservation.type === 'dayUse'
+                    ? totalAmount
+                    : totalAmount / nights;
+              } else {
+                console.warn('Invalid dates for checked out reservation:', reservation);
+              }
+      
+              integratedTable.push({
+                날짜: selectedDateStr,
+                객실타입: roomType.roomInfo,
+                객실번호: roomNumber,
+                상태: '퇴실',
+                예약ID: reservation._id || reservation.id || '-',
+                고객명: reservation.customerName || '정보 없음',
+                '체크인-체크아웃': `${format(checkInDate, 'yyyy-MM-dd HH:mm')} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
+                '당일 1박 금액': Math.round(dailyRate),
+                '전체 금액': totalAmount,
+                결제방법:
+                  reservation.siteName && reservation.siteName !== '현장예약'
+                    ? 'OTA'
+                    : reservation.paymentMethod || 'Pending',
+                예약유형:
+                  reservation.siteName === '현장예약'
+                    ? reservation.type === 'stay'
+                      ? '현장숙박'
+                      : '현장대실'
+                    : reservation.siteName || '기타',
+                숙박타입: reservation.type === 'dayUse' ? '대실' : '숙박',
+              });
+            }
+          }
+      
+          // 점유도 퇴실도 아닌 경우 (빈방)
+          if (!isAssigned && !isCheckedOut) {
+            integratedTable.push({
+              날짜: selectedDateStr,
+              객실타입: roomType.roomInfo,
+              객실번호: roomNumber,
+              상태: '빈방',
+              예약ID: '-',
+              고객명: '-',
+              '체크인-체크아웃': '-',
+              '당일 1박 금액': 0,
+              '전체 금액': 0,
+              결제방법: '-',
+              예약유형: '-',
+              숙박타입: '-',
+            });
+          }
         });
       });
-
       // 미배정 예약 추가
       const unassignedData = availability[selectedDateStr]?.['unassigned'] || {
         count: 0,
