@@ -19,7 +19,7 @@ export function calculateRoomAvailability(
   reservations,
   roomTypes,
   fromDate,
-  toDate, // 내부에서는 fromDate 기준 한 달치 데이터를 계산합니다.
+  toDate,
   gridSettings = null
 ) {
   if (!fromDate || isNaN(new Date(fromDate))) {
@@ -54,7 +54,6 @@ export function calculateRoomAvailability(
         .map((cell) => cell.roomNumber)
         .sort();
     }
-    // 재고(stock)는 rt.stock가 있으면 사용하고, 없으면 해당 객실 개수로 처리
     roomDataByType[tKey] = { stock: rt.stock || rooms.length, rooms };
   });
 
@@ -63,57 +62,117 @@ export function calculateRoomAvailability(
   dateList.forEach((ds) => {
     usageByDate[ds] = {};
     Object.keys(roomDataByType).forEach((typeKey) => {
-      usageByDate[ds][typeKey] = { count: 0, assignedRooms: new Set() };
+      usageByDate[ds][typeKey] = {
+        count: 0, // 점유된 객실 수
+        assignedRooms: new Set(), // 점유된 객실 번호
+        checkedOutRooms: new Set(), // 퇴실 처리된 객실 번호
+        reservations: [], // 점유된 예약 정보
+        checkedOutReservations: [], // 퇴실 처리된 예약 정보
+      };
     });
-    usageByDate[ds]['unassigned'] = { count: 0, assignedRooms: new Set() };
+    usageByDate[ds]['unassigned'] = {
+      count: 0,
+      checkedOutCount: 0,
+      reservations: [],
+      checkedOutReservations: [],
+    };
   });
 
-  // 각 예약별 점유 계산 (취소 예약은 서버에서 이미 제외됨)
-  reservations.forEach((res) => {
-    const ci = new Date(res.checkIn);
-    const co = new Date(res.checkOut);
-    if (!res.checkIn || !res.checkOut || isNaN(ci.getTime()) || isNaN(co.getTime())) {
-      console.warn('[calculateRoomAvailability] Invalid reservation dates:', res);
-      return;
-    }
+// 각 예약별 점유 계산
+reservations.forEach((res) => {
+  const ci = new Date(res.checkIn);
+  const co = new Date(res.checkOut);
+  if (!res.checkIn || !res.checkOut || isNaN(ci.getTime()) || isNaN(co.getTime())) {
+    console.warn('[calculateRoomAvailability] Invalid reservation dates:', res);
+    return;
+  }
 
-    let typeKey = res.roomInfo ? res.roomInfo.toLowerCase() : 'standard';
-    if (!res.roomNumber || !res.roomNumber.trim()) {
-      typeKey = 'unassigned';
-    }
+  let typeKey = res.roomInfo ? res.roomInfo.toLowerCase() : 'standard';
+  if (!res.roomNumber || !res.roomNumber.trim()) {
+    typeKey = 'unassigned';
+  }
 
-    const isDayUse = res.type === 'dayUse';
-    // 일반 예약: [checkIn, startOfDay(checkOut))
-    // 대실: 아직 체크아웃되지 않았다면 체크인 날만 점유
-    const occupancyEnd = isDayUse ? startOfDay(ci) : startOfDay(co);
+  const isDayUse = res.type === 'dayUse';
+  const isCheckedOut = res.manuallyCheckedOut || false;
+  const occupancyEnd = isDayUse ? startOfDay(ci) : startOfDay(co);
 
-    dateList.forEach((ds) => {
-      const dayStart = startOfDay(new Date(ds));
-      const dayEnd = addDays(dayStart, 1);
+  dateList.forEach((ds) => {
+    const dayStart = startOfDay(new Date(ds));
+    const dayEnd = addDays(dayStart, 1);
 
-      if (usageByDate[ds] && usageByDate[ds][typeKey]) {
+    if (usageByDate[ds] && usageByDate[ds][typeKey]) {
+      if (typeKey === 'unassigned') {
         if (isDayUse) {
           const isSameDay = format(ci, 'yyyy-MM-dd') === ds;
-          // 대실은 아직 체크아웃되지 않은 경우(예: isCheckedOut 플래그가 false)만 점유 처리
-          if (isSameDay && !res.isCheckedOut) {
-            usageByDate[ds][typeKey].count++;
-            if (res.roomNumber) {
-              usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
+          if (isSameDay) {
+            if (isCheckedOut) {
+              usageByDate[ds][typeKey].checkedOutCount++;
+              usageByDate[ds][typeKey].checkedOutReservations.push({
+                ...res, // 모든 필드 포함
+              });
+            } else {
+              usageByDate[ds][typeKey].count++;
+              usageByDate[ds][typeKey].reservations.push({
+                ...res, // 모든 필드 포함
+              });
             }
-            // console.log(`[calculateRoomAvailability] DayUse ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
           }
         } else {
           if (ci < dayEnd && occupancyEnd > dayStart) {
-            usageByDate[ds][typeKey].count++;
-            if (res.roomNumber) {
-              usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
+            if (isCheckedOut) {
+              usageByDate[ds][typeKey].checkedOutCount++;
+              usageByDate[ds][typeKey].checkedOutReservations.push({
+                ...res, // 모든 필드 포함
+              });
+            } else {
+              usageByDate[ds][typeKey].count++;
+              usageByDate[ds][typeKey].reservations.push({
+                ...res, // 모든 필드 포함
+              });
             }
-            // console.log(`[calculateRoomAvailability] Stay ${ds} - Assigned ${res.roomNumber} to ${typeKey}`);
+          }
+        }
+      } else {
+        if (isDayUse) {
+          const isSameDay = format(ci, 'yyyy-MM-dd') === ds;
+          if (isSameDay) {
+            if (isCheckedOut) {
+              usageByDate[ds][typeKey].checkedOutRooms.add(res.roomNumber);
+              usageByDate[ds][typeKey].checkedOutReservations.push({
+                ...res, // 모든 필드 포함
+              });
+            } else {
+              usageByDate[ds][typeKey].count++;
+              if (res.roomNumber) {
+                usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
+              }
+              usageByDate[ds][typeKey].reservations.push({
+                ...res, // 모든 필드 포함
+              });
+            }
+          }
+        } else {
+          if (ci < dayEnd && occupancyEnd > dayStart) {
+            if (isCheckedOut) {
+              usageByDate[ds][typeKey].checkedOutRooms.add(res.roomNumber);
+              usageByDate[ds][typeKey].checkedOutReservations.push({
+                ...res, // 모든 필드 포함
+              });
+            } else {
+              usageByDate[ds][typeKey].count++;
+              if (res.roomNumber) {
+                usageByDate[ds][typeKey].assignedRooms.add(res.roomNumber);
+              }
+              usageByDate[ds][typeKey].reservations.push({
+                ...res, // 모든 필드 포함
+              });
+            }
           }
         }
       }
-    });
+    }
   });
+});
 
   // 잔여 재고 계산
   const availability = {};
@@ -121,14 +180,29 @@ export function calculateRoomAvailability(
     availability[ds] = {};
     Object.entries(usageByDate[ds]).forEach(([typeKey, usage]) => {
       if (typeKey === 'unassigned') {
-        availability[ds][typeKey] = usage.count;
+        availability[ds][typeKey] = {
+          count: usage.count,
+          checkedOutCount: usage.checkedOutCount,
+          reservations: usage.reservations,
+          checkedOutReservations: usage.checkedOutReservations,
+        };
       } else {
         const allRooms = roomDataByType[typeKey]?.rooms || [];
         const assigned = Array.from(usage.assignedRooms);
+        const checkedOut = Array.from(usage.checkedOutRooms);
         const totalStock = roomDataByType[typeKey]?.stock || allRooms.length;
-        const leftoverRooms = allRooms.filter((rnum) => !assigned.includes(rnum));
+        const leftoverRooms = allRooms.filter(
+          (rnum) => !assigned.includes(rnum) && !checkedOut.includes(rnum)
+        );
         const remain = Math.max(totalStock - usage.count, 0);
-        availability[ds][typeKey] = { remain, leftoverRooms };
+        availability[ds][typeKey] = {
+          remain,
+          leftoverRooms,
+          assignedRooms: assigned,
+          checkedOutRooms: checkedOut,
+          reservations: usage.reservations,
+          checkedOutReservations: usage.checkedOutReservations,
+        };
       }
     });
   });

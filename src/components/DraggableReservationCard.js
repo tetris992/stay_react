@@ -406,6 +406,7 @@ const DraggableReservationCard =
       paymentMethod: 'Cash',
       isCheckedIn: true,
       isCheckedOut: false,
+      selectedDate: selectedDate.toISOString(),
     };
     console.log(
       `[handleCheckIn] Updating ${normalizedReservation._id}`,
