@@ -507,12 +507,38 @@ export { getAccessToken, getCsrfToken };
 
 // payPerNight API 함수 추가
 export const payPerNight = async (reservationId, hotelId, amount, method) => {
-  const response = await api.post(`/api/reservations/pay-per-night/${reservationId}`, {
-    hotelId,
-    amount,
-    method,
-  });
-  return response.data;
+  try {
+    const response = await api.post(`/api/reservations/pay-per-night/${reservationId}`, {
+      hotelId,
+      amount: Number(amount), // 금액을 숫자로 보장
+      method: method || 'Cash', // 결제 방법 기본값 설정
+    });
+    console.log(`[payPerNight] Success for reservation ${reservationId}:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`[payPerNight] Failed for reservation ${reservationId}:`, error);
+    const errorMessage = error.response?.data?.message || '1박 결제에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+// 다중결제 방식을 처리하는 API
+export const payPartial = async (reservationId, hotelId, payments) => {
+  try {
+    if (!Array.isArray(payments) || payments.length === 0) {
+      throw new ApiError(400, '결제 항목이 비어있거나 유효하지 않습니다.');
+    }
+    const response = await api.post(`/api/reservations/${reservationId}/pay-partial`, {
+      hotelId,
+      payments, // [{ amount, method }, ...] 형식
+    });
+    console.log(`[payPartial] Success for reservation ${reservationId}:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`[payPartial] Failed for reservation ${reservationId}:`, error);
+    const errorMessage = error.response?.data?.message || '부분 결제에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
 };
 
 export default api;

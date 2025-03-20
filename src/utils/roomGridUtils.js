@@ -3,6 +3,7 @@ import {
   FaMoneyBillWave,
   FaUniversity,
   FaHourglassHalf,
+  FaGlobe,
 } from 'react-icons/fa';
 import availableOTAs from '../config/availableOTAs';
 import { format, parseISO, addDays } from 'date-fns';
@@ -83,6 +84,8 @@ export function getPaymentMethodIcon(pm) {
         icon: <FaUniversity className="payment-icon" />,
         text: '계좌이체',
       };
+    case 'OTA': 
+      return { icon: <FaGlobe />, text: 'OTA' };
     case 'Pending':
       return {
         icon: <FaHourglassHalf className="payment-icon" />,

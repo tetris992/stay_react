@@ -18,13 +18,7 @@ import { getPaymentMethodIcon } from '../utils/roomGridUtils';
 
 // 남은 시간 표시를 위한 별도 컴포넌트
 const CountdownTimer = React.memo(
-  ({
-    checkOutDate,
-    reservationId,
-    newlyCreatedId,
-    isCheckedIn,
-    duration,
-  }) => {
+  ({ checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration }) => {
     const [remainingMinutes, setRemainingMinutes] = useState(null);
     const timerRef = useRef(null);
 
@@ -93,8 +87,7 @@ CountdownTimer.propTypes = {
   isCheckedIn: PropTypes.bool.isRequired,
   duration: PropTypes.number,
 };
-const DraggableReservationCard = 
-({
+const DraggableReservationCard = ({
   isUnassigned = false,
   reservation,
   highlightedReservationIds,
@@ -249,7 +242,7 @@ const DraggableReservationCard =
     }
     const currentDate = startOfDay(new Date());
     const checkOutDay = startOfDay(checkOutDate);
-  
+
     // 체크아웃 날짜가 현재 날짜보다 이전인 경우 드래그 불가
     if (currentDate > checkOutDay) {
       console.log(
@@ -259,7 +252,7 @@ const DraggableReservationCard =
       );
       return false;
     }
-  
+
     // 충돌 여부는 checkConflict 로직에 의존
     let hasConflict = false;
     const validReservations = allReservations.filter(
@@ -272,7 +265,7 @@ const DraggableReservationCard =
         !isNaN(new Date(res.checkIn).getTime()) &&
         !isNaN(new Date(res.checkOut).getTime())
     );
-  
+
     // 현재 예약이 배정된 객실에 대해서만 충돌 검사
     const currentRoomNumber = normalizedReservation.roomNumber;
     if (checkInDate && checkOutDate && currentRoomNumber) {
@@ -295,7 +288,7 @@ const DraggableReservationCard =
         hasConflict = true;
       }
     }
-  
+
     return !hasConflict;
   }, [
     normalizedReservation,
@@ -385,7 +378,7 @@ const DraggableReservationCard =
     const reservationCheckIn = new Date(normalizedReservation.checkIn);
     const currentDate = startOfDay(new Date());
     const isToday = startOfDay(reservationCheckIn) <= currentDate;
-  
+
     const baseDate = isToday ? new Date() : reservationCheckIn;
     const checkInStr = format(baseDate, "yyyy-MM-dd'T'HH:mm:ss+09:00");
     const durationHours = normalizedReservation.duration || 3;
@@ -815,12 +808,13 @@ const DraggableReservationCard =
     const isCheckedIn = normalizedReservation.isCheckedIn;
     const isCheckedOut = normalizedReservation.isCheckedOut;
     const duration = normalizedReservation.duration || 3;
-  
+
     // 체크인 날짜가 현재 날짜와 같은지 확인
     const currentDate = startOfDay(new Date());
     const checkInDay = checkInDate ? startOfDay(checkInDate) : null;
-    const isCheckInToday = checkInDay && currentDate.getTime() === checkInDay.getTime();
-  
+    const isCheckInToday =
+      checkInDay && currentDate.getTime() === checkInDay.getTime();
+
     console.log(
       `[renderDayUseButtons] Reservation ID: ${normalizedReservation._id}, type: ${normalizedReservation.type}, isCheckedIn: ${isCheckedIn}, isCheckedOut: ${isCheckedOut}, duration: ${duration}, isCheckInToday: ${isCheckInToday}`
     );
@@ -981,7 +975,16 @@ const DraggableReservationCard =
                 </p>
                 <p>체크인: {displayCheckIn}</p>
                 <p>체크아웃: {displayCheckOut}</p>
-                <p>가격: {displayPrice}</p>
+                <p>
+                  가격: {displayPrice}
+                  {normalizedReservation.remainingBalance > 0 && (
+                    <>
+                      {' '}
+                      (잔여:{' '}
+                      {normalizedReservation.remainingBalance.toLocaleString()})
+                    </>
+                  )}
+                </p>
                 <p>
                   객실 정보:{' '}
                   {normalizedReservation.roomInfo &&
