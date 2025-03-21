@@ -72,17 +72,20 @@ function SalesGraphModal({
     return sum;
   });
 
+  // 최대 매출 금액 계산
+  const maxTotal = Math.max(...totals);
+
+  const remainingDataset = {
+    label: '남은 매출 기준선',
+    data: totals.map((total) => Math.max(0, maxTotal - total)),
+    backgroundColor: 'white',
+  };
+
   const otaDatasets = otaCategories.map((category) => ({
     label: category,
     data: safeDailySalesByOTA[category] || [],
     backgroundColor: categoryColors[category] || '#AAAAAA',
   }));
-
-  const remainingDataset = {
-    label: '남은 객실',
-    data: totals.map((total) => Math.max(0, maxRooms - total)),
-    backgroundColor: 'white',
-  };
 
   const combinedDatasets = [...otaDatasets, remainingDataset];
 
@@ -119,12 +122,12 @@ function SalesGraphModal({
       },
       title: {
         display: true,
-        text: '날짜별 판매/남은 객실수',
+        text: '날짜별 매출 (₩)',
       },
       tooltip: {
         callbacks: {
           label: (context) =>
-            `${context.dataset.label}: ${context.parsed.y} 객실`,
+            `${context.dataset.label}: ₩${context.parsed.y.toLocaleString()}`,
         },
       },
     },
@@ -137,15 +140,16 @@ function SalesGraphModal({
       y: {
         stacked: true,
         beginAtZero: true,
-        max: maxRooms,
+        max: maxTotal * 1.1, // 최대 매출의 110%로 설정
         ticks: {
-          callback: (value) => `${value} 객실`,
+          callback: (value) => `₩${value.toLocaleString()}`,
         },
-        title: { display: true, text: '객실 수' },
+        title: { display: true, text: '매출 (₩)' },
       },
     },
   };
 
+  // 나머지 코드는 동일
   const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown)
     ? monthlyDailyBreakdown
     : [];

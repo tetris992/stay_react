@@ -64,7 +64,10 @@ import './i18n';
 import { matchRoomType } from './utils/matchRoomType.js';
 import { extractPrice } from './utils/extractPrice.js';
 import { computeRemainingInventory } from './utils/computeRemainingInventory';
-import { calculateRoomAvailability } from './utils/availability';
+import {
+  calculateRoomAvailability,
+  isRoomAvailableForPeriod,
+} from './utils/availability';
 
 // BASE_URL 정의 (api.js와 동일하게 설정)
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004';
@@ -330,11 +333,13 @@ const App = () => {
           reservations: [],
           checkedOutReservations: [],
         };
-      
+
         allRooms.forEach((roomNumber) => {
-          const isAssigned = availabilityData.assignedRooms.includes(roomNumber);
-          const isCheckedOut = availabilityData.checkedOutRooms.includes(roomNumber);
-      
+          const isAssigned =
+            availabilityData.assignedRooms.includes(roomNumber);
+          const isCheckedOut =
+            availabilityData.checkedOutRooms.includes(roomNumber);
+
           // 점유된 예약 처리
           if (isAssigned) {
             const reservation = availabilityData.reservations.find(
@@ -352,7 +357,9 @@ const App = () => {
               ) {
                 nights = Math.max(
                   1,
-                  Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
+                  Math.ceil(
+                    (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+                  )
                 );
                 totalAmount = Number(
                   reservation.totalPrice || reservation.price || 0
@@ -362,9 +369,12 @@ const App = () => {
                     ? totalAmount
                     : totalAmount / nights;
               } else {
-                console.warn('Invalid dates for assigned reservation:', reservation);
+                console.warn(
+                  'Invalid dates for assigned reservation:',
+                  reservation
+                );
               }
-      
+
               integratedTable.push({
                 날짜: selectedDateStr,
                 객실타입: roomType.roomInfo,
@@ -372,7 +382,10 @@ const App = () => {
                 상태: '점유',
                 예약ID: reservation._id || reservation.id || '-',
                 고객명: reservation.customerName || '정보 없음',
-                '체크인-체크아웃': `${format(checkInDate, 'yyyy-MM-dd HH:mm')} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
+                '체크인-체크아웃': `${format(
+                  checkInDate,
+                  'yyyy-MM-dd HH:mm'
+                )} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
                 '당일 1박 금액': Math.round(dailyRate),
                 '전체 금액': totalAmount,
                 결제방법:
@@ -389,7 +402,7 @@ const App = () => {
               });
             }
           }
-      
+
           // 퇴실된 예약 처리
           if (isCheckedOut) {
             const reservation = availabilityData.checkedOutReservations.find(
@@ -407,7 +420,9 @@ const App = () => {
               ) {
                 nights = Math.max(
                   1,
-                  Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24))
+                  Math.ceil(
+                    (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)
+                  )
                 );
                 totalAmount = Number(
                   reservation.totalPrice || reservation.price || 0
@@ -417,9 +432,12 @@ const App = () => {
                     ? totalAmount
                     : totalAmount / nights;
               } else {
-                console.warn('Invalid dates for checked out reservation:', reservation);
+                console.warn(
+                  'Invalid dates for checked out reservation:',
+                  reservation
+                );
               }
-      
+
               integratedTable.push({
                 날짜: selectedDateStr,
                 객실타입: roomType.roomInfo,
@@ -427,7 +445,10 @@ const App = () => {
                 상태: '퇴실',
                 예약ID: reservation._id || reservation.id || '-',
                 고객명: reservation.customerName || '정보 없음',
-                '체크인-체크아웃': `${format(checkInDate, 'yyyy-MM-dd HH:mm')} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
+                '체크인-체크아웃': `${format(
+                  checkInDate,
+                  'yyyy-MM-dd HH:mm'
+                )} - ${format(checkOutDate, 'yyyy-MM-dd HH:mm')}`,
                 '당일 1박 금액': Math.round(dailyRate),
                 '전체 금액': totalAmount,
                 결제방법:
@@ -444,7 +465,7 @@ const App = () => {
               });
             }
           }
-      
+
           // 점유도 퇴실도 아닌 경우 (빈방)
           if (!isAssigned && !isCheckedOut) {
             integratedTable.push({
@@ -1936,15 +1957,40 @@ const App = () => {
         }
         return;
       }
-  
+
       try {
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         if (isOTA && !updatedData.manualAssignment) {
           updatedData.roomNumber = '';
           updatedData.price = currentReservation.price;
         }
+
+        // 대원칙 3: 날짜 변동 시 충돌 검사 수행
+        const hasDateChange =
+          updatedData.checkIn !== currentReservation.checkIn ||
+          updatedData.checkOut !== currentReservation.checkOut;
         const roomChange =
           updatedData.roomNumber !== currentReservation.roomNumber;
+
+        if (hasDateChange && updatedData.roomNumber) {
+          // 날짜 변경 시 충돌 검사
+          const { canMove, conflictDays } = isRoomAvailableForPeriod(
+            updatedData.roomNumber,
+            updatedData.roomInfo.toLowerCase(),
+            updatedData.checkIn,
+            updatedData.checkOut,
+            allReservations,
+            reservationId
+          );
+          if (!canMove) {
+            throw new Error(
+              `선택한 날짜 범위에서 충돌이 발생했습니다: ${conflictDays.join(
+                ', '
+              )}`
+            );
+          }
+        }
+
         if (roomChange) {
           await handleRoomChangeAndSync(
             reservationId,
@@ -1953,7 +1999,7 @@ const App = () => {
             updatedData.price || currentReservation.totalPrice
           );
         }
-  
+
         if (!updatedData.checkOut) {
           console.warn('checkOut is null, setting default value');
           const baseDate = updatedData.checkIn
@@ -1972,7 +2018,7 @@ const App = () => {
             'HH:mm'
           );
         }
-  
+
         if (currentReservation.type === 'dayUse' && updatedData.durationHours) {
           const roomType =
             matchRoomType(currentReservation.roomInfo) || finalRoomTypes[0];
@@ -1980,7 +2026,7 @@ const App = () => {
           const priceIncreasePerHour = 10000;
           const newDurationHours = parseInt(updatedData.durationHours, 10) || 3;
           const oldDurationHours = currentReservation.durationHours || 3;
-  
+
           const newBasePrice = basePricePerHour * newDurationHours;
           const oldBasePrice = basePricePerHour * oldDurationHours;
           const priceDifference =
@@ -1991,7 +2037,7 @@ const App = () => {
             parseInt(currentReservation.price || newBasePrice) + priceDifference
           );
           updatedData.totalPrice = updatedData.price;
-  
+
           updatedData.checkOut = format(
             addHours(new Date(updatedData.checkIn), newDurationHours),
             "yyyy-MM-dd'T'HH:mm:ss+09:00"
@@ -2005,10 +2051,10 @@ const App = () => {
             'HH:mm'
           );
         }
-  
+
         setGuestFormData(updatedData);
         setShowGuestForm(true);
-  
+
         if (typeof done === 'function') {
           setGuestFormData((prev) => ({
             ...prev,
@@ -2020,7 +2066,7 @@ const App = () => {
         alert(
           error.status === 403
             ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-            : '예약 수정에 실패했습니다.'
+            : error.message || '예약 수정에 실패했습니다.'
         );
         await loadReservations();
         if (typeof done === 'function') {
@@ -2427,7 +2473,7 @@ const App = () => {
   const handleFormSave = async (reservationId, data) => {
     console.log('[handleFormSave] Received data:', data);
     let newReservationId = null;
-  
+
     try {
       const reservationData = {
         siteName: '현장예약',
@@ -2445,7 +2491,7 @@ const App = () => {
         hotelId,
         selectedDate: selectedDate.toISOString(), // selectedDate 추가
       };
-  
+
       // OTA 예약의 경우 duration은 DB에서 가져온 값을 유지
       if (reservationId && data.siteName !== '현장예약') {
         const existingReservation = allReservations.find(
@@ -2456,7 +2502,7 @@ const App = () => {
             existingReservation.duration;
         }
       }
-  
+
       if (reservationId) {
         console.log(
           '[handleFormSave] Updating reservation with data:',
@@ -2508,7 +2554,7 @@ const App = () => {
       setShowGuestForm(false);
       if (data.onComplete && typeof data.onComplete === 'function')
         data.onComplete();
-  
+
       const idToRemove = reservationId || newReservationId;
       if (idToRemove) {
         console.log(

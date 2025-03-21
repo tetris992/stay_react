@@ -1,11 +1,12 @@
 // utils/checkConflict.js (클라이언트)
-import { startOfDay, areIntervalsOverlapping } from 'date-fns';
+import { startOfDay, areIntervalsOverlapping, differenceInCalendarDays, format } from 'date-fns';
 
-export const checkConflict = (draggedReservation, targetRoomNumber, fullReservations) => {
+export const checkConflict = (draggedReservation, targetRoomNumber, fullReservations, selectedDate) => {
   const draggedCheckIn = new Date(draggedReservation.checkIn);
   const draggedCheckOut = new Date(draggedReservation.checkOut);
   const isDayUseDragged = draggedReservation.type === 'dayUse';
   const currentDate = startOfDay(new Date());
+  const selectedDateStart = startOfDay(selectedDate);
 
   // 날짜 유효성 검사
   if (isNaN(draggedCheckIn.getTime()) || isNaN(draggedCheckOut.getTime())) {
@@ -13,8 +14,19 @@ export const checkConflict = (draggedReservation, targetRoomNumber, fullReservat
     return { isConflict: true, conflictReservation: draggedReservation };
   }
 
-  // 과거 체크인 예약은 이동 불가
-  if (startOfDay(draggedCheckIn) < currentDate) {
+  // 대원칙 2: 연박 예약의 경우 첫날만 이동 가능
+  const checkInDay = startOfDay(draggedCheckIn);
+  const checkOutDay = startOfDay(draggedCheckOut);
+  const isMultiNight = differenceInCalendarDays(checkOutDay, checkInDay) > 1;
+  if (isMultiNight && selectedDateStart > checkInDay) {
+    console.log(
+      `[checkConflict] 예약 ${draggedReservation._id}는 연박 예약이며, 첫날(${format(checkInDay, 'yyyy-MM-dd')})만 이동 가능합니다. 현재 선택된 날짜: ${format(selectedDateStart, 'yyyy-MM-dd')}`
+    );
+    return { isConflict: true, conflictReservation: draggedReservation };
+  }
+
+  // 과거 체크인 예약은 이동 불가 (첫날 제외)
+  if (checkInDay < currentDate && selectedDateStart !== checkInDay) {
     console.log(
       `[checkConflict] 예약 ${draggedReservation._id}는 과거 체크인 예약으로 이동할 수 없습니다.`
     );

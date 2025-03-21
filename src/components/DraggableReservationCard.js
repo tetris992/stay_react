@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
-import { differenceInSeconds, format, addHours, startOfDay } from 'date-fns';
+import { differenceInSeconds, format, addHours, startOfDay, differenceInCalendarDays } from 'date-fns';
 import { FaFileInvoice } from 'react-icons/fa';
 import MemoComponent from './MemoComponent';
 import { checkConflict } from '../utils/checkConflict';
@@ -208,95 +208,107 @@ const DraggableReservationCard = ({
       : 0;
   }, [ciDateOnly, coDateOnly]);
 
-  const canDragMemo = useMemo(() => {
-    // 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
-    if (
-      !normalizedReservation.roomNumber ||
-      normalizedReservation.roomNumber.trim() === ''
-    ) {
-      return true;
-    }
-    if (
-      !Array.isArray(roomTypes) ||
-      !Array.isArray(allReservations) ||
-      roomTypes.length === 0
-    ) {
-      console.log('Invalid roomTypes or allReservations:', {
-        roomTypes,
-        allReservations,
-      });
-      return false;
-    }
-    if (!checkInDate || !checkOutDate) {
-      console.warn(
-        `Invalid dates for reservation ${
-          normalizedReservation._id || 'unknown'
-        }:`,
-        {
-          checkIn: normalizedReservation.checkIn,
-          checkOut: normalizedReservation.checkOut,
-        }
-      );
-      return false;
-    }
-    const currentDate = startOfDay(new Date());
-    const checkOutDay = startOfDay(checkOutDate);
-
-    // 체크아웃 날짜가 현재 날짜보다 이전인 경우 드래그 불가
-    if (currentDate > checkOutDay) {
-      console.log(
-        `Reservation ${
-          normalizedReservation._id || 'unknown'
-        } has already checked out.`
-      );
-      return false;
-    }
-
-    // 충돌 여부는 checkConflict 로직에 의존
-    let hasConflict = false;
-    const validReservations = allReservations.filter(
-      (res) =>
-        res &&
-        res.checkIn &&
-        res.checkOut &&
-        typeof res.checkIn === 'string' &&
-        typeof res.checkOut === 'string' &&
-        !isNaN(new Date(res.checkIn).getTime()) &&
-        !isNaN(new Date(res.checkOut).getTime())
-    );
-
-    // 현재 예약이 배정된 객실에 대해서만 충돌 검사
-    const currentRoomNumber = normalizedReservation.roomNumber;
-    if (checkInDate && checkOutDate && currentRoomNumber) {
-      const { isConflict } = checkConflict(
-        {
-          ...normalizedReservation,
-          checkIn: checkInDate,
-          checkOut: checkOutDate,
-        },
-        currentRoomNumber,
-        validReservations,
-        selectedDate
-      );
-      if (isConflict) {
-        console.log(
-          `Conflict detected for room ${currentRoomNumber} with ${
-            normalizedReservation._id || 'unknown'
-          }`
-        );
-        hasConflict = true;
+const canDragMemo = useMemo(() => {
+  // 미배정 예약은 객실 번호가 없으면 무조건 드래그 가능
+  if (
+    !normalizedReservation.roomNumber ||
+    normalizedReservation.roomNumber.trim() === ''
+  ) {
+    return true;
+  }
+  if (
+    !Array.isArray(roomTypes) ||
+    !Array.isArray(allReservations) ||
+    roomTypes.length === 0
+  ) {
+    console.log('Invalid roomTypes or allReservations:', {
+      roomTypes,
+      allReservations,
+    });
+    return false;
+  }
+  if (!checkInDate || !checkOutDate) {
+    console.warn(
+      `Invalid dates for reservation ${
+        normalizedReservation._id || 'unknown'
+      }:`,
+      {
+        checkIn: normalizedReservation.checkIn,
+        checkOut: normalizedReservation.checkOut,
       }
-    }
+    );
+    return false;
+  }
+  const currentDate = startOfDay(new Date());
+  const checkOutDay = startOfDay(checkOutDate);
+  const checkInDay = startOfDay(checkInDate);
+  const selectedDateStart = startOfDay(selectedDate);
 
-    return !hasConflict;
-  }, [
-    normalizedReservation,
-    allReservations,
-    roomTypes,
-    checkInDate,
-    checkOutDate,
-    selectedDate,
-  ]);
+  // 대원칙 1: 체크아웃 날짜가 현재 날짜보다 이전인 경우 드래그 불가
+  if (currentDate > checkOutDay) {
+    console.log(
+      `Reservation ${
+        normalizedReservation._id || 'unknown'
+      } has already checked out.`
+    );
+    return false;
+  }
+
+  // 대원칙 2: 연박 예약의 경우 첫날만 이동 가능
+  const isMultiNight = differenceInCalendarDays(checkOutDay, checkInDay) > 1;
+  if (isMultiNight && selectedDateStart > checkInDay) {
+    console.log(
+      `Reservation ${
+        normalizedReservation._id || 'unknown'
+      } is a multi-night reservation. Only the first day (${format(checkInDay, 'yyyy-MM-dd')}) can be dragged. Current selected date: ${format(selectedDateStart, 'yyyy-MM-dd')}`
+    );
+    return false;
+  }
+
+  // 충돌 여부는 checkConflict 로직에 의존
+  let hasConflict = false;
+  const validReservations = allReservations.filter(
+    (res) =>
+      res &&
+      res.checkIn &&
+      res.checkOut &&
+      typeof res.checkIn === 'string' &&
+      typeof res.checkOut === 'string' &&
+      !isNaN(new Date(res.checkIn).getTime()) &&
+      !isNaN(new Date(res.checkOut).getTime())
+  );
+
+  const currentRoomNumber = normalizedReservation.roomNumber;
+  if (checkInDate && checkOutDate && currentRoomNumber) {
+    const { isConflict } = checkConflict(
+      {
+        ...normalizedReservation,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+      },
+      currentRoomNumber,
+      validReservations,
+      selectedDate
+    );
+    if (isConflict) {
+      console.log(
+        `Conflict detected for room ${currentRoomNumber} with ${
+          normalizedReservation._id || 'unknown'
+        }`
+      );
+      hasConflict = true;
+    }
+  }
+
+  return !hasConflict;
+}, [
+  normalizedReservation,
+  allReservations,
+  roomTypes,
+  checkInDate,
+  checkOutDate,
+  selectedDate,
+]);
 
   const stayLabel = useMemo(() => {
     if (normalizedReservation.type === 'dayUse') return '(대실)';
@@ -443,9 +455,9 @@ const DraggableReservationCard = ({
       checkOut: format(now, "yyyy-MM-dd'T'HH:mm:ss+09:00"),
       checkOutTime: format(now, 'HH:mm'),
       isCheckedOut: true,
-      manuallyCheckedOut: true, // 명시적으로 설정
-      // roomNumber: '', // 이 줄을 제거하여 roomNumber를 유지
-      isCheckedIn: false, // 입실 상태 초기화
+      manuallyCheckedOut: true,
+      isCheckedIn: false,
+      selectedDate: selectedDate.toISOString(),
     };
     console.log(
       `[handleCheckOut] Updating reservation ${
@@ -455,6 +467,50 @@ const DraggableReservationCard = ({
       }`,
       updatedData
     );
+
+    // allReservations에서 예약을 찾을 수 없는 경우를 대비
+    const currentReservation = allReservations.find(
+      (res) => res._id === normalizedReservation._id
+    );
+    if (!currentReservation) {
+      console.warn(
+        `[handleCheckOut] Reservation ${normalizedReservation._id} not found in allReservations. Attempting to update anyway.`
+      );
+      onPartialUpdate(normalizedReservation._id, updatedData)
+        .then(() => {
+          console.log(
+            `[handleCheckOut] Successfully updated reservation ${normalizedReservation._id} despite not being in allReservations.`
+          );
+          // allReservations를 강제로 업데이트
+          if (typeof setAllReservations === 'function') {
+            setAllReservations((prev) => {
+              const updatedReservations = prev.filter(
+                (res) => res._id !== normalizedReservation._id
+              );
+              return [...updatedReservations, updatedData];
+            });
+          }
+          // UI 갱신: filterReservationsByDate 호출
+          if (typeof filterReservationsByDate === 'function') {
+            filterReservationsByDate(
+              [...allReservations, updatedData],
+              selectedDate
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
+            error
+          );
+          alert(
+            '퇴실 처리에 실패했습니다. 예약 데이터를 새로고침 후 다시 시도해주세요.'
+          );
+        });
+      return;
+    }
+
+    // 정상적인 경우
     onPartialUpdate(normalizedReservation._id, updatedData)
       .then(() => {
         if (typeof setAllReservations === 'function') {
@@ -466,6 +522,7 @@ const DraggableReservationCard = ({
             )
           );
         }
+        // UI 갱신: filterReservationsByDate 호출
         if (typeof filterReservationsByDate === 'function') {
           filterReservationsByDate(
             allReservations.map((res) =>
@@ -482,6 +539,7 @@ const DraggableReservationCard = ({
           `[handleCheckOut] Failed to update reservation ${normalizedReservation._id}:`,
           error
         );
+        alert('퇴실 처리에 실패했습니다. 다시 시도해주세요.');
       });
   }, [
     normalizedReservation,
@@ -491,6 +549,7 @@ const DraggableReservationCard = ({
     selectedDate,
     setAllReservations,
   ]);
+
   const handleDelete = useCallback(() => {
     if (window.confirm('예약을 삭제하시겠습니까?')) {
       console.log(
@@ -806,33 +865,34 @@ const DraggableReservationCard = ({
   }, [normalizedReservation.type, normalizedReservation.paymentMethod]);
 
   const renderDayUseButtons = useMemo(() => {
-    if (normalizedReservation.type !== 'dayUse') return null; // 대실 예약에만 렌더링
+    if (normalizedReservation.type !== 'dayUse') return null;
     const isDayUse = normalizedReservation.type === 'dayUse';
     const isCheckedIn = normalizedReservation.isCheckedIn;
     const isCheckedOut = normalizedReservation.isCheckedOut;
-    const duration = normalizedReservation.duration || 3;
-
-    // 체크인 날짜가 현재 날짜와 같은지 확인
     const currentDate = startOfDay(new Date());
     const checkInDay = checkInDate ? startOfDay(checkInDate) : null;
+    const checkOutDay = checkOutDate ? startOfDay(checkOutDate) : null;
     const isCheckInToday =
       checkInDay && currentDate.getTime() === checkInDay.getTime();
-
-    console.log(
-      `[renderDayUseButtons] Reservation ID: ${normalizedReservation._id}, type: ${normalizedReservation.type}, isCheckedIn: ${isCheckedIn}, isCheckedOut: ${isCheckedOut}, duration: ${duration}, isCheckInToday: ${isCheckInToday}`
-    );
+    // 대원칙 1: 체크아웃 날짜가 현재 날짜보다 이전이면 수정 불가, 삭제만 가능
+    const isPastCheckout = checkOutDay && currentDate > checkOutDay;
+  
     return (
       <span className="button-group-wrapper">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditStart(normalizedReservation._id);
-          }}
-          className="action-btn edit-btn"
-          data-tooltip="➖"
-        >
-          수정
-        </button>
+        {/* 수정 버튼: 체크아웃 날짜가 지나지 않은 경우에만 표시 */}
+        {!isPastCheckout && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditStart(normalizedReservation._id);
+            }}
+            className="action-btn edit-btn"
+            data-tooltip="➖"
+          >
+            수정
+          </button>
+        )}
+        {/* 삭제 버튼: 항상 표시 */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -843,7 +903,7 @@ const DraggableReservationCard = ({
         >
           삭제
         </button>
-        {isDayUse && !isCheckedIn && isCheckInToday && (
+        {isDayUse && !isCheckedIn && isCheckInToday && !isPastCheckout && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -855,7 +915,7 @@ const DraggableReservationCard = ({
             입실
           </button>
         )}
-        {isDayUse && isCheckedIn && !isCheckedOut && (
+        {isDayUse && isCheckedIn && !isCheckedOut && !isPastCheckout && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -872,12 +932,12 @@ const DraggableReservationCard = ({
   }, [
     normalizedReservation,
     checkInDate,
+    checkOutDate,
     handleCheckIn,
     handleCheckOut,
     handleEditStart,
     handleDelete,
   ]);
-
   return (
     <div
       ref={dragRef}
