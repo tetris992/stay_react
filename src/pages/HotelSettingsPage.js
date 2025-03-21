@@ -307,7 +307,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       if (containerIdx === -1) return prev;
       const container = updated[floorIdx].containers[containerIdx];
       const oldRoomInfo = container.roomInfo;
-  
+
       if (field === 'price') {
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
@@ -318,7 +318,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       } else {
         container[field] = value;
       }
-  
+
       if (field === 'roomInfo') {
         if (!value || value === '') return prev;
         if (!container.roomNumber) {
@@ -349,13 +349,15 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             .toString()
             .padStart(2, '0')}`;
         }
-  
+
         const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
         container.price = matchingType ? matchingType.price : 0;
-  
+
         const uniqueId = uuidv4();
-        container.containerId = `${floorNum}-${value}-${container.roomNumber}-${Date.now()}-${uniqueId}`; // KST 변환 제거
-  
+        container.containerId = `${floorNum}-${value}-${
+          container.roomNumber
+        }-${Date.now()}-${uniqueId}`; // KST 변환 제거
+
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           if (oldRoomInfo && container.roomNumber) {
@@ -389,7 +391,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           console.log('[LayoutEditor] Updated roomTypes:', updatedTypes);
           return updatedTypes;
         });
-  
+
         updated[floorIdx].containers.sort(
           (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
         );
@@ -734,7 +736,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                     >
                       <select
                         value={cont.roomInfo}
-                        onClick={(e) =>
+                        onChange={(e) =>
                           updateContainer(
                             floor.floorNum,
                             cont.containerId,
@@ -1116,7 +1118,7 @@ export default function HotelSettingsPage() {
       email,
       phoneNumber,
       hotelName,
-      checkInTime,  // 추가
+      checkInTime, // 추가
       checkOutTime, // 추가
     };
     try {
