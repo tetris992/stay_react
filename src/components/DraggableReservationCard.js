@@ -977,14 +977,16 @@ const DraggableReservationCard = ({
                 <p>체크아웃: {displayCheckOut}</p>
                 <p>
                   가격: {displayPrice}
-                  {normalizedReservation.remainingBalance > 0 && (
-                    <>
-                      {' '}
-                      (잔여:{' '}
-                      {normalizedReservation.remainingBalance.toLocaleString()})
-                    </>
-                  )}
+                  {normalizedReservation.paymentMethod?.includes('PerNight') &&
+                    normalizedReservation.remainingBalance > 0 && (
+                      <span style={{ color: 'red' }}>
+                        (잔여:{' '}
+                        {normalizedReservation.remainingBalance.toLocaleString()}
+                        )
+                      </span>
+                    )}
                 </p>
+
                 <p>
                   객실 정보:{' '}
                   {normalizedReservation.roomInfo &&
