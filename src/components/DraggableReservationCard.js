@@ -102,7 +102,6 @@ const DraggableReservationCard = ({
   email,
   handleDeleteClickHandler,
   handleConfirmClickHandler,
-  loadedReservations,
   newlyCreatedId,
   isNewlyCreatedHighlighted,
   updatedReservationId,
@@ -523,7 +522,6 @@ const DraggableReservationCard = ({
         return;
       }
       if (isOpen || isEditingMemo) return;
-      setIsOpen(true);
 
       const defaultCheckOut = checkOutDate
         ? normalizedReservation.checkOut
@@ -591,6 +589,7 @@ const DraggableReservationCard = ({
         roomNumber: normalizedReservation.roomNumber || '',
         isCheckedOut: normalizedReservation.isCheckedOut,
       };
+
       if (typeof onEdit === 'function') {
         console.log(
           `[DraggableReservationCard.js] Calling onEdit with reservationId: ${reservationId}, initialData:`,
@@ -605,8 +604,11 @@ const DraggableReservationCard = ({
           `[DraggableReservationCard.js] onEdit is not a function. Received: ${typeof onEdit}, value:`,
           onEdit
         );
-        setIsOpen(false); // 실패 시에도 초기화
+        setIsOpen(false);
       }
+
+      // 수정 모드 진입
+      setIsOpen(true);
     },
     [
       checkOutDate,
@@ -714,6 +716,7 @@ const DraggableReservationCard = ({
       },
       originalRoomNumber: normalizedReservation.roomNumber,
       originalRoomInfo: normalizedReservation.roomInfo,
+      originalContainerId: normalizedReservation.containerId,
     },
     canDrag:
       !flippedReservationIds.has(normalizedReservation._id) &&
@@ -1081,9 +1084,6 @@ const DraggableReservationCard = ({
           )}
         </div>
       </div>
-      {loadedReservations.includes(normalizedReservation._id) && (
-        <div className="fade-in-overlay"></div>
-      )}
     </div>
   );
 };
@@ -1102,7 +1102,6 @@ DraggableReservationCard.propTypes = {
   email: PropTypes.string,
   handleDeleteClickHandler: PropTypes.func.isRequired,
   handleConfirmClickHandler: PropTypes.func.isRequired,
-  loadedReservations: PropTypes.array,
   newlyCreatedId: PropTypes.string,
   isNewlyCreatedHighlighted: PropTypes.bool,
   updatedReservationId: PropTypes.string,

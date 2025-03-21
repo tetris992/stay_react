@@ -1926,17 +1926,18 @@ const App = () => {
   );
 
   const handleEdit = useCallback(
-    async (reservationId, updatedData, onComplete) => {
+    async (reservationId, updatedData, done) => {
       const currentReservation = allReservations.find(
         (res) => res._id === reservationId
       );
-      if (!currentReservation) return;
-
+      if (!currentReservation) {
+        if (typeof done === 'function') {
+          done();
+        }
+        return;
+      }
+  
       try {
-        // 수정 시작 시 loadedReservations에 예약 ID 추가 (점선 표시)
-        console.log(`Adding ${reservationId} to loadedReservations for edit`);
-        setLoadedReservations((prev) => [...prev, reservationId]);
-
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         if (isOTA && !updatedData.manualAssignment) {
           updatedData.roomNumber = '';
@@ -1952,8 +1953,7 @@ const App = () => {
             updatedData.price || currentReservation.totalPrice
           );
         }
-
-        // checkOut이 null인 경우 기본값 설정
+  
         if (!updatedData.checkOut) {
           console.warn('checkOut is null, setting default value');
           const baseDate = updatedData.checkIn
@@ -1972,8 +1972,7 @@ const App = () => {
             'HH:mm'
           );
         }
-
-        // 대실의 경우 durationHours 변경에 따른 가격 재계산
+  
         if (currentReservation.type === 'dayUse' && updatedData.durationHours) {
           const roomType =
             matchRoomType(currentReservation.roomInfo) || finalRoomTypes[0];
@@ -1981,7 +1980,7 @@ const App = () => {
           const priceIncreasePerHour = 10000;
           const newDurationHours = parseInt(updatedData.durationHours, 10) || 3;
           const oldDurationHours = currentReservation.durationHours || 3;
-
+  
           const newBasePrice = basePricePerHour * newDurationHours;
           const oldBasePrice = basePricePerHour * oldDurationHours;
           const priceDifference =
@@ -1992,7 +1991,7 @@ const App = () => {
             parseInt(currentReservation.price || newBasePrice) + priceDifference
           );
           updatedData.totalPrice = updatedData.price;
-
+  
           updatedData.checkOut = format(
             addHours(new Date(updatedData.checkIn), newDurationHours),
             "yyyy-MM-dd'T'HH:mm:ss+09:00"
@@ -2006,16 +2005,14 @@ const App = () => {
             'HH:mm'
           );
         }
-
-        // 수정 모달 열기
+  
         setGuestFormData(updatedData);
         setShowGuestForm(true);
-
-        // 콜백을 모달이 닫힐 때 호출하도록 상태에 저장
-        if (typeof onComplete === 'function') {
+  
+        if (typeof done === 'function') {
           setGuestFormData((prev) => ({
             ...prev,
-            onComplete, // 임시로 guestFormData에 저장
+            onComplete: done,
           }));
         }
       } catch (error) {
@@ -2026,15 +2023,8 @@ const App = () => {
             : '예약 수정에 실패했습니다.'
         );
         await loadReservations();
-        // 에러 발생 시 loadedReservations에서 제거
-        console.log(
-          `Removing ${reservationId} from loadedReservations due to error`
-        );
-        setLoadedReservations((prev) =>
-          prev.filter((id) => id !== reservationId)
-        );
-        if (typeof onComplete === 'function') {
-          onComplete(); // 오류 발생 시에도 수정 모드 종료
+        if (typeof done === 'function') {
+          done();
         }
       }
     },

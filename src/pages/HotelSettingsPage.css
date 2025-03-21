@@ -246,7 +246,7 @@ html {
   text-align: center;
   color: #2c3e50;
 }
-.action-btn {
+.hotel-settings-action-btn {
   padding: 10px 20px;
   font-size: 16px;
   background-color: var(--primary-color, #3498db);

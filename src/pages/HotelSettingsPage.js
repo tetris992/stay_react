@@ -258,7 +258,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
       </div>
       <div className="room-type-actions">
         <button
-          className="action-btn add-btn"
+          className="hotel-settings-action-btn add-btn"
           onClick={addRoomType}
           aria-label="객실 타입 추가"
         >
@@ -681,7 +681,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       <div className="layout-header">
         <h2>객실 레이아웃 편집</h2>
         <button
-          className="action-btn generate-btn"
+          className="hotel-settings-btn generate-btn"
           onClick={generateInitialLayout}
           title="레이아웃 생성"
           aria-label="레이아웃 생성"
@@ -689,7 +689,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           레이아웃 생성
         </button>
         <button
-          className="action-btn undo-btn"
+          className="hotel-settings-btn undo-btn"
           onClick={undoRemoveFloor}
           title="되돌리기"
           aria-label="삭제 되돌리기"
@@ -697,7 +697,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           <FaUndo />
         </button>
         <button
-          className="action-btn add-floor-btn"
+          className="hotel-settings-btn add-floor-btn"
           onClick={addFloor}
           disabled={isAdding}
           title="층 추가"
@@ -734,7 +734,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                     >
                       <select
                         value={cont.roomInfo}
-                        onChange={(e) =>
+                        onClick={(e) =>
                           updateContainer(
                             floor.floorNum,
                             cont.containerId,
@@ -788,7 +788,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                           />
                           <div className="price-buttons">
                             <button
-                              className="price-btn increment"
+                              className="hotel-settings-btn price-btn increment"
                               onClick={() =>
                                 incrementContainerPrice(
                                   floor.floorNum,
@@ -800,7 +800,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                               <FaPlus />
                             </button>
                             <button
-                              className="price-btn decrement"
+                              className="hotel-settings-btn price-btn decrement"
                               onClick={() =>
                                 decrementContainerPrice(
                                   floor.floorNum,
@@ -815,7 +815,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                         </div>
                       </div>
                       <button
-                        className="delete-btn"
+                        className="hotel-settings-btn delete-btn"
                         onClick={() =>
                           removeContainer(floor.floorNum, cont.containerId)
                         }
@@ -827,7 +827,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                   </React.Fragment>
                 ))}
                 <button
-                  className="action-btn add-room-btn"
+                  className="hotel-settings-btn add-room-btn"
                   onClick={() => addRoomToFloor(floor.floorNum)}
                   disabled={isAdding}
                   title="객실 추가"
@@ -1291,7 +1291,7 @@ export default function HotelSettingsPage() {
                 aria-label="비밀번호 (읽기 전용)"
               />
               <button
-                className="action-btn change-pw-btn"
+                className="hotel-settings-action-btn change-pw-btn"
                 disabled
                 aria-label="비밀번호 변경 (미구현)"
               >

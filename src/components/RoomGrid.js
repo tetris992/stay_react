@@ -61,6 +61,15 @@ const ContainerCell = React.memo(
       drop: async (item, monitor) => {
         if (!monitor.isOver({ shallow: true })) return;
 
+        // 만약 드래그한 아이템의 원래 컨테이너와 현재 대상 컨테이너가 같다면 아무 작업도 하지 않음.
+        if (
+          item.originalContainerId &&
+          item.originalContainerId === cont.containerId
+        ) {
+          clearConflict();
+          return;
+        }
+
         const {
           reservationId,
           reservation: draggedReservation,
@@ -79,6 +88,16 @@ const ContainerCell = React.memo(
         const reservation = getReservationById(reservationId);
         if (!reservation) {
           console.warn(`No reservation found for ID: ${reservationId}`);
+          return;
+        }
+
+        // 자기 자신에게 드랍하는 경우에도 경고 없이 리턴 (추가 안전 체크)
+        if (
+          reservation.roomInfo === cont.roomInfo &&
+          reservation.roomNumber === cont.roomNumber &&
+          !reservation.manuallyCheckedOut
+        ) {
+          clearConflict();
           return;
         }
 
@@ -118,7 +137,17 @@ const ContainerCell = React.memo(
 
         if (isConflict) {
           const conflictMsg = conflictReservation
-            ? `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.\n충돌 예약: ${conflictReservation.customerName || '정보 없음'} (${format(new Date(conflictReservation.checkIn), 'yyyy-MM-dd')} ~ ${format(new Date(conflictReservation.checkOut), 'yyyy-MM-dd')})`
+            ? `🚫 충돌 발생!\n이동하려는 객실 (${
+                cont.roomNumber
+              })에 예약이 있습니다.\n충돌 예약: ${
+                conflictReservation.customerName || '정보 없음'
+              } (${format(
+                new Date(conflictReservation.checkIn),
+                'yyyy-MM-dd'
+              )} ~ ${format(
+                new Date(conflictReservation.checkOut),
+                'yyyy-MM-dd'
+              )})`
             : '🚫 충돌 발생!\n과거 체크인 예약은 이동할 수 없습니다.';
           setConflictMessage(conflictMsg);
           timeoutRef.current = setTimeout(clearConflict, 3000);
@@ -316,7 +345,17 @@ const ContainerCell = React.memo(
 
         if (isConflict && !isDraggingOver) {
           const conflictMsg = conflictReservation
-            ? `🚫 충돌 발생!\n이동하려는 객실 (${cont.roomNumber})에 예약이 있습니다.\n충돌 예약: ${conflictReservation.customerName || '정보 없음'} (${format(new Date(conflictReservation.checkIn), 'yyyy-MM-dd')} ~ ${format(new Date(conflictReservation.checkOut), 'yyyy-MM-dd')})`
+            ? `🚫 충돌 발생!\n이동하려는 객실 (${
+                cont.roomNumber
+              })에 예약이 있습니다.\n충돌 예약: ${
+                conflictReservation.customerName || '정보 없음'
+              } (${format(
+                new Date(conflictReservation.checkIn),
+                'yyyy-MM-dd'
+              )} ~ ${format(
+                new Date(conflictReservation.checkOut),
+                'yyyy-MM-dd'
+              )})`
             : '🚫 충돌 발생!\n과거 체크인 예약은 이동할 수 없습니다.';
           setConflictMessage(conflictMsg);
           setIsDraggingOver(true);
