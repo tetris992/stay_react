@@ -3328,6 +3328,7 @@ const App = () => {
                               onCloseLogViewer={closeLogViewer} // 로그 뷰어 닫기 함수 전달
                               setDailyTotal={setDailyTotal}
                               allReservations={allReservations}
+                              showGuestForm={showGuestForm}
                             />
                           </DndProvider>
                         </div>
@@ -3351,7 +3352,12 @@ const App = () => {
                             roomTypes={
                               hotelSettings?.roomTypes || defaultRoomTypes
                             }
-                            onClose={() => setShowGuestForm(false)}
+                            onClose={() => {
+                              setShowGuestForm(false);
+                              if (guestFormData.onComplete) {
+                                guestFormData.onComplete();
+                              }
+                            }}
                             onSave={handleFormSave}
                             availabilityByDate={guestAvailability}
                             selectedDate={selectedDate} // 추가
@@ -3367,7 +3373,12 @@ const App = () => {
                           <DayUseFormModal
                             initialData={guestFormData}
                             roomTypes={finalRoomTypes}
-                            onClose={() => setShowGuestForm(false)}
+                            onClose={() => {
+                              setShowGuestForm(false);
+                              if (guestFormData.onComplete) {
+                                guestFormData.onComplete();
+                              }
+                            }}
                             onSave={handleFormSave}
                             availabilityByDate={guestAvailability}
                             hotelSettings={hotelSettings}

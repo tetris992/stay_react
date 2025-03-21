@@ -23,10 +23,6 @@ const GuestFormModal = ({
   hotelSettings,
   hotelId,
   selectedDate,
-  setAllReservations,
-  processReservation,
-  filterReservationsByDate,
-  allReservations,
   setNewlyCreatedId,
 }) => {
   // -----------------------------
@@ -992,13 +988,20 @@ const GuestFormModal = ({
     formData.paymentMethod === 'Various' &&
     formData.paymentDetails.length === 0;
 
+  const handleClose = () => {
+    onClose();
+    if (initialData?.onComplete) {
+      initialData.onComplete(); // onComplete 호출
+    }
+  };
+
   return ReactDOM.createPortal(
     <div className="guest-form-modal">
       <div className="modal-card">
         {isSubmitting && (
           <div className="modal-overlay-spinner">처리 중...</div>
         )}
-        <span className="close-button" onClick={onClose}>
+        <span className="close-button" onClick={handleClose}>
           ×
         </span>
         <h2>{initialData?._id ? '예약 수정' : '현장 예약'}</h2>
@@ -1149,7 +1152,7 @@ const GuestFormModal = ({
           <div className="guest-form-actions">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose} // 수정된 handleClose 사용
               className="guest-form-button guest-form-cancel"
               disabled={isSubmitting}
             >
@@ -1173,7 +1176,22 @@ const GuestFormModal = ({
 GuestFormModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
-  initialData: PropTypes.object,
+  initialData: PropTypes.shape({
+    _id: PropTypes.string,
+    checkIn: PropTypes.string,
+    checkOut: PropTypes.string,
+    reservationNo: PropTypes.string,
+    customerName: PropTypes.string,
+    phoneNumber: PropTypes.string,
+    reservationDate: PropTypes.string,
+    roomInfo: PropTypes.string,
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    paymentMethod: PropTypes.string,
+    paymentDetails: PropTypes.array,
+    specialRequests: PropTypes.string,
+    roomNumber: PropTypes.string,
+    onComplete: PropTypes.func, // onComplete 추가
+  }),
   roomTypes: PropTypes.arrayOf(
     PropTypes.shape({
       roomInfo: PropTypes.string.isRequired,
@@ -1190,5 +1208,4 @@ GuestFormModal.propTypes = {
   allReservations: PropTypes.array.isRequired,
   setNewlyCreatedId: PropTypes.func.isRequired,
 };
-
 export default GuestFormModal;

@@ -87,9 +87,9 @@
   opacity: 0.7;
 }
 
-.room-card.editing {
+/* .room-card.editing {
   border: 2px dashed #007bff;
-}
+} */
 
 @keyframes highlightBlink {
   0% {

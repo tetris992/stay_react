@@ -546,6 +546,7 @@ function RoomGrid({
   onCloseLogViewer,
   fullReservations,
   allReservations,
+  showGuestForm,
 }) {
   const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1102,6 +1103,7 @@ RoomGrid.propTypes = {
   onDelete: PropTypes.func.isRequired,
   onConfirm: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
+  showGuestForm: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   loadedReservations: PropTypes.array.isRequired,
   hotelId: PropTypes.string.isRequired,
