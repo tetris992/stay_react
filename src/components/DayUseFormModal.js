@@ -40,11 +40,28 @@ const DayUseFormModal = ({
   /**
    * 특정 날짜에 해당 roomInfo가 대실 가능한지(재고가 남아 있는지) 판단하는 함수
    */
-  const isRoomTypeUnavailable = (roomInfo) => {
+  const isRoomTypeUnavailable = (roomInfo, excludeReservationId = null) => {
     if (!availabilityByDate || !formData.checkInDate) return false;
     const ds = formData.checkInDate;
     const availForDay = availabilityByDate[ds]?.[roomInfo.toLowerCase()];
-    return !availForDay || availForDay.remain <= 0;
+    if (!availForDay) return true;
+
+    // 수정 모드이고 재고가 0인 경우에만 자기 자신을 제외
+    let adjustedRemain = availForDay.remain;
+    if (
+      excludeReservationId &&
+      availForDay.remain <= 0 &&
+      availForDay.reservations
+    ) {
+      const selfReservation = availForDay.reservations.find(
+        (res) => res._id === excludeReservationId
+      );
+      if (selfReservation) {
+        adjustedRemain += 1; // 자기 자신이 점유한 객실을 재고에 다시 추가
+      }
+    }
+
+    return adjustedRemain <= 0;
   };
 
   /* DayUseFormModal.js 내부, useEffect 수정 */
@@ -229,7 +246,41 @@ const DayUseFormModal = ({
     const tKey = formData.roomInfo.toLowerCase();
     const ds = format(checkInDateTime, 'yyyy-MM-dd');
     const availForDay = availabilityByDate?.[ds]?.[tKey];
-    if (!availForDay || availForDay.remain <= 0) {
+    if (!availForDay) {
+      const detailedMsg = getDetailedAvailabilityMessage(
+        startOfDay(checkInDateTime),
+        addDays(startOfDay(checkInDateTime), 1),
+        tKey,
+        availabilityByDate
+      );
+      alert(detailedMsg);
+      setIsSubmitting(false);
+      return;
+    }
+
+    // 수정 모드이고 재고가 0인 경우에만 자기 자신을 제외한 재고 계산
+    let adjustedRemain = availForDay.remain;
+    let adjustedLeftoverRooms = [...(availForDay.leftoverRooms || [])];
+    if (
+      initialData?._id &&
+      availForDay.remain <= 0 &&
+      availForDay.reservations
+    ) {
+      const selfReservation = availForDay.reservations.find(
+        (res) => res._id === initialData._id
+      );
+      if (selfReservation) {
+        adjustedRemain += 1; // 자기 예약으로 감소한 재고를 복원
+        if (
+          selfReservation.roomNumber &&
+          !adjustedLeftoverRooms.includes(selfReservation.roomNumber)
+        ) {
+          adjustedLeftoverRooms.push(selfReservation.roomNumber);
+        }
+      }
+    }
+
+    if (adjustedRemain <= 0) {
       const detailedMsg = getDetailedAvailabilityMessage(
         startOfDay(checkInDateTime),
         addDays(startOfDay(checkInDateTime), 1),
@@ -244,7 +295,7 @@ const DayUseFormModal = ({
     // 가능한 객실 번호가 있으면 그 중 하나를 선택 (혹은 사용자 입력)
     const selectedRoomNumber =
       formData.roomNumber ||
-      availForDay.leftoverRooms?.sort((a, b) => parseInt(a) - parseInt(b))[0] ||
+      adjustedLeftoverRooms?.sort((a, b) => parseInt(a) - parseInt(b))[0] ||
       '';
 
     // 최종 데이터 구조
@@ -430,7 +481,10 @@ const DayUseFormModal = ({
                       key={rt.roomInfo}
                       value={rt.roomInfo}
                       style={{
-                        color: isRoomTypeUnavailable(rt.roomInfo)
+                        color: isRoomTypeUnavailable(
+                          rt.roomInfo,
+                          initialData?._id
+                        )
                           ? 'red'
                           : 'inherit',
                       }}
