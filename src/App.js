@@ -254,6 +254,12 @@ const App = () => {
   );
   const [selectedReservation, setSelectedReservation] = useState(null);
 
+  const [isMinimalModeEnabled, setIsMinimalModeEnabled] = useState(false);
+
+  const toggleMinimalMode = useCallback(() => {
+    setIsMinimalModeEnabled((prev) => !prev);
+  }, []);
+
   // finalRoomTypes에서 'none' 제외
   const finalRoomTypes = useMemo(() => {
     const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
@@ -3215,6 +3221,8 @@ const App = () => {
                       isMonthlyView={isMonthlyView}
                       toggleMonthlyView={toggleMonthlyView}
                       onViewLogs={openLogViewer}
+                      isMinimalModeEnabled={isMinimalModeEnabled} // 추가
+                      onToggleMinimalMode={toggleMinimalMode} // 추가
                     />
                     <SideBar
                       loading={loading}
@@ -3329,6 +3337,8 @@ const App = () => {
                               setDailyTotal={setDailyTotal}
                               allReservations={allReservations}
                               showGuestForm={showGuestForm}
+                              isMinimalModeEnabled={isMinimalModeEnabled}
+                              toggleMinimalMode={toggleMinimalMode}
                             />
                           </DndProvider>
                         </div>

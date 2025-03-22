@@ -6,7 +6,7 @@ import {
   faCaretRight,
   faStickyNote,
   faCalendarAlt,
-  faList, // 로그 뷰어 아이콘
+  faList,
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import { format } from 'date-fns';
@@ -25,6 +25,9 @@ function Header({
   toggleMonthlyView,
   onViewLogs,
   isLogViewerOpen,
+  // ▼ 새로 추가한 props
+  isMinimalModeEnabled,
+  onToggleMinimalMode,
 }) {
   // selectedDate를 KST로 변환
   const kstDate = toZonedTime(selectedDate, 'Asia/Seoul');
@@ -89,6 +92,16 @@ function Header({
     }
   };
 
+  // ▼ 단축 모드 버튼 클릭 핸들러
+  const handleMinimalModeToggle = () => {
+    try {
+      onToggleMinimalMode();
+    } catch (error) {
+      console.error('[Header] Error on minimal mode toggle:', error);
+      alert('단축 모드 전환 중 오류가 발생했습니다.');
+    }
+  };
+
   return (
     <div className="header">
       {/* 첫 번째 줄: 날짜 네비게이션 */}
@@ -123,7 +136,7 @@ function Header({
         </div>
       </div>
 
-      {/* 두 번째 줄: 메모 버튼, View Logs 버튼, OTA 상태, Quick-create 버튼 */}
+      {/* 두 번째 줄: 메모 버튼, 로그 보기, 월간 뷰/일간 뷰, 단축 모드, OTA 상태, Quick-create 버튼 */}
       <div className="header-bottom">
         <div className="header-left">
           <div className="additional-buttons">
@@ -136,9 +149,9 @@ function Header({
               <FontAwesomeIcon icon={faStickyNote} /> 메모
             </button>
 
-            {/* View Logs 버튼 */}
+            {/* 로그 보기 버튼 */}
             <button
-              className={`memo-button ${isLogViewerOpen ? 'active' : ''}`} // active 상태 추가
+              className={`memo-button ${isLogViewerOpen ? 'active' : ''}`}
               onClick={handleViewLogs}
               aria-label="로그 보기"
             >
@@ -147,25 +160,27 @@ function Header({
 
             {/* 월간/일간 뷰 전환 버튼 */}
             <button
-              className={`memo-button ${isMonthlyView ? 'active' : ''}`} // active 상태 추가
+              className={`memo-button ${isMonthlyView ? 'active' : ''}`}
               onClick={handleToggleMonthlyView}
               aria-label="월간/일간 뷰 전환"
             >
-              <FontAwesomeIcon
-                icon={faCalendarAlt}
-                style={{ marginRight: 6 }}
-              />
+              <FontAwesomeIcon icon={faCalendarAlt} style={{ marginRight: 6 }} />
               {isMonthlyView ? '일간 뷰' : '월간 뷰'}
+            </button>
+
+            {/* ▼ 단축 모드 토글 버튼 */}
+            <button
+              className={`memo-button ${isMinimalModeEnabled ? 'active' : ''}`}
+              onClick={handleMinimalModeToggle}
+              aria-label="단축 모드 토글"
+            >
+              {isMinimalModeEnabled ? '일반 모드' : '단축 모드'}
             </button>
           </div>
         </div>
 
         {/* 중앙: OTA 상태 표시 */}
-        <div
-          className="header-ota-status"
-          role="region"
-          aria-label="OTA 상태 목록"
-        >
+        <div className="header-ota-status" role="region" aria-label="OTA 상태 목록">
           {Object.keys(otaToggles).map((ota) => (
             <div
               key={ota}
@@ -184,7 +199,7 @@ function Header({
           ))}
         </div>
 
-        {/* 오른쪽: Quick-create 버튼 */}
+        {/* 오른쪽: Quick-create 버튼들 */}
         <div className="header-right">
           <div className="quick-create-buttons">
             <button
@@ -234,18 +249,19 @@ function Header({
 
 Header.propTypes = {
   selectedDate: PropTypes.instanceOf(Date).isRequired,
-  onDateChange: PropTypes.func.isRequired,
   onPrevDay: PropTypes.func.isRequired,
   onNextDay: PropTypes.func.isRequired,
   onQuickCreate: PropTypes.func.isRequired,
-  isShining: PropTypes.bool.isRequired,
   otaToggles: PropTypes.objectOf(PropTypes.bool).isRequired,
   onMemo: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
   isMonthlyView: PropTypes.bool.isRequired,
   toggleMonthlyView: PropTypes.func.isRequired,
   onViewLogs: PropTypes.func.isRequired,
-  isLogViewerOpen: PropTypes.bool, // LogViewer 상태 추가
+  isLogViewerOpen: PropTypes.bool,
+  // ▼ 새로 추가된 props
+  isMinimalModeEnabled: PropTypes.bool.isRequired,
+  onToggleMinimalMode: PropTypes.func.isRequired,
 };
 
 export default Header;

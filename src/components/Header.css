@@ -1,4 +1,4 @@
-/* 기존 기본 스타일 유지 */
+/* 기존 스타일 유지 */
 
 /* 헤더 전체 레이아웃 */
 .header {
@@ -85,19 +85,19 @@
   gap: 10px;
 }
 
-/* 통합된 버튼 스타일 (memo-button, view-logs-button, view-toggle-button) */
+/* 통합된 버튼 스타일 */
 .memo-button {
   padding: 6px 12px;
   font-size: 1rem;
-  line-height: 1; /* 라인 높이를 텍스트 크기와 맞춤 */
+  line-height: 1;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   background-color: #f0f0f0;
   color: #333333;
   display: flex;
-  align-items: center; /* 수직 중앙 정렬 */
-  gap: 5px; /* 아이콘과 텍스트 간 간격 */
+  align-items: center;
+  gap: 5px;
   transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
@@ -110,10 +110,9 @@
   background-color: #d0d0d0;
 }
 
-/* 아이콘 스타일 조정 */
 .memo-button svg {
-  font-size: 1rem; /* 아이콘 크기와 텍스트 크기 일치 */
-  vertical-align: middle; /* 수직 정렬 보정 */
+  font-size: 1rem;
+  vertical-align: middle;
 }
 
 /* 헤더 중앙: OTA 상태 표시 */
@@ -159,7 +158,6 @@
   gap: 10px;
 }
 
-/* 모든 quick-button의 기본 스타일은 그대로 유지 */
 .quick-button {
   padding: 6px 12px;
   font-size: 1.1rem;
