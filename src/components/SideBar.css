@@ -291,6 +291,7 @@ margin-bottom: 10px;
 .sales-icon {
   margin-right: 8px;
   display: inline-block;
+  margin-right: 10px;
 }
 .sales-icon:hover {
   transform: scale(1.5);
