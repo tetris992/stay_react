@@ -57,7 +57,6 @@ function SideBar({
   needsConsent,
   dailySalesByOTA,
   labelsForOTA,
-  onMonthlyView,
   dailySalesReport,
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
@@ -174,14 +173,6 @@ function SideBar({
           activeOTAs={activeOTAs}
           aria-label="즉시 스크래핑"
         />
-        <button
-          className="monthly-view-button"
-          onClick={onMonthlyView}
-          aria-label="객실 재고 확인"
-        >
-          <FaBed className="onsite-icon" />
-          <span className="btn-text">객실 재고 확인</span>
-        </button>
         <button
           className="cancelSearch-button"
           onClick={onShowCanceledModal}
@@ -385,7 +376,6 @@ SideBar.propTypes = {
   dailySalesByOTA: PropTypes.objectOf(PropTypes.arrayOf(PropTypes.number)).isRequired,
   labelsForOTA: PropTypes.arrayOf(PropTypes.string).isRequired,
   activeReservations: PropTypes.arrayOf(PropTypes.object).isRequired,
-  onMonthlyView: PropTypes.func.isRequired,
   dailySalesReport: PropTypes.array.isRequired,
 };
 

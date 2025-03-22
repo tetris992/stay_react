@@ -717,8 +717,6 @@ const App = () => {
 
   const [isMonthlyView, setIsMonthlyView] = useState(false);
 
-  const toggleMonthlyView = () => setIsMonthlyView((prev) => !prev);
-
   const handleReservationSelect = useCallback((res) => {
     setSelectedReservation(res);
   }, []);
@@ -3122,6 +3120,11 @@ const App = () => {
     hotelSettings,
   ]);
 
+  const onMonthlyView = useCallback(() => {
+    navigate('/monthly-calendar');
+    setIsMonthlyView(true); // 월간 뷰 상태로 설정
+  }, [navigate]);
+
   // showQuickRangeModal이 true로 변경될 때 isMonthlyView를 false로 설정
   useEffect(() => {
     if (showQuickRangeModal) {
@@ -3219,10 +3222,10 @@ const App = () => {
                       hasLowStock={hasLowStock}
                       lowStockRoomTypes={lowStockRoomTypes}
                       isMonthlyView={isMonthlyView}
-                      toggleMonthlyView={toggleMonthlyView}
                       onViewLogs={openLogViewer}
                       isMinimalModeEnabled={isMinimalModeEnabled} // 추가
                       onToggleMinimalMode={toggleMinimalMode} // 추가
+                      onMonthlyView={onMonthlyView}
                     />
                     <SideBar
                       loading={loading}
@@ -3329,7 +3332,6 @@ const App = () => {
                               }
                               isMonthlyView={isMonthlyView} // 추가
                               setIsMonthlyView={setIsMonthlyView} // 추가
-                              toggleMonthlyView={toggleMonthlyView} // 추가
                               onQuickCreateRange={onQuickCreateRange}
                               logs={logs}
                               isLogViewerOpen={isLogViewerOpen} // 로그 뷰어 상태 전달

@@ -345,7 +345,7 @@ const ContainerCell = React.memo(
     
       if (assignedReservations && assignedReservations.length > 0) {
         displayStatus = 'ON';
-        displayColor = 'steelblue';
+        displayColor = 'green';
         containerBg = '#f0f4f8';
     
         if (assignedReservations.length === 1) {

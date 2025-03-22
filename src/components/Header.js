@@ -7,6 +7,8 @@ import {
   faStickyNote,
   faCalendarAlt,
   faList,
+  faCompress,
+  faExpand, // 단축 모드 해제 아이콘 추가
 } from '@fortawesome/free-solid-svg-icons';
 import PropTypes from 'prop-types';
 import { format } from 'date-fns';
@@ -22,17 +24,16 @@ function Header({
   onMemo,
   flipAllMemos,
   isMonthlyView,
-  toggleMonthlyView,
   onViewLogs,
   isLogViewerOpen,
-  // ▼ 새로 추가한 props
   isMinimalModeEnabled,
-  onToggleMinimalMode,
+  onToggleMinimalMode, //이건 필요한거 아닌가 ? 지금 비활성화 됨 ! 단축모드 토글과 관계없나 ? 
+  onMonthlyView,
 }) {
   // selectedDate를 KST로 변환
   const kstDate = toZonedTime(selectedDate, 'Asia/Seoul');
   const dayOfWeek = kstDate.getDay();
-  const weekdayName = format(kstDate, 'eeee', { locale: ko }); // 한국어 요일
+  const weekdayName = format(kstDate, 'eeee', { locale: ko });
   const formattedDate = format(kstDate, 'yyyy년 M월 d일', { locale: ko });
 
   // 디버깅 로그
@@ -65,14 +66,14 @@ function Header({
     }
   };
 
-  const handleToggleMonthlyView = () => {
-    try {
-      toggleMonthlyView();
-    } catch (error) {
-      console.error('[Header] Error on toggling monthly view:', error);
-      alert('뷰 전환 중 오류가 발생했습니다.');
-    }
-  };
+  // const handleToggleMonthlyView = () => {
+  //   try {
+  //     toggleMonthlyView();
+  //   } catch (error) {
+  //     console.error('[Header] Error on toggling monthly view:', error);
+  //     alert('뷰 전환 중 오류가 발생했습니다.');
+  //   }
+  // };
 
   const handleMemoClick = () => {
     try {
@@ -89,16 +90,6 @@ function Header({
     } catch (error) {
       console.error('[Header] Error on view logs:', error);
       alert('로그 보기 중 오류가 발생했습니다.');
-    }
-  };
-
-  // ▼ 단축 모드 버튼 클릭 핸들러
-  const handleMinimalModeToggle = () => {
-    try {
-      onToggleMinimalMode();
-    } catch (error) {
-      console.error('[Header] Error on minimal mode toggle:', error);
-      alert('단축 모드 전환 중 오류가 발생했습니다.');
     }
   };
 
@@ -161,26 +152,37 @@ function Header({
             {/* 월간/일간 뷰 전환 버튼 */}
             <button
               className={`memo-button ${isMonthlyView ? 'active' : ''}`}
-              onClick={handleToggleMonthlyView}
+              onClick={onMonthlyView}
               aria-label="월간/일간 뷰 전환"
             >
-              <FontAwesomeIcon icon={faCalendarAlt} style={{ marginRight: 6 }} />
+              <FontAwesomeIcon
+                icon={faCalendarAlt}
+                style={{ marginRight: 6 }}
+              />
               {isMonthlyView ? '일간 뷰' : '월간 뷰'}
             </button>
 
-            {/* ▼ 단축 모드 토글 버튼 */}
+            {/* 단축 모드 토글 버튼 */}
             <button
               className={`memo-button ${isMinimalModeEnabled ? 'active' : ''}`}
-              onClick={handleMinimalModeToggle}
+              onClick={onToggleMinimalMode}
               aria-label="단축 모드 토글"
             >
+              <FontAwesomeIcon
+                icon={isMinimalModeEnabled ? faExpand : faCompress}
+                style={{ marginRight: 6 }}
+              />
               {isMinimalModeEnabled ? '일반 모드' : '단축 모드'}
             </button>
           </div>
         </div>
 
         {/* 중앙: OTA 상태 표시 */}
-        <div className="header-ota-status" role="region" aria-label="OTA 상태 목록">
+        <div
+          className="header-ota-status"
+          role="region"
+          aria-label="OTA 상태 목록"
+        >
           {Object.keys(otaToggles).map((ota) => (
             <div
               key={ota}
@@ -256,10 +258,9 @@ Header.propTypes = {
   onMemo: PropTypes.func.isRequired,
   flipAllMemos: PropTypes.bool.isRequired,
   isMonthlyView: PropTypes.bool.isRequired,
-  toggleMonthlyView: PropTypes.func.isRequired,
+  onMonthlyView: PropTypes.func.isRequired,
   onViewLogs: PropTypes.func.isRequired,
   isLogViewerOpen: PropTypes.bool,
-  // ▼ 새로 추가된 props
   isMinimalModeEnabled: PropTypes.bool.isRequired,
   onToggleMinimalMode: PropTypes.func.isRequired,
 };
