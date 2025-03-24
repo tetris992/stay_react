@@ -1,112 +1,63 @@
-배경 이미지 추가
+/* 전역 초기화 */
 * {
   box-sizing: border-box;
 }
-
-/* src/App.css */
-
-html {
-  padding-right: 0px;
-}
-
-body,
-.app-layout {
-  height: 100%;
+html, body {
   margin: 0;
   padding: 0;
-  background-color: transparent;
-  background-size: cover;
-  overflow: hidden;
-  box-sizing: border-box;
-  padding-right: 0px;
-}
-
-body::before,
-.app-layout::before {
-  content: '';
-  position: fixed;
-  background-color: #f0f0f0;
-  top: 0;
-  left: 0;
-  width: 100%;
   height: 100%;
-  background-size: cover;
-  filter: blur(1px);
-  z-index: -1;
-  padding-right: 0px;
-
 }
 
-.logged-out {
-  background-color: transparent;
-  color: #ffffff;
-}
-
-.logged-out::before {
-  content: '';
-  position: fixed;
-  background: url('./assets/b87.jpg') no-repeat center center fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  filter: blur(1px) brightness(0.5);
-  z-index: -1;
-}
-
-.main-content {
-  margin-top: 140px;
-  margin-left: 300px;
-  padding: 1px;
-  overflow-y: auto;
-  height: calc(100vh - 140px);
-  background-color: transparent;
-  min-width: 320px;
-  flex: 1;
-}
-
-.App {
-  text-align: center;
-  background-color: rgb(219, 221, 223);
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* 전체 레이아웃 컨테이너 */
+.app-layout {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  /* background: none; or background-color: #f0f0f0; */
 }
 
-.App-link {
-  color: #61dafb;
+/* (B) .logged-out(로그인 전)일 때만 배경이미지 표시 */
+.app-layout.logged-out {
+  background: url('./assets/b87.jpg') no-repeat center center fixed;
+  background-size: cover;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* (1) 헤더: 상단 고정, 가로 100% */
+.header-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 140px;       /* 헤더 높이 */
+  z-index: 999;        /* 본문 위로 */
+  background-color: rgba(255, 255, 255, 0.8); /* 예시 */
+  border-bottom: 1px solid #ddd;
+  /* padding, grid, etc. 원하는 헤더 스타일 */
 }
 
-body {
-  scrollbar-width: thin;
-  scrollbar-color: #888 transparent;
+/* (2) 헤더 아래로 사이드바+본문 배치 */
+.content-area {
+  display: flex;
+  width: 100%;
+  height: calc(100vh - 140px); /* 헤더 높이만큼 뺀 나머지를 사용 */
+  margin-top: 140px;           /* 헤더 아래로 공간 확보 */
+  overflow: hidden;            /* 내부에서 각자 스크롤 */
+}
+
+/* 사이드바 */
+.sidebar-container {
+  width: 300px;                 /* 사이드바 고정 너비 */
+  overflow-y: auto;             /* 사이드바 스크롤 */
+  background-color: rgba(244, 244, 244, 0.9);
+  border-right: 1px solid #ddd;
+}
+
+/* 메인컨텐츠 */
+.main-content {
+  flex: 1;              /* 나머지 공간 전부 차지 */
+  overflow-y: auto;     /* 본문 스크롤 */
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 10px;
 }

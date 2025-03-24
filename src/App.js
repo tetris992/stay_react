@@ -3187,10 +3187,7 @@ const App = () => {
   }, [showQuickRangeModal]);
 
   return (
-    <div
-      className={`app-layout ${!isAuthenticated ? 'logged-out' : ''}`}
-      style={{ display: 'flex' }}
-    >
+    <div className={`app-layout ${!isAuthenticated ? 'logged-out' : ''}`}>
       {isLoading ? (
         <div className="loading-spinner">로딩 중...</div>
       ) : (
@@ -3228,9 +3225,12 @@ const App = () => {
                   />
                 }
               />
-
-              <Route path="/hotel-settings" element={<HotelSettingsPage />} />
-
+  
+              <Route
+                path="/hotel-settings"
+                element={<HotelSettingsPage />}
+              />
+  
               {/* ★ 월간 달력 페이지 라우트 */}
               <Route
                 path="/monthly-calendar"
@@ -3238,19 +3238,19 @@ const App = () => {
                   <MonthlyCalendar
                     reservations={allReservations}
                     roomTypes={finalRoomTypes}
-                    availabilityByDate={availabilityByDate} // 추가
-                    gridSettings={hotelSettings?.gridSettings || {}} // 추가
+                    availabilityByDate={availabilityByDate}
+                    gridSettings={hotelSettings?.gridSettings || {}}
                     currentDate={selectedDate}
                     onRangeSelect={onQuickCreateRange}
                     onReturnView={() => navigate('/')}
                     onDateNavigate={(date) => {
                       setSelectedDate(date);
-                      navigate('/'); // 일간 화면(루트 경로)으로 이동
+                      navigate('/');
                     }}
                   />
                 }
               />
-
+  
               {/* 기존 일간예약 화면 라우트 */}
               <Route
                 path="/"
@@ -3280,6 +3280,7 @@ const App = () => {
                       />
                     </header>
 
+  
                     {/* (2) 사이드바 + 메인 컨텐츠 영역 */}
                     <div className="content-area">
                       <aside className="sidebar-container">
@@ -3326,12 +3327,11 @@ const App = () => {
                         />
                       </aside>
 
+  
                       <main className="main-content">
                         <UnassignedReservationsPanel
                           reservations={allReservations}
-                          onSelectReservation={
-                            handleSelectUnassignedReservation
-                          }
+                          onSelectReservation={handleSelectUnassignedReservation}
                         />
                         <div className="split-view-layout">
                           <div className="left-pane">
@@ -3348,12 +3348,11 @@ const App = () => {
                                 hotelId={hotelId}
                                 hotelSettings={hotelSettings}
                                 hotelAddress={
-                                  hotelSettings?.hotelAddress ||
-                                  '주소 정보 없음'
+
+                                  hotelSettings?.hotelAddress || '주소 정보 없음'
                                 }
                                 phoneNumber={
-                                  hotelSettings?.phoneNumber ||
-                                  '전화번호 정보 없음'
+                                  hotelSettings?.phoneNumber || '전화번호 정보 없음'
                                 }
                                 email={
                                   hotelSettings?.email || '이메일 정보 없음'
@@ -3363,9 +3362,8 @@ const App = () => {
                                 setMemos={setMemos}
                                 searchCriteria={searchCriteria}
                                 isSearching={isSearching}
-                                highlightedReservationIds={
-                                  highlightedReservationIds
-                                }
+
+                                highlightedReservationIds={highlightedReservationIds}
                                 headerHeight={140}
                                 newlyCreatedId={newlyCreatedId}
                                 updatedReservationId={updatedReservationId}
@@ -3374,13 +3372,10 @@ const App = () => {
                                 monthlyDailyBreakdown={monthlyDailyBreakdown}
                                 selectedDate={selectedDate}
                                 setSelectedDate={setSelectedDate}
-                                handleRoomChangeAndSync={
-                                  handleRoomChangeAndSync
-                                }
+
+                                handleRoomChangeAndSync={handleRoomChangeAndSync}
                                 setAllReservations={setAllReservations}
-                                filterReservationsByDate={
-                                  filterReservationsByDate
-                                }
+                                filterReservationsByDate={filterReservationsByDate}
                                 isMonthlyView={isMonthlyView}
                                 setIsMonthlyView={setIsMonthlyView}
                                 onQuickCreateRange={onQuickCreateRange}
@@ -3401,9 +3396,8 @@ const App = () => {
                                 reservation={selectedReservation}
                                 onClose={handleCloseDetail}
                                 onSave={handleDetailSave}
-                                onEdit={(id, data) =>
-                                  handleEdit(id, data, hotelId)
-                                }
+
+                                onEdit={(id, data) => handleEdit(id, data, hotelId)}
                               />
                             )}
                           </div>
@@ -3412,13 +3406,11 @@ const App = () => {
                           (guestFormData.type === 'stay' ? (
                             <GuestFormModal
                               initialData={guestFormData}
-                              roomTypes={
-                                hotelSettings?.roomTypes || defaultRoomTypes
-                              }
+
+                              roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
                               onClose={() => {
                                 setShowGuestForm(false);
-                                if (guestFormData.onComplete)
-                                  guestFormData.onComplete();
+                                if (guestFormData.onComplete) guestFormData.onComplete();
                               }}
                               onSave={handleFormSave}
                               availabilityByDate={guestAvailability}
@@ -3427,9 +3419,8 @@ const App = () => {
                               setLoadedReservations={setLoadedReservations}
                               setAllReservations={setAllReservations}
                               processReservation={processReservation}
-                              filterReservationsByDate={
-                                filterReservationsByDate
-                              }
+
+                              filterReservationsByDate={filterReservationsByDate}
                               allReservations={allReservations}
                               setNewlyCreatedId={setNewlyCreatedId}
                             />
@@ -3439,8 +3430,8 @@ const App = () => {
                               roomTypes={finalRoomTypes}
                               onClose={() => {
                                 setShowGuestForm(false);
-                                if (guestFormData.onComplete)
-                                  guestFormData.onComplete();
+
+                                if (guestFormData.onComplete) guestFormData.onComplete();
                               }}
                               onSave={handleFormSave}
                               availabilityByDate={guestAvailability}
@@ -3473,9 +3464,8 @@ const App = () => {
                           occupancyRate={occupancyRate}
                           avgMonthlyRoomPrice={avgMonthlyRoomPrice}
                           dailyAverageRoomPrice={dailyAverageRoomPrice}
-                          roomTypes={
-                            hotelSettings?.roomTypes || defaultRoomTypes
-                          }
+
+                          roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
                           monthlyDailyBreakdown={monthlyDailyBreakdown}
                           dailySalesByOTA={dailySalesByOTA}
                         />

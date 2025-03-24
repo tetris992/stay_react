@@ -1,28 +1,28 @@
-/* 기존 스타일 유지 */
-
-/* 헤더 전체 레이아웃 */
+/* 전체 헤더: 140px 높이, 2열(왼: 로고, 오른: 2줄) */
 .header {
-  box-sizing: border-box;
   position: fixed;
   top: 0;
-  left: 280px;
-  width: calc(100% - 280px);
+  width: 100%;
   height: 140px;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto;
-  gap: 10px;
-  padding: 20px;
+  display: flex;
   background-color: transparent;
   border-bottom: 1px solid #a7a5a53d;
+  z-index: 10;
 }
 
-/* 헤더 중앙: 날짜 네비게이션 */
-.header-center {
+/* (왼쪽) 로고 칸: 전체 140px 높이 */
+.header-left {
+  width: 280px; /* 사이드바와 비슷한 너비 */
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  background-color: transparent;
+}
+.header-logo-link {
+  display: inline-block;
+}
+.header-logo {
+  height: 40px;
 }
 
 /* (오른쪽) 2줄 구조: 위 70px, 아래 70px */
@@ -37,38 +37,20 @@
 .header-right-top {
   display: flex;
   align-items: center;
+  justify-content: center; /* 날짜 중앙 정렬 */
+  height: 70px;
+  background-color: transparent;
+  gap: 10px;
 }
 
-.selected-date {
-  font-size: 2rem;
-  padding: 0 10px;
-  margin-top: 10px;
-  font-weight: 700;
-  color: #050505;
-}
-
-.weekday {
-  font-size: 1.2rem;
-  padding-left: 5px;
-  color: #555555;
-}
-
-.weekend {
-  color: #ff00008e;
-}
-
-/* 화살표 버튼 스타일링 */
 .arrow-button {
   background: none;
-  padding: 0 10px;
-  margin-top: 10px;
   border: none;
   cursor: pointer;
-  font-size: 2rem;
+  font-size: 1.4rem;
   color: #3f3f3f78;
   transition: color 0.3s ease, transform 0.3s ease;
 }
-
 .arrow-button:hover {
   color: #194fcdaa;
   transform: scale(1.1);
@@ -95,145 +77,104 @@
   grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
 }
+.weekend {
+  color: #ff00008e;
+}
 
-/* 헤더 왼쪽: 정렬 버튼과 메모 버튼 */
-.header-left {
+/* (2) 아래쪽: 메모/로그/월간뷰/단축모드 + OTA + 빠른예약 */
+.header-right-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* 왼-중앙-오른 */
+  height: 70px;
+  background-color: transparent;
+  align-items: center;
+  padding: 0 20px;
+}
+
+/* 하단 왼쪽: 메모/로그/월간뷰/단축모드 */
+.header-right-bottom-left {
   display: flex;
   align-items: center;
   margin-left: 20px;
   margin-right: 20px;
 }
-
 .additional-buttons {
   display: flex;
   gap: 10px;
 }
-
-/* 통합된 버튼 스타일 */
 .memo-button {
   padding: 6px 12px;
   font-size: 1rem;
-  line-height: 1;
   border: none;
   border-radius: 4px;
-  cursor: pointer;
   background-color: #f0f0f0;
-  color: #333333;
+  color: #333;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
-  transition: background-color 0.3s ease, transform 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .memo-button:hover {
   background-color: #e0e0e0;
   transform: scale(1.05);
 }
-
 .memo-button.active {
   background-color: #d0d0d0;
 }
 
-.memo-button svg {
-  font-size: 1rem;
-  vertical-align: middle;
-}
-
-/* 헤더 중앙: OTA 상태 표시 */
+/* 하단 중앙: OTA 상태 */
 .header-ota-status {
   display: flex;
   justify-content: center;
-}
-
-.ota-status-item {
-  margin: 0 10px;
-  font-size: 16px;
-  display: flex;
   align-items: center;
 }
-
-.status-lamp {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-left: 8px;
+.ota-status-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  margin: 0 8px;
 }
-
+.status-lamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
 .status-lamp.green {
   background-color: rgb(131, 239, 131);
 }
-
 .status-lamp.gray {
   background-color: gray;
 }
 
-/* 헤더 오른쪽: Quick-create 버튼 영역 */
-.header-right {
+/* 하단 오른쪽: 빠른 예약 */
+.header-right-bottom-right {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  margin-right: 20px;
+  justify-content: flex-end;
 }
-
 .quick-create-buttons {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
-
 .quick-button {
   padding: 6px 12px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   background-color: #6287ace1;
-  color: #ffffff;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  color: #fff;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .quick-button:hover {
   background-color: #007cb576;
-  cursor: pointer;
+  transform: scale(1.05);
 }
-
 .quick-button-green {
   background-color: #4caf4fe9;
-  color: #ffffff;
 }
-
 .quick-button-green:hover {
   background-color: #45a04979;
-}
-
-/* 투명도 효과 영역 */
-.header-fade {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 10px;
-  background: linear-gradient(
-    to bottom,
-    rgba(244, 244, 244, 0),
-    rgba(244, 244, 244, 1)
-  );
-}
-
-/* 반응형 디자인: 화면 폭 2200px 이하일 때 */
-@media (max-width: 2200px) {
-  .header-ota-status {
-    display: none;
-  }
-  .header-bottom {
-    grid-template-columns: 1fr 1fr;
-  }
-  .quick-create-buttons .quick-button:not(.monthly-view-button) {
-    display: none !important;
-  }
-  .quick-create-buttons {
-    gap: 0;
-    justify-content: flex-end;
-  }
 }

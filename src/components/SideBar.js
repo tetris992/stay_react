@@ -7,6 +7,7 @@ import { ko } from 'date-fns/locale';
 import { toZonedTime, format } from 'date-fns-tz';
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css'; // 아래 CSS와 같은 파일 또는 동일 내용
+
 import VoiceSearch from './VoiceSearch';
 import Search from './Search';
 import {
@@ -165,9 +166,10 @@ function SideBar({
         highlightEffect === 'blink' ? 'highlight-blink' : ''
       }`}
     >
-      {/* 상단 헤더 (필요 시 로고나 다른 요소 추가) */}
-      <div className="sidebar-header"></div>
 
+      <div className="sidebar-header">
+
+      </div>
       {/* 검색 섹션 */}
       <Search
         searchCriteria={searchCriteria}
