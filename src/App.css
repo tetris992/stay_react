@@ -48,7 +48,7 @@ html, body {
 
 /* 사이드바 */
 .sidebar-container {
-  width: 300px;                 /* 사이드바 고정 너비 */
+  width: 350px;                 /* 사이드바 고정 너비 */
   overflow-y: auto;             /* 사이드바 스크롤 */
   background-color: rgba(244, 244, 244, 0.9);
   border-right: 1px solid #ddd;
