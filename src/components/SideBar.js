@@ -4,10 +4,10 @@ import AccountingInfo from './AccountingInfo';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import { ko } from 'date-fns/locale';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, format } from 'date-fns-tz';
 import 'react-datepicker/dist/react-datepicker.css';
 import './SideBar.css';
-import logo from '../assets/StaySync.svg';
+// import logo from '../assets/StaySync.svg'; //해드로 이동
 
 import VoiceSearch from './VoiceSearch';
 import Search from './Search';
@@ -23,11 +23,30 @@ import {
   FaChartLine,
   FaTools,
 } from 'react-icons/fa';
-
 import ScrapeNowButton from './ScrapeNowButton';
 import availableOTAs from '../config/availableOTAs';
 import RoomStatusChart from './RoomStatusChart';
 import SalesGraphModal from './SalesGraphModal';
+
+// 한국 공휴일 데이터 (2025년 예시)
+const koreanHolidays2025 = [
+  '2025-01-01', // 신정
+  '2025-01-28', // 설날 연휴
+  '2025-01-29', // 설날
+  '2025-01-30', // 설날 연휴
+  '2025-03-01', // 삼일절
+  '2025-05-05', // 어린이날
+  '2025-05-06', // 대체공휴일(어린이날)
+  '2025-05-08', // 석가탄신일
+  '2025-06-06', // 현충일
+  '2025-08-15', // 광복절
+  '2025-10-03', // 개천절
+  '2025-10-05', // 추석 연휴
+  '2025-10-06', // 추석
+  '2025-10-07', // 추석 연휴
+  '2025-10-09', // 한글날
+  '2025-12-25', // 크리스마스
+];
 
 function SideBar({
   loading,
@@ -65,16 +84,19 @@ function SideBar({
 
   const navigate = useNavigate();
 
+  // 동기화 버튼
   const handleSyncClick = () => {
     setIsShining(true);
     onSync();
     setTimeout(() => setIsShining(false), 5000);
   };
 
+  // 호텔 설정 이동
   const handleSettingsClick = () => {
     navigate('/hotel-settings');
   };
 
+  // 날짜 변경 핸들러 (KST 변환)
   const handleDateChangeInternal = (date) => {
     try {
       const kstDate = toZonedTime(date, 'Asia/Seoul');
@@ -86,6 +108,7 @@ function SideBar({
     }
   };
 
+  // 음성 검색 결과
   const handleVoiceResult = (transcript) => {
     try {
       setSearchCriteria({ ...searchCriteria, name: transcript });
@@ -98,6 +121,7 @@ function SideBar({
     }
   };
 
+  // 시각적 이펙트(블링크 등)
   const triggerVisualEffect = (effectType) => {
     if (effectType === 'battery') {
       setHighlightEffect('blink');
@@ -105,6 +129,7 @@ function SideBar({
     }
   };
 
+  // 일반 검색 제출
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     executeSearch(searchCriteria.name || '');
@@ -113,13 +138,28 @@ function SideBar({
     }, 1000);
   };
 
+  // 활성화된 OTA
   const activeOTAs = availableOTAs.filter((ota) => otaToggles?.[ota]);
 
+  // 매출 그래프 모달 열기/닫기
   const handleOpenGraphModal = () => setIsGraphModalOpen(true);
   const handleCloseGraphModal = () => setIsGraphModalOpen(false);
 
+  // 그래프용 데이터
   const dailySales = { labels: labelsForOTA, values: [] };
   const monthlySales = { labels: ['현재월'], values: [monthlyTotal.total] };
+
+  // 주말·공휴일 표시용 dayClassName
+  const getDayClassName = (date) => {
+    const dayOfWeek = date.getDay(); // 일(0) ~ 토(6)
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const isHoliday = koreanHolidays2025.includes(dateStr);
+
+    if (isHoliday) return 'holiday';
+    if (isWeekend) return 'weekend';
+    return '';
+  };
 
   return (
     <div
@@ -128,13 +168,7 @@ function SideBar({
       }`}
     >
       <div className="sidebar-header">
-        <a
-          href="https://staysync.framer.ai/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src={logo} alt="Logo" className="sidebar-logo" />
-        </a>
+
       </div>
 
       <Search
@@ -148,6 +182,7 @@ function SideBar({
         triggerVisualEffect={triggerVisualEffect}
       />
 
+      {/* 동기화 / 설정 / 로그아웃 / 취소예약확인 */}
       <div className="sync-section">
         <button
           className={`settings-button ${needsConsent ? 'blink-button' : ''}`}
@@ -191,6 +226,7 @@ function SideBar({
         </button>
       </div>
 
+      {/* 날짜 선택 달력 */}
       <div className="date-picker-section">
         <h4 className="section-title">
           <FaCalendarAlt className="section-icon" />
@@ -204,11 +240,13 @@ function SideBar({
             locale={ko}
             inline
             monthsShown={1}
+            dayClassName={getDayClassName} // 주말·공휴일 클래스 부여
             aria-label="날짜 선택 캘린더"
           />
         </div>
       </div>
 
+      {/* 객실 상태 */}
       <div className="room-status-section">
         <h4 className="section-title">
           <FaBed className="section-icon" />
@@ -224,6 +262,7 @@ function SideBar({
         </div>
       </div>
 
+      {/* 매출 정보 */}
       <AccountingInfo
         dailyTotal={dailyTotal}
         monthlyTotal={monthlyTotal}
@@ -244,6 +283,7 @@ function SideBar({
         </h4>
       </AccountingInfo>
 
+      {/* OTA 설정 (토글) */}
       <div className="ota-settings-section">
         <div
           className="ota-settings-header"
@@ -273,6 +313,7 @@ function SideBar({
         )}
       </div>
 
+      {/* 매출 그래프 모달 */}
       <SalesGraphModal
         isOpen={isGraphModalOpen}
         onRequestClose={handleCloseGraphModal}
@@ -285,6 +326,7 @@ function SideBar({
         aria-label="매출 그래프 모달"
       />
 
+      {/* 하단 푸터 */}
       <div className="sidebar-footer">
         <div className="footer-divider" />
         <p>

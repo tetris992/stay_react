@@ -1827,8 +1827,8 @@ const App = () => {
             }`
           );
         }
-        const currentPayment = currentReservation.paymentMethod || '미결제';
-        const updatedPayment = updatedData.paymentMethod || '미결제';
+        const currentPayment = currentReservation.paymentMethod || 'Pending';
+        const updatedPayment = updatedData.paymentMethod || 'Pending';
         if (currentPayment !== updatedPayment) {
           changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
         }
@@ -1865,7 +1865,7 @@ const App = () => {
             paymentMethod:
               updatedData.paymentMethod ||
               currentReservation.paymentMethod ||
-              '미결제',
+              'Pending',
             isCheckedIn:
               updatedData.isCheckedIn ?? currentReservation.isCheckedIn,
             isCheckedOut:
@@ -3228,12 +3228,12 @@ const App = () => {
                   />
                 }
               />
-
+  
               <Route
                 path="/hotel-settings"
-                element={<HotelSettingsPage />} // <-- 추가
+                element={<HotelSettingsPage />}
               />
-
+  
               {/* ★ 월간 달력 페이지 라우트 */}
               <Route
                 path="/monthly-calendar"
@@ -3259,207 +3259,184 @@ const App = () => {
                 path="/"
                 element={
                   <>
-                    <Header
-                      selectedDate={selectedDate}
-                      onPrevDay={handlePrevDay}
-                      onNextDay={handleNextDay}
-                      onQuickCreate={onQuickCreate}
-                      onLogout={handleLogout}
-                      isShining={isShining}
-                      otaToggles={otaToggles}
-                      onToggleOTA={handleToggleOTA}
-                      // onSort={handleSort}
-                      onDateChange={handleDateChange}
-                      onMemo={handleMemoButtonClick}
-                      flipAllMemos={flipAllMemos}
-                      // sortOrder={sortOrder}
-                      hasLowStock={hasLowStock}
-                      lowStockRoomTypes={lowStockRoomTypes}
-                      isMonthlyView={isMonthlyView}
-                      onViewLogs={openLogViewer}
-                      isMinimalModeEnabled={isMinimalModeEnabled} // 추가
-                      onToggleMinimalMode={toggleMinimalMode} // 추가
-                      onMonthlyView={onMonthlyView}
-                    />
-                    <SideBar
-                      loading={loading}
-                      onSync={combinedSync}
-                      isShining={isShining}
-                      setIsShining={setIsShining}
-                      dailyTotal={dailyTotal}
-                      monthlyTotal={monthlyTotal}
-                      occupancyRate={occupancyRate}
-                      selectedDate={selectedDate}
-                      onDateChange={handleDateChange}
-                      hotelId={hotelId}
-                      hotelSettings={hotelSettings}
-                      handleSaveSettings={handleSaveSettings}
-                      loadHotelSettings={loadHotelSettings}
-                      totalRooms={totalRooms}
-                      remainingRooms={remainingRooms}
-                      roomTypes={roomTypes}
-                      roomsSold={roomsSold}
-                      monthlySoldRooms={monthlySoldRooms}
-                      avgMonthlyRoomPrice={avgMonthlyRoomPrice}
-                      onLogout={handleLogout}
-                      dailyBreakdown={dailyBreakdown}
-                      openSalesModal={openSalesModal}
-                      onToggleOTA={handleToggleOTA}
-                      otaToggles={otaToggles}
-                      searchCriteria={searchCriteria}
-                      setSearchCriteria={setSearchCriteria}
-                      handleVoiceResult={handleVoiceResult}
-                      executeSearch={executeSearch}
-                      onShowCanceledModal={() => setShowCanceledModal(true)}
-                      memos={memos}
-                      setMemos={setMemos}
-                      onOnsiteReservationClick={openOnSiteReservationForm}
-                      needsConsent={needsConsent}
-                      monthlyDailyBreakdown={monthlyDailyBreakdown}
-                      labelsForOTA={labelsForOTA}
-                      dailySalesByOTA={dailySalesByOTA}
-                      activeReservations={activeReservations}
-                      onMonthlyView={() => navigate('/monthly-calendar')}
-                      dailySalesReport={dailySalesReport}
-                    />
-                    <div className="main-content" style={{ flex: '1' }}>
-                      {/* 고정 영역으로 미배정 예약 패널 렌더링 */}
-                      <UnassignedReservationsPanel
-                        reservations={allReservations}
-                        onSelectReservation={handleSelectUnassignedReservation}
+                    {/* (1) 헤더 영역 */}
+                    <header className="header-container">
+                      <Header
+                        selectedDate={selectedDate}
+                        onPrevDay={handlePrevDay}
+                        onNextDay={handleNextDay}
+                        onQuickCreate={onQuickCreate}
+                        onLogout={handleLogout}
+                        isShining={isShining}
+                        otaToggles={otaToggles}
+                        onToggleOTA={handleToggleOTA}
+                        onDateChange={handleDateChange}
+                        onMemo={handleMemoButtonClick}
+                        flipAllMemos={flipAllMemos}
+                        hasLowStock={hasLowStock}
+                        lowStockRoomTypes={lowStockRoomTypes}
+                        isMonthlyView={isMonthlyView}
+                        onViewLogs={openLogViewer}
+                        isMinimalModeEnabled={isMinimalModeEnabled}
+                        onToggleMinimalMode={toggleMinimalMode}
+                        onMonthlyView={onMonthlyView}
                       />
-                      <div className="split-view-layout">
-                        <div className="left-pane">
-                          <DndProvider backend={HTML5Backend}>
-                            <RoomGrid
-                              reservations={activeReservations}
-                              fullReservations={allReservations}
-                              onDelete={handleDelete}
-                              onConfirm={handleConfirm}
-                              onEdit={handleEdit}
-                              onPartialUpdate={handlePartialUpdate}
-                              onReservationSelect={handleReservationSelect}
-                              loadedReservations={loadedReservations}
-                              hotelId={hotelId}
-                              hotelSettings={hotelSettings} // 호텔 설정 전체 전달
-                              hotelAddress={
-                                hotelSettings?.hotelAddress ||
-                                (console.warn(
-                                  'Hotel address not found in hotelSettings'
-                                ),
-                                '주소 정보 없음')
-                              } // 호텔 주소 전달, 디버깅 로깅 추가
-                              phoneNumber={
-                                hotelSettings?.phoneNumber ||
-                                (console.warn(
-                                  'Phone number not found in hotelSettings'
-                                ),
-                                '전화번호 정보 없음')
-                              } // 전화번호 전달, 디버깅 로깅 추가
-                              email={
-                                hotelSettings?.email ||
-                                (console.warn(
-                                  'Email not found in hotelSettings'
-                                ),
-                                '이메일 정보 없음')
-                              } // 이메일 전달, 디버깅 로깅 추가
-                              roomTypes={finalRoomTypes}
-                              memos={memos}
-                              setMemos={setMemos}
-                              searchCriteria={searchCriteria}
-                              isSearching={isSearching}
-                              highlightedReservationIds={
-                                highlightedReservationIds
-                              }
-                              headerHeight={140}
-                              newlyCreatedId={newlyCreatedId}
-                              updatedReservationId={updatedReservationId} // 추가
-                              flipAllMemos={flipAllMemos}
-                              needsConsent={needsConsent}
-                              monthlyDailyBreakdown={monthlyDailyBreakdown}
+                    </header>
+  
+                    {/* (2) 사이드바 + 메인 컨텐츠 영역 */}
+                    <div className="content-area">
+                      <aside className="sidebar-container">
+                        <SideBar
+                          loading={loading}
+                          onSync={combinedSync}
+                          isShining={isShining}
+                          setIsShining={setIsShining}
+                          dailyTotal={dailyTotal}
+                          monthlyTotal={monthlyTotal}
+                          occupancyRate={occupancyRate}
+                          selectedDate={selectedDate}
+                          onDateChange={handleDateChange}
+                          hotelId={hotelId}
+                          hotelSettings={hotelSettings}
+                          handleSaveSettings={handleSaveSettings}
+                          loadHotelSettings={loadHotelSettings}
+                          totalRooms={totalRooms}
+                          remainingRooms={remainingRooms}
+                          roomTypes={roomTypes}
+                          roomsSold={roomsSold}
+                          monthlySoldRooms={monthlySoldRooms}
+                          avgMonthlyRoomPrice={avgMonthlyRoomPrice}
+                          onLogout={handleLogout}
+                          dailyBreakdown={dailyBreakdown}
+                          openSalesModal={openSalesModal}
+                          onToggleOTA={handleToggleOTA}
+                          otaToggles={otaToggles}
+                          searchCriteria={searchCriteria}
+                          setSearchCriteria={setSearchCriteria}
+                          handleVoiceResult={handleVoiceResult}
+                          executeSearch={executeSearch}
+                          onShowCanceledModal={() => setShowCanceledModal(true)}
+                          memos={memos}
+                          setMemos={setMemos}
+                          onOnsiteReservationClick={openOnSiteReservationForm}
+                          needsConsent={needsConsent}
+                          monthlyDailyBreakdown={monthlyDailyBreakdown}
+                          labelsForOTA={labelsForOTA}
+                          dailySalesByOTA={dailySalesByOTA}
+                          activeReservations={activeReservations}
+                          onMonthlyView={() => navigate('/monthly-calendar')}
+                          dailySalesReport={dailySalesReport}
+                        />
+                      </aside>
+  
+                      <main className="main-content">
+                        <UnassignedReservationsPanel
+                          reservations={allReservations}
+                          onSelectReservation={handleSelectUnassignedReservation}
+                        />
+                        <div className="split-view-layout">
+                          <div className="left-pane">
+                            <DndProvider backend={HTML5Backend}>
+                              <RoomGrid
+                                reservations={activeReservations}
+                                fullReservations={allReservations}
+                                onDelete={handleDelete}
+                                onConfirm={handleConfirm}
+                                onEdit={handleEdit}
+                                onPartialUpdate={handlePartialUpdate}
+                                onReservationSelect={handleReservationSelect}
+                                loadedReservations={loadedReservations}
+                                hotelId={hotelId}
+                                hotelSettings={hotelSettings}
+                                hotelAddress={
+                                  hotelSettings?.hotelAddress || '주소 정보 없음'
+                                }
+                                phoneNumber={
+                                  hotelSettings?.phoneNumber || '전화번호 정보 없음'
+                                }
+                                email={
+                                  hotelSettings?.email || '이메일 정보 없음'
+                                }
+                                roomTypes={finalRoomTypes}
+                                memos={memos}
+                                setMemos={setMemos}
+                                searchCriteria={searchCriteria}
+                                isSearching={isSearching}
+                                highlightedReservationIds={highlightedReservationIds}
+                                headerHeight={140}
+                                newlyCreatedId={newlyCreatedId}
+                                updatedReservationId={updatedReservationId}
+                                flipAllMemos={flipAllMemos}
+                                needsConsent={needsConsent}
+                                monthlyDailyBreakdown={monthlyDailyBreakdown}
+                                selectedDate={selectedDate}
+                                setSelectedDate={setSelectedDate}
+                                handleRoomChangeAndSync={handleRoomChangeAndSync}
+                                setAllReservations={setAllReservations}
+                                filterReservationsByDate={filterReservationsByDate}
+                                isMonthlyView={isMonthlyView}
+                                setIsMonthlyView={setIsMonthlyView}
+                                onQuickCreateRange={onQuickCreateRange}
+                                logs={logs}
+                                isLogViewerOpen={isLogViewerOpen}
+                                onCloseLogViewer={closeLogViewer}
+                                setDailyTotal={setDailyTotal}
+                                allReservations={allReservations}
+                                showGuestForm={showGuestForm}
+                                isMinimalModeEnabled={isMinimalModeEnabled}
+                                toggleMinimalMode={toggleMinimalMode}
+                              />
+                            </DndProvider>
+                          </div>
+                          <div className="right-pane">
+                            {selectedReservation && (
+                              <DetailPanel
+                                reservation={selectedReservation}
+                                onClose={handleCloseDetail}
+                                onSave={handleDetailSave}
+                                onEdit={(id, data) => handleEdit(id, data, hotelId)}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        {showGuestForm &&
+                          (guestFormData.type === 'stay' ? (
+                            <GuestFormModal
+                              initialData={guestFormData}
+                              roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
+                              onClose={() => {
+                                setShowGuestForm(false);
+                                if (guestFormData.onComplete) guestFormData.onComplete();
+                              }}
+                              onSave={handleFormSave}
+                              availabilityByDate={guestAvailability}
                               selectedDate={selectedDate}
-                              setSelectedDate={setSelectedDate} // 추가
-                              handleRoomChangeAndSync={handleRoomChangeAndSync}
-                              setAllReservations={setAllReservations} // 추가
-                              filterReservationsByDate={
-                                filterReservationsByDate
-                              }
-                              isMonthlyView={isMonthlyView} // 추가
-                              setIsMonthlyView={setIsMonthlyView} // 추가
-                              onQuickCreateRange={onQuickCreateRange}
-                              logs={logs}
-                              isLogViewerOpen={isLogViewerOpen} // 로그 뷰어 상태 전달
-                              onCloseLogViewer={closeLogViewer} // 로그 뷰어 닫기 함수 전달
-                              setDailyTotal={setDailyTotal}
+                              hotelId={hotelId}
+                              setLoadedReservations={setLoadedReservations}
+                              setAllReservations={setAllReservations}
+                              processReservation={processReservation}
+                              filterReservationsByDate={filterReservationsByDate}
                               allReservations={allReservations}
-                              showGuestForm={showGuestForm}
-                              isMinimalModeEnabled={isMinimalModeEnabled}
-                              toggleMinimalMode={toggleMinimalMode}
+                              setNewlyCreatedId={setNewlyCreatedId}
                             />
-                          </DndProvider>
-                        </div>
-                        <div className="right-pane">
-                          {selectedReservation && (
-                            <DetailPanel
-                              reservation={selectedReservation}
-                              onClose={handleCloseDetail}
-                              onSave={handleDetailSave}
-                              onEdit={(id, data) =>
-                                handleEdit(id, data, hotelId)
-                              }
+                          ) : (
+                            <DayUseFormModal
+                              initialData={guestFormData}
+                              roomTypes={finalRoomTypes}
+                              onClose={() => {
+                                setShowGuestForm(false);
+                                if (guestFormData.onComplete) guestFormData.onComplete();
+                              }}
+                              onSave={handleFormSave}
+                              availabilityByDate={guestAvailability}
+                              hotelSettings={hotelSettings}
+                              selectedDate={selectedDate}
+                              allReservations={allReservations}
+                              hotelId={hotelId}
+                              setLoadedReservations={setLoadedReservations}
                             />
-                          )}
-                        </div>
-                      </div>
-                      {showGuestForm &&
-                        (guestFormData.type === 'stay' ? (
-                          <GuestFormModal
-                            initialData={guestFormData}
-                            roomTypes={
-                              hotelSettings?.roomTypes || defaultRoomTypes
-                            }
-                            onClose={() => {
-                              setShowGuestForm(false);
-                              if (guestFormData.onComplete) {
-                                guestFormData.onComplete();
-                              }
-                            }}
-                            onSave={handleFormSave}
-                            availabilityByDate={guestAvailability}
-                            selectedDate={selectedDate} // 추가
-                            hotelId={hotelId}
-                            setLoadedReservations={setLoadedReservations}
-                            setAllReservations={setAllReservations} // 추가
-                            processReservation={processReservation} // 추가
-                            filterReservationsByDate={filterReservationsByDate} // 추가
-                            allReservations={allReservations} // 추가
-                            setNewlyCreatedId={setNewlyCreatedId} // 추
-                          />
-                        ) : (
-                          <DayUseFormModal
-                            initialData={guestFormData}
-                            roomTypes={finalRoomTypes}
-                            onClose={() => {
-                              setShowGuestForm(false);
-                              if (guestFormData.onComplete) {
-                                guestFormData.onComplete();
-                              }
-                            }}
-                            onSave={handleFormSave}
-                            availabilityByDate={guestAvailability}
-                            hotelSettings={hotelSettings}
-                            selectedDate={selectedDate}
-                            allReservations={allReservations} // 추가: 점유 계산에 필요
-                            hotelId={hotelId}
-                            setLoadedReservations={setLoadedReservations}
-                          />
-                        ))}
-                      {showQuickRangeModal &&
-                        (console.log(
-                          '[App.js] Rendering QuickRangeModal with:',
-                          guestFormData
-                        ),
-                        (
+                          ))}
+                        {showQuickRangeModal && (
                           <QuickRangeModal
                             initialData={guestFormData}
                             roomTypes={finalRoomTypes}
@@ -3467,32 +3444,33 @@ const App = () => {
                             onClose={() => setShowQuickRangeModal(false)}
                             onSave={handleFormSave}
                           />
-                        ))}
+                        )}
+                        <SalesModal
+                          isOpen={isSalesModalOpen}
+                          onRequestClose={closeSalesModal}
+                          dailySalesReport={dailySalesReport}
+                          dailySales={{ labels: labelsForOTA, values: [] }}
+                          dailyTotal={dailyTotal}
+                          monthlySales={monthlyTotal.total}
+                          selectedDate={selectedDate}
+                          totalRooms={totalRooms}
+                          remainingRooms={remainingRooms}
+                          occupancyRate={occupancyRate}
+                          avgMonthlyRoomPrice={avgMonthlyRoomPrice}
+                          dailyAverageRoomPrice={dailyAverageRoomPrice}
+                          roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
+                          monthlyDailyBreakdown={monthlyDailyBreakdown}
+                          dailySalesByOTA={dailySalesByOTA}
+                        />
+                        {showCanceledModal && (
+                          <CanceledReservationsModal
+                            isOpen={showCanceledModal}
+                            onRequestClose={() => setShowCanceledModal(false)}
+                            hotelId={hotelId}
+                          />
+                        )}
+                      </main>
                     </div>
-                    <SalesModal
-                      isOpen={isSalesModalOpen}
-                      onRequestClose={closeSalesModal}
-                      dailySalesReport={dailySalesReport}
-                      dailySales={{ labels: labelsForOTA, values: [] }}
-                      dailyTotal={dailyTotal}
-                      monthlySales={monthlyTotal.total}
-                      selectedDate={selectedDate}
-                      totalRooms={totalRooms}
-                      remainingRooms={remainingRooms}
-                      occupancyRate={occupancyRate}
-                      avgMonthlyRoomPrice={avgMonthlyRoomPrice}
-                      dailyAverageRoomPrice={dailyAverageRoomPrice}
-                      roomTypes={hotelSettings?.roomTypes || defaultRoomTypes}
-                      monthlyDailyBreakdown={monthlyDailyBreakdown}
-                      dailySalesByOTA={dailySalesByOTA}
-                    />
-                    {showCanceledModal && (
-                      <CanceledReservationsModal
-                        isOpen={showCanceledModal}
-                        onRequestClose={() => setShowCanceledModal(false)}
-                        hotelId={hotelId}
-                      />
-                    )}
                   </>
                 }
               />

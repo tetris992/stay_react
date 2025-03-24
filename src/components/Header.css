@@ -25,7 +25,16 @@
   align-items: center;
 }
 
-.date-navigation {
+/* (오른쪽) 2줄 구조: 위 70px, 아래 70px */
+.header-right {
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+}
+
+/* (1) 위쪽 날짜 영역 */
+.header-right-top {
   display: flex;
   align-items: center;
 }
@@ -65,8 +74,22 @@
   transform: scale(1.1);
 }
 
-/* 두 번째 줄: 헤더 하단 */
-.header-bottom {
+.selected-date {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #050505;
+}
+.weekday {
+  margin-left: 5px;
+  font-size: 0.9rem;
+  color: #555555;
+}
+.weekend {
+  color: #ff00008e;
+}
+
+/* (2) 아래쪽: 메모/로그/월간뷰/단축모드 + OTA + 빠른예약 */
+.header-right-bottom {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   align-items: center;
@@ -76,8 +99,6 @@
 .header-left {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  margin-left: 20px;
 }
 
 .additional-buttons {

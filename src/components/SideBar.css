@@ -1,11 +1,7 @@
 /* Sidebar Container */
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 300px;
-  height: 100vh;
-  background-color: #f4f4f4;
+  width: 100%; /* 부모 .sidebar-container의 너비(예: 300px) */
+  background-color: rgba(244, 244, 244, 0.9); /* 투명 배경 */
   padding: 10px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -23,34 +19,30 @@
   width: 2px;
   background: transparent;
 }
-
 .sidebar::-webkit-scrollbar-thumb {
   background-color: transparent;
 }
-
 .sidebar:hover::-webkit-scrollbar-thumb {
   background-color: #ebe9e9;
   border-radius: 2px;
 }
-
 .sidebar:hover::-webkit-scrollbar-track {
   background: #d9d8d8;
 }
 
-/* Header */
+/* 헤더 영역 (필요 시 로고/타이틀 등) */
 .sidebar-header {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
 }
-
 .sidebar-logo {
   width: auto;
   height: 42px;
   margin: 27px 30px;
 }
 
-/* 기본 h4 스타일 (섹션 타이틀) */
+/* 섹션 제목 공통 */
 .sidebar h4 {
   padding: 12px;
   background-color: rgba(154, 154, 154, 0.42);
@@ -64,7 +56,7 @@
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 섹션 제목: 아이콘 + 텍스트 */
+/* section-title, accounting-title 공통 */
 .section-title,
 .accounting-title {
   width: 100%;
@@ -87,7 +79,7 @@
   flex: 1;
 }
 
-/* Action Buttons */
+/* 버튼 그룹 */
 .sidebar-actions,
 .sync-section {
   display: flex;
@@ -96,7 +88,6 @@
   margin-bottom: 20px;
   font-size: 18px;
 }
-
 .sidebar-actions button,
 .settings-button,
 .sync-button,
@@ -113,12 +104,10 @@
   align-items: center;
   gap: 10px;
   font-size: 18px;
-margin-bottom: 10px;
+  margin-bottom: 10px;
   font-weight: bold;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
-/* "객실재고확인" 버튼 스타일 */
 .monthly-view-button {
   padding: 12px;
   width: 100%;
@@ -135,11 +124,9 @@ margin-bottom: 10px;
   gap: 10px;
   font-size: 18px;
 }
-
 .sync-button {
   color: green;
 }
-
 .sidebar-actions button:hover,
 .settings-button:hover,
 .sync-button:hover,
@@ -150,12 +137,12 @@ margin-bottom: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
 }
-
 .monthly-view-button:hover {
   background-color: #007cb576;
   color: #ffffff;
 }
-/* Cancel Search Button */
+
+/* 취소 예약 확인 버튼 */
 .cancelSearch-button {
   padding: 12px;
   width: 100%;
@@ -170,18 +157,15 @@ margin-bottom: 10px;
   font-size: 18px;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 .cancelSearch-button:hover {
   background-color: rgba(199, 198, 198, 0.49);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  
 }
-
 .cancel-icon:hover {
   color: rgb(242, 80, 80);
 }
 
-/* Search Input */
+/* 검색 인풋 */
 .search-input {
   width: 100% !important;
   max-width: 100% !important;
@@ -192,25 +176,115 @@ margin-bottom: 10px;
   border-radius: 5px;
 }
 
-/* Date Picker Section */
-.date-picker-section {
-  margin-top: 4px;
+/* ============ React DatePicker 커스텀 ============ */
+.date-picker-row .react-datepicker {
+  /* 기본 배경/테두리 제거 */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+
+  /* 내부 크기 */
+  width: auto !important;    /* 혹은 100%도 가능, 상황에 따라 조절 */
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
 }
 
-/* Date Picker Row */
-.date-picker-row {
-  display: flex;
-  justify-content: center;
+.date-picker-section .react-datepicker__header {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 4px; /* 월 표시 아래 약간 간격 */
 }
 
-/* Room Status Chart */
+.date-picker-section .react-datepicker__current-month {
+  text-align: center;
+  font-size: 22px;
+  margin: 0 auto;
+  padding: 4px 0;
+  /* 혹은 원하는 스타일 */
+}
+
+/* 요일 헤더들 (일, 월, 화, 수...) */
+.date-picker-section .react-datepicker__day-names {
+  display: grid !important;
+  grid-template-columns: repeat(7, 2.4rem); /* 각 칸 너비 */
+  gap: 2px !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+}
+
+/* 요일(이름) 셀 */
+.date-picker-section .react-datepicker__day-name {
+  font-size: 14px;
+  width: 2.4rem;
+  height: 2.4rem;
+  line-height: 2.4rem;
+  text-align: center;
+  margin: 0;
+  border-radius: 50%;
+}
+
+/* 각 주(week)도 동일하게 7칸 grid 배치 */
+.date-picker-section .react-datepicker__week {
+  display: grid !important;
+  grid-template-columns: repeat(7, 2.4rem);
+  gap: 2px !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+}
+
+/* 날짜(day) 셀 */
+.date-picker-section .react-datepicker__day {
+  font-size: 14px;
+  width: 2.4rem;
+  height: 2.4rem;
+  line-height: 2.4rem;
+  text-align: center;
+  margin: 0;
+  border-radius: 50%;
+}
+
+/* 주말 (토, 일) */
+.date-picker-section .react-datepicker__day.weekend {
+  color: red;
+}
+/* 공휴일 */
+.date-picker-section .react-datepicker__day.holiday {
+  color: red;
+  font-weight: bold;
+}
+/* 선택된 날짜 */
+.date-picker-section .react-datepicker__day--selected {
+  background-color: #007bff;
+  color: white;
+}
+/* 오늘 날짜 */
+.date-picker-section .react-datepicker__day--today {
+  font-weight: bold;
+  border: 1px solid #007bff;
+}
+
+/* 달력 외곽선 (원치 않으면 제거) */
+.date-picker-section .react-datepicker__month {
+  margin: 0;
+  /* border: 1px solid #ccc; (원한다면) */
+}
+
+/* 객실 상태 */
+.room-status-section {
+  margin-top: 20px;
+}
+.room-status-content {
+  margin-top: 12px;
+}
 .room-status-chart-container {
   position: relative;
   width: 180px;
   height: 180px;
   margin: 20px auto;
 }
-
 .chart-center {
   position: absolute;
   top: 50%;
@@ -220,52 +294,12 @@ margin-bottom: 10px;
   font-size: 16px;
   color: #333;
 }
-
 .chart-center p {
   margin: 2px 0;
   font-weight: bold;
 }
 
-/* Toggle Room Types Button */
-.toggle-room-types-button {
-  margin-top: 12px;
-  padding: 10px;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.toggle-room-types-button:hover {
-  background-color: rgba(199, 198, 198, 0.49);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.room-types {
-  margin-top: 12px;
-  font-size: 14px;
-  width: 90%;
-  color: rgb(2, 20, 104);
-}
-
-.room-types p {
-  padding: 1px;
-  margin: 2px;
-}
-
-.room-type-info {
-  background-color: #ffffff;
-  padding: 1px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Spinning Animation */
+/* 로딩 스피너 */
 .spinning {
   animation: spin 2s linear infinite;
 }
@@ -278,7 +312,7 @@ margin-bottom: 10px;
   }
 }
 
-/* Sales Button */
+/* 매출 버튼 (Sales button) */
 .sales-button {
   display: flex;
   align-items: center;
@@ -289,8 +323,6 @@ margin-bottom: 10px;
   font-size: 16px;
 }
 .sales-icon {
-  margin-right: 8px;
-  display: inline-block;
   margin-right: 10px;
 }
 .sales-icon:hover {
@@ -298,20 +330,52 @@ margin-bottom: 10px;
   color: rgb(228, 173, 20);
 }
 
-/* OTA Toggles */
+/* OTA 설정 */
+.ota-settings-section {
+  margin-top: 20px;
+  background-color: transparent;
+}
+.ota-settings-header {
+  padding-right: 12px;
+  background-color: rgba(154, 154, 154, 0.42);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 8px;
+}
+.ota-settings-header:hover {
+  background-color: rgba(154, 154, 154, 0.6);
+}
+.ota-settings-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: transparent;
+  border: none;
+}
 .ota-toggles {
-  margin-left: 20px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  font-size: 16px;
+  gap: 10px;
+  font-size: 14px;
+  margin-bottom: 20px;
 }
 .ota-toggles label {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
-  color: #007bff;
+  color: #333;
 }
 .ota-toggles input[type='checkbox'] {
   width: 16px;
@@ -319,7 +383,7 @@ margin-bottom: 10px;
   cursor: pointer;
 }
 
-/* Highlight Effects */
+/* 하이라이트 효과 */
 .highlight-blink {
   animation: highlightPulse 2s infinite;
 }
@@ -331,7 +395,6 @@ margin-bottom: 10px;
     box-shadow: 0 0 0 #c4f4c3;
   }
 }
-
 .blink-button {
   animation: blinkAnimation 1s infinite;
   border: 2px solid #ffd700;
@@ -347,36 +410,48 @@ margin-bottom: 10px;
   }
 }
 
-/* OTA Settings Section */
-.ota-settings-section {
-  margin-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.42);
-  padding-top: 12px;
+/* 하단 푸터 */
+.sidebar-footer {
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  font-size: 12px;
+  color: #6c757d;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-.ota-settings-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.footer-divider {
+  margin: 10px 0;
+  border-bottom: 1px solid #ccc;
+}
+.sidebar-footer span {
+  color: #007bff;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 20px;
-  background-color: rgba(150, 150, 150, 0.42);
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
 }
-.ota-settings-header:hover {
-  background-color: rgba(246, 69, 86, 0.42);
-}
-.ota-settings-header h4 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: bold;
-  margin-right: 50px;
-  width: 50%;
-  background-color: transparent;
+.sidebar-footer span:hover {
+  text-decoration: underline;
 }
 
-/* 미디어 쿼리: 사이드바가 좁아지면 텍스트 숨김 */
+/* 매출 정보(회계) 영역 */
+.accounting-info {
+  width: 100%;
+  min-height: 300px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  font-size: 1rem;
+  border: none;
+}
+.accounting-title {
+  font-size: 16px;
+}
+.accounting-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* 반응형 (너비 350px 이하) */
 @media (max-width: 350px) {
   .sidebar {
     width: 60px;
@@ -396,44 +471,4 @@ margin-bottom: 10px;
   .layout-settings-button {
     justify-content: center;
   }
-}
-
-/* Footer: 항상 맨 아래 배치 */
-.sidebar-footer {
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  padding: 5px 10px;
-  font-size: 12px;
-  color: #6c757d;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-top: auto;
-  padding-top: 40px;
-}
-
-.sidebar-footer span {
-  color: #007bff;
-  cursor: pointer;
-}
-.sidebar-footer span:hover {
-  text-decoration: underline;
-}
-
-/* Accounting Info */
-.accounting-info {
-  width: 100%;
-  min-height: 1000px;
-  height: auto;
-  overflow-y: auto;
-  font-size: 1rem;
-  border: none;
-}
-.accounting-title {
-  font-size: 16px;
-}
-.accounting-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
 }
