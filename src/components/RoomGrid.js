@@ -595,7 +595,7 @@ function RoomGrid({
   const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
     useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
-  const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false);
+  // const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false); // 아래 중복 삭제후... 이부분을 지우면 에러생김 
 
   // 재고 0이면 자동 단축 모드
   const [floorMinimalMode, setFloorMinimalMode] = useState({});
@@ -719,31 +719,31 @@ function RoomGrid({
     }
   }, [flipAllMemos, reservations]);
 
-  useEffect(() => {
-    if (newlyCreatedId) {
-      setIsNewlyCreatedHighlighted(true);
-      const card = document.querySelector(
-        `.room-card[data-id="${newlyCreatedId}"]`
-      );
-      if (card) {
-        card.classList.add('onsite-created');
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const timeoutId = setTimeout(() => {
-          card.classList.remove('onsite-created');
-          setIsNewlyCreatedHighlighted(false);
-        }, 10000);
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [newlyCreatedId]);
-  // }, [updatedReservationId]);
+  // useEffect(() => {
+  //   if (newlyCreatedId) {
+  //     setIsNewlyCreatedHighlighted(true);
+  //     const card = document.querySelector(
+  //       `.room-card[data-id="${newlyCreatedId}"]`
+  //     );
+  //     if (card) {
+  //       card.classList.add('onsite-created');
+  //       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  //       const timeoutId = setTimeout(() => {
+  //         card.classList.remove('onsite-created');
+  //         setIsNewlyCreatedHighlighted(false);
+  //       }, 10000);
+  //       return () => clearTimeout(timeoutId);
+  //     }
+  //   }
+  // }, [newlyCreatedId]);
+  // // }, [updatedReservationId]);
 
-  useEffect(() => {
-    if (isSearching && highlightedReservationIds.length > 0) {
-      setIsNewlyCreatedHighlighted(false);
-      setIsUpdatedHighlighted(false);
-    }
-  }, [isSearching, highlightedReservationIds]);
+  // useEffect(() => {
+  //   if (isSearching && highlightedReservationIds.length > 0) {
+  //     setIsNewlyCreatedHighlighted(false);
+  //     setIsUpdatedHighlighted(false);
+  //   }
+  // }, [isSearching, highlightedReservationIds]);
 
   const handleCardFlip = (resId) => {
     setFlippedReservationIds((prev) => {
@@ -961,7 +961,7 @@ function RoomGrid({
                           newlyCreatedId={newlyCreatedId}
                           isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
                           updatedReservationId={updatedReservationId}
-                          isUpdatedHighlighted={isUpdatedHighlighted}
+                          // isUpdatedHighlighted={isUpdatedHighlighted}
                           onPartialUpdate={onPartialUpdate}
                           roomTypes={roomTypes}
                           isUnassigned={true}
@@ -1083,7 +1083,7 @@ function RoomGrid({
                                       isNewlyCreatedHighlighted
                                     }
                                     updatedReservationId={updatedReservationId}
-                                    isUpdatedHighlighted={isUpdatedHighlighted}
+                                    // isUpdatedHighlighted={isUpdatedHighlighted}
                                     onPartialUpdate={onPartialUpdate}
                                     onEdit={(reservationId, initialData) => {
                                       if (typeof onEdit === 'function') {

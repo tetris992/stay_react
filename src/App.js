@@ -210,13 +210,14 @@ const App = () => {
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [memos, setMemos] = useState({});
   const [hotelSettings, setHotelSettings] = useState({
-    hotelAddress: '',
-    phoneNumber: '',
-    email: '',
-    totalRooms: 0, // 필요 시 추가
-    roomTypes: [], // 필요 시 추가
-    gridSettings: {}, // 필요 시 추가
+    hotelAddress: '주소 정보 없음',
+    phoneNumber: '전화번호 정보 없음',
+    email: '이메일 정보 없음',
+    totalRooms: 0,
+    roomTypes: [],
+    gridSettings: {},
   });
+  
 
   const [isNewSetup, setIsNewSetup] = useState(true);
   const [roomsSold, setRoomsSold] = useState(0);
@@ -227,9 +228,6 @@ const App = () => {
 
   const [guestFormData, setGuestFormData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // const [hotelAddress, setHotelAddress] = useState('주소 정보 없음');
-  // const [phoneNumber, setPhoneNumber] = useState('전화번호 정보 없음');
-  // const [email, setEmail] = useState('이메일 정보 없음');
   const totalRooms = hotelSettings?.totalRooms || 0;
   const remainingRooms = totalRooms - roomsSold;
   // Use useMemo to memoize it:
@@ -2194,7 +2192,14 @@ const App = () => {
         'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
       setIsAuthenticated(false);
       setHotelId('');
-      setHotelSettings(null);
+      setHotelSettings({
+        hotelAddress: '주소 정보 없음',
+        phoneNumber: '전화번호 정보 없음',
+        email: '이메일 정보 없음',
+        totalRooms: 0,
+        roomTypes: [],
+        gridSettings: {},
+      });
       setAllReservations([]);
       setActiveReservations([]);
       setRoomsSold(0);

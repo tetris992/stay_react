@@ -22,7 +22,7 @@ const GuestFormModal = ({
   availabilityByDate,
   hotelSettings,
   hotelId,
-  selectedDate,
+  selectedDate, // 이게 필요없는거 아닐껀데
   setNewlyCreatedId,
 }) => {
   // -----------------------------
@@ -97,15 +97,19 @@ const GuestFormModal = ({
         !formData.checkOutTime
       )
         return false;
-      const start = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-      const end = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+      const start = new Date(
+        `${formData.checkInDate}T${formData.checkInTime}:00`
+      );
+      const end = new Date(
+        `${formData.checkOutDate}T${formData.checkOutTime}:00`
+      );
       if (isNaN(start) || isNaN(end)) return false;
       let cursor = start;
       while (cursor < end) {
         const ds = format(cursor, 'yyyy-MM-dd');
         const availForDay = availabilityByDate[ds]?.[roomInfo.toLowerCase()];
         if (!availForDay) return true;
-        
+
         // 자기 예약(excludeReservationId)가 있다면, 해당 날의 남은 재고를 보정
         let adjustedRemain = availForDay.remain;
         if (excludeReservationId && availForDay.reservations) {
@@ -116,15 +120,20 @@ const GuestFormModal = ({
             adjustedRemain += 1; // 자기 자신이 이미 점유한 객실을 재고에 다시 추가
           }
         }
-        
+
         if (adjustedRemain <= 0) return true;
         cursor = addDays(cursor, 1);
       }
       return false;
     },
-    [availabilityByDate, formData.checkInDate, formData.checkOutDate, formData.checkInTime, formData.checkOutTime]
+    [
+      availabilityByDate,
+      formData.checkInDate,
+      formData.checkOutDate,
+      formData.checkInTime,
+      formData.checkOutTime,
+    ]
   );
-  
 
   // diffDays는 formData에서 파생됨
   const diffDays = differenceInCalendarDays(
@@ -297,7 +306,10 @@ const GuestFormModal = ({
   // -----------------------------
   useEffect(() => {
     if (formData.checkInDate && formData.checkOutDate && formData.roomInfo) {
-      const unavailable = isRoomTypeUnavailable(formData.roomInfo, initialData?._id);
+      const unavailable = isRoomTypeUnavailable(
+        formData.roomInfo,
+        initialData?._id
+      );
       setAvailabilityWarning(
         unavailable ? '선택한 기간 동안 해당 객실타입의 재고가 부족합니다.' : ''
       );
@@ -405,25 +417,48 @@ const GuestFormModal = ({
     (e) => {
       const selectedDate = e.target.value;
       setFormData((prev) => {
-        // 만약 새 체크인 날짜가 기존 체크아웃 날짜보다 이후라면, 체크아웃 날짜를 새 체크인 날짜로 설정
+        // 새 체크인 날짜가 기존 체크아웃 날짜보다 이후라면, 체크아웃 날짜를 체크인 날짜의 다음 날로 설정
         let newCheckOutDate = prev.checkOutDate;
-        const newCheckInObj = new Date(`${selectedDate}T${prev.checkInTime}:00`);
-        const currentCheckOutObj = new Date(`${prev.checkOutDate}T${prev.checkOutTime}:00`);
+        const newCheckInObj = new Date(
+          `${selectedDate}T${prev.checkInTime}:00`
+        );
+        const currentCheckOutObj = new Date(
+          `${prev.checkOutDate}T${prev.checkOutTime}:00`
+        );
         if (newCheckInObj > currentCheckOutObj) {
-          newCheckOutDate = selectedDate;
+          const nextDay = addDays(new Date(selectedDate), 1); // 체크인 날짜의 다음 날
+          newCheckOutDate = format(nextDay, 'yyyy-MM-dd');
         }
-        const updated = { ...prev, checkInDate: selectedDate, checkOutDate: newCheckOutDate };
-        const checkInDateObj = new Date(`${selectedDate}T${updated.checkInTime}:00`);
-        const checkOutDateObj = new Date(`${updated.checkOutDate}T${updated.checkOutTime}:00`);
-        if (checkInDateObj && checkOutDateObj && !isNaN(checkInDateObj) && !isNaN(checkOutDateObj)) {
-          const nights = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
-          const perNightPrice = nights > 0 ? Math.round(Number(prev.price) / nights) : Number(prev.price);
+        const updated = {
+          ...prev,
+          checkInDate: selectedDate,
+          checkOutDate: newCheckOutDate,
+          checkIn: `${selectedDate}T${prev.checkInTime}:00+09:00`,
+          checkOut: `${newCheckOutDate}T${prev.checkOutTime}:00+09:00`,
+        };
+        const checkInDateObj = new Date(updated.checkIn);
+        const checkOutDateObj = new Date(updated.checkOut);
+        if (
+          checkInDateObj &&
+          checkOutDateObj &&
+          !isNaN(checkInDateObj) &&
+          !isNaN(checkOutDateObj)
+        ) {
+          const nights = differenceInCalendarDays(
+            checkOutDateObj,
+            checkInDateObj
+          );
+          const perNightPrice =
+            nights > 0
+              ? Math.round(Number(prev.price) / nights)
+              : Number(prev.price);
           const totalPrice = String(perNightPrice * Math.max(nights, 1));
           updated.price = totalPrice;
           updated.remainingBalance = Number(totalPrice);
           if (updated.paymentMethod.includes('PerNight')) {
             updated.paymentDetails = checkedNights.map(() => ({
-              method: updated.paymentMethod === 'PerNight(Card)' ? 'Card' : 'Cash',
+              method:
+                updated.paymentMethod === 'PerNight(Card)' ? 'Card' : 'Cash',
               amount: perNightPrice,
               date: format(new Date(), 'yyyy-MM-dd'),
               timestamp: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss+09:00"),
@@ -435,9 +470,9 @@ const GuestFormModal = ({
       });
       setCheckedNights([]);
     },
-    [checkedNights]
+    [checkedNights, setDisplayedRemainingBalance]
   );
-  
+
   const handleCheckOutDateChange = useCallback(
     (e) => {
       const selectedDate = e.target.value;
@@ -596,7 +631,7 @@ const GuestFormModal = ({
           missingDates.push(ds);
           continue;
         }
-        
+
         // 보정: 자기 예약이 있다면 남은 재고와 leftoverRooms에 반영
         let adjustedRemain = availForDay.remain;
         let adjustedLeftoverRooms = [...(availForDay.leftoverRooms || [])];
@@ -614,7 +649,7 @@ const GuestFormModal = ({
             }
           }
         }
-        
+
         if (adjustedRemain <= 0) {
           missingDates.push(ds);
         } else {
@@ -640,7 +675,6 @@ const GuestFormModal = ({
     },
     [formData.roomInfo, availabilityByDate]
   );
-  
 
   // -----------------------------
   // 최종 데이터 구성
@@ -715,7 +749,6 @@ const GuestFormModal = ({
     },
     [initialData, formData.reservationNo, onSave, setNewlyCreatedId]
   );
-  
 
   // -----------------------------
   // 폼 유효성 검사
@@ -809,16 +842,20 @@ const GuestFormModal = ({
         setIsSubmitting(false);
         return;
       }
-      const checkInDateTime = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-      const checkOutDateTime = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-      
+      const checkInDateTime = new Date(
+        `${formData.checkInDate}T${formData.checkInTime}:00`
+      );
+      const checkOutDateTime = new Date(
+        `${formData.checkOutDate}T${formData.checkOutTime}:00`
+      );
+
       // 수정 모드일 경우, 자기 자신의 예약 ID를 제외하도록 전달합니다.
       const availabilityResult = checkAvailability(
         checkInDateTime,
         checkOutDateTime,
         initialData?._id // excludeReservationId 전달
       );
-      
+
       if (availabilityResult && typeof availabilityResult === 'string') {
         alert(availabilityResult);
         setIsSubmitting(false);
@@ -857,7 +894,6 @@ const GuestFormModal = ({
       doSave,
     ]
   );
-  
 
   // -----------------------------
   // 렌더링: 결제 방식 및 특이사항
