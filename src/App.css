@@ -60,4 +60,5 @@ html, body {
   overflow-y: auto;     /* 본문 스크롤 */
   background-color: rgba(255, 255, 255, 0.5);
   padding: 10px;
+  margin-left: 15px;
 }
