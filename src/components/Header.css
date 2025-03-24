@@ -74,16 +74,6 @@
 /* (2) 아래쪽: 메모/로그/월간뷰/단축모드 + OTA + 빠른예약 */
 .header-right-bottom {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  align-items: center;
-}
-.weekend {
-  color: #ff00008e;
-}
-
-/* (2) 아래쪽: 메모/로그/월간뷰/단축모드 + OTA + 빠른예약 */
-.header-right-bottom {
-  display: grid;
   grid-template-columns: 1fr 1fr 1fr; /* 왼-중앙-오른 */
   height: 70px;
   background-color: transparent;
@@ -177,4 +167,32 @@
 }
 .quick-button-green:hover {
   background-color: #45a04979;
+}
+
+/* 반응형 조정 */
+@media (max-width: 2000px) {
+  .header-ota-status {
+    display: none; /* 1800px 이하에서 OTA 현황 숨김 */
+  }
+  .header-right-bottom {
+    grid-template-columns: 1fr 1fr; /* 중앙 열 제거, 왼쪽-오른쪽만 남김 */
+  }
+}
+
+@media (max-width: 1200px) {
+  .additional-buttons {
+    display: none; /* 1000px 이하에서 왼쪽 버튼 숨김 */
+  }
+  .quick-create-buttons {
+    display: none; /* 1000px 이하에서 오른쪽 버튼 숨김 */
+  }
+  .header-right-bottom {
+    grid-template-columns: 1fr; /* 버튼이 없으므로 단일 열로 변경 */
+  }
+  .header-right-bottom-left {
+    justify-content: center; /* 남은 공간 중앙 정렬 */
+  }
+  .header-right-bottom-right {
+    justify-content: center; /* 남은 공간 중앙 정렬 */
+  }
 }

@@ -185,6 +185,7 @@
   max-width: 100% !important;
   margin: 0 auto !important;
   padding: 0 !important;
+  align-items: center;
 }
 
 .date-picker-section .react-datepicker__header {
