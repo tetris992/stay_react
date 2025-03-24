@@ -405,38 +405,25 @@ const GuestFormModal = ({
     (e) => {
       const selectedDate = e.target.value;
       setFormData((prev) => {
-        const updated = { ...prev, checkInDate: selectedDate };
-        const checkInDateObj = new Date(
-          `${selectedDate}T${updated.checkInTime}:00`
-        );
-        const checkOutDateObj = new Date(
-          `${updated.checkOutDate}T${updated.checkOutTime}:00`
-        );
-        if (
-          checkInDateObj &&
-          checkOutDateObj &&
-          !isNaN(checkInDateObj) &&
-          !isNaN(checkOutDateObj)
-        ) {
-          const oldNights = differenceInCalendarDays(
-            new Date(`${prev.checkOutDate}T${prev.checkOutTime}:00`),
-            new Date(`${prev.checkInDate}T${prev.checkInTime}:00`)
-          );
-          const newNights = differenceInCalendarDays(
-            checkOutDateObj,
-            checkInDateObj
-          );
-          const perNightPrice =
-            oldNights > 0
-              ? Math.round(Number(prev.price) / oldNights)
-              : Number(prev.price);
-          const totalPrice = String(perNightPrice * Math.max(newNights, 1));
+        // 만약 새 체크인 날짜가 기존 체크아웃 날짜보다 이후라면, 체크아웃 날짜를 새 체크인 날짜로 설정
+        let newCheckOutDate = prev.checkOutDate;
+        const newCheckInObj = new Date(`${selectedDate}T${prev.checkInTime}:00`);
+        const currentCheckOutObj = new Date(`${prev.checkOutDate}T${prev.checkOutTime}:00`);
+        if (newCheckInObj > currentCheckOutObj) {
+          newCheckOutDate = selectedDate;
+        }
+        const updated = { ...prev, checkInDate: selectedDate, checkOutDate: newCheckOutDate };
+        const checkInDateObj = new Date(`${selectedDate}T${updated.checkInTime}:00`);
+        const checkOutDateObj = new Date(`${updated.checkOutDate}T${updated.checkOutTime}:00`);
+        if (checkInDateObj && checkOutDateObj && !isNaN(checkInDateObj) && !isNaN(checkOutDateObj)) {
+          const nights = differenceInCalendarDays(checkOutDateObj, checkInDateObj);
+          const perNightPrice = nights > 0 ? Math.round(Number(prev.price) / nights) : Number(prev.price);
+          const totalPrice = String(perNightPrice * Math.max(nights, 1));
           updated.price = totalPrice;
           updated.remainingBalance = Number(totalPrice);
           if (updated.paymentMethod.includes('PerNight')) {
             updated.paymentDetails = checkedNights.map(() => ({
-              method:
-                updated.paymentMethod === 'PerNight(Card)' ? 'Card' : 'Cash',
+              method: updated.paymentMethod === 'PerNight(Card)' ? 'Card' : 'Cash',
               amount: perNightPrice,
               date: format(new Date(), 'yyyy-MM-dd'),
               timestamp: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss+09:00"),
@@ -450,7 +437,7 @@ const GuestFormModal = ({
     },
     [checkedNights]
   );
-
+  
   const handleCheckOutDateChange = useCallback(
     (e) => {
       const selectedDate = e.target.value;
@@ -706,13 +693,13 @@ const GuestFormModal = ({
         } else if (response?.message?.includes('successfully')) {
           const newId = `현장예약-${formData.reservationNo}`;
           console.warn(
-            '[GuestFormModal] No createdReservationIds, using ID:',
+            '[GuestFormModal] No createdReservationIds, using fallback ID:',
             newId
           );
           setNewlyCreatedId(newId);
         } else if (response === undefined) {
-          console.error(
-            '[GuestFormModal] Response is undefined, attempting fallback'
+          console.warn(
+            '[GuestFormModal] Response is undefined, assuming success and using fallback ID.'
           );
           const newId = `현장예약-${formData.reservationNo}`;
           console.warn('[GuestFormModal] Fallback ID used:', newId);
@@ -728,6 +715,7 @@ const GuestFormModal = ({
     },
     [initialData, formData.reservationNo, onSave, setNewlyCreatedId]
   );
+  
 
   // -----------------------------
   // 폼 유효성 검사

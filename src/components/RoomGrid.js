@@ -736,24 +736,7 @@ function RoomGrid({
       }
     }
   }, [newlyCreatedId]);
-
-  useEffect(() => {
-    if (updatedReservationId) {
-      setIsUpdatedHighlighted(true);
-      const card = document.querySelector(
-        `.room-card[data-id="${updatedReservationId}"]`
-      );
-      if (card) {
-        card.classList.add('onsite-created');
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const timeoutId = setTimeout(() => {
-          card.classList.remove('onsite-created');
-          setIsUpdatedHighlighted(false);
-        }, 10000);
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [updatedReservationId]);
+  // }, [updatedReservationId]);
 
   useEffect(() => {
     if (isSearching && highlightedReservationIds.length > 0) {
