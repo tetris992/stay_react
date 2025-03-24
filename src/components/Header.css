@@ -27,7 +27,7 @@
 
 /* (오른쪽) 2줄 구조: 위 70px, 아래 70px */
 .header-right {
-  flex: 1; 
+  flex: 1;
   display: flex;
   flex-direction: column;
   background-color: transparent;
@@ -75,14 +75,15 @@
 }
 
 .selected-date {
-  font-size: 1.3rem;
+  font-size: 2.3rem;
   font-weight: 700;
   color: #050505;
 }
 .weekday {
   margin-left: 5px;
-  font-size: 0.9rem;
+  font-size: 1.6rem;
   color: #555555;
+  margin: 10px;
 }
 .weekend {
   color: #ff00008e;
@@ -99,6 +100,8 @@
 .header-left {
   display: flex;
   align-items: center;
+  margin-left: 20px;
+  margin-right: 20px;
 }
 
 .additional-buttons {
