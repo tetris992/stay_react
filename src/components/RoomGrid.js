@@ -1146,6 +1146,8 @@ function RoomGrid({
   );
 }
 
+// RoomGrid.js
+
 RoomGrid.propTypes = {
   reservations: PropTypes.array.isRequired,
   onDelete: PropTypes.func.isRequired,
@@ -1155,7 +1157,51 @@ RoomGrid.propTypes = {
   onPartialUpdate: PropTypes.func.isRequired,
   loadedReservations: PropTypes.array.isRequired,
   hotelId: PropTypes.string.isRequired,
-  hotelSettings: PropTypes.object.isRequired,
+  hotelSettings: PropTypes.shape({
+    hotelId: PropTypes.string,
+    totalRooms: PropTypes.number,
+    roomTypes: PropTypes.arrayOf(
+      PropTypes.shape({
+        roomInfo: PropTypes.string,
+        nameKor: PropTypes.string,
+        nameEng: PropTypes.string,
+        price: PropTypes.number,
+        stock: PropTypes.number,
+        aliases: PropTypes.arrayOf(PropTypes.string),
+        floorSettings: PropTypes.object,
+        startRoomNumbers: PropTypes.object,
+      })
+    ),
+    otas: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string,
+        isActive: PropTypes.bool,
+      })
+    ),
+    otaCredentials: PropTypes.object,
+    gridSettings: PropTypes.shape({
+      floors: PropTypes.arrayOf(
+        PropTypes.shape({
+          floorNum: PropTypes.number,
+          containers: PropTypes.arrayOf(
+            PropTypes.shape({
+              containerId: PropTypes.string,
+              roomInfo: PropTypes.string,
+              roomNumber: PropTypes.string,
+              price: PropTypes.number,
+              isActive: PropTypes.bool,
+            })
+          ),
+        })
+      ),
+    }),
+    checkInTime: PropTypes.string,
+    checkOutTime: PropTypes.string,
+    hotelAddress: PropTypes.string,
+    phoneNumber: PropTypes.string,
+    email: PropTypes.string,
+    hotelName: PropTypes.string,
+  }), // 필수 항목 아님
   roomTypes: PropTypes.array.isRequired,
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,

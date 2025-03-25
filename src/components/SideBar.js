@@ -357,6 +357,8 @@ function SideBar({
   );
 }
 
+// SideBar.js
+
 SideBar.propTypes = {
   loading: PropTypes.bool.isRequired,
   onSync: PropTypes.func.isRequired,
@@ -396,13 +398,50 @@ SideBar.propTypes = {
   openSalesModal: PropTypes.func.isRequired,
   hotelId: PropTypes.string.isRequired,
   hotelSettings: PropTypes.shape({
-    hotelAddress: '주소 정보 없음',
-    phoneNumber: '전화번호 정보 없음',
-    email: '이메일 정보 없음',
-    totalRooms: 0,
-    roomTypes: [],
-    gridSettings: {},
-  }),
+    hotelId: PropTypes.string,
+    totalRooms: PropTypes.number,
+    roomTypes: PropTypes.arrayOf(
+      PropTypes.shape({
+        roomInfo: PropTypes.string,
+        nameKor: PropTypes.string,
+        nameEng: PropTypes.string,
+        price: PropTypes.number,
+        stock: PropTypes.number,
+        aliases: PropTypes.arrayOf(PropTypes.string),
+        floorSettings: PropTypes.object,
+        startRoomNumbers: PropTypes.object,
+      })
+    ),
+    otas: PropTypes.arrayOf(
+      PropTypes.shape({
+        name: PropTypes.string,
+        isActive: PropTypes.bool,
+      })
+    ),
+    otaCredentials: PropTypes.object,
+    gridSettings: PropTypes.shape({
+      floors: PropTypes.arrayOf(
+        PropTypes.shape({
+          floorNum: PropTypes.number,
+          containers: PropTypes.arrayOf(
+            PropTypes.shape({
+              containerId: PropTypes.string,
+              roomInfo: PropTypes.string,
+              roomNumber: PropTypes.string,
+              price: PropTypes.number,
+              isActive: PropTypes.bool,
+            })
+          ),
+        })
+      ),
+    }),
+    checkInTime: PropTypes.string,
+    checkOutTime: PropTypes.string,
+    hotelAddress: PropTypes.string, // UserSchema의 address와 매핑
+    phoneNumber: PropTypes.string, // UserSchema의 phoneNumber와 매핑
+    email: PropTypes.string, // UserSchema의 email과 매핑
+    hotelName: PropTypes.string, // UserSchema의 hotelName과 매핑
+  }), // 필수 항목 아님
   otaToggles: PropTypes.objectOf(PropTypes.bool).isRequired,
   onToggleOTA: PropTypes.func.isRequired,
   searchCriteria: PropTypes.shape({
@@ -419,7 +458,20 @@ SideBar.propTypes = {
     .isRequired,
   labelsForOTA: PropTypes.arrayOf(PropTypes.string).isRequired,
   activeReservations: PropTypes.arrayOf(PropTypes.object).isRequired,
-  dailySalesReport: PropTypes.array.isRequired,
+  dailySalesReport: PropTypes.arrayOf(
+    PropTypes.shape({
+      reservationId: PropTypes.string,
+      roomNumber: PropTypes.string,
+      customerName: PropTypes.string,
+      roomInfo: PropTypes.string,
+      checkInCheckOut: PropTypes.string,
+      price: PropTypes.number,
+      siteInfo: PropTypes.string,
+      paymentMethod: PropTypes.string,
+      paymentTotals: PropTypes.object,
+      typeTotals: PropTypes.object,
+    })
+  ).isRequired,
 };
 
 export default SideBar;
