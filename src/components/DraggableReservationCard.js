@@ -91,6 +91,8 @@ CountdownTimer.propTypes = {
   duration: PropTypes.number,
 };
 
+// DraggableReservationCard.js (수정된 부분만 발췌)
+
 const DraggableReservationCard = ({
   isUnassigned = false,
   reservation,
@@ -131,9 +133,13 @@ const DraggableReservationCard = ({
     [reservation]
   );
 
+  // [중요] 판매중단 상태를 여러 문자열로 처리
   const isSoldOut =
-    normalizedReservation.customerName === '판매보류' ||
-    normalizedReservation.customerName === '판매중지';
+  (reservation.customerName || '').replace(/\s/g, '') === '판매보류' ||
+  (reservation.customerName || '').replace(/\s/g, '') === '판매중단' ||
+  (reservation.customerName || '').replace(/\s/g, '') === '판매중지' ||
+  (reservation.customerName || '').replace(/\s/g, '') === '판매금지';
+
 
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';
@@ -1008,6 +1014,190 @@ const DraggableReservationCard = ({
     handleDeleteClickHandler,
   ]);
 
+  // 판매중단 버튼
+  const renderSoldOutButtons = useMemo(() => {
+    // 판매중단도 수정/삭제 가능
+    return (
+      <span className="button-group-wrapper">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditStart(normalizedReservation._id);
+          }}
+          className="action-btn edit-btn"
+        >
+          수정
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
+          className="action-btn delete-btn"
+        >
+          삭제
+        </button>
+      </span>
+    );
+  }, [normalizedReservation._id, handleEditStart, handleDelete]);
+
+  // 판매중단 예약 UI
+  const renderSoldOutFront = () => {
+    // 판매중단/보류/금지/중지 -> 헤더 라벨은 일괄 "(판매중단)" 으로 표시
+    const stopReason = normalizedReservation.specialRequests || '사유 없음';
+    const displayPeriod =
+      !checkInDate || !checkOutDate
+        ? '기간 정보 없음'
+        : `${format(checkInDate, 'yyyy-MM-dd HH:mm')} ~ ${format(
+            checkOutDate,
+            'yyyy-MM-dd HH:mm'
+          )}`;
+
+    return (
+      <div className="content-footer-wrapper sold-out-content">
+        <div className="card-content">
+          <div className="card-header">
+            <h3 className="no-break">
+              <span className="stay-label">(판매중단)</span>
+              {renderSoldOutButtons}
+            </h3>
+          </div>
+          <p className="sold-out-text">
+            {normalizedReservation.customerName || '판매중단'}
+          </p>
+          <p>기간: {displayPeriod}</p>
+          <p>가격: 0원</p>
+          <p>
+            객실타입:{' '}
+            {normalizedReservation.roomInfo &&
+            normalizedReservation.roomInfo.length > 30
+              ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
+              : normalizedReservation.roomInfo || '정보 없음'}
+          </p>
+          <p>판매중단일: {displayReservationDate}</p>
+          <p>중단이유: {stopReason}</p>
+        </div>
+        {renderSiteInfoFooter()}
+      </div>
+    );
+  };
+  // 정상 예약 UI
+  const renderNormalFront = () => {
+    return (
+      <div className="content-footer-wrapper">
+        <div className="card-content">
+          <div className="card-header">
+            <h3 className="no-break">
+              <span className="stay-label">{stayLabel}</span>
+              {normalizedReservation.type === 'dayUse'
+                ? renderDayUseButtons
+                : buttonGroup}
+            </h3>
+          </div>
+          <p className="reservation-no">{truncatedReservationNo}</p>
+          <p style={textStyleIfSoldOut}>
+            예약자: {normalizedReservation.customerName || '정보 없음'}{' '}
+            {normalizedReservation.type === 'dayUse' && (
+              <CountdownTimer
+                checkOutDate={checkOutDate}
+                reservationId={normalizedReservation._id}
+                newlyCreatedId={newlyCreatedId}
+                isCheckedIn={normalizedReservation.isCheckedIn}
+                duration={normalizedReservation.duration}
+              />
+            )}
+          </p>
+          <p className={isSoldOut ? 'sold-out-date' : ''}>
+            체크인: {displayCheckIn}
+          </p>
+          <p className={isSoldOut ? 'sold-out-date' : ''}>
+            체크아웃: {displayCheckOut}
+          </p>
+          <p style={textStyleIfSoldOut}>
+            가격: {displayPrice}
+            {normalizedReservation.paymentMethod?.includes('PerNight') &&
+              normalizedReservation.remainingBalance > 0 && (
+                <span style={{ color: 'red' }}>
+                  (잔여:{' '}
+                  {normalizedReservation.remainingBalance.toLocaleString()})
+                </span>
+              )}
+          </p>
+          <p>
+            객실 정보:{' '}
+            {normalizedReservation.roomInfo &&
+            normalizedReservation.roomInfo.length > 30
+              ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
+              : normalizedReservation.roomInfo || '정보 없음'}
+          </p>
+          <p>예약일: {displayReservationDate}</p>
+          {normalizedReservation.phoneNumber && (
+            <p>전화번호: {normalizedReservation.phoneNumber}</p>
+          )}
+          <p className="payment-method">
+            결제방법:{' '}
+            {paymentMethodInfo.icon && (
+              <>
+                {paymentMethodInfo.icon} {paymentMethodInfo.text}
+              </>
+            )}
+          </p>
+          <p>고객요청: {normalizedReservation.specialRequests || '없음'}</p>
+        </div>
+        {renderSiteInfoFooter()}
+      </div>
+    );
+  };
+
+  // 공통 site-info-footer UI
+  const renderSiteInfoFooter = () => {
+    return (
+      <div className="site-info-footer">
+        <div className="site-info-wrapper">
+          <p className="site-info">
+            사이트:{' '}
+            <span
+              className={
+                normalizedReservation.siteName === '현장예약'
+                  ? 'onsite-reservation'
+                  : ''
+              }
+            >
+              {normalizedReservation.siteName || '정보 없음'}
+            </span>
+          </p>
+          <button
+            type="button"
+            className="invoice-icon-button-back"
+            onClick={(e) => {
+              e.stopPropagation();
+              openInvoiceModal({
+                ...normalizedReservation,
+                reservationNo:
+                  normalizedReservation.reservationNo ||
+                  normalizedReservation._id ||
+                  '',
+                hotelSettings,
+                hotelAddress:
+                  hotelAddress ||
+                  hotelSettings?.hotelAddress ||
+                  '주소 정보 없음',
+                phoneNumber:
+                  phoneNumber ||
+                  hotelSettings?.phoneNumber ||
+                  '전화번호 정보 없음',
+                email: email || hotelSettings?.email || '이메일 정보 없음',
+              });
+            }}
+            title="인보이스 보기"
+          >
+            <FaFileInvoice size={20} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       ref={dragRef}
@@ -1042,114 +1232,7 @@ const DraggableReservationCard = ({
             className="room-card-front"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <div className="content-footer-wrapper">
-              <div className="card-content">
-                <div className="card-header">
-                  <h3 className="no-break">
-                    <span className="stay-label">{stayLabel}</span>
-                    {normalizedReservation.type === 'dayUse'
-                      ? renderDayUseButtons
-                      : buttonGroup}
-                  </h3>
-                </div>
-                <p className="reservation-no">{truncatedReservationNo}</p>
-                <p style={textStyleIfSoldOut}>
-                  예약자: {normalizedReservation.customerName || '정보 없음'}{' '}
-                  {normalizedReservation.type === 'dayUse' && (
-                    <CountdownTimer
-                      checkOutDate={checkOutDate}
-                      reservationId={normalizedReservation._id}
-                      newlyCreatedId={newlyCreatedId}
-                      isCheckedIn={normalizedReservation.isCheckedIn}
-                      duration={normalizedReservation.duration}
-                    />
-                  )}
-                </p>
-                <p className={isSoldOut ? 'sold-out-date' : ''}>
-                  체크인: {displayCheckIn}
-                </p>
-                <p className={isSoldOut ? 'sold-out-date' : ''}>
-                  체크아웃: {displayCheckOut}
-                </p>
-                <p style={textStyleIfSoldOut}>
-                  가격: {displayPrice}
-                  {normalizedReservation.paymentMethod?.includes('PerNight') &&
-                    normalizedReservation.remainingBalance > 0 && (
-                      <span style={{ color: 'red' }}>
-                        (잔여:{' '}
-                        {normalizedReservation.remainingBalance.toLocaleString()}
-                        )
-                      </span>
-                    )}
-                </p>
-                <p>
-                  객실 정보:{' '}
-                  {normalizedReservation.roomInfo &&
-                  normalizedReservation.roomInfo.length > 30
-                    ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
-                    : normalizedReservation.roomInfo || '정보 없음'}
-                </p>
-                <p>예약일: {displayReservationDate}</p>
-                {normalizedReservation.phoneNumber && (
-                  <p>전화번호: {normalizedReservation.phoneNumber}</p>
-                )}
-                <p className="payment-method">
-                  결제방법:{' '}
-                  {paymentMethodInfo.icon && (
-                    <>
-                      {paymentMethodInfo.icon} {paymentMethodInfo.text}
-                    </>
-                  )}
-                </p>
-                <p>
-                  고객요청: {normalizedReservation.specialRequests || '없음'}
-                </p>
-              </div>
-              <div className="site-info-footer">
-                <div className="site-info-wrapper">
-                  <p className="site-info">
-                    사이트:{' '}
-                    <span
-                      className={
-                        normalizedReservation.siteName === '현장예약'
-                          ? 'onsite-reservation'
-                          : ''
-                      }
-                    >
-                      {normalizedReservation.siteName || '정보 없음'}
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    className="invoice-icon-button-back"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openInvoiceModal({
-                        ...normalizedReservation,
-                        reservationNo:
-                          normalizedReservation.reservationNo ||
-                          normalizedReservation._id ||
-                          '',
-                        hotelSettings,
-                        hotelAddress:
-                          hotelAddress ||
-                          hotelSettings?.hotelAddress ||
-                          '주소 정보 없음',
-                        phoneNumber:
-                          phoneNumber ||
-                          hotelSettings?.phoneNumber ||
-                          '전화번호 정보 없음',
-                        email:
-                          email || hotelSettings?.email || '이메일 정보 없음',
-                      });
-                    }}
-                    title="인보이스 보기"
-                  >
-                    <FaFileInvoice size={20} />
-                  </button>
-                </div>
-              </div>
-            </div>
+            {isSoldOut ? renderSoldOutFront() : renderNormalFront()}
           </div>
           {isFlipped && (
             <div
