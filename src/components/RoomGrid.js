@@ -24,6 +24,7 @@ import {
 import { checkConflict } from '../utils/checkConflict';
 import LogViewer from './LogViewer';
 
+
 const ContainerCell = React.memo(
   ({
     cont,
@@ -337,17 +338,27 @@ const ContainerCell = React.memo(
       };
     }, [isOver, isDraggingOver, clearConflict]);
 
+    // 고객 이름이 "판매보류" 또는 "판매중지"인 경우 감지
+    const hasSoldOutReservation = assignedReservations.some(
+      (res) => res.customerName === '판매보류' || res.customerName === '판매중지'
+    );
+
     if (isMinimalMode) {
       let displayStatus = 'OFF';
       let displayColor = '#bbb';
       let containerBg = 'transparent';
       let infoText = '예약없음';
-    
-      if (assignedReservations && assignedReservations.length > 0) {
+
+      if (hasSoldOutReservation) {
+        displayStatus = '사용불가';
+        displayColor = '#888';
+        containerBg = '#f0f0f0'; // 연한 회색 배경
+        infoText = '판매보류';
+      } else if (assignedReservations && assignedReservations.length > 0) {
         displayStatus = 'ON';
         displayColor = 'green';
         containerBg = '#f0f4f8';
-    
+
         if (assignedReservations.length === 1) {
           const single = assignedReservations[0];
           if (single.type === 'dayUse') {
@@ -360,18 +371,18 @@ const ContainerCell = React.memo(
           infoText = `예약 ${assignedReservations.length}건`;
         }
       }
-    
+
       return (
         <div
           ref={dropRef}
           className={`grid-cell minimal-mode ${
             cont.roomInfo === 'none' ? 'empty' : ''
-          }`}
+          } ${hasSoldOutReservation ? 'sold-out' : ''}`}
           style={{
             border: '1px solid #ccc',
             borderRadius: '8px',
             display: 'flex',
-            flexDirection: 'column', // 세로 방향으로 배치
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             minHeight: '150px',
@@ -411,18 +422,18 @@ const ContainerCell = React.memo(
             className="room-number-container"
             style={{
               display: 'flex',
-              justifyContent: 'flex-start', // 왼쪽 정렬로 변경
+              justifyContent: 'flex-start',
               width: '100%',
               margin: '5px',
-              paddingLeft: '10px', // 왼쪽 여백 추가
+              paddingLeft: '10px',
             }}
           >
             <span
               className="room-number"
               style={{
-                fontSize: '1.5rem', // 객실 번호 크기 줄임
+                fontSize: '1.5rem',
                 fontWeight: 'bold',
-                color: '#666', // 객실 번호 색상 연하게
+                color: '#666',
               }}
             >
               {cont.roomNumber || '미설정'}
@@ -435,7 +446,7 @@ const ContainerCell = React.memo(
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              flex: 1, // 본문 내용이 남은 공간을 채우도록
+              flex: 1,
             }}
           >
             <span
@@ -469,7 +480,9 @@ const ContainerCell = React.memo(
     return (
       <div
         ref={dropRef}
-        className={`grid-cell ${cont.roomInfo === 'none' ? 'empty' : ''}`}
+        className={`grid-cell ${cont.roomInfo === 'none' ? 'empty' : ''} ${
+          hasSoldOutReservation ? 'sold-out' : ''
+        }`}
         style={{
           border: '1px solid #ccc',
           borderRadius: '8px',
@@ -477,7 +490,11 @@ const ContainerCell = React.memo(
           position: 'relative',
           minHeight: '450px',
           minWidth: '330px',
-          backgroundColor: isOver && canDrop ? '#fff9e3' : 'transparent',
+          backgroundColor: hasSoldOutReservation
+            ? '#f0f0f0'
+            : isOver && canDrop
+            ? '#fff9e3'
+            : 'transparent',
         }}
       >
         {conflictMessage && (
@@ -518,7 +535,7 @@ const ContainerCell = React.memo(
             alignItems: 'center',
             gap: '10px',
             padding: '4px 8px',
-            backgroundColor: '#f0f4f8',
+            backgroundColor: hasSoldOutReservation ? '#f0f0f0' : '#f0f4f8',
             borderRadius: '8px',
             fontWeight: 'bold',
           }}
@@ -539,6 +556,17 @@ const ContainerCell = React.memo(
           >
             {cont.roomInfo || '미설정'}
           </span>
+          {hasSoldOutReservation && (
+            <span
+              style={{
+                fontSize: '0.9rem',
+                color: '#888',
+                fontWeight: 'bold',
+              }}
+            >
+              사용불가
+            </span>
+          )}
           {checkedOutCount > 0 && (
             <span className="checked-out-count">+{checkedOutCount}</span>
           )}

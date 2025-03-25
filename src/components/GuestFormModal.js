@@ -57,6 +57,22 @@ const GuestFormModal = ({
     [roomTypes]
   );
 
+  // 고객 이름이 "판매보류" 또는 "판매중지"일 경우 가격을 0원으로 설정
+  useEffect(() => {
+    if (
+      formData.customerName === '판매보류' ||
+      formData.customerName === '판매중지'
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        price: '0',
+        manualPriceOverride: true,
+        remainingBalance: 0,
+      }));
+      setDisplayedRemainingBalance(0);
+    }
+  }, [formData.customerName]);
+
   // -----------------------------
   // createDefaultVariousPayments: 안정적인 참조 제공
   // -----------------------------
@@ -1056,7 +1072,7 @@ const GuestFormModal = ({
         {isSubmitting && (
           <div className="modal-overlay-spinner">처리 중...</div>
         )}
-        <span className="close-button" onClick={handleClose}>
+        <span className="close-button" onClick={onClose}>
           ×
         </span>
         <h2>{initialData?._id ? '예약 수정' : '현장 예약'}</h2>
