@@ -51,7 +51,7 @@ const GuestFormModal = ({
   const [checkedNights, setCheckedNights] = useState([]);
   const [displayedRemainingBalance, setDisplayedRemainingBalance] = useState(0);
   const [availabilityWarning, setAvailabilityWarning] = useState('');
-
+  const [hasEditedCustomerName, setHasEditedCustomerName] = useState(false);
   const filteredRoomTypes = useMemo(
     () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
     [roomTypes]
@@ -1080,17 +1080,8 @@ const GuestFormModal = ({
           <p style={{ color: 'red' }}>{availabilityWarning}</p>
         )}
         <form onSubmit={handleSubmit}>
+          {/* 첫 번째 행: 예약자, 전화번호 */}
           <div className="modal-row">
-            <label htmlFor="reservationNo">
-              예약번호:
-              <input
-                id="reservationNo"
-                type="text"
-                name="reservationNo"
-                value={formData.reservationNo}
-                readOnly
-              />
-            </label>
             <label htmlFor="customerName">
               예약자:
               <input
@@ -1098,15 +1089,23 @@ const GuestFormModal = ({
                 type="text"
                 name="customerName"
                 value={formData.customerName}
-                onChange={handleInputChange}
-                required
+                onChange={(e) => {
+                  setHasEditedCustomerName(true); // 입력이 시작되면 true
+                  handleInputChange(e);
+                }}
+                onFocus={() => {
+                  if (
+                    !hasEditedCustomerName &&
+                    formData.customerName.startsWith('현장:')
+                  ) {
+                    setFormData((prev) => ({ ...prev, customerName: '' }));
+                  }
+                }}
                 disabled={isSubmitting}
               />
             </label>
-          </div>
-          <div className="modal-row">
             <label htmlFor="phoneNumber">
-              연락처:
+              전화번호:
               <input
                 id="phoneNumber"
                 type="text"
@@ -1117,6 +1116,10 @@ const GuestFormModal = ({
                 disabled={isSubmitting}
               />
             </label>
+          </div>
+
+          {/* 두 번째 행: 체크인(날짜), 체크인시간 */}
+          <div className="modal-row">
             <label htmlFor="checkInDate">
               체크인:
               <input
@@ -1128,7 +1131,11 @@ const GuestFormModal = ({
                 required
                 disabled={isSubmitting}
               />
+            </label>
+            <label htmlFor="checkInTime">
+              체크인시간:
               <input
+                id="checkInTime"
                 type="time"
                 name="checkInTime"
                 value={formData.checkInTime}
@@ -1137,6 +1144,8 @@ const GuestFormModal = ({
               />
             </label>
           </div>
+
+          {/* 세 번째 행: 체크아웃(날짜), 체크아웃시간 */}
           <div className="modal-row">
             <label htmlFor="checkOutDate">
               체크아웃:
@@ -1149,7 +1158,11 @@ const GuestFormModal = ({
                 required
                 disabled={isSubmitting}
               />
+            </label>
+            <label htmlFor="checkOutTime">
+              체크아웃시간:
               <input
+                id="checkOutTime"
                 type="time"
                 name="checkOutTime"
                 value={formData.checkOutTime}
@@ -1157,6 +1170,10 @@ const GuestFormModal = ({
                 disabled={isSubmitting}
               />
             </label>
+          </div>
+
+          {/* 예약시간(자동생성) 등 기타 필드 */}
+          <div className="modal-row">
             <label htmlFor="reservationDate">
               예약시간:
               <input
