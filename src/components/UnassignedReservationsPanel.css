@@ -84,7 +84,7 @@
 
 /* 당일 미배정 예약 (카드 형태) */
 .today-unassigned li {
-  height: 360px;
+  height: 400px;
   overflow: hidden;
   background-color: #e0f7e9;
   border: 1px solid #ccc;

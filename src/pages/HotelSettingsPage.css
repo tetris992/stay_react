@@ -3,8 +3,8 @@
 ========================================================================== */
 :root {
   /* 예약 카드 기본 크기 */
-  --card-width: 310px;
-  --card-height: 400px;
+  --card-width: 320px;
+  --card-height: 410px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
@@ -55,7 +55,7 @@ html {
   gap: 10px;
   box-sizing: border-box;
   /* 기본적으로 줄바꿈 (row), 310px~320px 너비 유지, 부드럽게 조정 */
-  grid-template-columns: repeat(auto-fit, minmax(310px, 320px));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 330px));
   width: 100%;
   transition: grid-template-columns 0.3s ease; /* 부드러운 전환 효과 */
   overflow: visible !important;
@@ -78,7 +78,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(320px, 320px)
+      minmax(330px, 330px)
     ); /* 12개까지 한 줄, 초과 시 줄바꿈 */
   }
 }
@@ -88,7 +88,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(320px, 1fr)
+      minmax(330px, 1fr)
     ); /* 더 유연하게, 8~10개까지 한 줄 */
   }
 }
@@ -98,7 +98,7 @@ html {
   .layout-grid {
     grid-template-columns: repeat(
       auto-fit,
-      minmax(320px, 1fr)
+      minmax(330px, 1fr)
     ); /* 더 작은 화면에서 유연히 */
   }
 }
