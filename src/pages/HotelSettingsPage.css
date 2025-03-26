@@ -239,6 +239,7 @@ html {
   padding: var(--min-gap);
   background-color: #f5f6f5;
   min-height: 100vh;
+  overflow-y: auto;
 }
 .hotel-settings-page h1 {
   font-size: 32px;
