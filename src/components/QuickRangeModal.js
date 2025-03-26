@@ -1,23 +1,36 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { format, addDays, differenceInCalendarDays, parseISO, startOfDay } from 'date-fns';
+import {
+  format,
+  addDays,
+  differenceInCalendarDays,
+  parseISO,
+  startOfDay,
+} from 'date-fns';
 import PropTypes from 'prop-types';
 import './QuickRangeModal.css';
 import { getDetailedAvailabilityMessage } from '../utils/availability';
 
-const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availabilityByDate }) => {
+const QuickRangeModal = ({
+  onClose,
+  onSave,
+  initialData,
+  roomTypes,
+  availabilityByDate,
+}) => {
   // (불필요한 변수는 eslint 경고가 발생하므로 제거하거나 주석처리)
   // const existingReservationId = initialData?._id || null;
 
   const [formData, setFormData] = useState({
     reservationNo: initialData?.reservationNo || `${Date.now()}`,
-    customerName: initialData?.customerName || `현장:${format(new Date(), 'HH:mm:ss')}`,
+    customerName:
+      initialData?.customerName || `현장:${format(new Date(), 'HH:mm:ss')}`,
     phoneNumber: initialData?.phoneNumber || '',
     checkInDate: initialData?.checkInDate || '',
     checkInTime: initialData?.checkInTime || '16:00',
     checkOutDate: initialData?.checkOutDate || '',
     checkOutTime: initialData?.checkOutTime || '11:00',
-    roomInfo: initialData?.roomInfo || (roomTypes[0]?.roomInfo || 'Standard'),
+    roomInfo: initialData?.roomInfo || roomTypes[0]?.roomInfo || 'Standard',
     price: initialData?.price || '',
     // 기본 결제방식을 'Card'로 설정 (수정 모드인 경우 기존 값 유지)
     paymentMethod: initialData?.paymentMethod || 'Card',
@@ -25,27 +38,45 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
     roomNumber: initialData?.roomNumber || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasEditedCustomerName, setHasEditedCustomerName] = useState(false);
 
   // 'none'이 아닌 객실타입만 필터링
   const filteredRoomTypes = useMemo(
-    () => roomTypes.filter(rt => rt.roomInfo.toLowerCase() !== 'none'),
+    () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
     [roomTypes]
   );
 
   // 숙박일수(nights)를 계산 (체크인/체크아웃 날짜가 모두 유효할 때)
   const nights = useMemo(() => {
-    const checkInDateTime = parseISO(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateTime = parseISO(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-    if (!isNaN(checkInDateTime) && !isNaN(checkOutDateTime) && checkInDateTime < checkOutDateTime) {
+    const checkInDateTime = parseISO(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = parseISO(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
+    if (
+      !isNaN(checkInDateTime) &&
+      !isNaN(checkOutDateTime) &&
+      checkInDateTime < checkOutDateTime
+    ) {
       return differenceInCalendarDays(checkOutDateTime, checkInDateTime);
     }
     return 0;
-  }, [formData.checkInDate, formData.checkInTime, formData.checkOutDate, formData.checkOutTime]);
+  }, [
+    formData.checkInDate,
+    formData.checkInTime,
+    formData.checkOutDate,
+    formData.checkOutTime,
+  ]);
 
   // 체크인/체크아웃 날짜 변경 시 자동 가격 업데이트
   useEffect(() => {
-    const checkInDateTime = parseISO(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateTime = parseISO(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+    const checkInDateTime = parseISO(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = parseISO(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
     if (
       checkInDateTime &&
       checkOutDateTime &&
@@ -53,15 +84,25 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
       !isNaN(checkOutDateTime) &&
       checkInDateTime < checkOutDateTime
     ) {
-      const selectedRoom = filteredRoomTypes.find(rt => rt.roomInfo === formData.roomInfo);
+      const selectedRoom = filteredRoomTypes.find(
+        (rt) => rt.roomInfo === formData.roomInfo
+      );
       const totalPrice = (selectedRoom?.price || 0) * Math.max(nights, 1);
-      setFormData(prev => ({ ...prev, price: totalPrice.toString() }));
+      setFormData((prev) => ({ ...prev, price: totalPrice.toString() }));
     }
-  }, [formData.checkInDate, formData.checkInTime, formData.checkOutDate, formData.checkOutTime, formData.roomInfo, filteredRoomTypes, nights]);
+  }, [
+    formData.checkInDate,
+    formData.checkInTime,
+    formData.checkOutDate,
+    formData.checkOutTime,
+    formData.roomInfo,
+    filteredRoomTypes,
+    nights,
+  ]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // 결제방식 드롭다운 렌더링 함수 (nights 변수를 사용)
@@ -123,10 +164,15 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
         let adjustedRemain = availForDay.remain;
         let adjustedLeftoverRooms = [...(availForDay.leftoverRooms || [])];
         if (excludeReservationId && availForDay.reservations) {
-          const selfReservation = availForDay.reservations.find(res => res._id === excludeReservationId);
+          const selfReservation = availForDay.reservations.find(
+            (res) => res._id === excludeReservationId
+          );
           if (selfReservation) {
             adjustedRemain += 1;
-            if (selfReservation.roomNumber && !adjustedLeftoverRooms.includes(selfReservation.roomNumber)) {
+            if (
+              selfReservation.roomNumber &&
+              !adjustedLeftoverRooms.includes(selfReservation.roomNumber)
+            ) {
               adjustedLeftoverRooms.push(selfReservation.roomNumber);
             }
           }
@@ -137,7 +183,9 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
           const freeRooms = adjustedLeftoverRooms;
           if (!commonRooms) commonRooms = new Set(freeRooms);
           else {
-            commonRooms = new Set([...commonRooms].filter(r => freeRooms.includes(r)));
+            commonRooms = new Set(
+              [...commonRooms].filter((r) => freeRooms.includes(r))
+            );
           }
         }
         cursor = addDays(cursor, 1);
@@ -185,17 +233,28 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
           response.createdReservationIds.length > 0
         ) {
           const newId = response.createdReservationIds[0];
-          console.log('[QuickRangeModal] New reservation saved with ID:', newId);
+          console.log(
+            '[QuickRangeModal] New reservation saved with ID:',
+            newId
+          );
         } else if (response?.message?.includes('successfully')) {
           const newId = `현장예약-${formData.reservationNo}`;
-          console.warn('[QuickRangeModal] No createdReservationIds, using ID:', newId);
+          console.warn(
+            '[QuickRangeModal] No createdReservationIds, using ID:',
+            newId
+          );
         } else if (response === undefined) {
-          console.error('[QuickRangeModal] Response is undefined, attempting fallback');
+          console.error(
+            '[QuickRangeModal] Response is undefined, attempting fallback'
+          );
           const newId = `현장예약-${formData.reservationNo}`;
           console.warn('[QuickRangeModal] Fallback ID used:', newId);
         } else {
           console.error('[QuickRangeModal] Unexpected response:', response);
-          throw new Error('응답에서 createdReservationIds를 찾을 수 없습니다. 서버 응답: ' + JSON.stringify(response));
+          throw new Error(
+            '응답에서 createdReservationIds를 찾을 수 없습니다. 서버 응답: ' +
+              JSON.stringify(response)
+          );
         }
       }
     },
@@ -216,8 +275,12 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
       alert('연락처는 필수 입력 항목입니다.');
       return false;
     }
-    const checkInDateTime = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-    const checkOutDateTime = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
+    const checkInDateTime = new Date(
+      `${formData.checkInDate}T${formData.checkInTime}:00`
+    );
+    const checkOutDateTime = new Date(
+      `${formData.checkOutDate}T${formData.checkOutTime}:00`
+    );
     if (isNaN(checkInDateTime) || isNaN(checkOutDateTime)) {
       alert('유효한 체크인/체크아웃 날짜를 입력해주세요.');
       return false;
@@ -236,22 +299,31 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
     }
     if (
       formData.paymentMethod === 'Various' &&
-      formData.paymentDetails && formData.paymentDetails.length === 0
+      formData.paymentDetails &&
+      formData.paymentDetails.length === 0
     ) {
-      alert('다양한 결제는 최소 한 건의 결제 기록이 필요합니다. "결제 추가" 버튼을 사용하세요.');
+      alert(
+        '다양한 결제는 최소 한 건의 결제 기록이 필요합니다. "결제 추가" 버튼을 사용하세요.'
+      );
       return false;
     }
     if (
       formData.paymentMethod === 'Various' &&
-      formData.paymentDetails && formData.paymentDetails.length > 0
+      formData.paymentDetails &&
+      formData.paymentDetails.length > 0
     ) {
-      const totalPaid = formData.paymentDetails.reduce((sum, detail) => sum + Number(detail.amount || 0), 0);
+      const totalPaid = formData.paymentDetails.reduce(
+        (sum, detail) => sum + Number(detail.amount || 0),
+        0
+      );
       if (totalPaid > numericPrice) {
-        alert(`분할 결제 금액(${totalPaid}원)이 총 금액(${numericPrice}원)을 초과합니다.`);
+        alert(
+          `분할 결제 금액(${totalPaid}원)이 총 금액(${numericPrice}원)을 초과합니다.`
+        );
         return false;
       }
       const isValid = formData.paymentDetails.every(
-        detail =>
+        (detail) =>
           detail.date &&
           detail.amount !== undefined &&
           detail.amount >= 0 &&
@@ -259,7 +331,9 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
           detail.method
       );
       if (!isValid) {
-        alert('결제 기록에 date, amount, timestamp, method가 모두 필요하며, amount는 0 이상이어야 합니다.');
+        alert(
+          '결제 기록에 date, amount, timestamp, method가 모두 필요하며, amount는 0 이상이어야 합니다.'
+        );
         return false;
       }
     }
@@ -275,16 +349,28 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
         setIsSubmitting(false);
         return;
       }
-      const checkInDateTime = new Date(`${formData.checkInDate}T${formData.checkInTime}:00`);
-      const checkOutDateTime = new Date(`${formData.checkOutDate}T${formData.checkOutTime}:00`);
-  
-      const availabilityResult = checkAvailability(checkInDateTime, checkOutDateTime, initialData?._id);
+      const checkInDateTime = new Date(
+        `${formData.checkInDate}T${formData.checkInTime}:00`
+      );
+      const checkOutDateTime = new Date(
+        `${formData.checkOutDate}T${formData.checkOutTime}:00`
+      );
+
+      const availabilityResult = checkAvailability(
+        checkInDateTime,
+        checkOutDateTime,
+        initialData?._id
+      );
       if (availabilityResult && typeof availabilityResult === 'string') {
         alert(availabilityResult);
         setIsSubmitting(false);
         return;
       }
-      const finalData = buildFinalData(checkInDateTime, checkOutDateTime, availabilityResult.commonRooms);
+      const finalData = buildFinalData(
+        checkInDateTime,
+        checkOutDateTime,
+        availabilityResult.commonRooms
+      );
       console.log('[QuickRangeModal] Submitting finalData:', finalData);
       try {
         await doSave(finalData);
@@ -294,13 +380,24 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
         const errorMessage =
           error.status === 403
             ? 'CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.'
-            : error.response?.data?.message || error.message || '예약 저장에 실패했습니다. 다시 시도해주세요.';
+            : error.response?.data?.message ||
+              error.message ||
+              '예약 저장에 실패했습니다. 다시 시도해주세요.';
         alert(errorMessage);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [isSubmitting, formData, onClose, initialData?._id, validateForm, checkAvailability, buildFinalData, doSave]
+    [
+      isSubmitting,
+      formData,
+      onClose,
+      initialData?._id,
+      validateForm,
+      checkAvailability,
+      buildFinalData,
+      doSave,
+    ]
   );
 
   return ReactDOM.createPortal(
@@ -309,7 +406,9 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
         {isSubmitting && (
           <div className="modal-overlay-spinner">처리 중...</div>
         )}
-        <span className="close-button" onClick={onClose}>×</span>
+        <span className="close-button" onClick={onClose}>
+          ×
+        </span>
         <h2>빠른 연박 예약</h2>
         <form onSubmit={handleSubmit}>
           {/* 예약자 정보 */}
@@ -319,7 +418,18 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
               <input
                 name="customerName"
                 value={formData.customerName}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  setHasEditedCustomerName(true);
+                  handleInputChange(e);
+                }}
+                onFocus={() => {
+                  if (
+                    !hasEditedCustomerName &&
+                    formData.customerName.startsWith('현장:')
+                  ) {
+                    setFormData((prev) => ({ ...prev, customerName: '' }));
+                  }
+                }}
                 required
               />
             </label>
@@ -381,8 +491,12 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
           <div className="modal-row">
             <label>
               객실 타입:
-              <select name="roomInfo" value={formData.roomInfo} onChange={handleInputChange}>
-                {filteredRoomTypes.map(rt => (
+              <select
+                name="roomInfo"
+                value={formData.roomInfo}
+                onChange={handleInputChange}
+              >
+                {filteredRoomTypes.map((rt) => (
                   <option key={rt.roomInfo} value={rt.roomInfo}>
                     {rt.roomInfo} ({rt.price}원)
                   </option>
@@ -391,7 +505,13 @@ const QuickRangeModal = ({ onClose, onSave, initialData, roomTypes, availability
             </label>
             <label>
               가격:
-              <input type="number" name="price" value={formData.price} onChange={handleInputChange} required />
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                required
+              />
             </label>
           </div>
           {/* 결제방법 드롭다운 */}
