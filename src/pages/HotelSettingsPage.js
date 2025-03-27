@@ -9,7 +9,7 @@ import {
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import { getColorForRoomType } from '../utils/getColorForRoomType';
 import './HotelSettingsPage.css';
-import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo } from 'react-icons/fa';
+import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo, FaCamera } from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
@@ -861,11 +861,14 @@ export default function HotelSettingsPage() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [hotelName, setHotelName] = useState('');
-  const [adminName, setAdminName] = useState('');
 
   // 체크인/체크아웃 시간 상태 추가
   const [checkInTime, setCheckInTime] = useState('16:00'); // 디폴트 16:00
   const [checkOutTime, setCheckOutTime] = useState('11:00'); // 디폴트 11:00
+
+  const handlePhotoUploadClick = () => {
+    navigate('/photo-upload', { state: { hotelId, roomTypes } });
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -934,7 +937,6 @@ export default function HotelSettingsPage() {
 
         if (userData) {
           setHotelName(userData.hotelName || hotelName);
-          setAdminName(userData.adminName || '');
           setHotelAddress(userData.address || hotelAddress);
           setEmail(userData.email || email);
           setPhoneNumber(userData.phoneNumber || phoneNumber);
@@ -1174,6 +1176,9 @@ export default function HotelSettingsPage() {
         >
           디폴트 불러오기
         </button>
+        <button className="hotel-settings-btn" onClick={handlePhotoUploadClick}>
+          <FaCamera /> 사진 업로드
+        </button>
         <button
           className="hotel-settings-btn"
           onClick={handleCancel}
@@ -1203,103 +1208,79 @@ export default function HotelSettingsPage() {
         <div className="info-columns">
           <div className="basic-info">
             <h2>호텔 기본 정보</h2>
-            <label>
-              호텔 ID:
-              <input
-                value={hotelId}
-                onChange={(e) => setHotelId(e.target.value)}
-                disabled={isExisting}
-                aria-label="호텔 ID 입력"
-              />
-            </label>
-            <label>
-              총 객실 수:
-              <input value={totalRooms} readOnly aria-label="총 객실 수" />
-            </label>
-            <label>
-              호텔 주소:
-              <input
-                value={hotelAddress}
-                onChange={(e) => setHotelAddress(e.target.value)}
-                placeholder="호텔 주소를 입력하세요"
-                aria-label="호텔 주소 입력"
-              />
-            </label>
-            <label>
-              이메일:
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일을 입력하세요"
-                aria-label="이메일 입력"
-              />
-            </label>
-            <label>
-              전화번호:
-              <input
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="전화번호를 입력하세요"
-                aria-label="전화번호 입력"
-              />
-            </label>
-            {/* 체크인/체크아웃 시간 입력 필드 추가 */}
-            <label>
-              체크인 시간:
-              <input
-                type="time"
-                value={checkInTime}
-                onChange={(e) => setCheckInTime(e.target.value)}
-                aria-label="체크인 시간 입력"
-              />
-            </label>
-            <label>
-              체크아웃 시간:
-              <input
-                type="time"
-                value={checkOutTime}
-                onChange={(e) => setCheckOutTime(e.target.value)}
-                aria-label="체크아웃 시간 입력"
-              />
-            </label>
-          </div>
-          <div className="account-info">
-            <h2>회원가입 정보</h2>
-            <label>
-              호텔 이름:
-              <input
-                value={hotelName}
-                onChange={(e) => setHotelName(e.target.value)}
-                placeholder="호텔 이름을 입력하세요"
-                aria-label="호텔 이름 입력"
-              />
-            </label>
-            <label>
-              관리자 이름:
-              <input
-                value={adminName}
-                onChange={(e) => setAdminName(e.target.value)}
-                placeholder="관리자 이름을 입력하세요"
-                aria-label="관리자 이름 입력"
-              />
-            </label>
-            <label>
-              비밀번호:
-              <input
-                type="password"
-                value="********"
-                readOnly
-                placeholder="비밀번호 변경은 별도 처리"
-                aria-label="비밀번호 (읽기 전용)"
-              />
-              <button
-                className="hotel-settings-action-btn change-pw-btn"
-                disabled
-                aria-label="비밀번호 변경 (미구현)"
-              >
-                비밀번호 변경 (미구현)
-              </button>
-            </label>
+            <div className="info-columns-split">
+              <div className="info-column">
+                <label>
+                  호텔 ID:
+                  <input
+                    value={hotelId}
+                    onChange={(e) => setHotelId(e.target.value)}
+                    disabled={isExisting}
+                    aria-label="호텔 ID 입력"
+                  />
+                </label>
+                <label>
+                  호텔 이름:
+                  <input
+                    value={hotelName}
+                    onChange={(e) => setHotelName(e.target.value)}
+                    placeholder="호텔 이름을 입력하세요"
+                    aria-label="호텔 이름 입력"
+                  />
+                </label>
+                <label>
+                  총 객실 수:
+                  <input value={totalRooms} readOnly aria-label="총 객실 수" />
+                </label>
+                <label>
+                  호텔 주소:
+                  <input
+                    value={hotelAddress}
+                    onChange={(e) => setHotelAddress(e.target.value)}
+                    placeholder="호텔 주소를 입력하세요"
+                    aria-label="호텔 주소 입력"
+                  />
+                </label>
+              </div>
+              <div className="info-column">
+                <label>
+                  이메일:
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="이메일을 입력하세요"
+                    aria-label="이메일 입력"
+                  />
+                </label>
+                <label>
+                  전화번호:
+                  <input
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="전화번호를 입력하세요"
+                    aria-label="전화번호 입력"
+                  />
+                </label>
+                <label>
+                  체크인 시간:
+                  <input
+                    type="time"
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    aria-label="체크인 시간 입력"
+                  />
+                </label>
+                <label>
+                  체크아웃 시간:
+                  <input
+                    type="time"
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    aria-label="체크아웃 시간 입력"
+                  />
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </section>

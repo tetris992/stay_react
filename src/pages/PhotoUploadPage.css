@@ -1,0 +1,373 @@
+/* frontend/src/pages/PhotoUploadPage.css */
+
+/* 공통 컨테이너 스타일 */
+.photo-upload-container {
+    padding: 20px;
+    font-family: 'Noto Sans KR', 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #f9f9f9, #e8ecef);
+    min-height: 100vh;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+  
+  /* 인증 전 비밀번호 입력 카드 */
+  .password-card {
+    max-width: 400px;
+    margin: 50px auto;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  
+  .password-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  /* 비밀번호 입력 섹션 */
+  .password-prompt {
+    margin-top: 20px;
+  }
+  
+  .password-prompt label {
+    display: block;
+    font-size: 16px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .password-prompt input {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    transition: border-color 0.3s;
+  }
+  
+  .password-prompt input:focus {
+    border-color: #6e8efb;
+    outline: none;
+  }
+  
+  /* 비밀번호 제출 버튼 */
+  .photo-upload-submit-password-btn {
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #828cad, #8a898a);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  
+  .photo-upload-submit-password-btn:hover {
+    background: linear-gradient(135deg, #b1b0b1, #838895);
+    transform: translateY(-2px);
+  }
+  
+  /* 호텔 정보 섹션 */
+  .hotel-info-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    gap: 20px;
+    background: linear-gradient(135deg, #d7d7d8, #605a67);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: white;
+  }
+  
+  /* 호텔 정보 카드 */
+  .hotel-info-box {
+    flex: 1;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .hotel-info-box h2 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    color: #333;
+  }
+  
+  .hotel-details p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #555;
+  }
+  
+  .hotel-details p strong {
+    margin-right: 8px;
+    color: #333;
+  }
+  
+  /* 뒤로가기 버튼 */
+  .photo-upload-button-group {
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .photo-upload-back-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #ff6b6b, #feca57);
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  
+  .photo-upload-back-btn:hover {
+    background: linear-gradient(135deg, #feca57, #ff6b6b);
+    transform: translateY(-2px);
+  }
+  
+  /* 에러, 성공 메시지 */
+  .error-message {
+    color: #ff4d4f;
+    font-size: 14px;
+    margin: 10px 0;
+    text-align: center;
+    background-color: #fff1f0;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  
+  .success-message {
+    color: #52c41a;
+    font-size: 14px;
+    margin: 10px 0;
+    text-align: center;
+    background-color: #f6ffed;
+    padding: 8px;
+    border-radius: 4px;
+  }
+  
+  .center-text {
+    text-align: center;
+  }
+  
+  /* 섹션 타이틀 */
+  .section-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #6e8efb;
+    padding-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  /* 사진 업로드 카드 */
+  .photo-upload-card {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 25px;
+    transition: box-shadow 0.3s;
+  }
+  
+  .photo-upload-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .photo-upload-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .photo-upload-header h3 {
+    font-size: 18px;
+    margin: 0;
+    color: #333;
+  }
+  
+  /* 업로드 인풋 */
+  .photo-upload-input {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .photo-upload-input input[type="file"] {
+    font-size: 14px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    transition: border-color 0.3s;
+  }
+  
+  .photo-upload-input input[type="file"]:focus {
+    border-color: #6e8efb;
+    outline: none;
+  }
+  
+  .file-order-input {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background-color: #f1f3f5;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  
+  .file-order-input span {
+    flex: 1;
+    font-size: 14px;
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .order-input {
+    width: 100px;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    transition: border-color 0.3s;
+  }
+  
+  .order-input:focus {
+    border-color: #6e8efb;
+    outline: none;
+  }
+  
+  /* 업로드 버튼 */
+  .photo-upload-upload-btn {
+    align-self: flex-start;
+    padding: 10px 20px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: #fff;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.3s, transform 0.2s;
+  }
+  
+  .photo-upload-upload-btn:hover {
+    background: linear-gradient(135deg, #a777e3, #6e8efb);
+    transform: translateY(-2px);
+  }
+  
+  /* 썸네일 */
+  .photo-thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .thumbnail {
+    position: relative;
+    width: 160px;
+    height: 90px; /* 16:9 비율 유지 */
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 6px;
+    background-color: #eee;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s;
+  }
+  
+  .thumbnail:hover {
+    transform: scale(1.05);
+  }
+  
+  .thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.2s ease;
+  }
+  
+  .thumbnail:hover img {
+    opacity: 0.8;
+  }
+  
+  /* 삭제 버튼 */
+  .photo-upload-delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: rgba(255, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .photo-upload-delete-btn:hover {
+    background-color: rgba(255, 0, 0, 1);
+  }
+  
+  /* 순서 표시 */
+  .thumbnail-order {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 3px;
+  }
+  
+  /* 반응형 디자인 */
+  @media (max-width: 768px) {
+    .photo-upload-container {
+      padding: 10px;
+    }
+  
+    .hotel-info-section {
+      flex-direction: column;
+    }
+  
+    .photo-upload-card {
+      padding: 15px;
+    }
+  
+    .thumbnail {
+      width: 120px;
+      height: 67.5px; /* 16:9 비율 유지 */
+    }
+  
+    .section-title {
+      font-size: 18px;
+    }
+  
+    .file-order-input {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .order-input {
+      width: 100%;
+    }
+  }

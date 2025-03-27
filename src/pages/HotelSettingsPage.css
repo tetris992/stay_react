@@ -765,3 +765,92 @@ html {
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease; /* 애니메이션 추가 */
 }
+
+/* frontend/src/pages/HotelSettingsPage.css */
+
+/* 호텔 정보 섹션 */
+.hotel-info-section {
+  margin-bottom: 30px;
+  padding: 20px; /* 패딩을 줄여 더 깔끔하게 */
+  background-color: #ffffff; /* 배경을 더 밝게 */
+  border: 1px solid #e0e0e0; /* 테두리 색상 조정 */
+  border-radius: 10px; /* 더 부드러운 모서리 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 그림자 강화 */
+}
+
+.hotel-info-section .info-columns {
+  display: flex;
+  gap: 30px; /* 열 간 간격 조정 */
+  flex-wrap: wrap;
+}
+
+/* 호텔 기본 정보 섹션을 두 열로 나누기 */
+.info-columns-split {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px; /* 열 간 간격 조정 */
+  width: 100%;
+}
+
+/* 각 열 스타일 */
+.info-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* 필드 간 간격 조정 */
+  min-width: 300px; /* 최소 너비 설정으로 반응형 대비 */
+}
+
+/* 라벨 스타일 */
+.info-column label {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px; /* 라벨 폰트 크기 조정 */
+  font-weight: 500; /* 라벨 가독성 강화 */
+  color: #2c3e50; /* 색상 통일 */
+}
+
+/* 입력 필드 스타일 */
+.info-column input {
+  margin-top: 6px; /* 라벨과 입력 필드 간 간격 */
+  padding: 10px; /* 입력 필드 패딩 조정 */
+  border: 1px solid #d0d0d0; /* 테두리 색상 조정 */
+  border-radius: 6px; /* 더 부드러운 모서리 */
+  font-size: 16px; /* 입력 필드 폰트 크기 조정 */
+  background-color: #fafafa; /* 입력 필드 배경 색상 */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease; /* 포커스 효과 추가 */
+}
+
+/* 입력 필드 포커스 효과 */
+.info-column input:focus {
+  border-color: #3498db; /* 포커스 시 테두리 색상 */
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); /* 포커스 시 그림자 효과 */
+  outline: none;
+}
+
+/* 비활성화된 입력 필드 스타일 */
+.info-column input:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+  opacity: 0.7; /* 비활성화 시 투명도 조정 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .info-columns-split {
+    flex-direction: column; /* 작은 화면에서 세로로 배치 */
+    gap: 20px;
+  }
+
+  .info-column {
+    min-width: 100%; /* 작은 화면에서 전체 너비 사용 */
+  }
+}
+
+/* 섹션 제목 스타일 */
+.basic-info h2 {
+  font-size: 24px; /* 제목 크기 조정 */
+  color: #34495e; /* 제목 색상 */
+  margin-bottom: 20px; /* 제목과 필드 간 간격 */
+  font-weight: 600; /* 제목 가독성 강화 */
+}

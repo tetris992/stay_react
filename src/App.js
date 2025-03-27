@@ -22,6 +22,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import PrivacyConsent from './components/PrivacyConsentModal.js';
+import PhotoUploadPage from './pages/PhotoUploadPage';
 
 import DetailPanel from './components/DetailPanel';
 import { parseDate, formatDate } from './utils/dateParser.js';
@@ -3234,6 +3235,7 @@ const App = () => {
               />
 
               <Route path="/hotel-settings" element={<HotelSettingsPage />} />
+              <Route path="/photo-upload" element={<PhotoUploadPage />} />
 
               {/* ★ 월간 달력 페이지 라우트 */}
               <Route

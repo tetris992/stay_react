@@ -24,23 +24,23 @@
 .memo-container {
   display: flex;
   flex-direction: column;
-  /* 부모 컨테이너(뒷면)에서 width/height를 제어하므로 여기서는 auto or 100% 등 유연하게 */
+  flex: 1;           /* 부모가 flex 컨테이너일 때 남은 공간을 전부 차지 */
+  min-height: 0;  
 }
 
 /* 메모 헤더 */
 .memo-header {
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: space-between;
   background-color: #c6c6c6; /* or #919191 등 원하는 색상 */
   color: #fff;
   padding: 5px 10px;
   border-radius: 5px 5px 0 0;
-  max-width: 300px;
   /* 고정 높이로 통일: 편집 모드 전/후 동일 */
   height: 40px;
   flex-shrink: 0;
-
+  width: auto;
   /* 필요 시 아래 마진 제거 */
   margin-bottom: 0;
 }
@@ -49,6 +49,8 @@
   border: none;
   background-color: transparent;
   cursor: pointer;
+  margin-right: 15px;
+  font-size: 18px;
 }
 
 .memo-edit-button:hover {

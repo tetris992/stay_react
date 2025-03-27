@@ -114,6 +114,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  align-items: stretch;        /* 내부 요소가 가득 차도록 */
+  height: 100%;    
 }
 
 .room-card-front {
