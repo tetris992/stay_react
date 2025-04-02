@@ -22,6 +22,7 @@
 
 /* 메모 전체 컨테이너 */
 .memo-container {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   flex: 1;           /* 부모가 flex 컨테이너일 때 남은 공간을 전부 차지 */
@@ -63,8 +64,8 @@
   overflow-y: auto; /* 스크롤 허용 */
   background-color: #ffffff;
   border-radius: 0 0 5px 5px;
-  width: 95%;
-  padding: 15px 20px;
+  width: 100%;
+  padding: 10px 5px;
 }
 
 /* 메모 입력 textarea */
