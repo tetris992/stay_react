@@ -41,7 +41,9 @@ api.interceptors.request.use(
     ) {
       const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
       config.headers['X-CSRF-Token'] = data.csrfToken;
+      config.headers['X-CSRF-Token-Id'] = data.tokenId;
       localStorage.setItem('csrfToken', data.csrfToken);
+      localStorage.setItem('csrfTokenId', data.tokenId);
     }
     return config;
   },
@@ -105,6 +107,7 @@ api.interceptors.response.use(
   }
 );
 
+// loginUser 수정
 export const loginUser = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
@@ -161,6 +164,7 @@ export const loginUser = async (credentials) => {
   }
 };
 
+// refreshToken 수정
 export const refreshToken = async () => {
   try {
     const response = await api.post('/api/auth/refresh-token');
@@ -203,6 +207,7 @@ export const refreshToken = async () => {
   }
 };
 
+// logoutUser 수정
 export const logoutUser = async () => {
   try {
     const accessToken = localStorage.getItem('accessToken');
@@ -211,15 +216,12 @@ export const logoutUser = async () => {
       return { redirect: '/login' };
     }
 
-    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
-    const csrfToken = csrfResponse.data.csrfToken;
     const response = await api.post(
       '/api/auth/logout',
       {},
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'X-CSRF-Token': csrfToken,
         },
       }
     );
@@ -234,13 +236,10 @@ export const logoutUser = async () => {
   }
 };
 
+// registerUser 수정
 export const registerUser = async (userData) => {
   try {
-    const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
-    const csrfToken = csrfResponse.data.csrfToken;
-    const response = await api.post('/api/auth/register', userData, {
-      headers: { 'X-CSRF-Token': csrfToken },
-    });
+    const response = await api.post('/api/auth/register', userData);
     return response.data;
   } catch (error) {
     console.error('유저 등록 실패:', error);
@@ -255,6 +254,36 @@ export const registerUser = async (userData) => {
     const standardError = new Error(errorMessage);
     standardError.status = statusCode;
     throw standardError;
+  }
+};
+
+// updateReservation 수정
+export const updateReservation = async (reservationId, updateData, hotelId) => {
+  try {
+    const response = await api.patch(
+      `/api/reservations/${encodeURIComponent(reservationId)}`,
+      {
+        ...updateData,
+        hotelId,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.status === 409) {
+      const conflictMessage =
+        error.response.data.message ||
+        '이미 해당 객실에 중복된 예약이 있습니다.';
+      alert(conflictMessage);
+    } else if (error.response && error.response.status === 403) {
+      console.error('CSRF 토큰 오류:', error);
+      alert(
+        'CSRF 토큰 오류가 발생했습니다. 페이지를 새로고침 후 다시 시도해주세요.'
+      );
+    } else {
+      console.error('예약 업데이트 실패:', error);
+      alert('예약 업데이트에 실패했습니다. 다시 시도해주세요.');
+    }
+    throw error.response?.data || error;
   }
 };
 
@@ -348,29 +377,6 @@ export const confirmReservation = async (reservationId, hotelId) => {
       error.response?.data?.message || '예약 확정에 실패했습니다.';
     console.log(errorMessage);
     throw error.response?.data || error; // 에러를 호출자에게 전달
-  }
-};
-
-export const updateReservation = async (reservationId, updateData, hotelId) => {
-  try {
-    const response = await api.patch(
-      `/api/reservations/${encodeURIComponent(reservationId)}`,
-      {
-        ...updateData,
-        hotelId,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    if (error.response && error.response.status === 409) {
-      const conflictMessage =
-        error.response.data.message ||
-        '이미 해당 객실에 중복된 예약이 있습니다.';
-      alert(conflictMessage);
-    } else {
-      console.error('예약 업데이트 실패:', error);
-    }
-    throw error.response?.data || error;
   }
 };
 
@@ -508,16 +514,26 @@ export { getAccessToken, getCsrfToken };
 // payPerNight API 함수 추가
 export const payPerNight = async (reservationId, hotelId, amount, method) => {
   try {
-    const response = await api.post(`/api/reservations/pay-per-night/${reservationId}`, {
-      hotelId,
-      amount: Number(amount), // 금액을 숫자로 보장
-      method: method || 'Cash', // 결제 방법 기본값 설정
-    });
-    console.log(`[payPerNight] Success for reservation ${reservationId}:`, response.data);
+    const response = await api.post(
+      `/api/reservations/pay-per-night/${reservationId}`,
+      {
+        hotelId,
+        amount: Number(amount), // 금액을 숫자로 보장
+        method: method || 'Cash', // 결제 방법 기본값 설정
+      }
+    );
+    console.log(
+      `[payPerNight] Success for reservation ${reservationId}:`,
+      response.data
+    );
     return response.data;
   } catch (error) {
-    console.error(`[payPerNight] Failed for reservation ${reservationId}:`, error);
-    const errorMessage = error.response?.data?.message || '1박 결제에 실패했습니다.';
+    console.error(
+      `[payPerNight] Failed for reservation ${reservationId}:`,
+      error
+    );
+    const errorMessage =
+      error.response?.data?.message || '1박 결제에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
@@ -528,15 +544,25 @@ export const payPartial = async (reservationId, hotelId, payments) => {
     if (!Array.isArray(payments) || payments.length === 0) {
       throw new ApiError(400, '결제 항목이 비어있거나 유효하지 않습니다.');
     }
-    const response = await api.post(`/api/reservations/${reservationId}/pay-partial`, {
-      hotelId,
-      payments, // [{ amount, method }, ...] 형식
-    });
-    console.log(`[payPartial] Success for reservation ${reservationId}:`, response.data);
+    const response = await api.post(
+      `/api/reservations/${reservationId}/pay-partial`,
+      {
+        hotelId,
+        payments, // [{ amount, method }, ...] 형식
+      }
+    );
+    console.log(
+      `[payPartial] Success for reservation ${reservationId}:`,
+      response.data
+    );
     return response.data;
   } catch (error) {
-    console.error(`[payPartial] Failed for reservation ${reservationId}:`, error);
-    const errorMessage = error.response?.data?.message || '부분 결제에 실패했습니다.';
+    console.error(
+      `[payPartial] Failed for reservation ${reservationId}:`,
+      error
+    );
+    const errorMessage =
+      error.response?.data?.message || '부분 결제에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
