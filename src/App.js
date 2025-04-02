@@ -209,7 +209,15 @@ const App = () => {
   });
   const [monthlyTotal, setMonthlyTotal] = useState(0);
   const [showGuestForm, setShowGuestForm] = useState(false);
-  const [memos, setMemos] = useState({});
+  const [memos, setMemos] = useState(() => {
+    const storedMemos = JSON.parse(localStorage.getItem('localMemos') || '{}');
+    return storedMemos;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('localMemos', JSON.stringify(memos));
+  }, [memos]);
+
   const [hotelSettings, setHotelSettings] = useState({
     hotelAddress: '주소 정보 없음',
     phoneNumber: '전화번호 정보 없음',
@@ -257,6 +265,17 @@ const App = () => {
   const toggleMinimalMode = useCallback(() => {
     setIsMinimalModeEnabled((prev) => !prev);
   }, []);
+
+  const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
+
+  const handleCardFlip = (resId) => {
+    setFlippedReservationIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(resId)) newSet.delete(resId);
+      else newSet.add(resId);
+      return newSet;
+    });
+  };
 
   // finalRoomTypes에서 'none' 제외
   const finalRoomTypes = useMemo(() => {
@@ -2665,7 +2684,7 @@ const App = () => {
   };
 
   const executeSearch = useCallback(
-    (searchTerm) => {
+    (searchTerm, handleCardFlip) => {
       const trimmedSearchTerm = searchTerm.trim();
       if (trimmedSearchTerm.length < 2) {
         alert('검색어는 최소 2자 이상 입력해야 합니다.');
@@ -2701,6 +2720,10 @@ const App = () => {
           );
           if (card) {
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 카드 플립
+            if (handleCardFlip) {
+              handleCardFlip(firstResult._id);
+            }
           }
         }, 100);
         if (highlightTimeoutRef.current) {
@@ -3317,7 +3340,9 @@ const App = () => {
                           searchCriteria={searchCriteria}
                           setSearchCriteria={setSearchCriteria}
                           handleVoiceResult={handleVoiceResult}
-                          executeSearch={executeSearch}
+                          executeSearch={(term) =>
+                            executeSearch(term, handleCardFlip)
+                          }
                           onShowCanceledModal={() => setShowCanceledModal(true)}
                           memos={memos}
                           setMemos={setMemos}
@@ -3329,6 +3354,7 @@ const App = () => {
                           activeReservations={activeReservations}
                           onMonthlyView={() => navigate('/monthly-calendar')}
                           dailySalesReport={dailySalesReport}
+                          handleCardFlip={handleCardFlip}
                         />
                       </aside>
 
@@ -3398,6 +3424,8 @@ const App = () => {
                                 showGuestForm={showGuestForm}
                                 isMinimalModeEnabled={isMinimalModeEnabled}
                                 toggleMinimalMode={toggleMinimalMode}
+                                flippedReservationIds={flippedReservationIds}
+                                handleCardFlip={handleCardFlip}
                               />
                             </DndProvider>
                           </div>

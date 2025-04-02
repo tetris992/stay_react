@@ -614,8 +614,9 @@ function RoomGrid({
   allReservations,
   showGuestForm,
   isMinimalModeEnabled, 
+  handleCardFlip,
+  flippedReservationIds,
 }) {
-  const [flippedReservationIds, setFlippedReservationIds] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [modalType, setModalType] = useState(null);
@@ -623,7 +624,6 @@ function RoomGrid({
   const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
     useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
-  // const [isUpdatedHighlighted, setIsUpdatedHighlighted] = useState(false); // 아래 중복 삭제후... 이부분을 지우면 에러생김 
 
   // 재고 0이면 자동 단축 모드
   const [floorMinimalMode, setFloorMinimalMode] = useState({});
@@ -738,49 +738,6 @@ function RoomGrid({
       });
   }, [fullReservations, selectedDate]);
 
-  useEffect(() => {
-    if (flipAllMemos) {
-      const allIds = reservations.map((r) => r._id);
-      setFlippedReservationIds(new Set(allIds));
-    } else {
-      setFlippedReservationIds(new Set());
-    }
-  }, [flipAllMemos, reservations]);
-
-  // useEffect(() => {
-  //   if (newlyCreatedId) {
-  //     setIsNewlyCreatedHighlighted(true);
-  //     const card = document.querySelector(
-  //       `.room-card[data-id="${newlyCreatedId}"]`
-  //     );
-  //     if (card) {
-  //       card.classList.add('onsite-created');
-  //       card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  //       const timeoutId = setTimeout(() => {
-  //         card.classList.remove('onsite-created');
-  //         setIsNewlyCreatedHighlighted(false);
-  //       }, 10000);
-  //       return () => clearTimeout(timeoutId);
-  //     }
-  //   }
-  // }, [newlyCreatedId]);
-  // // }, [updatedReservationId]);
-
-  // useEffect(() => {
-  //   if (isSearching && highlightedReservationIds.length > 0) {
-  //     setIsNewlyCreatedHighlighted(false);
-  //     setIsUpdatedHighlighted(false);
-  //   }
-  // }, [isSearching, highlightedReservationIds]);
-
-  const handleCardFlip = (resId) => {
-    setFlippedReservationIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(resId)) newSet.delete(resId);
-      else newSet.add(resId);
-      return newSet;
-    });
-  };
 
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -1259,6 +1216,7 @@ RoomGrid.propTypes = {
   allReservations: PropTypes.array.isRequired,
   isMinimalModeEnabled: PropTypes.bool.isRequired,
   toggleMinimalMode: PropTypes.func.isRequired,
+  handleCardFlip: PropTypes.func.isRequired,
 };
 
 export default RoomGrid;

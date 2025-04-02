@@ -76,6 +76,7 @@ function SideBar({
   dailySalesByOTA,
   labelsForOTA,
   dailySalesReport,
+  handleCardFlip,
 }) {
   const [highlightEffect, setHighlightEffect] = useState('');
   const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -131,7 +132,7 @@ function SideBar({
   // 일반 검색 제출
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    executeSearch(searchCriteria.name || '');
+    executeSearch(searchCriteria.name || '', handleCardFlip); // handleCardFlip 전달
     setTimeout(() => {
       setSearchCriteria({ ...searchCriteria, name: '' });
     }, 1000);
@@ -166,10 +167,7 @@ function SideBar({
         highlightEffect === 'blink' ? 'highlight-blink' : ''
       }`}
     >
-
-      <div className="sidebar-header">
-
-      </div>
+      <div className="sidebar-header"></div>
       {/* 검색 섹션 */}
       <Search
         searchCriteria={searchCriteria}
