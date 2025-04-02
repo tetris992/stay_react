@@ -1148,7 +1148,7 @@ const GuestFormModal = ({
           {initialData?._id
             ? `예약 수정${
                 initialData.roomNumber
-                  ? ` (No: ${initialData.roomNumber})`
+                  ? ` (No: ${String(initialData.roomNumber)})`
                   : ''
               }`
             : '현장 예약'}

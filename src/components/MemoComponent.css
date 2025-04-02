@@ -33,6 +33,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-right: 10px;
   background-color: #c6c6c6; /* or #919191 등 원하는 색상 */
   color: #fff;
   padding: 5px 10px;
@@ -63,12 +64,13 @@
   overflow-y: auto; /* 스크롤 허용 */
   background-color: #ffffff;
   border-radius: 0 0 5px 5px;
+  width: 95%;
   padding: 15px 20px;
 }
 
 /* 메모 입력 textarea */
 .memo-textarea {
-  width: 100%;
+  width: 90%;
   min-height: 0;
   background: transparent;
   border: none;
