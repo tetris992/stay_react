@@ -33,7 +33,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-right: 10px;
   background-color: #c6c6c6; /* or #919191 등 원하는 색상 */
   color: #fff;
   padding: 5px 10px;
@@ -109,6 +108,7 @@
   padding: 6px 12px;
   font-size: 1rem;
   cursor: pointer;
+  height: 30px;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
@@ -124,7 +124,9 @@
   border: none;
   border-radius: 4px;
   padding: 6px 12px;
+  margin-right: 5px;
   font-size: 1rem;
+  height: 30px;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
