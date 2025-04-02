@@ -523,6 +523,7 @@ const DayUseFormModal = ({
                 <option value="Cash">현금</option>
                 <option value="Account Transfer">계좌이체</option>
                 <option value="Pending">미결제</option>
+                <option value="현장결제">현장결제</option>
               </select>
             </label>
             <label>
