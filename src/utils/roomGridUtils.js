@@ -92,6 +92,11 @@ export function getPaymentMethodIcon(pm) {
         icon: <FaGlobe className="payment-icon" />,
         text: 'OTA',
       };
+    case '단잠':
+      return {
+        icon: <FaGlobe className="payment-icon" />,
+        text: '단잠',
+      };
     case 'Pending':
       return {
         icon: <FaHourglassHalf className="payment-icon" />,

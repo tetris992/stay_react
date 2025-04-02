@@ -118,3 +118,25 @@
 .checkbox-label input {
   margin-right: 5px;
 }
+
+/* 체크박스 그룹 자체는 가로 방향 + 줄바꿈 + 간격 */
+.checkbox-group.horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 라벨을 고정 너비 & 중앙 정렬 */
+.checkbox-label {
+  width: 50px; /* 필요 시 조절 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 5px; /* 줄 간격 살짝 주기 */
+}
+
+/* 라벨 안의 input 간격 */
+.checkbox-label input {
+  margin-right: 3px;
+}

@@ -45,6 +45,7 @@ const GuestFormModal = ({
     roomNumber: '',
     manualPriceOverride: false,
     remainingBalance: 0,
+    siteName: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
@@ -56,6 +57,9 @@ const GuestFormModal = ({
     () => roomTypes.filter((rt) => rt.roomInfo.toLowerCase() !== 'none'),
     [roomTypes]
   );
+
+  // 단잠 예약 여부 확인
+  const isDanjam = initialData?.siteName === '단잠';
 
   // 고객 이름이 "판매보류" 또는 "판매중지"일 경우 가격을 0원으로 설정
   useEffect(() => {
@@ -170,7 +174,6 @@ const GuestFormModal = ({
         initialData.remainingBalance !== undefined
           ? initialData.remainingBalance
           : totalPrice;
-      // 로컬에서 계산: 수정 시 원래 diffDays
       const calculatedDiffDays = differenceInCalendarDays(
         checkOutDateObj,
         checkInDateObj
@@ -189,9 +192,10 @@ const GuestFormModal = ({
         roomInfo:
           initialData.roomInfo || filteredRoomTypes[0]?.roomInfo || 'Standard',
         price: String(totalPrice),
-        paymentMethod:
-          initialData.paymentMethod ||
-          (initialData.type === 'dayUse' ? 'Cash' : 'Card'),
+        paymentMethod: isDanjam
+          ? initialData.paymentMethod || '현장결제' // 단잠 예약의 초기 paymentMethod를 '현장결제'로 설정
+          : initialData.paymentMethod ||
+            (initialData.type === 'dayUse' ? 'Cash' : 'Card'),
         paymentDetails:
           initialData.paymentMethod === 'Various'
             ? paymentDetails.length > 0
@@ -202,6 +206,7 @@ const GuestFormModal = ({
         roomNumber: initialData.roomNumber || '',
         manualPriceOverride: false,
         remainingBalance,
+        siteName: initialData.siteName || '현장예약',
       });
       setShowPaymentDetails(
         initialData.paymentMethod === 'Various' ||
@@ -222,7 +227,7 @@ const GuestFormModal = ({
         setCheckedNights([]);
       }
     },
-    [initialData, filteredRoomTypes, createDefaultVariousPayments]
+    [initialData, filteredRoomTypes, createDefaultVariousPayments, isDanjam]
   );
 
   const initCreateMode = useCallback(
@@ -389,11 +394,21 @@ const GuestFormModal = ({
   const handleInputChange = useCallback(
     (e) => {
       const { name, value } = e.target;
-      if (name === 'roomInfo' && initialData?._id) return;
-      if (name === 'phoneNumber' && value.trim() === '') {
+      // 전화번호 입력일 때, 고객 이름이 판매보류 등인 경우는 건너뜁니다.
+      if (
+        name === 'phoneNumber' &&
+        value.trim() === '' &&
+        !(
+          formData.customerName &&
+          ['판매보류', '판매중지', '판매중단', '판매금지'].includes(
+            formData.customerName.trim()
+          )
+        )
+      ) {
         alert('연락처는 필수 입력 항목입니다.');
         return;
       }
+
       setFormData((prev) => {
         const updated = { ...prev, [name]: value };
         if (name === 'price') {
@@ -423,7 +438,7 @@ const GuestFormModal = ({
         return updated;
       });
     },
-    [initialData, diffDays, createDefaultVariousPayments]
+    [formData.customerName, diffDays, createDefaultVariousPayments]
   );
 
   // -----------------------------
@@ -697,30 +712,36 @@ const GuestFormModal = ({
   // -----------------------------
   const buildFinalData = useCallback(
     (checkInDateTime, checkOutDateTime, commonRooms) => {
-      const selectedRoomNumber =
-        formData.roomNumber ||
-        [...commonRooms].sort((a, b) => parseInt(a) - parseInt(b))[0];
+      // 수정 모드일 경우 기존 roomNumber 유지, 신규 모드일 경우 commonRooms에서 선택
+      const selectedRoomNumber = initialData?._id
+        ? formData.roomNumber // 수정 모드: 기존 roomNumber 유지
+        : formData.roomNumber ||
+          (commonRooms && commonRooms.size > 0
+            ? [...commonRooms].sort((a, b) => parseInt(a) - parseInt(b))[0]
+            : ''); // 신규 모드: commonRooms에서 선택, 없으면 빈 문자열
       const nights = differenceInCalendarDays(
         checkOutDateTime,
         checkInDateTime
       );
       const isPerNightPayment =
         formData.paymentMethod.includes('PerNight') && nights > 1;
-      return {
+      const finalData = {
         ...formData,
         price: Number(formData.price),
         checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss") + '+09:00',
         checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss") + '+09:00',
         roomNumber: String(selectedRoomNumber),
-        siteName: '현장예약',
+        siteName: formData.siteName || '현장예약',
         type: 'stay',
         isPerNightPayment,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: formData.paymentMethod, // 사용자의 수정 반영
         paymentHistory: formData.paymentDetails,
         remainingBalance: formData.remainingBalance,
       };
+      console.log('[buildFinalData] Final data:', finalData);
+      return finalData;
     },
-    [formData]
+    [formData, initialData]
   );
 
   // -----------------------------
@@ -779,7 +800,16 @@ const GuestFormModal = ({
       alert('체크인/체크아웃 날짜를 모두 입력해주세요.');
       return false;
     }
-    if (!formData.phoneNumber.trim()) {
+    // 고객 이름이 판매보류 등일 경우에는 전화번호 검증 건너뜁니다.
+    if (
+      !formData.phoneNumber.trim() &&
+      !(
+        formData.customerName &&
+        ['판매보류', '판매중지', '판매중단', '판매금지'].includes(
+          formData.customerName.trim()
+        )
+      )
+    ) {
       alert('연락처는 필수 입력 항목입니다.');
       return false;
     }
@@ -968,17 +998,56 @@ const GuestFormModal = ({
   // -----------------------------
   const renderPaymentDetails = () => {
     if (!showPaymentDetails) return null;
+
     const perNightPrice =
       diffDays > 0
         ? Math.round(parseFloat(formData.price) / diffDays)
         : parseFloat(formData.price);
+
     if (formData.paymentMethod.includes('PerNight')) {
+      const isAnyNightChecked = checkedNights.length > 0;
+
       return (
-        <div className="modal-row payment-details">
-          <h4>1박 금액: {perNightPrice.toLocaleString()}원</h4>
-          <div className="checkbox-group horizontal">
+        <div
+          className="modal-row payment-details"
+          style={{
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+          }}
+        >
+          {/* (1) 1박 금액 + '미결제' 표시를 한 줄에 배치 */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px',
+            }}
+          >
+            <h4 style={{ marginRight: '8px' }}>
+              1박 금액: {perNightPrice.toLocaleString()}원
+            </h4>
+            {/* 체크박스가 하나도 안 선택됐으면 '미결제' 표시 */}
+            {!isAnyNightChecked && <span style={{ color: 'red' }}>미결제</span>}
+          </div>
+
+          {/* (2) 체크박스 그룹: flex-wrap 적용으로 여러 줄에 걸쳐 정렬 */}
+          <div
+            className="checkbox-group horizontal"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap', // 줄바꿈
+              gap: '8px', // 체크박스 간 간격
+            }}
+          >
             {Array.from({ length: diffDays }, (_, i) => i + 1).map((night) => (
-              <label key={night} className="checkbox-label">
+              <label
+                key={night}
+                className="checkbox-label"
+                style={{
+                  width: '50px', // 라벨 고정 폭
+                  textAlign: 'center', // 가운데 정렬
+                }}
+              >
                 <input
                   type="checkbox"
                   checked={checkedNights.includes(night)}
@@ -989,7 +1058,6 @@ const GuestFormModal = ({
               </label>
             ))}
           </div>
-          {checkedNights.length === 0 && <p style={{ color: 'red' }}>미결제</p>}
         </div>
       );
     }
@@ -1076,7 +1144,15 @@ const GuestFormModal = ({
         <span className="close-button" onClick={onClose}>
           ×
         </span>
-        <h2>{initialData?._id ? '예약 수정' : '현장 예약'}</h2>
+        <h2>
+          {initialData?._id
+            ? `예약 수정${
+                initialData.roomNumber
+                  ? ` (No: ${initialData.roomNumber})`
+                  : ''
+              }`
+            : '현장 예약'}
+        </h2>
         {availabilityWarning && (
           <p style={{ color: 'red' }}>{availabilityWarning}</p>
         )}
@@ -1113,7 +1189,15 @@ const GuestFormModal = ({
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
-                required
+                required={
+                  // 고객 이름이 "판매보류", "판매중단", "판매중지", "판매금지"인 경우엔 필수가 아님
+                  !(
+                    formData.customerName &&
+                    ['판매보류', '판매중단', '판매중지', '판매금지'].includes(
+                      formData.customerName.trim()
+                    )
+                  )
+                }
                 disabled={isSubmitting}
               />
             </label>
@@ -1133,17 +1217,22 @@ const GuestFormModal = ({
                 disabled={isSubmitting}
               />
             </label>
-            <label htmlFor="checkInTime">
-              체크인시간:
-              <input
-                id="checkInTime"
-                type="time"
-                name="checkInTime"
-                value={formData.checkInTime}
-                onChange={handleInputChange}
-                disabled={isSubmitting}
-              />
-            </label>
+            {/* 고객 이름이 "판매보류" 등일 경우 체크인 시간 입력 필드 숨김 */}
+            {['판매보류', '판매중지', '판매중단', '판매금지'].includes(
+              formData.customerName?.trim()
+            ) ? null : (
+              <label htmlFor="checkInTime">
+                체크인시간:
+                <input
+                  id="checkInTime"
+                  type="time"
+                  name="checkInTime"
+                  value={formData.checkInTime}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                />
+              </label>
+            )}
           </div>
 
           {/* 세 번째 행: 체크아웃(날짜), 체크아웃시간 */}
@@ -1160,17 +1249,22 @@ const GuestFormModal = ({
                 disabled={isSubmitting}
               />
             </label>
-            <label htmlFor="checkOutTime">
-              체크아웃시간:
-              <input
-                id="checkOutTime"
-                type="time"
-                name="checkOutTime"
-                value={formData.checkOutTime}
-                onChange={handleInputChange}
-                disabled={isSubmitting}
-              />
-            </label>
+            {/* 고객 이름이 "판매보류" 등일 경우 체크아웃 시간 입력 필드 숨김 */}
+            {['판매보류', '판매중지', '판매중단', '판매금지'].includes(
+              formData.customerName?.trim()
+            ) ? null : (
+              <label htmlFor="checkOutTime">
+                체크아웃시간:
+                <input
+                  id="checkOutTime"
+                  type="time"
+                  name="checkOutTime"
+                  value={formData.checkOutTime}
+                  onChange={handleInputChange}
+                  disabled={isSubmitting}
+                />
+              </label>
+            )}
           </div>
 
           {/* 예약시간(자동생성) 등 기타 필드 */}
