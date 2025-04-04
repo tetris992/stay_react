@@ -1,3 +1,4 @@
+// frontend/src/pages/HotelSettingsPage.js
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -5,21 +6,112 @@ import {
   updateHotelSettings,
   registerHotel,
   fetchUserInfo,
+  updateUser,
 } from '../api/api';
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
+import DEFAULT_AMENITIES from '../config/defaultAmenities';
 import { getColorForRoomType } from '../utils/getColorForRoomType';
 import './HotelSettingsPage.css';
-import { FaBed, FaMinus, FaPlus, FaTrash, FaUndo, FaCamera } from 'react-icons/fa';
+import iconMap from '../config/iconMap'; // 아이콘 맵을 별도의 파일로 분리하여 import
+import {
+  FaBed,
+  FaMinus,
+  FaPlus,
+  FaTrash,
+  FaUndo,
+  FaCamera,
+  FaWifi,
+  FaBath,
+  FaTv,
+  FaUmbrellaBeach,
+  FaTshirt,
+  FaFilm,
+  FaChair,
+  FaSmoking,
+  FaStore,
+  FaCoffee,
+  FaSnowflake,
+  FaFire,
+  FaGlassMartini,
+  FaWind,
+  FaLock,
+  FaCouch,
+  FaUtensils,
+  FaConciergeBell,
+  FaPaw,
+  FaWheelchair,
+  FaBan,
+  FaVolumeMute,
+  FaToilet,
+  FaShower,
+  FaHotTub,
+  FaSpa,
+  FaDumbbell,
+  FaSwimmingPool,
+  FaParking,
+  FaChargingStation,
+  FaBriefcase,
+  FaUsers,
+  FaGlassCheers,
+  FaChild,
+  FaCocktail,
+  FaTree,
+  FaBuilding,
+  FaMicrophone,
+  FaGamepad,
+  FaGolfBall,
+  FaClock,
+  FaSuitcase,
+  FaBus,
+  FaCar,
+  FaMap,
+  FaMoneyBillWave,
+  FaSoap,
+  FaDoorOpen,
+  FaDesktop,
+  FaMoneyCheck,
+} from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
-import { toZonedTime } from 'date-fns-tz'; // KST 변환용
+import { toZonedTime } from 'date-fns-tz';
+import api from '../api/api';
 
-const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8]; // 기본 층 설정
+// 기본 층 설정
+const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
 
+// 기타 시설 서브 카테고리 목록
+const FACILITY_SUB_CATEGORIES = [
+  'lobby',
+  'restaurant',
+  'pool',
+  'gym',
+  'parkingLot',
+  'laundryRoom',
+  'loungeArea',
+  'terrace',
+  'rooftop',
+  'spaSauna',
+  'businessCenter',
+  'meetingRoom',
+  'banquetHall',
+  'kidsClub',
+  'barLounge',
+  'cafe',
+  'convenienceStore',
+  'garden',
+];
+
+// 사진 업로드 관련 상수
+const DEFAULT_PASSWORD = '##11';
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_RESOLUTION = { width: 1920, height: 1080 };
+
+// 초기 객실 타입 설정 – DEFAULT_AMENITIES에서 in‑room만 필터링
 const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
   ...rt,
-  aliases: [], // 빈 배열로 초기화
+  aliases: [],
   roomNumbers:
     rt.startRoomNumbers && Object.keys(rt.floorSettings).length > 0
       ? Array.from(
@@ -31,8 +123,19 @@ const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
             }`
         )
       : [],
+  roomAmenities: DEFAULT_AMENITIES.filter(
+    (amenity) => amenity.type === 'in-room'
+  ).map((a) => ({
+    nameKor: a.nameKor,
+    nameEng: a.nameEng,
+    icon: a.icon,
+    type: a.type,
+    isActive: false,
+  })),
+  photos: [],
 }));
 
+// 객실 번호 생성 유틸리티
 function buildRoomTypesWithNumbers(roomTypes, containers) {
   const cloned = roomTypes.map((rt) => ({
     ...rt,
@@ -52,7 +155,282 @@ function buildRoomTypesWithNumbers(roomTypes, containers) {
   return cloned;
 }
 
-function RoomTypeEditor({ roomTypes, setRoomTypes }) {
+// (참고: 필요하다면 공용 iconMap을 import하여 사용할 수 있습니다.)
+function AmenitiesSection({
+  amenities,
+  setAmenities,
+  roomTypes,
+  setRoomTypes,
+  onSave,
+  language,
+}) {
+  // on-site (호텔 공통) 시설 목록 필터링
+  const onSiteAmenities = amenities.filter(
+    (amenity) => amenity.type === 'on-site'
+  );
+
+  // 객실내(in-room) 시설 목록 필터링 함수
+  const getInRoomAmenities = (amenityList) =>
+    amenityList.filter((amenity) => amenity.type === 'in-room');
+
+  const handleAmenityChange = (index) => {
+    setAmenities((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        isActive: !updated[index].isActive,
+      };
+      return updated;
+    });
+  };
+
+  // 수정된 부분: 필터링된 배열의 인덱스가 아닌, 고유 식별자인 nameKor를 기준으로 변경
+  const handleRoomAmenityChange = (roomIndex, amenityNameKor) => {
+    setRoomTypes((prev) => {
+      const updated = [...prev];
+      updated[roomIndex] = {
+        ...updated[roomIndex],
+        roomAmenities: updated[roomIndex].roomAmenities.map((amenity) =>
+          amenity.nameKor === amenityNameKor
+            ? { ...amenity, isActive: !amenity.isActive }
+            : amenity
+        ),
+      };
+      return updated;
+    });
+  };
+
+  // iconMap은 필요에 따라 공용 파일에서 import할 수도 있음
+  const iconMap = {
+    FaWifi: <FaWifi />,
+    FaBath: <FaBath />,
+    FaTv: <FaTv />,
+    FaUmbrellaBeach: <FaUmbrellaBeach />,
+    FaTshirt: <FaTshirt />,
+    FaFilm: <FaFilm />,
+    FaChair: <FaChair />,
+    FaSmoking: <FaSmoking />,
+    FaStore: <FaStore />,
+    FaCoffee: <FaCoffee />,
+    FaSnowflake: <FaSnowflake />,
+    FaFire: <FaFire />,
+    FaGlassMartini: <FaGlassMartini />,
+    FaWind: <FaWind />,
+    FaLock: <FaLock />,
+    FaCouch: <FaCouch />,
+    FaUtensils: <FaUtensils />,
+    FaConciergeBell: <FaConciergeBell />,
+    FaPaw: <FaPaw />,
+    FaWheelchair: <FaWheelchair />,
+    FaBan: <FaBan />,
+    FaVolumeMute: <FaVolumeMute />,
+    FaToilet: <FaToilet />,
+    FaShower: <FaShower />,
+    FaHotTub: <FaHotTub />,
+    FaSpa: <FaSpa />,
+    FaDumbbell: <FaDumbbell />,
+    FaSwimmingPool: <FaSwimmingPool />,
+    FaParking: <FaParking />,
+    FaChargingStation: <FaChargingStation />,
+    FaBriefcase: <FaBriefcase />,
+    FaUsers: <FaUsers />,
+    FaGlassCheers: <FaGlassCheers />,
+    FaChild: <FaChild />,
+    FaCocktail: <FaCocktail />,
+    FaTree: <FaTree />,
+    FaBuilding: <FaBuilding />,
+    FaMicrophone: <FaMicrophone />,
+    FaGamepad: <FaGamepad />,
+    FaGolfBall: <FaGolfBall />,
+    FaClock: <FaClock />,
+    FaSuitcase: <FaSuitcase />,
+    FaBus: <FaBus />,
+    FaCar: <FaCar />,
+    FaMap: <FaMap />,
+    FaMoneyBillWave: <FaMoneyBillWave />,
+    FaSoap: <FaSoap />,
+    FaDoorOpen: <FaDoorOpen />,
+    FaDesktop: <FaDesktop />,
+    FaMoneyCheck: <FaMoneyCheck />,
+  };
+
+  return (
+    <section
+      className="amenities-section"
+      aria-label={
+        language === 'kor' ? '호텔 시설 섹션' : 'Hotel Amenities Section'
+      }
+    >
+      <h2>{language === 'kor' ? '호텔 공통 시설' : 'On-Site Facilities'}</h2>
+      <div className="amenities-container">
+        {onSiteAmenities.map((amenity, index) => (
+          <label key={`on-site-${index}`} className="amenity-item">
+            <input
+              type="checkbox"
+              checked={amenity.isActive}
+              onChange={() => handleAmenityChange(index)}
+            />
+            {iconMap[amenity.icon] || <span>❓</span>}
+            <span title={amenity.nameEng}>
+              {language === 'kor' ? amenity.nameKor : amenity.nameEng}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <h2>{language === 'kor' ? '객실별 시설 설정' : 'In-Room Amenities'}</h2>
+      {roomTypes.map((rt, roomIdx) => (
+        <div
+          key={`room-${roomIdx}`}
+          className="room-amenities"
+          aria-label={
+            language === 'kor' ? '객실별 시설 설정' : 'Room Amenities Settings'
+          }
+        >
+          <h4>
+            {language === 'kor' ? rt.nameKor : rt.nameEng} ({rt.nameEng})
+          </h4>
+          <div className="amenities-list">
+            {getInRoomAmenities(rt.roomAmenities).map((amenity) => (
+              <label
+                key={`room-${roomIdx}-amenity-${amenity.nameEng}`}
+                className="amenity-item"
+              >
+                <input
+                  type="checkbox"
+                  checked={amenity.isActive || false}
+                  onChange={() =>
+                    handleRoomAmenityChange(roomIdx, amenity.nameKor)
+                  }
+                />
+                {iconMap[amenity.icon] || <span>❓</span>}
+                <span title={amenity.nameEng}>
+                  {language === 'kor' ? amenity.nameKor : amenity.nameEng}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div className="tab-actions"></div>
+    </section>
+  );
+}
+
+// HotelInfoSection 컴포넌트 (부분 저장 버튼 포함)
+function HotelInfoSection({
+  hotelId,
+  setHotelId,
+  isExisting,
+  hotelName,
+  setHotelName,
+  totalRooms,
+  hotelAddress,
+  setHotelAddress,
+  email,
+  setEmail,
+  phoneNumber,
+  setPhoneNumber,
+  checkInTime,
+  setCheckInTime,
+  checkOutTime,
+  setCheckOutTime,
+}) {
+  return (
+    <section className="hotel-info-section" aria-label="호텔 기본 정보 섹션">
+      <div className="info-columns">
+        <div className="basic-info">
+          <h2>호텔 기본 정보</h2>
+          <div className="info-columns-split">
+            <div className="info-column">
+              <label>
+                호텔 ID:
+                <input
+                  value={hotelId || ''}
+                  onChange={(e) => setHotelId(e.target.value)}
+                  disabled={isExisting}
+                  aria-label="호텔 ID 입력"
+                />
+              </label>
+              <label>
+                호텔 이름:
+                <input
+                  value={hotelName || ''}
+                  onChange={(e) => setHotelName(e.target.value)}
+                  placeholder="호텔 이름을 입력하세요"
+                  aria-label="호텔 이름 입력"
+                />
+              </label>
+              <label>
+                총 객실 수:
+                <input
+                  value={totalRooms || 0}
+                  readOnly
+                  aria-label="총 객실 수"
+                />
+              </label>
+              <label>
+                호텔 주소:
+                <input
+                  value={hotelAddress || ''}
+                  onChange={(e) => setHotelAddress(e.target.value)}
+                  placeholder="호텔 주소를 입력하세요"
+                  aria-label="호텔 주소 입력"
+                />
+              </label>
+            </div>
+            <div className="info-column">
+              <label>
+                이메일:
+                <input
+                  value={email || ''}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="이메일을 입력하세요"
+                  aria-label="이메일 입력"
+                />
+              </label>
+              <label>
+                전화번호:
+                <input
+                  value={phoneNumber || ''}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="전화번호를 입력하세요"
+                  aria-label="전화번호 입력"
+                />
+              </label>
+              <label>
+                체크IN 시간:
+                <input
+                  type="time"
+                  value={checkInTime || '16:00'}
+                  onChange={(e) => setCheckInTime(e.target.value)}
+                  aria-label="체크인 시간 입력"
+                />
+              </label>
+              <label>
+                체크OUT 시간:
+                <input
+                  type="time"
+                  value={checkOutTime || '11:00'}
+                  onChange={(e) => setCheckOutTime(e.target.value)}
+                  aria-label="체크아웃 시간 입력"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RoomTypeEditor({ roomTypes, setRoomTypes, amenities, onSave }) {
+  // 시설 탭에서 활성화된 on‑site 시설만 읽어옴 (수정 불가, 읽기 전용)
+  const activeOnSiteAmenities = amenities.filter(
+    (amenity) => amenity.type === 'on-site' && amenity.isActive
+  );
+
+  // 객실 타입 추가
   const addRoomType = () => {
     setRoomTypes((prev) => [
       ...prev,
@@ -66,10 +444,16 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
         roomNumbers: [],
         floorSettings: {},
         startRoomNumbers: {},
+        // 객실별 시설은 in‑room만 (초기에는 모두 비활성)
+        roomAmenities: amenities
+          .filter((a) => a.type === 'in-room')
+          .map((a) => ({ ...a, isActive: false })),
+        photos: [],
       },
     ]);
   };
 
+  // 객실 타입 정보 변경
   const updateRoomType = (index, field, value, aliasIndex = null) => {
     setRoomTypes((prev) => {
       const updated = [...prev];
@@ -79,9 +463,10 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
           alert('유효한 가격을 입력해주세요.');
           return prev;
         }
-        updated[index][field] = numValue || 0;
+        updated[index].price = numValue || 0;
       } else if (field === 'nameKor' || field === 'nameEng') {
         updated[index][field] = value;
+        // roomInfo는 nameEng가 우선, 없으면 nameKor
         updated[index].roomInfo = (
           field === 'nameEng'
             ? value
@@ -90,14 +475,11 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
       } else if (field === 'aliases' && aliasIndex !== null) {
         updated[index].aliases[aliasIndex] = value;
       }
-      console.log(
-        `[RoomTypeEditor] Updated ${field} at index ${index}:`,
-        value
-      ); // 디버깅 로그
       return updated;
     });
   };
 
+  // 가격 증가/감소 함수
   const incrementPrice = (index) => {
     setRoomTypes((prev) => {
       const updated = [...prev];
@@ -114,12 +496,38 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
     });
   };
 
+  // 객실 타입 삭제
   const removeRoomType = (index) => {
     setRoomTypes((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
     <section className="room-types-section" aria-label="객실 타입 설정 섹션">
+      {/* (A) 공통 시설 읽기 전용 섹션 */}
+      <h2>공통 시설 (Read Only)</h2>
+      <div className="common-amenities-section">
+        <div className="common-amenities-container">
+          {activeOnSiteAmenities.length === 0 ? (
+            <p>활성화된 공통 시설이 없습니다.</p>
+          ) : (
+            activeOnSiteAmenities.map((amenity, idx) => {
+              // iconMap[amenity.icon]가 함수형 컴포넌트라면 아래와 같이 호출합니다.
+              const IconComponent = iconMap[amenity.icon];
+              return (
+                <span
+                  key={`common-amenity-${idx}`}
+                  className="common-amenity-item"
+                >
+                  {IconComponent ? <IconComponent /> : <span>❓</span>}
+                  <span title={amenity.nameEng}>{amenity.nameKor}</span>
+                </span>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* (B) 객실 타입(= in-room 시설) 편집 섹션 */}
       <h2>객실 타입 설정</h2>
       <div className="room-types-container">
         {roomTypes.map((rt, idx) => (
@@ -253,6 +661,28 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
                   : '아직 생성되지 않음'}
               </div>
             </div>
+            <div
+              className="room-amenities-display"
+              aria-label="활성화된 객실 시설"
+            >
+              <h4>활성화된 객실 시설</h4>
+              <div className="amenities-list">
+                {rt.roomAmenities
+                  .filter((amenity) => amenity.isActive)
+                  .map((amenity, aIdx) => {
+                    const IconComponent = iconMap[amenity.icon];
+                    return (
+                      <span key={aIdx} className="amenity-item">
+                        {IconComponent ? <IconComponent /> : <span>❓</span>}
+                        <span title={amenity.nameEng}>{amenity.nameKor}</span>
+                      </span>
+                    );
+                  })}
+                {rt.roomAmenities.every((amenity) => !amenity.isActive) && (
+                  <span>활성화된 시설이 없습니다.</span>
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -269,7 +699,8 @@ function RoomTypeEditor({ roomTypes, setRoomTypes }) {
   );
 }
 
-function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
+// LayoutEditor 컴포넌트 (부분 저장 버튼 포함)
+function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors, onSave }) {
   const previousFloorsRef = useRef([]);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -280,14 +711,11 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       const maxFloorNum =
         floors.length > 0 ? Math.max(...floors.map((f) => f.floorNum)) : 0;
       const newFloorNum = maxFloorNum + 1;
-
       if (floors.some((f) => f.floorNum === newFloorNum)) {
         alert('이미 존재하는 층 번호입니다. 다른 번호를 사용하세요.');
         return;
       }
-
       setFloors((prev) => [...prev, { floorNum: newFloorNum, containers: [] }]);
-      console.log(`[LayoutEditor] Added floor: ${newFloorNum}`); // 디버깅 로그
     } catch (error) {
       console.error('[LayoutEditor] Error adding floor:', error);
       alert('층 추가 중 오류가 발생했습니다.');
@@ -307,7 +735,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       if (containerIdx === -1) return prev;
       const container = updated[floorIdx].containers[containerIdx];
       const oldRoomInfo = container.roomInfo;
-
       if (field === 'price') {
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
@@ -318,7 +745,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       } else {
         container[field] = value;
       }
-
       if (field === 'roomInfo') {
         if (!value || value === '') return prev;
         if (!container.roomNumber) {
@@ -349,15 +775,12 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             .toString()
             .padStart(2, '0')}`;
         }
-
         const matchingType = roomTypes.find((rt) => rt.roomInfo === value);
         container.price = matchingType ? matchingType.price : 0;
-
         const uniqueId = uuidv4();
         container.containerId = `${floorNum}-${value}-${
           container.roomNumber
-        }-${Date.now()}-${uniqueId}`; // KST 변환 제거
-
+        }-${Date.now()}-${uniqueId}`;
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           if (oldRoomInfo && container.roomNumber) {
@@ -388,10 +811,8 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                 updatedTypes[newIdx].roomNumbers.length;
             }
           }
-          console.log('[LayoutEditor] Updated roomTypes:', updatedTypes);
           return updatedTypes;
         });
-
         updated[floorIdx].containers.sort(
           (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
         );
@@ -399,6 +820,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
       return updated;
     });
   };
+
   const incrementContainerPrice = (floorNum, containerId) => {
     setFloors((prev) => {
       const updated = [...prev];
@@ -447,7 +869,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           ).length,
         }))
       );
-      console.log(`[LayoutEditor] Removed floor: ${floorNum}`); // 디버깅 로그
       return updated;
     });
   };
@@ -456,7 +877,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
     if (previousFloorsRef.current.length > 0) {
       setFloors([...previousFloorsRef.current]);
       previousFloorsRef.current = [];
-      console.log('[LayoutEditor] Undo floor removal'); // 디버깅 로그
     } else {
       alert('되돌릴 삭제가 없습니다.');
     }
@@ -472,7 +892,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         const updated = [...prev];
         const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
         if (floorIdx === -1) return prev;
-
         const activeRooms = updated[floorIdx].containers.filter(
           (c) => c.roomInfo && c.roomNumber
         );
@@ -504,8 +923,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         newRoomNumber = `${floorNum}${(nextNum - floorNum * 100)
           .toString()
           .padStart(2, '0')}`;
-
-        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
+        const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
         const uniqueId = uuidv4();
         const newContainer = {
           containerId: `${floorNum}-${
@@ -524,7 +942,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         }
         return updated;
       });
-
       setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
         const typeIdx = updatedTypes.findIndex(
@@ -545,9 +962,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         }
         return updatedTypes;
       });
-      console.log(
-        `[LayoutEditor] Added room ${newRoomNumber} to floor ${floorNum}`
-      ); // 디버깅 로그
     } catch (error) {
       console.error('[LayoutEditor] Error adding room:', error);
       alert('객실 추가 중 오류가 발생했습니다.');
@@ -566,10 +980,8 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         (c) => c.containerId === containerId
       );
       if (containerIdx === -1) return prev;
-
       const removed = containers[containerIdx];
       containers.splice(containerIdx, 1);
-
       if (removed.roomInfo && removed.roomNumber) {
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
@@ -592,7 +1004,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           return updatedTypes;
         });
       }
-
       const uniqueContainers = [];
       const seenNumbers = new Set();
       containers.forEach((container) => {
@@ -605,7 +1016,6 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           uniqueContainers.push(container);
         }
       });
-
       uniqueContainers.sort(
         (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
       );
@@ -614,65 +1024,84 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
           .toString()
           .padStart(2, '0')}`;
         container.roomNumber = newRoomNumber;
-        const kstNow = toZonedTime(new Date(), 'Asia/Seoul'); // KST로 변환
+        const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
         container.containerId = `${floorNum}-${
           container.roomInfo
         }-${newRoomNumber}-${kstNow.getTime()}-${Math.random()
           .toString(36)
           .substr(2, 9)}`;
       });
-
       updated[floorIdx].containers = uniqueContainers;
-      console.log(`[LayoutEditor] Removed container ${containerId}`); // 디버깅 로그
       return updated;
     });
   };
 
   const generateInitialLayout = () => {
+    // 디폴트 설정 로딩: defaultRoomTypes를 기반으로 roomTypes 초기화
+    const defaultRoomTypesCopy = defaultRoomTypes.map((rt) => ({
+      ...rt,
+      aliases: [],
+      roomNumbers: [],
+      roomAmenities: DEFAULT_AMENITIES.map((a) => ({ ...a, isActive: false })),
+      photos: [],
+    }));
+
+    // 디폴트 설정 기반으로 floors 생성
     const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
-      roomTypes.forEach((rt) => {
-        const matchingNumbers = rt.roomNumbers.filter((num) =>
-          num.startsWith(String(floorNum))
+      const roomType = defaultRoomTypesCopy.find(
+        (rt) => rt.floorSettings[floorNum] > 0
+      );
+      if (roomType) {
+        const stock = roomType.floorSettings[floorNum] || 0;
+        const startNum = parseInt(
+          roomType.startRoomNumbers[floorNum] || `${floorNum}01`,
+          10
         );
-        matchingNumbers.forEach((num) => {
+        for (let i = 0; i < stock; i++) {
+          const roomNum = `${startNum + i}`;
           containers.push({
-            containerId: `${floorNum}-${rt.roomInfo}-${num}-${Date.now()}`,
-            roomInfo: rt.roomInfo,
-            roomNumber: num,
-            price: rt.price,
+            containerId: `${floorNum}-${
+              roomType.roomInfo
+            }-${roomNum}-${Date.now()}`,
+            roomInfo: roomType.roomInfo,
+            roomNumber: roomNum,
+            price: roomType.price,
             isActive: true,
           });
-        });
-      });
+          roomType.roomNumbers.push(roomNum);
+        }
+      }
       containers.sort(
         (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
       );
       return { floorNum, containers };
     });
-    setFloors(newFloors);
-    setRoomTypes((prevTypes) => {
-      const updatedTypes = [...prevTypes];
-      newFloors.forEach((floor) => {
-        floor.containers.forEach((cont) => {
-          if (cont.roomInfo && cont.roomNumber) {
-            const typeIdx = updatedTypes.findIndex(
-              (rt) => rt.roomInfo === cont.roomInfo
-            );
-            if (
-              typeIdx !== -1 &&
-              !updatedTypes[typeIdx].roomNumbers.includes(cont.roomNumber)
-            ) {
-              updatedTypes[typeIdx].roomNumbers.push(cont.roomNumber);
-              updatedTypes[typeIdx].stock =
-                updatedTypes[typeIdx].roomNumbers.length;
-            }
-          }
-        });
-      });
-      return updatedTypes;
+
+    // roomNumbers 중복 제거 및 정렬
+    defaultRoomTypesCopy.forEach((rt) => {
+      rt.roomNumbers = [...new Set(rt.roomNumbers)];
+      rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      rt.stock = rt.roomNumbers.length;
     });
-    console.log('[LayoutEditor] Generated initial layout'); // 디버깅 로그
+
+    // 상태 업데이트
+    setRoomTypes(defaultRoomTypesCopy);
+    setFloors(newFloors);
+
+    // totalRooms 계산 및 상위 컴포넌트에 반영
+    const newTotal = newFloors.reduce(
+      (sum, f) =>
+        sum +
+        (f.containers || []).filter((c) => c.roomInfo && c.roomNumber).length,
+      0
+    );
+    // onSave를 통해 상위 컴포넌트에서 totalRooms 업데이트
+    if (onSave) {
+      onSave({ totalRooms: newTotal });
+    }
+
+    alert('디폴트 레이아웃이 생성되었습니다.');
   };
 
   return (
@@ -685,10 +1114,10 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
         <button
           className="hotel-settings-btn generate-btn"
           onClick={generateInitialLayout}
-          title="레이아웃 생성"
-          aria-label="레이아웃 생성"
+          title="디폴트 레이아웃 생성"
+          aria-label="디폴트 레이아웃 생성"
         >
-          레이아웃 생성
+          디폴트 레이아웃 생성
         </button>
         <button
           className="hotel-settings-btn undo-btn"
@@ -817,7 +1246,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                         </div>
                       </div>
                       <button
-                        className="hotel-settings-btn delete-btn"
+                        className="hotel-settings-layout-btn delete-btn"
                         onClick={() =>
                           removeContainer(floor.floorNum, cont.containerId)
                         }
@@ -829,7 +1258,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
                   </React.Fragment>
                 ))}
                 <button
-                  className="hotel-settings-btn add-room-btn"
+                  className="hotel-settings-layout-btn add-room-btn"
                   onClick={() => addRoomToFloor(floor.floorNum)}
                   disabled={isAdding}
                   title="객실 추가"
@@ -841,14 +1270,527 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors }) {
             </div>
           ))}
       </div>
+      <div className="tab-actions"></div>
     </section>
   );
 }
 
+// PhotoUploadSection은 업로드/삭제 시 바로 API 호출되므로 저장 버튼 없음
+function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [roomPhotos, setRoomPhotos] = useState({});
+  const [exteriorPhotos, setExteriorPhotos] = useState([]);
+  const [facilityPhotos, setFacilityPhotos] = useState({});
+  const [roomFiles, setRoomFiles] = useState({});
+  const [exteriorFiles, setExteriorFiles] = useState([]);
+  const [facilityFiles, setFacilityFiles] = useState({});
+
+  const handlePasswordSubmit = async () => {
+    try {
+      const response = await api.post('/api/auth/validate-upload-password', {
+        hotelId,
+        password,
+      });
+      if (response.data.valid || password === DEFAULT_PASSWORD) {
+        setIsAuthenticated(true);
+      } else {
+        setPasswordError('비밀번호가 올바르지 않습니다.');
+      }
+    } catch (err) {
+      if (password === DEFAULT_PASSWORD) {
+        setIsAuthenticated(true);
+      } else {
+        setPasswordError(
+          '비밀번호 인증 실패: ' + (err.response?.data?.message || err.message)
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!hotelId || !roomTypes) {
+      setError('호텔 ID 또는 객실 타입 정보가 없습니다.');
+      return;
+    }
+    const initialRoomPhotos = {};
+    roomTypes.forEach((rt) => {
+      initialRoomPhotos[rt.roomInfo] = [];
+    });
+    setRoomPhotos(initialRoomPhotos);
+    setRoomFiles(
+      roomTypes.reduce((acc, rt) => {
+        acc[rt.roomInfo] = [];
+        return acc;
+      }, {})
+    );
+    const initialFacilityPhotos = {};
+    FACILITY_SUB_CATEGORIES.forEach((subCat) => {
+      initialFacilityPhotos[subCat] = [];
+    });
+    setFacilityPhotos(initialFacilityPhotos);
+    setFacilityFiles(
+      FACILITY_SUB_CATEGORIES.reduce((acc, subCat) => {
+        acc[subCat] = [];
+        return acc;
+      }, {})
+    );
+    const fetchPhotos = async () => {
+      try {
+        const response = await api.get('/api/hotel-settings/photos', {
+          params: { hotelId },
+        });
+        const photos = response.data.photos || [];
+        const newRoomPhotos = { ...initialRoomPhotos };
+        photos
+          .filter((photo) => photo.category === 'room')
+          .forEach((photo) => {
+            if (newRoomPhotos[photo.subCategory]) {
+              newRoomPhotos[photo.subCategory].push({
+                photoUrl: photo.photoUrl,
+                order: photo.order,
+              });
+            }
+          });
+        setRoomPhotos(newRoomPhotos);
+        const newExteriorPhotos = photos
+          .filter((photo) => photo.category === 'exterior')
+          .map((photo) => ({ photoUrl: photo.photoUrl, order: photo.order }));
+        setExteriorPhotos(newExteriorPhotos);
+        const newFacilityPhotos = { ...initialFacilityPhotos };
+        photos
+          .filter((photo) => photo.category === 'facility')
+          .forEach((photo) => {
+            if (newFacilityPhotos[photo.subCategory]) {
+              newFacilityPhotos[photo.subCategory].push({
+                photoUrl: photo.photoUrl,
+                order: photo.order,
+              });
+            }
+          });
+        setFacilityPhotos(newFacilityPhotos);
+      } catch (err) {
+        setError(
+          '사진 로드 실패: ' + (err.response?.data?.message || err.message)
+        );
+      }
+    };
+    fetchPhotos();
+  }, [hotelId, roomTypes]);
+
+  const validateFile = (file) => {
+    if (!ALLOWED_FORMATS.includes(file.type)) {
+      return `허용된 파일 형식은 ${ALLOWED_FORMATS.join(', ')}입니다.`;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return '파일 크기는 5MB를 초과할 수 없습니다.';
+    }
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        if (
+          img.width > MAX_RESOLUTION.width ||
+          img.height > MAX_RESOLUTION.height
+        ) {
+          reject(
+            `해상도는 ${MAX_RESOLUTION.width}x${MAX_RESOLUTION.height}을 초과할 수 없습니다.`
+          );
+        } else {
+          resolve();
+        }
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => reject('이미지 로드 실패');
+    });
+  };
+
+  const handleFileChange = (category, subCategory, e) => {
+    const files = Array.from(e.target.files);
+    const filePromises = files.map((file) => validateFile(file));
+    Promise.all(filePromises)
+      .then(() => {
+        if (category === 'room') {
+          setRoomFiles((prev) => ({
+            ...prev,
+            [subCategory]: files.map((file) => ({ file, order: 1 })),
+          }));
+        } else if (category === 'exterior') {
+          setExteriorFiles(files.map((file) => ({ file, order: 1 })));
+        } else if (category === 'facility') {
+          setFacilityFiles((prev) => ({
+            ...prev,
+            [subCategory]: files.map((file) => ({ file, order: 1 })),
+          }));
+        }
+      })
+      .catch((err) => setError(err));
+  };
+
+  const handleOrderChange = (category, subCategory, index, value) => {
+    const order = Math.max(1, Math.min(100, parseInt(value, 10) || 1));
+    if (category === 'room') {
+      setRoomFiles((prev) => {
+        const updatedFiles = [...prev[subCategory]];
+        updatedFiles[index] = { ...updatedFiles[index], order };
+        return { ...prev, [subCategory]: updatedFiles };
+      });
+    } else if (category === 'exterior') {
+      setExteriorFiles((prev) => {
+        const updatedFiles = [...prev];
+        updatedFiles[index] = { ...updatedFiles[index], order };
+        return updatedFiles;
+      });
+    } else if (category === 'facility') {
+      setFacilityFiles((prev) => {
+        const updatedFiles = [...prev[subCategory]];
+        updatedFiles[index] = { ...updatedFiles[index], order };
+        return { ...prev, [subCategory]: updatedFiles };
+      });
+    }
+  };
+
+  const handleUpload = async (category, subCategory) => {
+    const files =
+      category === 'room'
+        ? roomFiles[subCategory]
+        : category === 'exterior'
+        ? exteriorFiles
+        : facilityFiles[subCategory];
+    if (!files || files.length === 0) {
+      setError('파일을 선택하세요.');
+      return;
+    }
+    try {
+      const uploadPromises = files.map(async (fileObj) => {
+        const formData = new FormData();
+        formData.append('photo', fileObj.file);
+        formData.append('hotelId', hotelId);
+        formData.append('category', category);
+        formData.append('subCategory', subCategory);
+        formData.append('order', fileObj.order);
+        const response = await api.post('/api/hotel-settings/photos', formData);
+        return { photoUrl: response.data.photo.photoUrl, order: fileObj.order };
+      });
+      const newPhotos = await Promise.all(uploadPromises);
+      if (category === 'room') {
+        setRoomPhotos((prev) => ({
+          ...prev,
+          [subCategory]: [...prev[subCategory], ...newPhotos],
+        }));
+        setRoomFiles((prev) => ({ ...prev, [subCategory]: [] }));
+      } else if (category === 'exterior') {
+        setExteriorPhotos((prev) => [...prev, ...newPhotos]);
+        setExteriorFiles([]);
+      } else if (category === 'facility') {
+        setFacilityPhotos((prev) => ({
+          ...prev,
+          [subCategory]: [...prev[subCategory], ...newPhotos],
+        }));
+        setFacilityFiles((prev) => ({ ...prev, [subCategory]: [] }));
+      }
+      setMessage('사진이 성공적으로 업로드되었습니다.');
+      setError('');
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || '알 수 없는 오류';
+      setError(`업로드 실패: ${errorMsg}`);
+      setMessage('');
+    }
+  };
+
+  const handleDelete = async (category, subCategory, photoUrl) => {
+    try {
+      await api.delete('/api/hotel-settings/photos', {
+        data: { hotelId, category, subCategory, photoUrl },
+      });
+      if (category === 'room') {
+        setRoomPhotos((prev) => ({
+          ...prev,
+          [subCategory]: prev[subCategory].filter(
+            (photo) => photo.photoUrl !== photoUrl
+          ),
+        }));
+      } else if (category === 'exterior') {
+        setExteriorPhotos((prev) =>
+          prev.filter((photo) => photo.photoUrl !== photoUrl)
+        );
+      } else if (category === 'facility') {
+        setFacilityPhotos((prev) => ({
+          ...prev,
+          [subCategory]: prev[subCategory].filter(
+            (photo) => photo.photoUrl !== photoUrl
+          ),
+        }));
+      }
+      setMessage('사진이 삭제되었습니다.');
+      setError('');
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || '알 수 없는 오류';
+      setError(`삭제 실패: ${errorMsg}`);
+      setMessage('');
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="photo-upload-container">
+        <div className="password-card">
+          <h1>호텔 사진 관리</h1>
+          <div className="password-prompt">
+            <label htmlFor="password">관리자 비밀번호 입력</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호를 입력하세요"
+            />
+            <button
+              className="photo-upload-submit-password-btn"
+              onClick={handlePasswordSubmit}
+            >
+              확인
+            </button>
+            {passwordError && <p className="error-message">{passwordError}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="photo-upload-container">
+      <div className="hotel-info-section">
+        <div className="hotel-info-box">
+          <h2>호텔 정보</h2>
+          {hotelInfo ? (
+            <div className="hotel-details">
+              <p>
+                <strong>호텔 ID:</strong> {hotelInfo.hotelId}
+              </p>
+              <p>
+                <strong>호텔 이름:</strong> {hotelInfo.hotelName}
+              </p>
+              <p>
+                <strong>주소:</strong> {hotelInfo.address}
+              </p>
+              <p>
+                <strong>관리자 이름:</strong> {hotelInfo.adminName}
+              </p>
+              <p>
+                <strong>이메일:</strong> {hotelInfo.email}
+              </p>
+              <p>
+                <strong>전화번호:</strong> {hotelInfo.phoneNumber}
+              </p>
+            </div>
+          ) : (
+            <p>호텔 정보를 로드할 수 없습니다.</p>
+          )}
+        </div>
+      </div>
+      {error && <p className="error-message center-text">{error}</p>}
+      {message && <p className="success-message center-text">{message}</p>}
+      <section className="photo-upload-section">
+        <h2 className="section-title">객실 사진</h2>
+        {roomTypes &&
+          roomTypes.map((rt) => (
+            <div key={rt.roomInfo} className="photo-upload-card">
+              <div className="photo-upload-header">
+                <h3>
+                  {rt.nameKor} ({rt.nameEng})
+                </h3>
+              </div>
+              <div className="photo-upload-input">
+                <input
+                  type="file"
+                  id={`room-file-${rt.roomInfo}`}
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFileChange('room', rt.roomInfo, e)}
+                />
+                {roomFiles[rt.roomInfo]?.map((fileObj, index) => (
+                  <div key={index} className="file-order-input">
+                    <span>{fileObj.file.name}</span>
+                    <input
+                      type="number"
+                      value={fileObj.order}
+                      onChange={(e) =>
+                        handleOrderChange(
+                          'room',
+                          rt.roomInfo,
+                          index,
+                          e.target.value
+                        )
+                      }
+                      min="1"
+                      max="100"
+                      placeholder="순서"
+                      className="order-input"
+                    />
+                  </div>
+                ))}
+                <button
+                  className="photo-upload-upload-btn"
+                  onClick={() => handleUpload('room', rt.roomInfo)}
+                >
+                  <FaCamera /> 업로드
+                </button>
+              </div>
+              <div className="photo-thumbnails">
+                {roomPhotos[rt.roomInfo]?.map((photo, index) => (
+                  <div key={index} className="thumbnail">
+                    <img src={photo.photoUrl} alt={`Thumbnail ${index}`} />
+                    <button
+                      className="photo-upload-delete-btn"
+                      onClick={() =>
+                        handleDelete('room', rt.roomInfo, photo.photoUrl)
+                      }
+                      aria-label="사진 삭제"
+                    >
+                      <FaTrash />
+                    </button>
+                    <span className="thumbnail-order">순서: {photo.order}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+      </section>
+      <section className="photo-upload-section">
+        <h2 className="section-title">호텔 전경 사진</h2>
+        <div className="photo-upload-card">
+          <div className="photo-upload-input">
+            <input
+              type="file"
+              id="exterior-file"
+              accept="image/*"
+              multiple
+              onChange={(e) => handleFileChange('exterior', 'default', e)}
+            />
+            {exteriorFiles.map((fileObj, index) => (
+              <div key={index} className="file-order-input">
+                <span>{fileObj.file.name}</span>
+                <input
+                  type="number"
+                  value={fileObj.order}
+                  onChange={(e) =>
+                    handleOrderChange(
+                      'exterior',
+                      'default',
+                      index,
+                      e.target.value
+                    )
+                  }
+                  min="1"
+                  max="100"
+                  placeholder="순서"
+                  className="order-input"
+                />
+              </div>
+            ))}
+            <button
+              className="photo-upload-upload-btn"
+              onClick={() => handleUpload('exterior', 'default')}
+            >
+              <FaCamera /> 업로드
+            </button>
+          </div>
+          <div className="photo-thumbnails">
+            {exteriorPhotos.map((photo, index) => (
+              <div key={index} className="thumbnail">
+                <img src={photo.photoUrl} alt={`Thumbnail ${index}`} />
+                <button
+                  className="photo-upload-delete-btn"
+                  onClick={() =>
+                    handleDelete('exterior', 'default', photo.photoUrl)
+                  }
+                  aria-label="사진 삭제"
+                >
+                  <FaTrash />
+                </button>
+                <span className="thumbnail-order">순서: {photo.order}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="photo-upload-section">
+        <h2 className="section-title">기타 시설 사진</h2>
+        {Object.keys(facilityPhotos).map((subCat) => (
+          <div key={subCat} className="photo-upload-card">
+            <div className="photo-upload-header">
+              <h3>{subCat.charAt(0).toUpperCase() + subCat.slice(1)}</h3>
+            </div>
+            <div className="photo-upload-input">
+              <input
+                type="file"
+                id={`facility-file-${subCat}`}
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFileChange('facility', subCat, e)}
+              />
+              {facilityFiles[subCat]?.map((fileObj, index) => (
+                <div key={index} className="file-order-input">
+                  <span>{fileObj.file.name}</span>
+                  <input
+                    type="number"
+                    value={fileObj.order}
+                    onChange={(e) =>
+                      handleOrderChange(
+                        'facility',
+                        subCat,
+                        index,
+                        e.target.value
+                      )
+                    }
+                    min="1"
+                    max="100"
+                    placeholder="순서"
+                    className="order-input"
+                  />
+                </div>
+              ))}
+              <button
+                className="photo-upload-upload-btn"
+                onClick={() => handleUpload('facility', subCat)}
+              >
+                <FaCamera /> 업로드
+              </button>
+            </div>
+            <div className="photo-thumbnails">
+              {facilityPhotos[subCat]?.map((photo, index) => (
+                <div key={index} className="thumbnail">
+                  <img src={photo.photoUrl} alt={`Thumbnail ${index}`} />
+                  <button
+                    className="photo-upload-delete-btn"
+                    onClick={() =>
+                      handleDelete('facility', subCat, photo.photoUrl)
+                    }
+                    aria-label="사진 삭제"
+                  >
+                    <FaTrash />
+                  </button>
+                  <span className="thumbnail-order">순서: {photo.order}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+// 메인 컴포넌트
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
   const originalDataRef = useRef(null);
-
+  const [activeTab, setActiveTab] = useState('info');
+  const [language, setLanguage] = useState('kor'); // 언어 상태 ('kor' 또는 'eng')
   const [hotelId, setHotelId] = useState(localStorage.getItem('hotelId') || '');
   const [isExisting, setIsExisting] = useState(false);
   const [error, setError] = useState('');
@@ -857,17 +1799,18 @@ export default function HotelSettingsPage() {
   );
   const [roomTypes, setRoomTypes] = useState([...initializedDefaultRoomTypes]);
   const [floors, setFloors] = useState([]);
+  const [amenities, setAmenities] = useState([...DEFAULT_AMENITIES]);
   const [hotelAddress, setHotelAddress] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [hotelName, setHotelName] = useState('');
+  const [checkInTime, setCheckInTime] = useState('16:00');
+  const [checkOutTime, setCheckOutTime] = useState('11:00');
+  const [hotelInfo, setHotelInfo] = useState(null);
 
-  // 체크인/체크아웃 시간 상태 추가
-  const [checkInTime, setCheckInTime] = useState('16:00'); // 디폴트 16:00
-  const [checkOutTime, setCheckOutTime] = useState('11:00'); // 디폴트 11:00
-
-  const handlePhotoUploadClick = () => {
-    navigate('/photo-upload', { state: { hotelId, roomTypes } });
+  // 언어 전환 함수
+  const toggleLanguage = () => {
+    setLanguage((prev) => (prev === 'kor' ? 'eng' : 'kor'));
   };
 
   useEffect(() => {
@@ -880,50 +1823,42 @@ export default function HotelSettingsPage() {
           initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
         );
         setRoomTypes([...initializedDefaultRoomTypes]);
+        setIsExisting(false);
         return;
       }
+
       try {
         const [hotelData, userData] = await Promise.all([
           fetchHotelSettings(hotelId),
           fetchUserInfo(hotelId),
         ]);
-        console.log('[HotelSettingsPage] Fetched hotel data:', hotelData);
 
         if (hotelData && hotelData._id) {
           setIsExisting(true);
-          setTotalRooms(
-            hotelData.totalRooms ||
-              initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
-          );
+
+          // containers 배열을 추출 (객실 번호를 위해)
           const containers =
             hotelData.gridSettings?.floors?.flatMap(
               (floor) => floor.containers
             ) || [];
+
+          // buildRoomTypesWithNumbers 함수를 사용하여 roomTypes를 업데이트
           const updatedRoomTypes = buildRoomTypesWithNumbers(
-            hotelData.roomTypes.map((rt) => ({
-              ...rt,
-              aliases: [],
-            })) || initializedDefaultRoomTypes,
+            hotelData.roomTypes,
             containers
           );
-          updatedRoomTypes.forEach((rt) => {
-            rt.roomNumbers = (rt.roomNumbers || []).sort(
-              (a, b) => parseInt(a, 10) - parseInt(b, 10)
-            );
-            rt.stock = rt.roomNumbers.length;
-          });
           setRoomTypes(updatedRoomTypes);
-          setFloors(
-            hotelData.gridSettings?.floors ||
-              DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] }))
-          );
+
+          // 나머지 호텔 설정 필드 업데이트
+          setTotalRooms(hotelData.totalRooms || 0);
+          setFloors(hotelData.gridSettings?.floors || []);
+          setAmenities(hotelData.amenities || DEFAULT_AMENITIES);
+          setCheckInTime(hotelData.checkInTime || '16:00');
+          setCheckOutTime(hotelData.checkOutTime || '11:00');
+          setHotelName(hotelData.hotelName || '');
           setHotelAddress(hotelData.address || '');
           setEmail(hotelData.email || '');
           setPhoneNumber(hotelData.phoneNumber || '');
-          setHotelName(hotelData.hotelName || '');
-          // 체크인/체크아웃 시간 로드
-          setCheckInTime(hotelData.checkInTime || '16:00');
-          setCheckOutTime(hotelData.checkOutTime || '11:00');
         } else {
           setIsExisting(false);
           setRoomTypes([...initializedDefaultRoomTypes]);
@@ -936,26 +1871,42 @@ export default function HotelSettingsPage() {
         }
 
         if (userData) {
-          setHotelName(userData.hotelName || hotelName);
-          setHotelAddress(userData.address || hotelAddress);
-          setEmail(userData.email || email);
-          setPhoneNumber(userData.phoneNumber || phoneNumber);
+          // User 문서의 필드 업데이트 (User 정보가 우선순위인 경우)
+          setHotelName(userData.hotelName || '');
+          setHotelAddress(userData.address || '');
+          setEmail(userData.email || '');
+          setPhoneNumber(userData.phoneNumber || '');
+          setHotelInfo({
+            hotelId,
+            hotelName: userData.hotelName || '',
+            address: userData.address || '',
+            email: userData.email || '',
+            phoneNumber: userData.phoneNumber || '',
+            adminName: userData.adminName || '정보 없음',
+          });
+        } else {
+          setError('사용자 정보를 불러오지 못했습니다.');
         }
       } catch (err) {
-        console.error('[HotelSettingsPage] Error loading data:', err);
-        setError('호텔 설정 또는 사용자 정보 로딩 실패: ' + err.message);
+        setError(
+          '호텔 설정 또는 사용자 정보 로딩 실패: ' +
+            (err.response?.data?.message || err.message)
+        );
+        setIsExisting(false);
       }
     }
+
     loadData();
-  }, [hotelId, email, phoneNumber, hotelAddress, hotelName]);
+  }, [hotelId, language]);
 
   const handleLoadDefault = () => {
     const defaultRoomTypesCopy = defaultRoomTypes.map((rt) => ({
       ...rt,
       aliases: [],
       roomNumbers: [],
+      roomAmenities: DEFAULT_AMENITIES.map((a) => ({ ...a, isActive: false })),
+      photos: [],
     }));
-
     const newFloors = DEFAULT_FLOORS.map((floorNum) => {
       const containers = [];
       const roomType = defaultRoomTypesCopy.find(
@@ -986,17 +1937,14 @@ export default function HotelSettingsPage() {
       );
       return { floorNum, containers };
     });
-
     defaultRoomTypesCopy.forEach((rt) => {
       rt.roomNumbers = [...new Set(rt.roomNumbers)];
       rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
       rt.stock = rt.roomNumbers.length;
     });
-
     setRoomTypes(defaultRoomTypesCopy);
     setFloors(newFloors);
     setTotalRooms(defaultRoomTypesCopy.reduce((sum, rt) => sum + rt.stock, 0));
-    console.log('[HotelSettingsPage] Loaded default settings'); // 디버깅 로그
     alert('디폴트 설정이 불러와졌습니다.');
   };
 
@@ -1026,7 +1974,6 @@ export default function HotelSettingsPage() {
         }
       });
     });
-    console.log('[HotelSettingsPage] Updated roomTypes:', newRoomTypes); // 디버깅 로그
     return { roomTypes: hasChanges ? newRoomTypes : roomTypes, hasChanges };
   }, [floors, roomTypes]);
 
@@ -1038,11 +1985,9 @@ export default function HotelSettingsPage() {
       0
     );
     setTotalRooms(newTotal);
-
     if (updatedRoomTypes.hasChanges) {
       setRoomTypes(updatedRoomTypes.roomTypes);
     }
-
     originalDataRef.current = {
       hotelId,
       isExisting,
@@ -1051,12 +1996,12 @@ export default function HotelSettingsPage() {
         ? updatedRoomTypes.roomTypes
         : roomTypes,
       floors,
+      amenities,
       hotelAddress,
       email,
       phoneNumber,
       hotelName,
     };
-    console.log('[HotelSettingsPage] Updated totalRooms:', newTotal); // 디버깅 로그
   }, [
     floors,
     hotelId,
@@ -1067,77 +2012,125 @@ export default function HotelSettingsPage() {
     hotelName,
     updatedRoomTypes.hasChanges,
     roomTypes,
+    amenities,
     updatedRoomTypes.roomTypes,
   ]);
 
-  const handleSaveAll = async () => {
+  // 탭별 부분 저장 함수들
+  const handleSaveHotelInfo = async () => {
     if (!hotelId) {
       alert('호텔 ID는 필수입니다.');
       return;
     }
-    const allHaveRoomNumbers = roomTypes.every(
-      (rt) => (rt.roomNumbers || []).length > 0
-    );
-    if (!allHaveRoomNumbers) {
-      alert('모든 객실 타입에 대해 객실 번호를 생성해야 저장할 수 있습니다.');
+
+    // User 업데이트용 payload (hotelId 제외)
+    const userPayload = {
+      hotelName,
+      email,
+      phoneNumber,
+      address: hotelAddress,
+    };
+
+    // HotelSettings 업데이트용 payload
+    const settingsPayload = {
+      hotelId,
+      hotelName,
+      hotelAddress,
+      email,
+      phoneNumber,
+      checkInTime,
+      checkOutTime,
+    };
+
+    try {
+      if (isExisting) {
+        await Promise.all([
+          updateUser(hotelId, userPayload), // PATCH /api/auth/users/:hotelId
+          updateHotelSettings(hotelId, settingsPayload), // PATCH /api/hotel-settings/:hotelId
+        ]);
+        alert('호텔 기본 정보가 저장되었습니다.');
+      } else {
+        await registerHotel(settingsPayload);
+        alert('호텔 기본 정보가 등록되었습니다.');
+        setIsExisting(true);
+      }
+    } catch (err) {
+      alert('저장 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleSaveRoomTypes = async () => {
+    if (!hotelId) {
+      alert('호텔 ID는 필수입니다.');
       return;
     }
+    // 공통 시설 + 객실 타입 시설 모두 담아서 전송
     const payload = {
       hotelId,
-      totalRooms,
+      amenities, // 공통 시설
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
         aliases: (rt.aliases || []).filter(Boolean),
         stock: (rt.roomNumbers || []).length,
-        floorSettings: DEFAULT_FLOORS.reduce((acc, floorNum) => {
-          const count = (rt.roomNumbers || []).filter((num) =>
-            num?.startsWith?.(String(floorNum))
-          ).length;
-          if (count > 0) acc[floorNum] = count;
-          return acc;
-        }, {}),
-        startRoomNumbers: DEFAULT_FLOORS.reduce((acc, floorNum) => {
-          const nums = (rt.roomNumbers || []).filter((num) =>
-            num?.startsWith?.(String(floorNum))
-          );
-          if (nums.length > 0) acc[floorNum] = nums[0];
-          return acc;
-        }, {}),
-      })),
-      gridSettings: {
-        floors: floors.map((floor) => ({
-          floorNum: floor.floorNum,
-          containers: floor.containers.map((cont) => ({
-            containerId: cont.containerId,
-            roomInfo: cont.roomInfo,
-            roomNumber: cont.roomNumber,
-            price: cont.price,
-            isActive: cont.isActive,
-          })),
+        roomAmenities: rt.roomAmenities.map((amenity) => ({
+          nameKor: amenity.nameKor,
+          nameEng: amenity.nameEng,
+          icon: amenity.icon,
+          type: amenity.type,
+          isActive: amenity.isActive,
         })),
-      },
-      address: hotelAddress,
-      email,
-      phoneNumber,
-      hotelName,
-      checkInTime, // 추가
-      checkOutTime, // 추가
+      })),
+    };
+
+    try {
+      await updateHotelSettings(hotelId, payload);
+      alert('객실 타입 및 공통 시설 정보가 저장되었습니다.');
+    } catch (err) {
+      alert('저장 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleSaveLayout = async () => {
+    if (!hotelId) {
+      alert('호텔 ID는 필수입니다.');
+      return;
+    }
+    const payload = {
+      hotelId,
+      gridSettings: { floors },
     };
     try {
-      if (isExisting) {
-        console.log('[HotelSettingsPage] Updating hotel settings:', payload);
-        await updateHotelSettings(hotelId, payload);
-        alert('업데이트 완료');
-      } else {
-        console.log('[HotelSettingsPage] Registering new hotel:', payload);
-        await registerHotel(payload);
-        alert('등록 완료');
-        setIsExisting(true);
-      }
-      navigate('/');
-      window.location.reload();
+      await updateHotelSettings(hotelId, payload);
+      alert('레이아웃 정보가 저장되었습니다.');
     } catch (err) {
-      console.error('[HotelSettingsPage] Save failed:', err);
+      alert('저장 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleSaveAmenities = async () => {
+    if (!hotelId) {
+      alert('호텔 ID는 필수입니다.');
+      return;
+    }
+    const payload = {
+      hotelId,
+      amenities,
+      roomTypes: roomTypes.map((rt) => ({
+        ...rt,
+        roomAmenities: rt.roomAmenities.map((amenity) => ({
+          nameKor: amenity.nameKor,
+          nameEng: amenity.nameEng,
+          icon: amenity.icon,
+          type: amenity.type,
+          isActive: amenity.isActive,
+        })),
+      })),
+    };
+    console.log('[handleSaveAmenities] Payload:', payload);
+    try {
+      await updateHotelSettings(hotelId, payload);
+      alert('시설 정보가 저장되었습니다.');
+    } catch (err) {
       alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -1150,11 +2143,11 @@ export default function HotelSettingsPage() {
     setTotalRooms(orig.totalRooms);
     setRoomTypes(orig.roomTypes);
     setFloors(orig.floors);
+    setAmenities(orig.amenities);
     setHotelAddress(orig.hotelAddress);
     setEmail(orig.email);
     setPhoneNumber(orig.phoneNumber);
     setHotelName(orig.hotelName);
-    console.log('[HotelSettingsPage] Cancelled changes'); // 디버깅 로그
     alert('변경 사항이 취소되었습니다.');
   };
 
@@ -1169,22 +2162,29 @@ export default function HotelSettingsPage() {
         >
           메인으로
         </button>
-        <button
-          className="hotel-settings-btn"
-          onClick={handleLoadDefault}
-          aria-label="디폴트 설정 불러오기"
-        >
-          디폴트 불러오기
-        </button>
-        <button className="hotel-settings-btn" onClick={handlePhotoUploadClick}>
-          <FaCamera /> 사진 업로드
-        </button>
+        {/* isExisting이 false일 때만 "디폴트 불러오기" 버튼 표시 */}
+        {!isExisting && (
+          <button
+            className="hotel-settings-btn"
+            onClick={handleLoadDefault}
+            aria-label="디폴트 설정 불러오기"
+          >
+            디폴트 불러오기
+          </button>
+        )}
         <button
           className="hotel-settings-btn"
           onClick={handleCancel}
           aria-label="변경 사항 취소"
         >
           취소
+        </button>
+        <button
+          className="hotel-settings-btn"
+          onClick={toggleLanguage}
+          aria-label="언어 전환"
+        >
+          {language === 'kor' ? 'English' : '한국어'}
         </button>
         <button
           className="hotel-settings-btn-chrome"
@@ -1204,104 +2204,135 @@ export default function HotelSettingsPage() {
           {error}
         </p>
       )}
-      <section className="hotel-info-section" aria-label="호텔 기본 정보 섹션">
-        <div className="info-columns">
-          <div className="basic-info">
-            <h2>호텔 기본 정보</h2>
-            <div className="info-columns-split">
-              <div className="info-column">
-                <label>
-                  호텔 ID:
-                  <input
-                    value={hotelId}
-                    onChange={(e) => setHotelId(e.target.value)}
-                    disabled={isExisting}
-                    aria-label="호텔 ID 입력"
-                  />
-                </label>
-                <label>
-                  호텔 이름:
-                  <input
-                    value={hotelName}
-                    onChange={(e) => setHotelName(e.target.value)}
-                    placeholder="호텔 이름을 입력하세요"
-                    aria-label="호텔 이름 입력"
-                  />
-                </label>
-                <label>
-                  총 객실 수:
-                  <input value={totalRooms} readOnly aria-label="총 객실 수" />
-                </label>
-                <label>
-                  호텔 주소:
-                  <input
-                    value={hotelAddress}
-                    onChange={(e) => setHotelAddress(e.target.value)}
-                    placeholder="호텔 주소를 입력하세요"
-                    aria-label="호텔 주소 입력"
-                  />
-                </label>
-              </div>
-              <div className="info-column">
-                <label>
-                  이메일:
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="이메일을 입력하세요"
-                    aria-label="이메일 입력"
-                  />
-                </label>
-                <label>
-                  전화번호:
-                  <input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="전화번호를 입력하세요"
-                    aria-label="전화번호 입력"
-                  />
-                </label>
-                <label>
-                  체크인 시간:
-                  <input
-                    type="time"
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                    aria-label="체크인 시간 입력"
-                  />
-                </label>
-                <label>
-                  체크아웃 시간:
-                  <input
-                    type="time"
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                    aria-label="체크아웃 시간 입력"
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      <RoomTypeEditor roomTypes={roomTypes} setRoomTypes={setRoomTypes} />
-      <DndProvider backend={HTML5Backend}>
-        <LayoutEditor
-          roomTypes={roomTypes}
-          setRoomTypes={setRoomTypes}
-          floors={floors}
-          setFloors={setFloors}
-        />
-      </DndProvider>
-      <div className="save-section">
+      <nav className="tabs">
         <button
-          className="hotelsetting-all-save"
-          onClick={handleSaveAll}
-          aria-label="모든 설정 저장"
+          className={activeTab === 'info' ? 'active' : ''}
+          onClick={() => setActiveTab('info')}
         >
-          전체 저장
+          호텔 정보
         </button>
+        <button
+          className={activeTab === 'roomTypes' ? 'active' : ''}
+          onClick={() => setActiveTab('roomTypes')}
+        >
+          객실 타입
+        </button>
+        <button
+          className={activeTab === 'layout' ? 'active' : ''}
+          onClick={() => setActiveTab('layout')}
+        >
+          레이아웃
+        </button>
+        <button
+          className={activeTab === 'amenities' ? 'active' : ''}
+          onClick={() => setActiveTab('amenities')}
+        >
+          시설
+        </button>
+        <button
+          className={activeTab === 'photos' ? 'active' : ''}
+          onClick={() => setActiveTab('photos')}
+        >
+          사진 업로드
+        </button>
+      </nav>
+      <div className="tab-content">
+        {activeTab === 'info' && (
+          <HotelInfoSection
+            hotelId={hotelId}
+            setHotelId={setHotelId}
+            isExisting={isExisting}
+            hotelName={hotelName}
+            setHotelName={setHotelName}
+            totalRooms={totalRooms}
+            hotelAddress={hotelAddress}
+            setHotelAddress={setHotelAddress}
+            email={email}
+            setEmail={setEmail}
+            phoneNumber={phoneNumber}
+            setPhoneNumber={setPhoneNumber}
+            checkInTime={checkInTime}
+            setCheckInTime={setCheckInTime}
+            checkOutTime={checkOutTime}
+            setCheckOutTime={setCheckOutTime}
+            onSave={handleSaveHotelInfo}
+            onCancel={handleCancel}
+          />
+        )}
+        {activeTab === 'roomTypes' && (
+          <RoomTypeEditor
+            roomTypes={roomTypes}
+            setRoomTypes={setRoomTypes}
+            amenities={amenities}
+            onSave={handleSaveRoomTypes}
+          />
+        )}
+        {activeTab === 'layout' && (
+          <DndProvider backend={HTML5Backend}>
+            <LayoutEditor
+              roomTypes={roomTypes}
+              setRoomTypes={setRoomTypes}
+              floors={floors}
+              setFloors={setFloors}
+              onSave={handleSaveLayout}
+            />
+          </DndProvider>
+        )}
+        {activeTab === 'amenities' && (
+          <AmenitiesSection
+            amenities={amenities}
+            setAmenities={setAmenities}
+            roomTypes={roomTypes}
+            setRoomTypes={setRoomTypes}
+            onSave={handleSaveAmenities}
+            language={language}
+          />
+        )}
+        {activeTab === 'photos' && (
+          <PhotoUploadSection
+            hotelId={hotelId}
+            roomTypes={roomTypes}
+            hotelInfo={hotelInfo}
+          />
+        )}
+      </div>
+      {/* 탭 콘텐츠 아래, 중앙에 활성 탭별로 저장 버튼을 렌더링 */}
+      <div className="save-section">
+        {activeTab === 'info' && (
+          <button
+            className="hotel-settings-btn save-btn"
+            onClick={handleSaveHotelInfo}
+          >
+            호텔 정보 저장
+          </button>
+        )}
+        {activeTab === 'roomTypes' && (
+          <button
+            className="hotel-settings-btn save-btn"
+            onClick={handleSaveRoomTypes}
+          >
+            객실 타입 저장
+          </button>
+        )}
+        {activeTab === 'layout' && (
+          <button
+            className="hotel-settings-btn save-btn"
+            onClick={handleSaveLayout}
+          >
+            레이아웃 저장
+          </button>
+        )}
+        {activeTab === 'amenities' && (
+          <button
+            className="hotel-settings-btn save-btn"
+            onClick={handleSaveAmenities}
+          >
+            시설 저장
+          </button>
+        )}
+        {/* 사진 탭은 별도의 저장 버튼 없음 */}
       </div>
     </div>
   );
 }
+export { HotelSettingsPage };

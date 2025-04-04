@@ -80,11 +80,9 @@
   color: #333;
 }
 
-
-
 /* 당일 미배정 예약 (카드 형태) */
 .today-unassigned li {
-  height: 400px;
+  height: 420px;
   overflow: hidden;
   background-color: #e0f7e9;
   border: 1px solid #ccc;
@@ -98,8 +96,6 @@
 .unassigned-reservations-list_all {
   padding: 10px;
 }
-
-
 
 /* ==========================================================================
    [Responsive & Minimum Size]

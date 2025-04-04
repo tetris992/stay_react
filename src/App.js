@@ -22,11 +22,11 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ResetPassword from './components/ResetPassword';
 import PrivacyConsent from './components/PrivacyConsentModal.js';
-import PhotoUploadPage from './pages/PhotoUploadPage';
+// import PhotoUploadPage from './pages/PhotoUploadPage';  //호텔설정페이지 탭으로 흡수됨
+import HotelSettingsPage from './pages/HotelSettingsPage.js';
 
 import DetailPanel from './components/DetailPanel';
 import { parseDate, formatDate } from './utils/dateParser.js';
-import HotelSettingsPage from './pages/HotelSettingsPage.js';
 import {
   format,
   startOfMonth,
@@ -58,6 +58,7 @@ import api, {
   saveHotelSettings,
   updateHotelSettings,
   logoutUser,
+  fetchUserInfo,
 } from './api/api.js';
 import './App.css';
 import './i18n';
@@ -1406,94 +1407,50 @@ const App = () => {
     filterReservationsByDate(allReservations, checkInDate);
   };
 
-  const loadHotelSettings = useCallback(
-    async (inputHotelId) => {
-      try {
-        const settings = await fetchHotelSettings(inputHotelId);
-        // console.log(
-        //   'Fetched settings from API:',
-        //   JSON.stringify(settings, null, 2)
-        // ); // API 반환 데이터 전체 출력
+  const loadHotelSettings = useCallback(async (inputHotelId) => {
+    try {
+      const [settings, userInfo] = await Promise.all([
+        fetchHotelSettings(inputHotelId),
+        fetchUserInfo(inputHotelId),
+      ]);
 
-        if (settings) {
-          const isNewDoc = !settings._id;
-          setIsNewSetup(isNewDoc);
+      if (settings) {
+        const isNewDoc = !settings._id;
+        setIsNewSetup(isNewDoc);
 
-          // 필드명 매핑 확장 및 기본값 보장
-          const updatedSettings = {
-            ...settings,
-            hotelAddress:
-              settings.address || settings.hotelAddress || '주소 정보 없음',
-            phoneNumber:
-              settings.phoneNumber ||
-              settings.contactPhone ||
-              '전화번호 정보 없음',
-            email:
-              settings.email || settings.contactEmail || '이메일 정보 없음',
-            totalRooms:
-              settings.totalRooms ||
-              defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-            roomTypes: settings.roomTypes || defaultRoomTypes,
-            gridSettings: settings.gridSettings || {},
-          };
-          setHotelSettings(updatedSettings);
+        const updatedSettings = {
+          ...settings,
+          hotelAddress: userInfo?.address || '주소 정보 없음',
+          phoneNumber: userInfo?.phoneNumber || '전화번호 정보 없음',
+          email: userInfo?.email || '이메일 정보 없음',
+          totalRooms:
+            settings.totalRooms ||
+            defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+          roomTypes: settings.roomTypes || defaultRoomTypes,
+          gridSettings: settings.gridSettings || {},
+        };
+        setHotelSettings(updatedSettings);
 
-          // OTA 토글 초기화
-          const initialOTAToggles = (settings.otas || []).reduce((acc, ota) => {
-            acc[ota.name] = ota.isActive;
-            return acc;
-          }, {});
-          availableOTAs.forEach((ota) => {
-            if (!(ota in initialOTAToggles)) initialOTAToggles[ota] = false;
-          });
-          // console.log('Initial OTA Toggles:', initialOTAToggles);
-          setOtaToggles(initialOTAToggles);
+        const initialOTAToggles = (settings.otas || []).reduce((acc, ota) => {
+          acc[ota.name] = ota.isActive;
+          return acc;
+        }, {});
+        availableOTAs.forEach((ota) => {
+          if (!(ota in initialOTAToggles)) initialOTAToggles[ota] = false;
+        });
+        setOtaToggles(initialOTAToggles);
 
-          return updatedSettings;
-        } else {
-          // console.warn(
-          //   'No settings returned from fetchHotelSettings, using defaults'
-          // );
-          const defaultOTAToggles = availableOTAs.reduce(
-            (acc, ota) => ({ ...acc, [ota]: false }),
-            {}
-          );
-          const defaultSettings = {
-            hotelId: inputHotelId,
-            hotelAddress: '주소 정보 없음',
-            phoneNumber: '전화번호 정보 없음',
-            email: '이메일 정보 없음',
-            totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
-            roomTypes: defaultRoomTypes,
-            gridSettings: {},
-            otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
-          };
-          setHotelSettings(defaultSettings);
-          setIsNewSetup(true);
-          setOtaToggles(defaultOTAToggles);
-          return defaultSettings;
-        }
-      } catch (error) {
-        console.error('Failed to load hotel settings:', error);
-        if (error.response) {
-          console.log(
-            'Error response:',
-            JSON.stringify(error.response.data, null, 2)
-          ); // API 오류 상세 출력
-        } else {
-          console.log('Error details:', error.message); // 네트워크 오류 등 상세 출력
-        }
-
-        // 기본값으로 설정 초기화
+        return updatedSettings;
+      } else {
         const defaultOTAToggles = availableOTAs.reduce(
           (acc, ota) => ({ ...acc, [ota]: false }),
           {}
         );
         const defaultSettings = {
           hotelId: inputHotelId,
-          hotelAddress: '주소 정보 없음',
-          phoneNumber: '전화번호 정보 없음',
-          email: '이메일 정보 없음',
+          hotelAddress: userInfo?.address || '주소 정보 없음',
+          phoneNumber: userInfo?.phoneNumber || '전화번호 정보 없음',
+          email: userInfo?.email || '이메일 정보 없음',
           totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
           roomTypes: defaultRoomTypes,
           gridSettings: {},
@@ -1504,9 +1461,28 @@ const App = () => {
         setOtaToggles(defaultOTAToggles);
         return defaultSettings;
       }
-    },
-    [] // 빈 배열로 변경
-  );
+    } catch (error) {
+      console.error('Failed to load hotel settings:', error);
+      const defaultOTAToggles = availableOTAs.reduce(
+        (acc, ota) => ({ ...acc, [ota]: false }),
+        {}
+      );
+      const defaultSettings = {
+        hotelId: inputHotelId,
+        hotelAddress: '주소 정보 없음',
+        phoneNumber: '전화번호 정보 없음',
+        email: '이메일 정보 없음',
+        totalRooms: defaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0),
+        roomTypes: defaultRoomTypes,
+        gridSettings: {},
+        otas: availableOTAs.map((ota) => ({ name: ota, isActive: false })),
+      };
+      setHotelSettings(defaultSettings);
+      setIsNewSetup(true);
+      setOtaToggles(defaultOTAToggles);
+      return defaultSettings;
+    }
+  }, []);
 
   // App.js
   const loadReservations = useCallback(async () => {
@@ -3258,7 +3234,7 @@ const App = () => {
               />
 
               <Route path="/hotel-settings" element={<HotelSettingsPage />} />
-              <Route path="/photo-upload" element={<PhotoUploadPage />} />
+              {/* <Route path="/photo-upload" element={<PhotoUploadPage />} /> */}
 
               {/* ★ 월간 달력 페이지 라우트 */}
               <Route

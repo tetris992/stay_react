@@ -220,7 +220,9 @@ function SideBar({
           aria-label="로그아웃"
         >
           <FaSignOutAlt className="logout-icon" />
-          <span className="btn-text">로그 아웃</span>
+          <span className="btn-text" style={{ color: 'red' }}>
+            로그 아웃
+          </span>
         </button>
       </div>
 

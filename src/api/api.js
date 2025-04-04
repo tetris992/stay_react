@@ -39,11 +39,19 @@ api.interceptors.request.use(
       !isRefreshTokenRequest &&
       !skipCsrf
     ) {
-      const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-      config.headers['X-CSRF-Token'] = data.csrfToken;
-      config.headers['X-CSRF-Token-Id'] = data.tokenId;
-      localStorage.setItem('csrfToken', data.csrfToken);
-      localStorage.setItem('csrfTokenId', data.tokenId);
+      try {
+        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+        config.headers['X-CSRF-Token'] = data.csrfToken;
+        config.headers['X-CSRF-Token-Id'] = data.tokenId;
+        localStorage.setItem('csrfToken', data.csrfToken);
+        localStorage.setItem('csrfTokenId', data.tokenId);
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+        throw new ApiError(
+          error.response?.status || 500,
+          'CSRF 토큰을 가져오지 못했습니다. 페이지를 새로고침 후 다시 시도해주세요.'
+        );
+      }
     }
     return config;
   },
@@ -124,7 +132,7 @@ export const loginUser = async (credentials) => {
     if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
       const EXTENSION_ID =
         process.env.REACT_APP_EXTENSION_ID ||
-        'bhfggeheelkddgmlegkppgpkmioldfkl';
+        'cnoicicjafgmfcnjclhlehfpojfaelag';
       console.log('[api.js] Sending tokens to extension ID:', EXTENSION_ID);
 
       chrome.runtime.sendMessage(
@@ -251,12 +259,14 @@ export const registerUser = async (userData) => {
     } else if (error.message) {
       errorMessage = error.message;
     }
+    if (statusCode === 500) {
+      errorMessage += ' 서버에서 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    }
     const standardError = new Error(errorMessage);
     standardError.status = statusCode;
     throw standardError;
   }
 };
-
 // updateReservation 수정
 export const updateReservation = async (reservationId, updateData, hotelId) => {
   try {

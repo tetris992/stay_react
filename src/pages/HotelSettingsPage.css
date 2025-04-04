@@ -1,10 +1,12 @@
+/* frontend/src/pages/HotelSettingsPage.css */
+
 /* ==========================================================================
    1. GLOBAL VARIABLES & RESET
 ========================================================================== */
 :root {
   /* 예약 카드 기본 크기 */
-  --card-width: 320px;
-  --card-height: 410px;
+  --card-width: 330px;
+  --card-height: 420px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
@@ -25,8 +27,9 @@
   --action-btn-bg: #27ae60;
   --action-btn-color: #ffffff;
 
-  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-family: 'Noto Sans KR', 'Segoe UI', Arial, sans-serif;
   --min-gap: 16px;
+  font-weight: 600;
 }
 
 *,
@@ -40,11 +43,10 @@
 body,
 html {
   font-family: var(--font-family);
-  background-color: #f5f6f5;
+  background-color: #d5d6d5;
   color: #2c3e50;
-  padding: var(--min-gap);
-  overflow-y: auto;
-  box-sizing: border-box;
+  box-sizing: border-box; 
+  font-weight: 600;
 }
 
 /* ==========================================================================
@@ -116,6 +118,7 @@ html {
     transition: all 0.3s ease; /* 모든 스타일 변화 부드럽게 */
   }
 }
+
 /* ==========================================================================
    3. ROOM CELL (컨테이너)
 ========================================================================== */
@@ -154,6 +157,7 @@ html {
    4. RESERVATION CARD (예약카드)
 ========================================================================== */
 .reservation-card {
+  position: relative;
   width: var(--card-width);
   height: var(--card-height);
   display: flex;
@@ -190,6 +194,131 @@ html {
   text-align: center;
   font-size: 0.85rem;
   padding: 4px;
+}
+
+/* ==========================================================================
+   [Card Content]
+========================================================================== */
+.content-footer-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  gap: 10px;
+  padding: 8px 8px 8px 10px;
+  border: 2px solid var(--room-card-border);
+  border-radius: 8px;
+  box-shadow: rgba(132, 132, 241, 0.25) 0px 13px 27px -5px,
+    rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.content-footer-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 410px;
+  background-color: rgb(240, 240, 240);
+  clip-path: circle(0% at 50% 50%);
+  transition: clip-path 1.2s ease-out;
+  z-index: -1;
+}
+
+.content-footer-wrapper:hover::before {
+  clip-path: circle(150% at 50% 50%);
+  transition: clip-path 0.7s ease-out;
+}
+
+.content-footer-wrapper:not(:hover)::before {
+  transition: clip-path 1s ease-out;
+}
+
+.card-content {
+  padding: 8px;
+  flex: 1;
+  height: auto;
+}
+
+.card-header {
+  margin-bottom: 5px;
+  height: 15%;
+}
+
+.no-break {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap;
+  margin-bottom: 5px;
+  z-index: 1000;
+  height: 28px;
+}
+
+.stay-label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.button-group-wrapper {
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  height: 30px;
+  gap: 5px;
+  margin: 0px 5px;
+}
+
+.site-info-footer {
+  margin-top: 5%;
+  padding-top: 5px;
+  border-top: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+.site-info-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 90%;
+  padding: 5px 5px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.payment-method {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  margin: 5px 0;
+}
+
+/* 카운트다운 스타일 */
+.countdown {
+  font-weight: bold;
+  color: var(--countdown-color);
+  font-size: 0.9rem;
+  margin: 5px 0;
+}
+
+.countdown .expired {
+  color: var(--expired-color);
+  font-weight: bold;
+}
+
+.draggable-false {
+  cursor: not-allowed !important;
+  opacity: 0.7;
+  border: 3px dotted #5656a3; /* 충돌 시 빨간 점선 테두리 */
 }
 
 /* ==========================================================================
@@ -231,327 +360,68 @@ html {
 }
 
 /* ==========================================================================
-   7. HOTEL SETTINGS PAGE LAYOUT
+   2. HOTEL SETTINGS PAGE LAYOUT
 ========================================================================== */
 .hotel-settings-page {
-  max-width: 2200px;
+  max-width: 3600px;
+  min-width: 800px;
   margin: 0 auto;
   padding: var(--min-gap);
-  background-color: #f5f6f5;
+  background: linear-gradient(
+    135deg,
+    #f9f9f9,
+    #e8ecef
+  ); /* PhotoUploadPage.css에서 가져옴 */
   min-height: 100vh;
   overflow-y: auto;
 }
+
 .hotel-settings-page h1 {
   font-size: 32px;
   margin-bottom: var(--min-gap);
   text-align: center;
   color: #2c3e50;
 }
-.hotel-settings-action-btn {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: var(--primary-color, #3498db);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-.action-btn:hover {
-  background-color: #2980b9;
-}
 
-/* 호텔 정보 섹션 */
-.hotel-info-section {
-  margin-bottom: 30px;
-  padding: 30px;
-  background-color: var(--room-card-background-color);
-  border: 1px solid var(--cell-border);
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-.hotel-info-section .info-columns {
+/* 탭 스타일 */
+.tabs {
   display: flex;
-  gap: 40px;
-  flex-wrap: wrap;
-}
-.basic-info,
-.account-info {
-  flex: 1;
-  padding: 10px;
-}
-.basic-info label,
-.account-info label {
-  display: block;
-  margin-bottom: 12px;
-  font-size: 18px;
-  color: #2c3e50;
-}
-.basic-info input,
-.account-info input {
-  width: 100%;
-  max-width: 310px;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  background-color: #fafafa;
-}
-
-/* ROOM TYPES SECTION */
-.room-types-section {
-  padding: 20px;
-  background-color: var(--room-card-background-color);
-  border: 1px solid var(--cell-border);
-  border-radius: 8px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-.room-types-section h2 {
-  font-size: 24px;
-  margin-bottom: 15px;
-  color: #34495e;
-}
-.room-types-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  max-width: 100%;
-}
-.room-type-item {
-  flex: 0 0 calc(33.33% - 13.33px);
-  width: calc(33.33% - 13.33px);
-  min-width: 250px;
-  max-width: 400px;
-  background-color: #fdfdfd;
-  border: 1px solid var(--cell-border);
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-.room-type-header {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  justify-content: flex-start; /* 추가 */
-  font-size: 18px;
-  font-weight: 600;
-  color: #2980b9;
-  margin-bottom: 10px;
-}
-.room-type-header svg {
-  margin-right: 10px;
-}
-.room-type-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.field-row {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-}
-.room-type-fields input,
-.room-type-aliases input {
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  background-color: #fafafa;
-  flex: 1;
-}
-.room-type-fields .remove-btn {
-  padding: 8px;
-  background-color: #dc3545;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-.room-type-fields .remove-btn:hover {
-  background-color: #c82333;
-}
-.remove-btn {
-  border: none;
-  background-color: transparent;
-  cursor: pointer;
-  font-size: 1.2rem;
-  color: lightsteelblue;
-}
-
-.remove-btn :hover {
-  color: red;
-  font-size: 1.2rem;
-}
-.room-type-aliases {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
-}
-.room-numbers {
-  margin-top: 10px;
-}
-.room-numbers h4 {
-  font-size: 14px;
-  color: #7f8c8d;
-  margin-bottom: 5px;
-}
-.room-numbers div {
-  font-size: 12px;
-  color: #2c3e50;
-  padding: 6px;
-  background-color: #ecf0f1;
-  border-radius: 4px;
-}
-.room-type-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-/* LAYOUT EDITOR SECTION */
-.layout-editor-section {
-  padding: 20px;
-  background-color: var(--room-card-background-color);
-  border: 1px solid var(--cell-border);
-  border-radius: 8px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-.layout-editor-section .layout-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-.layout-editor-section h2 {
-  font-size: 24px;
-  color: #34495e;
-  margin: 0;
-}
-.layout-editor-section .undo-btn {
-  background-color: #6c757d;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  color: #fff;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-.layout-editor-section .undo-btn:hover {
-  background-color: #5a6268;
-}
-
-/* FLOOR GRID & ROWS */
-.floor-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.floor-row {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background-color: #fafafa;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid var(--cell-border);
-}
-.floor-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 20px;
-}
-.floor-row h3 {
-  font-size: 18px;
-  color: #34495e;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-}
-.floor-row .remove-icon {
-  cursor: pointer;
-  color: #dc3545;
-  transition: color 0.3s ease;
-}
-.floor-row .remove-icon:hover {
-  color: #c82333;
-}
-
-/* CONTAINERS */
-.containers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  position: relative;
-}
-.container-box {
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  border: 1px solid #f9f8f8;
-  border-radius: 6px;
-  width: 160px;
-  background-color: var(--container-bg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-.container-box.empty {
-  background-color: #f8f8f8;
-  border: 2px dashed #ffffff;
-  opacity: 0.6;
-  color: #999;
-}
-.container-box select,
-.container-box input {
-  padding: 8px;
-  font-size: 14px;
-  border: 1px solid #d0d0d0;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  background-color: #fafafa;
-}
-.container-box .delete-btn {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  background-color: #dc3545;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-.container-box .delete-btn:hover {
-  background-color: #c82333;
-}
-
-/* SAVE SECTION */
-.save-section {
-  text-align: center;
+  justify-content: center; /* 가운데 정렬 */
+  border-bottom: 2px solid #e0e0e0;
   margin-top: 30px;
-}
-.hotelsetting-all-save {
-  width: 200px;
-  height: 50px;
-  font-size: 1.5rem;
-  border-radius: 10px;
-  background-color: steelblue;
-  color: white;
-  font-weight: 1200;
-  border: none;
-  cursor: pointer;
+  margin-bottom: 30px;
+  position: sticky; /* 상단 고정 */
+  top: 0;
+  background-color: #f9f9f9; /* 배경색 추가 */
+  z-index: 10; /* 다른 요소 위에 표시 */
 }
 
-.hotelsetting-all-save:hover {
-  background-color: goldenrod;
+.tabs button {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  transition: color 0.3s ease, border-bottom 0.3s ease;
 }
+
+.tabs button.active {
+  color: #2c3e50;
+  border-bottom: 2px solid #6e8efb;
+  font-weight: 600;
+}
+
+.tabs button:hover {
+  color: #2c3e50;
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+/* 버튼 그룹 */
 .hotel-settings-button-group {
   display: flex;
   justify-content: center;
@@ -563,20 +433,782 @@ html {
 .hotel-settings-btn {
   padding: 10px 20px;
   font-size: 16px;
-  background-color: var(--action-btn-bg, #16a34a); /* 업데이트: 변수 사용 */
-  color: var(--action-btn-color, #ffffff); /* 업데이트: 변수 사용 */
+  background-color: var(--action-btn-bg, #16a34a);
+  color: var(--action-btn-color, #ffffff);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease; /* 애니메이션 추가 */
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .hotel-settings-btn:hover {
-  background-color: #14532d; /* 더 어두운 초록색으로 호버 효과 */
-  transform: scale(1.05); /* 호버 시 확대 효과 추가 */
+  background-color: #14532d;
+  transform: scale(1.05);
 }
 
-/* 특정 버튼 변형 스타일 통일 */
+.hotel-settings-btn-chrome {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #3498db;
+  color: var(--action-btn-color, #ffffff);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.hotel-settings-btn-chrome:hover {
+  background-color: #2980b9;
+  transform: scale(1.05);
+}
+
+/* 에러 메시지 */
+.error-message {
+  color: #ff4d4f;
+  font-size: 14px;
+  margin: 10px 0;
+  text-align: center;
+  background-color: #fff1f0;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+/* 성공 메시지 */
+.success-message {
+  color: #52c41a;
+  font-size: 14px;
+  margin: 10px 0;
+  text-align: center;
+  background-color: #f6ffed;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   3. HOTEL INFO SECTION
+========================================================================== */
+.hotel-info-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(
+    135deg,
+    #d7d7d8,
+    #605a67
+  ); /* PhotoUploadPage.css에서 가져옴 */
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  color: white;
+}
+
+.hotel-info-section .info-columns {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.info-columns-split {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  width: 100%;
+  padding: auto;
+}
+
+.info-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+
+  min-width: 300px;
+}
+
+.info-column label {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff; /* 텍스트 색상 흰색으로 조정 */
+}
+
+.info-column input {
+  margin-top: 6px;
+  padding: 10px;
+  height: 45px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 16px;
+  background-color: #fafafa;
+  font-weight: 700;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-column input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+  outline: none;
+}
+
+.info-column input:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.basic-info h2 {
+  font-size: 24px;
+  color: #ffffff; /* 제목 색상 흰색으로 조정 */
+  margin-bottom: 20px;
+  font-weight: 800;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .info-columns-split {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .info-column {
+    min-width: 100%;
+  }
+}
+
+/* ==========================================================================
+   4. ROOM TYPES SECTION
+========================================================================== */
+.room-types-section {
+  padding: 20px;
+  background-color: var(--room-card-background-color);
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.room-types-section h2 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #34495e;
+}
+
+.room-types-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  max-width: 100%;
+}
+
+.room-type-item {
+  flex: 0 0 calc(33.33% - 13.33px);
+  width: calc(33.33% - 13.33px);
+  min-width: 250px;
+  max-width: 400px;
+  background-color: #fdfdfd;
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.room-type-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  justify-content: flex-start;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2980b9;
+  margin-bottom: 10px;
+}
+
+.room-type-header svg {
+  margin-right: 10px;
+}
+
+.room-type-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.room-type-fields input,
+.room-type-aliases input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background-color: #fafafa;
+  flex: 1;
+  font-weight: 700;
+}
+
+.room-type-fields .remove-btn {
+  padding: 8px;
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.room-type-fields .remove-btn:hover {
+  background-color: #c82333;
+}
+
+.remove-btn {
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: lightsteelblue;
+}
+
+.remove-btn:hover {
+  color: red;
+  font-size: 1.2rem;
+}
+
+.room-type-aliases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.room-numbers {
+  margin-top: 10px;
+}
+
+.room-numbers h4 {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+}
+
+.room-numbers div {
+  font-size: 12px;
+  color: #2c3e50;
+  padding: 6px;
+  background-color: #ecf0f1;
+  border-radius: 4px;
+}
+
+.room-type-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* ==========================================================================
+   5. LAYOUT EDITOR SECTION
+========================================================================== */
+.layout-editor-section {
+  padding: 20px;
+  background-color: var(--room-card-background-color);
+  border: 1px solid var(--cell-border);
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.layout-editor-section .layout-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.layout-editor-section h2 {
+  font-size: 24px;
+  color: #34495e;
+  margin: 0;
+}
+
+.floor-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.floor-row {
+  display: flex;
+  flex-direction: row; /* 가로 방향 배치 */
+  gap: 10px;
+  background-color: #fafafa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid var(--cell-border);
+}
+
+.floor-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+.floor-row h3 {
+  font-size: 18px;
+  color: #34495e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.floor-row .remove-icon {
+  cursor: pointer;
+  color: #dc3545;
+  transition: color 0.3s ease;
+}
+
+.floor-row .remove-icon:hover {
+  color: #c82333;
+}
+
+.containers {
+  display: flex;
+  flex-wrap: wrap; /* 한 줄에 다 안 들어가면 다음 줄로 자동 줄바꿈 */
+  gap: 12px;
+  position: relative;
+}
+
+.container-box {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid #f9f8f8;
+  border-radius: 6px;
+  width: 160px;
+  height: auto;
+  flex-shrink: 0; /* 크기 축소 방지 */
+  background-color: var(--container-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.container-box.empty {
+  background-color: #f8f8f8;
+  border: 2px dashed #ffffff;
+  opacity: 0.6;
+  color: #999;
+}
+
+.container-box select,
+.container-box input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background-color: #fafafa;
+  font-weight: 700;
+}
+
+.hotel-settings-layout-btn.delete-btn {
+  background-color: slategrey;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hotel-settings-layout-btn.delete-btn:hover {
+  background-color: #555;
+}
+
+/* ==========================================================================
+   6. AMENITIES SECTION
+========================================================================== */
+.amenities-section {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 20px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.amenities-container,
+.amenities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin: 10px;
+}
+
+.amenity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-amenities-display {
+  margin-top: 10px;
+  padding: 10px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.room-amenities-display h4 {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.room-amenities-display .amenities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.room-amenities-display .amenity-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   7. PHOTO UPLOAD SECTION (PhotoUploadPage.css에서 통합)
+========================================================================== */
+.photo-upload-container {
+  padding: 20px;
+  font-family: var(--font-family);
+  background: linear-gradient(135deg, #f9f9f9, #e8ecef);
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.password-card {
+  max-width: 400px;
+  margin: 50px auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.password-card:hover {
+  transform: translateY(-2px);
+}
+
+.password-prompt {
+  margin-top: 20px;
+}
+
+.password-prompt label {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #333;
+}
+
+.password-prompt input {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  transition: border-color 0.3s;
+}
+
+.password-prompt input:focus {
+  border-color: #6e8efb;
+  outline: none;
+}
+
+.photo-upload-submit-password-btn {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #828cad, #8a898a);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.photo-upload-submit-password-btn:hover {
+  background: linear-gradient(135deg, #b1b0b1, #838895);
+  transform: translateY(-2px);
+}
+
+.hotel-info-box {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.hotel-info-box h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.hotel-details p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.hotel-details p strong {
+  margin-right: 8px;
+  color: #333;
+}
+
+.photo-upload-button-group {
+  display: flex;
+  align-items: flex-start;
+}
+
+.photo-upload-back-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.photo-upload-back-btn:hover {
+  background: linear-gradient(135deg, #feca57, #ff6b6b);
+  transform: translateY(-2px);
+}
+
+.center-text {
+  text-align: center;
+}
+
+.section-title {
+  font-size: 22px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #6e8efb;
+  padding-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.photo-upload-card {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 25px;
+  transition: box-shadow 0.3s;
+}
+
+.photo-upload-card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.photo-upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.photo-upload-header h3 {
+  font-size: 18px;
+  margin: 0;
+  color: #333;
+}
+
+.photo-upload-input {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.photo-upload-input input[type='file'] {
+  font-size: 14px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: border-color 0.3s;
+}
+
+.photo-upload-input input[type='file']:focus {
+  border-color: #6e8efb;
+  outline: none;
+}
+
+.file-order-input {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: #f1f3f5;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.file-order-input span {
+  flex: 1;
+  font-size: 14px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-input {
+  width: 100px;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: border-color 0.3s;
+}
+
+.order-input:focus {
+  border-color: #6e8efb;
+  outline: none;
+}
+
+.photo-upload-upload-btn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.photo-upload-upload-btn:hover {
+  background: linear-gradient(135deg, #a777e3, #6e8efb);
+  transform: translateY(-2px);
+}
+
+.photo-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.thumbnail {
+  position: relative;
+  width: 160px;
+  height: 90px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: #eee;
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s;
+}
+
+.thumbnail:hover {
+  transform: scale(1.05);
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.2s ease;
+}
+
+.thumbnail:hover img {
+  opacity: 0.8;
+}
+
+.photo-upload-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(255, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.photo-upload-delete-btn:hover {
+  background-color: rgba(255, 0, 0, 1);
+}
+
+.thumbnail-order {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .photo-upload-container {
+    padding: 10px;
+  }
+
+  .hotel-info-section {
+    flex-direction: column;
+  }
+
+  .photo-upload-card {
+    padding: 15px;
+  }
+
+  .thumbnail {
+    width: 120px;
+    height: 67.5px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .file-order-input {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .order-input {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   8. BUTTONS
+========================================================================== */
 .hotel-settings-btn.remove-btn,
 .hotel-settings-btn.delete-btn {
   padding: 8px;
@@ -617,6 +1249,24 @@ html {
   transform: scale(1.05);
 }
 
+.hotel-settings-layout-btn.add-room-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: transparent;
+  color: red;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.hotel-settings-layout-btn.add-room-btn:hover {
+  border: 1px dotted rgb(87, 87, 87);
+  background-color: #dcf8d7;
+  color: black;
+  font-weight: 800;
+}
+
 .hotel-settings-btn.undo-btn {
   background-color: #6c757d;
   padding: 8px 16px;
@@ -632,24 +1282,6 @@ html {
   transform: scale(1.05);
 }
 
-.hotel-settings-btn.change-pw-btn {
-  background-color: #6c757d;
-  opacity: 0.7;
-  cursor: not-allowed;
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 6px;
-  color: #fff;
-  transition: opacity 0.3s ease;
-}
-
-.hotel-settings-btn.change-pw-btn:hover {
-  background-color: #6c757d;
-  opacity: 0.9;
-}
-
-/* 기존 스타일 유지 */
 .price-row {
   display: flex;
   align-items: center;
@@ -672,7 +1304,6 @@ html {
   font-size: 14px;
 }
 
-/* 스피너(화살표 버튼) 제거 */
 .price-input-container input[type='number']::-webkit-inner-spin-button,
 .price-input-container input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -716,7 +1347,6 @@ html {
   opacity: 0.8;
 }
 
-/* 객실 수 입력 필드 스타일 조정 */
 .stock {
   width: 80px;
   padding: 5px;
@@ -725,132 +1355,69 @@ html {
   border-radius: 4px;
   background-color: #f8f9fa;
 }
-/* HotelSettingsPage.css 추가 또는 수정 */
-.button-content {
-  display: flex;
-  align-items: center; /* 수직 중앙 정렬 */
-  gap: 8px; /* 아이콘과 텍스트 사이 간격 */
+
+/* ==========================================================================
+   9. SAVE SECTION
+========================================================================== */
+.save-section {
+  text-align: center;
 }
 
-.action-btn.add-floor-btn {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: var(--action-btn-bg, #16a34a);
-  color: var(--action-btn-color, #ffffff);
+.hotelsetting-all-save {
+  width: 200px;
+  height: 50px;
+  font-size: 1.5rem;
+  border-radius: 10px;
+  background-color: steelblue;
+  color: white;
+  font-weight: 1200;
   border: none;
-  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  display: flex; /* 버튼 전체를 flex로 설정 */
-  align-items: center; /* 버튼 내 콘텐츠 수직 중앙 정렬 */
 }
 
-.action-btn.add-floor-btn:hover {
-  background-color: #14532d;
-  transform: scale(1.05);
+.hotelsetting-all-save:hover {
+  background-color: goldenrod;
 }
 
-.action-btn.add-floor-btn svg {
-  font-size: 1.2rem; /* 아이콘 크기 조정 (필요 시) */
-  margin-right: 5px;
-}
 
-.hotel-settings-btn-chrome {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #3498db; /* 업데이트: 변수 사용 */
-  color: var(--action-btn-color, #ffffff); /* 업데이트: 변수 사용 */
-  border: none;
+/* 공통 시설(온사이트) 섹션 스타일 */
+.common-amenities-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fafafa;
+  border: 1px solid #eee;
   border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease; /* 애니메이션 추가 */
 }
 
-/* frontend/src/pages/HotelSettingsPage.css */
-
-/* 호텔 정보 섹션 */
-.hotel-info-section {
-  margin-bottom: 30px;
-  padding: 20px; /* 패딩을 줄여 더 깔끔하게 */
-  background-color: #ffffff; /* 배경을 더 밝게 */
-  border: 1px solid #e0e0e0; /* 테두리 색상 조정 */
-  border-radius: 10px; /* 더 부드러운 모서리 */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 그림자 강화 */
+/* 섹션 제목 */
+.common-amenities-section h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #333;
+  font-weight: 700;
 }
 
-.hotel-info-section .info-columns {
+/* 공통 시설 아이템들 감싸는 컨테이너 */
+.common-amenities-container {
   display: flex;
-  gap: 30px; /* 열 간 간격 조정 */
   flex-wrap: wrap;
+  gap: 15px;
 }
 
-/* 호텔 기본 정보 섹션을 두 열로 나누기 */
-.info-columns-split {
-  display: flex;
-  justify-content: space-between;
-  gap: 30px; /* 열 간 간격 조정 */
-  width: 100%;
+/* 공통 시설 아이템 하나하나 */
+.common-amenity-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 14px;
+  color: #555;
+  transition: background-color 0.2s ease;
 }
 
-/* 각 열 스타일 */
-.info-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 15px; /* 필드 간 간격 조정 */
-  min-width: 300px; /* 최소 너비 설정으로 반응형 대비 */
-}
-
-/* 라벨 스타일 */
-.info-column label {
-  display: flex;
-  flex-direction: column;
-  font-size: 16px; /* 라벨 폰트 크기 조정 */
-  font-weight: 500; /* 라벨 가독성 강화 */
-  color: #2c3e50; /* 색상 통일 */
-}
-
-/* 입력 필드 스타일 */
-.info-column input {
-  margin-top: 6px; /* 라벨과 입력 필드 간 간격 */
-  padding: 10px; /* 입력 필드 패딩 조정 */
-  border: 1px solid #d0d0d0; /* 테두리 색상 조정 */
-  border-radius: 6px; /* 더 부드러운 모서리 */
-  font-size: 16px; /* 입력 필드 폰트 크기 조정 */
-  background-color: #fafafa; /* 입력 필드 배경 색상 */
-  transition: border-color 0.3s ease, box-shadow 0.3s ease; /* 포커스 효과 추가 */
-}
-
-/* 입력 필드 포커스 효과 */
-.info-column input:focus {
-  border-color: #3498db; /* 포커스 시 테두리 색상 */
-  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); /* 포커스 시 그림자 효과 */
-  outline: none;
-}
-
-/* 비활성화된 입력 필드 스타일 */
-.info-column input:disabled {
-  background-color: #f0f0f0;
-  cursor: not-allowed;
-  opacity: 0.7; /* 비활성화 시 투명도 조정 */
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-  .info-columns-split {
-    flex-direction: column; /* 작은 화면에서 세로로 배치 */
-    gap: 20px;
-  }
-
-  .info-column {
-    min-width: 100%; /* 작은 화면에서 전체 너비 사용 */
-  }
-}
-
-/* 섹션 제목 스타일 */
-.basic-info h2 {
-  font-size: 24px; /* 제목 크기 조정 */
-  color: #34495e; /* 제목 색상 */
-  margin-bottom: 20px; /* 제목과 필드 간 간격 */
-  font-weight: 600; /* 제목 가독성 강화 */
+.common-amenity-item:hover {
+  background-color: #f2f2f2;
 }
