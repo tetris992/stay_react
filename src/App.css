@@ -21,7 +21,7 @@ body {
 
 /* (B) .logged-out(로그인 전)일 때만 배경이미지 표시 */
 .app-layout.logged-out {
-  background: url('.\/assets\/b87.jpg') no-repeat center center fixed;
+  background: url('./assets/b87.jpg') no-repeat center center fixed;
   background-size: cover;
 }
 
