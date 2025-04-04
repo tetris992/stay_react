@@ -20,8 +20,14 @@ body {
 }
 
 /* (B) .logged-out(로그인 전)일 때만 배경이미지 표시 */
-.app-layout.logged-out {
+/* .app-layout.logged-out {
   background: url('/assets/b87.jpg') no-repeat center center fixed;
+  background-size: cover;
+} */
+
+/* (B) .logged-out(로그인 전)일 때만 배경 그라디언트 표시 */
+.app-layout.logged-out {
+  background: linear-gradient(135deg, #6e8efb, #a777e3);
   background-size: cover;
 }
 
