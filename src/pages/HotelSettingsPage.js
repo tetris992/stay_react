@@ -63,6 +63,7 @@ const MAX_RESOLUTION = { width: 1920, height: 1080 };
 // 초기 객실 타입 설정 – DEFAULT_AMENITIES에서 in‑room만 필터링
 const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
   ...rt,
+  isBaseRoom: false, // 기본 객실 플래그 초기값 false
   aliases: [],
   roomNumbers:
     rt.startRoomNumbers && Object.keys(rt.floorSettings).length > 0
@@ -136,10 +137,48 @@ function AmenitiesSection({
     });
   };
 
-  // 수정된 부분: 필터링된 배열의 인덱스가 아닌, 고유 식별자인 nameKor를 기준으로 변경
+  // 기본 객실 설정 함수
+  const handleSetBaseRoom = (roomIndex) => {
+    setRoomTypes((prev) => {
+      const updated = [...prev];
+      // 모든 객실의 isBaseRoom을 false로 설정 후 선택된 객실만 true로 설정
+      updated.forEach((rt, idx) => {
+        rt.isBaseRoom = idx === roomIndex;
+      });
+      alert(
+        language === 'kor'
+          ? '기본 객실이 설정되었습니다.'
+          : 'Base room has been set.'
+      );
+      return updated;
+    });
+  };
+
+  // 기본 객실의 어메니티를 모든 객실에 적용하는 함수
+  const applyBaseRoomAmenities = (baseRoomAmenities) => {
+    setRoomTypes((prev) => {
+      const updated = [...prev];
+      updated.forEach((rt) => {
+        rt.roomAmenities = rt.roomAmenities.map((amenity) => {
+          const baseAmenity = baseRoomAmenities.find(
+            (ba) => ba.nameKor === amenity.nameKor
+          );
+          return {
+            ...amenity,
+            isActive: baseAmenity ? baseAmenity.isActive : amenity.isActive,
+          };
+        });
+      });
+      return updated;
+    });
+  };
+
+  // 객실별 어메니티 변경 함수
   const handleRoomAmenityChange = (roomIndex, amenityNameKor) => {
     setRoomTypes((prev) => {
       const updated = [...prev];
+
+      // 현재 객실의 어메니티 상태 토글
       updated[roomIndex] = {
         ...updated[roomIndex],
         roomAmenities: updated[roomIndex].roomAmenities.map((amenity) =>
@@ -148,9 +187,18 @@ function AmenitiesSection({
             : amenity
         ),
       };
+
+      // 현재 객실이 기본 객실이면 모든 객실에 적용
+      if (updated[roomIndex].isBaseRoom) {
+        applyBaseRoomAmenities(updated[roomIndex].roomAmenities);
+      }
+
       return updated;
     });
   };
+
+  // 기본 객실이 설정되었는지 확인
+  const isBaseRoomSet = roomTypes.some((rt) => rt.isBaseRoom);
 
   return (
     <section
@@ -185,9 +233,33 @@ function AmenitiesSection({
             language === 'kor' ? '객실별 시설 설정' : 'Room Amenities Settings'
           }
         >
-          <h4>
-            {language === 'kor' ? rt.nameKor : rt.nameEng} ({rt.nameEng})
-          </h4>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <h4 style={{ marginRight: '10px' }}>
+              {language === 'kor' ? rt.nameKor : rt.nameEng} ({rt.nameEng})
+            </h4>
+            {/* 기본 객실이 설정되지 않았거나 현재 객실이 기본 객실인 경우에만 버튼 표시 */}
+            {(!isBaseRoomSet || rt.isBaseRoom) && (
+              <button
+                onClick={() => handleSetBaseRoom(roomIdx)}
+                style={{
+                  backgroundColor: rt.isBaseRoom ? '#4CAF50' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+              >
+                {rt.isBaseRoom
+                  ? language === 'kor'
+                    ? '기본 객실'
+                    : 'Base Room'
+                  : language === 'kor'
+                  ? '기본 객실로 설정'
+                  : 'Set as Base Room'}
+              </button>
+            )}
+          </div>
           <div className="amenities-list">
             {getInRoomAmenities(rt.roomAmenities).map((amenity) => (
               <label
@@ -1730,7 +1802,10 @@ export default function HotelSettingsPage() {
           const updatedRoomTypes = buildRoomTypesWithNumbers(
             hotelData.roomTypes,
             containers
-          );
+          ).map((rt) => ({
+            ...rt,
+            isBaseRoom: rt.isBaseRoom || false, // 서버 데이터에 isBaseRoom이 없으면 false로 설정
+          }));
           setRoomTypes(updatedRoomTypes);
 
           // 나머지 호텔 설정 필드 업데이트
@@ -1786,6 +1861,7 @@ export default function HotelSettingsPage() {
   const handleLoadDefault = () => {
     const defaultRoomTypesCopy = defaultRoomTypes.map((rt) => ({
       ...rt,
+      isBaseRoom: false, // 기본 객실 플래그 초기값 false
       aliases: [],
       roomNumbers: [],
       roomAmenities: DEFAULT_AMENITIES.map((a) => ({ ...a, isActive: false })),
@@ -2001,6 +2077,7 @@ export default function HotelSettingsPage() {
       amenities,
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
+        isBaseRoom: rt.isBaseRoom, // isBaseRoom 포함
         roomAmenities: rt.roomAmenities.map((amenity) => ({
           nameKor: amenity.nameKor,
           nameEng: amenity.nameEng,
