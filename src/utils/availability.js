@@ -5,7 +5,7 @@ import {
   addDays,
   differenceInCalendarDays,
   addMonths,
-  areIntervalsOverlapping
+  areIntervalsOverlapping,
 } from 'date-fns';
 
 /**
@@ -19,7 +19,6 @@ export function calculateRoomAvailability(
   reservations,
   roomTypes,
   fromDate,
-  toDate,
   gridSettings = null
 ) {
   if (!fromDate || isNaN(new Date(fromDate))) {
@@ -28,7 +27,7 @@ export function calculateRoomAvailability(
   }
 
   const calcFromDate = startOfDay(new Date(fromDate));
-  const calcToDate = startOfDay(addMonths(calcFromDate, 1));
+  const calcToDate = startOfDay(addMonths(calcFromDate, 3)); // 변경: addMonths(calcFromDate, 1) → addMonths(calcFromDate, 3)
   const numDays = differenceInCalendarDays(calcToDate, calcFromDate) + 1;
   const dateList = [];
   for (let i = 0; i < numDays; i++) {
@@ -256,20 +255,26 @@ export function getDetailedAvailabilityMessage(
  * - 대실: [checkIn, checkIn]
  */
 export function canSwapReservations(reservationA, reservationB, reservations) {
-  const roomTypeA = reservationA.roomInfo ? reservationA.roomInfo.toLowerCase() : '';
-  const roomTypeB = reservationB.roomInfo ? reservationB.roomInfo.toLowerCase() : '';
+  const roomTypeA = reservationA.roomInfo
+    ? reservationA.roomInfo.toLowerCase()
+    : '';
+  const roomTypeB = reservationB.roomInfo
+    ? reservationB.roomInfo.toLowerCase()
+    : '';
 
   const intervalA = {
     start: new Date(reservationA.checkIn),
-    end: reservationA.type === 'dayUse'
-      ? new Date(reservationA.checkIn)
-      : startOfDay(new Date(reservationA.checkOut))
+    end:
+      reservationA.type === 'dayUse'
+        ? new Date(reservationA.checkIn)
+        : startOfDay(new Date(reservationA.checkOut)),
   };
   const intervalB = {
     start: new Date(reservationB.checkIn),
-    end: reservationB.type === 'dayUse'
-      ? new Date(reservationB.checkIn)
-      : startOfDay(new Date(reservationB.checkOut))
+    end:
+      reservationB.type === 'dayUse'
+        ? new Date(reservationB.checkIn)
+        : startOfDay(new Date(reservationB.checkOut)),
   };
 
   const conflictA = reservations.some((r) => {
@@ -280,12 +285,15 @@ export function canSwapReservations(reservationA, reservationB, reservations) {
 
     const resInterval = {
       start: new Date(r.checkIn),
-      end: r.type === 'dayUse'
-        ? new Date(r.checkIn)
-        : startOfDay(new Date(r.checkOut))
+      end:
+        r.type === 'dayUse'
+          ? new Date(r.checkIn)
+          : startOfDay(new Date(r.checkOut)),
     };
 
-    return areIntervalsOverlapping(intervalA, resInterval, { inclusive: false });
+    return areIntervalsOverlapping(intervalA, resInterval, {
+      inclusive: false,
+    });
   });
   if (conflictA) return false;
 
@@ -297,12 +305,15 @@ export function canSwapReservations(reservationA, reservationB, reservations) {
 
     const resInterval = {
       start: new Date(r.checkIn),
-      end: r.type === 'dayUse'
-        ? new Date(r.checkIn)
-        : startOfDay(new Date(r.checkOut))
+      end:
+        r.type === 'dayUse'
+          ? new Date(r.checkIn)
+          : startOfDay(new Date(r.checkOut)),
     };
 
-    return areIntervalsOverlapping(intervalB, resInterval, { inclusive: false });
+    return areIntervalsOverlapping(intervalB, resInterval, {
+      inclusive: false,
+    });
   });
 
   return !conflictB;
@@ -327,7 +338,9 @@ export function isRoomAvailableForPeriod(
   const newInterval = {
     start: new Date(checkInDateTime),
     end: (() => {
-      const candidate = reservations.find(r => r._id === excludeReservationId);
+      const candidate = reservations.find(
+        (r) => r._id === excludeReservationId
+      );
       if (candidate && candidate.type === 'dayUse') {
         return new Date(checkInDateTime);
       }
@@ -343,12 +356,15 @@ export function isRoomAvailableForPeriod(
 
     const resInterval = {
       start: new Date(r.checkIn),
-      end: r.type === 'dayUse'
-        ? new Date(r.checkIn)
-        : startOfDay(new Date(r.checkOut))
+      end:
+        r.type === 'dayUse'
+          ? new Date(r.checkIn)
+          : startOfDay(new Date(r.checkOut)),
     };
 
-    return areIntervalsOverlapping(newInterval, resInterval, { inclusive: false });
+    return areIntervalsOverlapping(newInterval, resInterval, {
+      inclusive: false,
+    });
   });
 
   const conflictDays = [];
@@ -361,10 +377,13 @@ export function isRoomAvailableForPeriod(
       const dayStr = format(currentDay, 'yyyy-MM-dd');
       const conflict = conflictingReservations.some((r) => {
         const intervalStart = new Date(r.checkIn);
-        const intervalEnd = r.type === 'dayUse'
-          ? new Date(r.checkIn)
-          : startOfDay(new Date(r.checkOut));
-        return currentDay < intervalEnd && addDays(currentDay, 1) > intervalStart;
+        const intervalEnd =
+          r.type === 'dayUse'
+            ? new Date(r.checkIn)
+            : startOfDay(new Date(r.checkOut));
+        return (
+          currentDay < intervalEnd && addDays(currentDay, 1) > intervalStart
+        );
       });
       if (conflict) conflictDays.push(dayStr);
       d = addDays(d, 1);
@@ -388,7 +407,11 @@ export function checkContainerOverlap(
   const newInterval = {
     start: new Date(checkInDateTime),
     end: (() => {
-      const candidate = reservations.find(r => r.roomNumber === roomNumber && r.roomInfo.toLowerCase() === roomTypeKey);
+      const candidate = reservations.find(
+        (r) =>
+          r.roomNumber === roomNumber &&
+          r.roomInfo.toLowerCase() === roomTypeKey
+      );
       if (candidate && candidate.type === 'dayUse') {
         return new Date(checkInDateTime);
       }
@@ -408,9 +431,10 @@ export function checkContainerOverlap(
       if (r.roomNumber !== String(roomNumber)) return false;
 
       const intervalStart = new Date(r.checkIn);
-      const intervalEnd = r.type === 'dayUse'
-        ? new Date(r.checkIn)
-        : startOfDay(new Date(r.checkOut));
+      const intervalEnd =
+        r.type === 'dayUse'
+          ? new Date(r.checkIn)
+          : startOfDay(new Date(r.checkOut));
 
       return currentDay < intervalEnd && addDays(currentDay, 1) > intervalStart;
     });
@@ -463,7 +487,11 @@ export function canMoveToRoom(
  * - 대실: [checkIn, checkIn]
  * - 과거 체크인 예약은 이동 불가
  */
-export const checkConflict = (draggedReservation, targetRoomNumber, fullReservations) => {
+export const checkConflict = (
+  draggedReservation,
+  targetRoomNumber,
+  fullReservations
+) => {
   const draggedCheckIn = new Date(draggedReservation.checkIn);
   const draggedCheckOut = new Date(draggedReservation.checkOut);
   const isDayUseDragged = draggedReservation.type === 'dayUse';
@@ -480,11 +508,14 @@ export const checkConflict = (draggedReservation, targetRoomNumber, fullReservat
     start: draggedCheckIn,
     end: isDayUseDragged
       ? new Date(draggedCheckIn)
-      : startOfDay(draggedCheckOut)
+      : startOfDay(draggedCheckOut),
   };
 
   for (const reservation of fullReservations) {
-    if (reservation.roomNumber !== targetRoomNumber || reservation._id === draggedReservation._id) {
+    if (
+      reservation.roomNumber !== targetRoomNumber ||
+      reservation._id === draggedReservation._id
+    ) {
       continue;
     }
 
@@ -493,13 +524,15 @@ export const checkConflict = (draggedReservation, targetRoomNumber, fullReservat
     const isDayUseRes = reservation.type === 'dayUse';
     const resInterval = {
       start: resCheckIn,
-      end: isDayUseRes
-        ? new Date(resCheckIn)
-        : startOfDay(resCheckOut)
+      end: isDayUseRes ? new Date(resCheckIn) : startOfDay(resCheckOut),
     };
 
     if (isDayUseDragged && isDayUseRes) {
-      if (areIntervalsOverlapping(draggedInterval, resInterval, { inclusive: false })) {
+      if (
+        areIntervalsOverlapping(draggedInterval, resInterval, {
+          inclusive: false,
+        })
+      ) {
         return { isConflict: true, conflictReservation: reservation };
       }
     } else {

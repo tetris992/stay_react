@@ -37,7 +37,6 @@ const getDetailedAvailabilityMessage = (
 const MonthlyCalendar = ({
   reservations = [],
   roomTypes = [],
-  availabilityByDate: propAvailabilityByDate = {},
   gridSettings,
   onRangeSelect,
   onReturnView,
@@ -91,7 +90,6 @@ const MonthlyCalendar = ({
 
   const availabilityByDate = useMemo(() => {
     const calcFromDate = addDays(today, -1);
-    const calcToDate = addDays(endOfMonth(addMonths(today, 1)), 1);
     const selectedDates = [];
     const baseDate = startOfDay(selectedDate);
     for (let i = -1; i <= 1; i++) {
@@ -101,9 +99,7 @@ const MonthlyCalendar = ({
       filteredReservations,
       roomTypes,
       calcFromDate,
-      calcToDate,
-      gridSettings,
-      selectedDates
+      gridSettings // toDate 파라미터 제거
     );
     console.log('[MonthlyCalendar] availabilityByDate:', result);
     return result;
@@ -134,7 +130,11 @@ const MonthlyCalendar = ({
 
   const handleRoomTypeMouseEnter = (day, roomInfo) => {
     const dayStr = format(day, 'yyyy-MM-dd');
-    if (!selectedRange || dayStr < todayStr || selectedRange.roomInfo !== roomInfo)
+    if (
+      !selectedRange ||
+      dayStr < todayStr ||
+      selectedRange.roomInfo !== roomInfo
+    )
       return;
     setSelectedRange((prev) => ({ ...prev, end: day }));
   };
@@ -182,7 +182,12 @@ const MonthlyCalendar = ({
     console.log('[MonthlyCalendar] Calculated commonRooms:', commonRooms);
 
     if (!commonRooms || commonRooms.size === 0) {
-      const msg = getDetailedAvailabilityMessage(rangeStart, rangeEnd, tKey, availabilityByDate);
+      const msg = getDetailedAvailabilityMessage(
+        rangeStart,
+        rangeEnd,
+        tKey,
+        availabilityByDate
+      );
       console.log('[MonthlyCalendar] No common rooms, showing message:', msg);
       alert(msg);
       setSelectedRange(null);
@@ -190,7 +195,10 @@ const MonthlyCalendar = ({
     }
 
     const selectedRoomNumber = Math.min(...Array.from(commonRooms));
-    const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(rangeEnd, 'MM/dd')} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
+    const msg = `기간: ${format(rangeStart, 'MM/dd')} ~ ${format(
+      rangeEnd,
+      'MM/dd'
+    )} (${roomInfo})\n공통 객실 번호: ${selectedRoomNumber}\n예약 생성하시겠습니까?`;
     console.log('[MonthlyCalendar] Showing confirm dialog with message:', msg);
     if (window.confirm(msg)) {
       try {
@@ -204,7 +212,10 @@ const MonthlyCalendar = ({
           roomInfo,
         });
         if (typeof onRangeSelect !== 'function') {
-          console.error('[MonthlyCalendar] onRangeSelect is not a function:', onRangeSelect);
+          console.error(
+            '[MonthlyCalendar] onRangeSelect is not a function:',
+            onRangeSelect
+          );
           return;
         }
         onRangeSelect(checkInDateObj, checkOutDateObj, roomInfo);
@@ -245,7 +256,10 @@ const MonthlyCalendar = ({
     const isToday = dateStr === todayStr;
     const isWeekend = [0, 6].includes(day.getDay());
     const dayAvailability = availabilityByDate[dateStr] || {};
-    console.log(`[MonthlyCalendar] dayAvailability for ${dateStr}:`, dayAvailability);
+    console.log(
+      `[MonthlyCalendar] dayAvailability for ${dateStr}:`,
+      dayAvailability
+    );
 
     // 헤더에 표시할 총 재고와 가용 재고 계산
     const roomTypeSummary = filteredRoomTypes.map((rt) => {
@@ -270,7 +284,9 @@ const MonthlyCalendar = ({
       .map(
         (rt) =>
           `${rt.roomInfo.toLowerCase()}: ${rt.remain}${
-            rt.leftoverRooms.length > 0 ? ` (${rt.leftoverRooms.join(', ')})` : ''
+            rt.leftoverRooms.length > 0
+              ? ` (${rt.leftoverRooms.join(', ')})`
+              : ''
           }`
       )
       .join('\n');
