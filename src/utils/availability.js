@@ -1,4 +1,5 @@
 //frontend availability.js
+
 import {
   format,
   startOfDay,
@@ -15,10 +16,19 @@ import {
  *
  * 서버에서 취소 예약은 이미 필터링되었다고 가정합니다.
  */
+/**
+ * calculateRoomAvailability
+ * - 일반 예약(숙박): 점유 구간은 [checkIn, startOfDay(checkOut)) (즉, 체크아웃 당일은 점유하지 않음)
+ * - 대실(dayUse): 아직 체크아웃되지 않았다면 체크인 날만 점유
+ * - 계산 범위: fromDate로부터 3개월
+ *
+ * 서버에서 취소 예약은 이미 필터링되었다고 가정합니다.
+ */
 export function calculateRoomAvailability(
   reservations,
   roomTypes,
   fromDate,
+  toDate,
   gridSettings = null
 ) {
   if (!fromDate || isNaN(new Date(fromDate))) {
@@ -222,7 +232,6 @@ export function calculateRoomAvailability(
 
   return availability;
 }
-
 /**
  * getDetailedAvailabilityMessage
  * 선택한 날짜 범위 내에, 각 날짜별 사용 가능한 객실 번호(잔여 객실)를 메시지로 생성합니다.
