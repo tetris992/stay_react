@@ -278,7 +278,6 @@
   margin: 5px 0;
 }
 
-/* 카운트다운 스타일 */
 .countdown {
   font-weight: bold;
   color: var(--countdown-color);
@@ -295,7 +294,7 @@
   cursor: not-allowed !important;
   opacity: 0.7;
   border: 3px dotted #5656a3;
-} */
+} 
 
 /* ==========================================================================
    [Action Buttons - Icon Based, Embossed]

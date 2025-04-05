@@ -16,12 +16,12 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background-color: #f0f0f0; /* 주석 대신 기본값 설정 */
+  background-color: #f0f0f0; 
 }
 
 /* 로그인 전 배경 그라디언트 */
 .app-layout.logged-out {
-  background: linear-gradient(135deg, #6e8efb, #a777e3);
+  background: url('./assets/b87.jpg') no-repeat center center fixed;
   background-size: cover;
 }
 

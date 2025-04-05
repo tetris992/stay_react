@@ -1,4 +1,5 @@
 // craco.config.js
+
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 
 module.exports = {
@@ -14,8 +15,8 @@ module.exports = {
                   'default',
                   {
                     discardComments: { removeAll: true },
-                    normalizeUrl: false,
-                    calc: false,
+                    normalizeUrl: true, // URL 정규화 활성화
+                    calc: true, // calc() 최적화 활성화
                   },
                 ],
               },

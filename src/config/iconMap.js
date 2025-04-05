@@ -1,3 +1,6 @@
+//src/config/iconMap.js
+// This file maps icon names to their respective React components from react-icons.
+
 import {
   FaWifi,
   FaBath,
