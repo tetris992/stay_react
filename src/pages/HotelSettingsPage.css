@@ -4,7 +4,6 @@
    1. GLOBAL VARIABLES & RESET
 ========================================================================== */
 :root {
-  /* 예약 카드 기본 크기 */
   --card-width: 330px;
   --card-height: 420px;
   --card-header-height: 40px;
@@ -13,7 +12,6 @@
     var(--card-height) - var(--card-header-height) - var(--card-footer-height)
   );
 
-  /* 색상 및 기타 스타일 */
   --room-card-background-color: #ffffff;
   --room-card-border: #cccccc;
   --room-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -45,7 +43,7 @@ html {
   font-family: var(--font-family);
   background-color: #d5d6d5;
   color: #2c3e50;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   font-weight: 600;
 }
 
@@ -56,66 +54,51 @@ html {
   display: grid;
   gap: 10px;
   box-sizing: border-box;
-  /* 기본적으로 줄바꿈 (row), 310px~320px 너비 유지, 부드럽게 조정 */
   grid-template-columns: repeat(auto-fit, minmax(320px, 330px));
   width: 100%;
-  transition: grid-template-columns 0.3s ease; /* 부드러운 전환 효과 */
+  transition: grid-template-columns 0.3s ease;
   overflow: visible !important;
 }
 
-/* 4K 모니터 (3840px 이상) - 14개 객실 한 줄에 표시 */
 @media (min-width: 3840px) {
   .layout-grid {
-    grid-template-columns: repeat(
-      14,
-      minmax(330px, 330px)
-    ); /* 14개 열 고정, 최소 310px, 최대 320px */
-    gap: 8px; /* 간격 약간 줄여 총 너비 조정 */
+    grid-template-columns: repeat(14, minmax(330px, 330px));
+    gap: 8px;
     width: 100%;
   }
 }
 
-/* 27인치 ~ 4K 미만 (2560px ~ 3839px) - 12개까지 한 줄, 초과 시 줄바꿈 */
+
 @media (min-width: 2560px) and (max-width: 3839px) {
   .layout-grid {
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(330px, 330px)
-    ); /* 12개까지 한 줄, 초과 시 줄바꿈 */
+    grid-template-columns: repeat(auto-fit, minmax(330px, 330px));
   }
 }
 
-/* 24인치 ~ 27인치 미만 (1920px ~ 2559px) - 8~10개까지 한 줄, 초과 시 줄바꿈 */
+
 @media (min-width: 1920px) and (max-width: 2559px) {
   .layout-grid {
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(330px, 1fr)
-    ); /* 더 유연하게, 8~10개까지 한 줄 */
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   }
 }
 
-/* 24인치 이하 (1919px 이하) - 모바일/태블릿 반응형 */
+
 @media (max-width: 1919px) {
   .layout-grid {
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(330px, 1fr)
-    ); /* 더 작은 화면에서 유연히 */
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
   }
 }
 
-/* 객실 수가 14개 이하일 때 가로 스크롤 유지 (4K 이상, 선택적) */
-.layout-grid[data-cells='14'] {
+
+.layout-grid[data-cells='12'] {
   grid-auto-flow: column;
   width: max-content;
   overflow-x: auto;
 }
 
-/* 부드러운 전환을 위한 전역 설정 (선택적) */
 @media (min-width: 1920px) {
   .layout-grid {
-    transition: all 0.3s ease; /* 모든 스타일 변화 부드럽게 */
+    transition: all 0.3s ease;
   }
 }
 
@@ -302,7 +285,6 @@ html {
   margin: 5px 0;
 }
 
-/* 카운트다운 스타일 */
 .countdown {
   font-weight: bold;
   color: var(--countdown-color);
@@ -318,7 +300,7 @@ html {
 .draggable-false {
   cursor: not-allowed !important;
   opacity: 0.7;
-  border: 3px dotted #5656a3; /* 충돌 시 빨간 점선 테두리 */
+  border: 3px dotted #5656a3;
 }
 
 /* ==========================================================================
@@ -371,7 +353,7 @@ html {
     135deg,
     #f9f9f9,
     #e8ecef
-  ); /* PhotoUploadPage.css에서 가져옴 */
+  );
   min-height: 100vh;
   overflow-y: auto;
 }
@@ -386,14 +368,14 @@ html {
 /* 탭 스타일 */
 .tabs {
   display: flex;
-  justify-content: center; /* 가운데 정렬 */
+  justify-content: center;
   border-bottom: 2px solid #e0e0e0;
   margin-top: 30px;
   margin-bottom: 30px;
-  position: sticky; /* 상단 고정 */
+  position: sticky;
   top: 0;
-  background-color: #f9f9f9; /* 배경색 추가 */
-  z-index: 10; /* 다른 요소 위에 표시 */
+  background-color: #f9f9f9;
+  z-index: 10;
 }
 
 .tabs button {
@@ -421,7 +403,6 @@ html {
   padding: 20px 0;
 }
 
-/* 버튼 그룹 */
 .hotel-settings-button-group {
   display: flex;
   justify-content: center;
@@ -462,7 +443,7 @@ html {
   transform: scale(1.05);
 }
 
-/* 에러 메시지 */
+
 .error-message {
   color: #ff4d4f;
   font-size: 14px;
@@ -473,7 +454,7 @@ html {
   border-radius: 4px;
 }
 
-/* 성공 메시지 */
+
 .success-message {
   color: #52c41a;
   font-size: 14px;
@@ -494,7 +475,7 @@ html {
     135deg,
     #d7d7d8,
     #605a67
-  ); /* PhotoUploadPage.css에서 가져옴 */
+  ); 
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   color: white;
@@ -531,7 +512,7 @@ html {
   flex-direction: column;
   font-size: 16px;
   font-weight: 500;
-  color: #ffffff; /* 텍스트 색상 흰색으로 조정 */
+  color: #ffffff;
 }
 
 .info-column input {
@@ -560,12 +541,12 @@ html {
 
 .basic-info h2 {
   font-size: 24px;
-  color: #ffffff; /* 제목 색상 흰색으로 조정 */
+  color: #ffffff;
   margin-bottom: 20px;
   font-weight: 800;
 }
 
-/* 반응형 디자인 */
+
 @media (max-width: 768px) {
   .info-columns-split {
     flex-direction: column;
@@ -743,7 +724,7 @@ html {
 
 .floor-row {
   display: flex;
-  flex-direction: row; /* 가로 방향 배치 */
+  flex-direction: row;
   gap: 10px;
   background-color: #fafafa;
   padding: 15px;
@@ -779,7 +760,7 @@ html {
 
 .containers {
   display: flex;
-  flex-wrap: wrap; /* 한 줄에 다 안 들어가면 다음 줄로 자동 줄바꿈 */
+  flex-wrap: wrap;
   gap: 12px;
   position: relative;
 }
@@ -792,7 +773,7 @@ html {
   border-radius: 6px;
   width: 160px;
   height: auto;
-  flex-shrink: 0; /* 크기 축소 방지 */
+  flex-shrink: 0;
   background-color: var(--container-bg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -847,7 +828,7 @@ html {
   display: flex;
   flex-wrap: wrap;
   gap: 25px;
-  margin: 10px;
+  margin: 10px 0px;
 }
 
 .amenity-item {
@@ -858,7 +839,7 @@ html {
 
 .room-amenities-display {
   margin-top: 10px;
-  padding: 10px;
+  padding: 10px 0px;
   border-top: 1px solid #e0e0e0;
 }
 
@@ -1173,7 +1154,7 @@ html {
   border-radius: 3px;
 }
 
-/* 반응형 디자인 */
+
 @media (max-width: 768px) {
   .photo-upload-container {
     padding: 10px;
@@ -1370,7 +1351,7 @@ html {
   border-radius: 10px;
   background-color: steelblue;
   color: white;
-  font-weight: 1200;
+  font-weight: 900;
   border: none;
   cursor: pointer;
 }
@@ -1380,7 +1361,6 @@ html {
 }
 
 
-/* 공통 시설(온사이트) 섹션 스타일 */
 .common-amenities-section {
   margin-bottom: 20px;
   padding: 15px;
@@ -1389,7 +1369,7 @@ html {
   border-radius: 6px;
 }
 
-/* 섹션 제목 */
+
 .common-amenities-section h2 {
   font-size: 18px;
   margin-bottom: 10px;
@@ -1397,14 +1377,14 @@ html {
   font-weight: 700;
 }
 
-/* 공통 시설 아이템들 감싸는 컨테이너 */
+
 .common-amenities-container {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
 }
 
-/* 공통 시설 아이템 하나하나 */
+
 .common-amenity-item {
   display: inline-flex;
   align-items: center;

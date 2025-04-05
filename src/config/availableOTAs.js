@@ -5,8 +5,8 @@ const availableOTAs = [
   'GoodHotel',
   'GoodMotel',
   'Agoda',
-  'CoolStay', // 쿨스테이 추가
-  'Booking', // 부킹 (Booking.com)
+  'CoolStay',
+  'Booking',
   'Expedia',
   // '단잠',
 ];

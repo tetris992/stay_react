@@ -1,7 +1,6 @@
 // frontend/src/config/defaultAmenities.js
 
 const DEFAULT_AMENITIES = [
-    // 호텔 공통 시설 (On-Site Facilities)
     { nameKor: '무료 Wi-Fi', nameEng: 'Free Wi-Fi', icon: 'FaWifi', type: 'on-site', isActive: false },
     { nameKor: '주차장', nameEng: 'Parking', icon: 'FaParking', type: 'on-site', isActive: false },
     { nameKor: '발레파킹 서비스', nameEng: 'Valet Parking', icon: 'FaParking', type: 'on-site', isActive: false },
@@ -46,7 +45,6 @@ const DEFAULT_AMENITIES = [
     { nameKor: '장애인 편의시설', nameEng: 'Accessibility Features', icon: 'FaWheelchair', type: 'on-site', isActive: false },
     { nameKor: '반려동물 동반 가능', nameEng: 'Pet Friendly', icon: 'FaPaw', type: 'on-site', isActive: false },
   
-    // 객실 내 편의시설 (In-Room Amenities)
     { nameKor: '넷플릭스', nameEng: 'Netflix', icon: 'FaFilm', type: 'in-room', isActive: false },
     { nameKor: '스마트 TV', nameEng: 'Smart TV', icon: 'FaTv', type: 'in-room', isActive: false },
     { nameKor: '게이밍 PC', nameEng: 'Gaming PC', icon: 'FaDesktop', type: 'in-room', isActive: false },

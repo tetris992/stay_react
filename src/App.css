@@ -16,41 +16,40 @@ body {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  /* background: none; or background-color: #f0f0f0; */
+  background-color: #f0f0f0; /* 주석 대신 기본값 설정 */
 }
 
-/* (B) .logged-out(로그인 전)일 때만 배경 그라디언트 표시 */
+/* 로그인 전 배경 그라디언트 */
 .app-layout.logged-out {
   background: linear-gradient(135deg, #6e8efb, #a777e3);
   background-size: cover;
 }
 
-/* (1) 헤더: 상단 고정, 가로 100% */
+/* 헤더: 상단 고정, 가로 100% */
 .header-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  height: 140px; /* 헤더 높이 */
-  z-index: 999; /* 본문 위로 */
-  background-color: rgba(255, 255, 255, 0.8); /* 예시 */
+  height: 140px;
+  z-index: 999;
+  background-color: rgba(255, 255, 255, 0.8);
   border-bottom: 1px solid #ddd;
-  /* padding, grid, etc. 원하는 헤더 스타일 */
 }
 
-/* (2) 헤더 아래로 사이드바+본문 배치 */
+/* 헤더 아래로 사이드바+본문 배치 */
 .content-area {
   display: flex;
   width: 100%;
-  height: calc(100vh - 140px); /* 헤더 높이만큼 뺀 나머지를 사용 */
-  margin-top: 140px; /* 헤더 아래로 공간 확보 */
-  overflow: hidden; /* 내부에서 각자 스크롤 */
+  height: calc(100vh - 140px);
+  margin-top: 140px;
+  overflow: hidden;
 }
 
 /* 사이드바 */
 .sidebar-container {
-  width: 350px; /* 사이드바 고정 너비 */
-  overflow-y: auto; /* 사이드바 스크롤 */
+  width: 350px;
+  overflow-y: auto;
   background-color: rgba(244, 244, 244, 0.9);
   border-right: 1px solid #ddd;
   height: 100vh;
@@ -58,8 +57,8 @@ body {
 
 /* 메인컨텐츠 */
 .main-content {
-  flex: 1; /* 나머지 공간 전부 차지 */
-  overflow-y: auto; /* 본문 스크롤 */
+  flex: 1;
+  overflow-y: auto;
   background-color: rgba(255, 255, 255, 0.5);
   padding: 10px;
   margin-left: 15px;

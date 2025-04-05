@@ -1,4 +1,5 @@
 // frontend/src/pages/HotelSettingsPage.js
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -2330,7 +2331,6 @@ export default function HotelSettingsPage() {
             시설 저장
           </button>
         )}
-        {/* 사진 탭은 별도의 저장 버튼 없음 */}
       </div>
     </div>
   );
