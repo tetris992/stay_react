@@ -21,57 +21,8 @@ import {
   FaTrash,
   FaUndo,
   FaCamera,
-  FaWifi,
-  FaBath,
-  FaTv,
-  FaUmbrellaBeach,
-  FaTshirt,
-  FaFilm,
-  FaChair,
-  FaSmoking,
-  FaStore,
-  FaCoffee,
-  FaSnowflake,
-  FaFire,
-  FaGlassMartini,
-  FaWind,
-  FaLock,
-  FaCouch,
-  FaUtensils,
-  FaConciergeBell,
-  FaPaw,
-  FaWheelchair,
-  FaBan,
-  FaVolumeMute,
-  FaToilet,
-  FaShower,
-  FaHotTub,
-  FaSpa,
-  FaDumbbell,
-  FaSwimmingPool,
-  FaParking,
-  FaChargingStation,
-  FaBriefcase,
-  FaUsers,
-  FaGlassCheers,
-  FaChild,
-  FaCocktail,
-  FaTree,
-  FaBuilding,
-  FaMicrophone,
-  FaGamepad,
-  FaGolfBall,
-  FaClock,
-  FaSuitcase,
-  FaBus,
-  FaCar,
-  FaMap,
-  FaMoneyBillWave,
-  FaSoap,
-  FaDoorOpen,
-  FaDesktop,
-  FaMoneyCheck,
 } from 'react-icons/fa';
+
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
@@ -201,60 +152,6 @@ function AmenitiesSection({
     });
   };
 
-  // iconMap은 필요에 따라 공용 파일에서 import할 수도 있음
-  const iconMap = {
-    FaWifi: <FaWifi />,
-    FaBath: <FaBath />,
-    FaTv: <FaTv />,
-    FaUmbrellaBeach: <FaUmbrellaBeach />,
-    FaTshirt: <FaTshirt />,
-    FaFilm: <FaFilm />,
-    FaChair: <FaChair />,
-    FaSmoking: <FaSmoking />,
-    FaStore: <FaStore />,
-    FaCoffee: <FaCoffee />,
-    FaSnowflake: <FaSnowflake />,
-    FaFire: <FaFire />,
-    FaGlassMartini: <FaGlassMartini />,
-    FaWind: <FaWind />,
-    FaLock: <FaLock />,
-    FaCouch: <FaCouch />,
-    FaUtensils: <FaUtensils />,
-    FaConciergeBell: <FaConciergeBell />,
-    FaPaw: <FaPaw />,
-    FaWheelchair: <FaWheelchair />,
-    FaBan: <FaBan />,
-    FaVolumeMute: <FaVolumeMute />,
-    FaToilet: <FaToilet />,
-    FaShower: <FaShower />,
-    FaHotTub: <FaHotTub />,
-    FaSpa: <FaSpa />,
-    FaDumbbell: <FaDumbbell />,
-    FaSwimmingPool: <FaSwimmingPool />,
-    FaParking: <FaParking />,
-    FaChargingStation: <FaChargingStation />,
-    FaBriefcase: <FaBriefcase />,
-    FaUsers: <FaUsers />,
-    FaGlassCheers: <FaGlassCheers />,
-    FaChild: <FaChild />,
-    FaCocktail: <FaCocktail />,
-    FaTree: <FaTree />,
-    FaBuilding: <FaBuilding />,
-    FaMicrophone: <FaMicrophone />,
-    FaGamepad: <FaGamepad />,
-    FaGolfBall: <FaGolfBall />,
-    FaClock: <FaClock />,
-    FaSuitcase: <FaSuitcase />,
-    FaBus: <FaBus />,
-    FaCar: <FaCar />,
-    FaMap: <FaMap />,
-    FaMoneyBillWave: <FaMoneyBillWave />,
-    FaSoap: <FaSoap />,
-    FaDoorOpen: <FaDoorOpen />,
-    FaDesktop: <FaDesktop />,
-    FaMoneyCheck: <FaMoneyCheck />,
-  };
-
   return (
     <section
       className="amenities-section"
@@ -262,7 +159,7 @@ function AmenitiesSection({
         language === 'kor' ? '호텔 시설 섹션' : 'Hotel Amenities Section'
       }
     >
-      <h2>{language === 'kor' ? '호텔 공통 시설' : 'On-Site Facilities'}</h2>
+      <h2>{language === 'kor' ? '◉ 호텔 공통 시설' : 'On-Site Facilities'}</h2>
       <div className="amenities-container">
         {onSiteAmenities.map((amenity, index) => (
           <label key={`on-site-${index}`} className="amenity-item">
@@ -279,7 +176,7 @@ function AmenitiesSection({
         ))}
       </div>
 
-      <h2>{language === 'kor' ? '객실별 시설 설정' : 'In-Room Amenities'}</h2>
+      <h2>{language === 'kor' ? '◉ 객실별 시설 설정' : 'In-Room Amenities'}</h2>
       {roomTypes.map((rt, roomIdx) => (
         <div
           key={`room-${roomIdx}`}
@@ -505,31 +402,20 @@ function RoomTypeEditor({ roomTypes, setRoomTypes, amenities, onSave }) {
   return (
     <section className="room-types-section" aria-label="객실 타입 설정 섹션">
       {/* (A) 공통 시설 읽기 전용 섹션 */}
-      <h2>공통 시설 (Read Only)</h2>
+      <h2>◉ 공통 시설</h2>
       <div className="common-amenities-section">
         <div className="common-amenities-container">
-          {activeOnSiteAmenities.length === 0 ? (
-            <p>활성화된 공통 시설이 없습니다.</p>
-          ) : (
-            activeOnSiteAmenities.map((amenity, idx) => {
-              // iconMap[amenity.icon]가 함수형 컴포넌트라면 아래와 같이 호출합니다.
-              const IconComponent = iconMap[amenity.icon];
-              return (
-                <span
-                  key={`common-amenity-${idx}`}
-                  className="common-amenity-item"
-                >
-                  {IconComponent ? <IconComponent /> : <span>❓</span>}
-                  <span title={amenity.nameEng}>{amenity.nameKor}</span>
-                </span>
-              );
-            })
-          )}
+          {activeOnSiteAmenities.map((amenity, idx) => (
+            <span key={`common-amenity-${idx}`} className="common-amenity-item">
+              {iconMap[amenity.icon] || <span>❓</span>}
+              <span title={amenity.nameEng}>{amenity.nameKor}</span>
+            </span>
+          ))}
         </div>
       </div>
 
       {/* (B) 객실 타입(= in-room 시설) 편집 섹션 */}
-      <h2>객실 타입 설정</h2>
+      <h2>◉ 객실 타입</h2>
       <div className="room-types-container">
         {roomTypes.map((rt, idx) => (
           <div key={idx} className="room-type-item">
@@ -670,15 +556,12 @@ function RoomTypeEditor({ roomTypes, setRoomTypes, amenities, onSave }) {
               <div className="amenities-list">
                 {rt.roomAmenities
                   .filter((amenity) => amenity.isActive)
-                  .map((amenity, aIdx) => {
-                    const IconComponent = iconMap[amenity.icon];
-                    return (
-                      <span key={aIdx} className="amenity-item">
-                        {IconComponent ? <IconComponent /> : <span>❓</span>}
-                        <span title={amenity.nameEng}>{amenity.nameKor}</span>
-                      </span>
-                    );
-                  })}
+                  .map((amenity, aIdx) => (
+                    <span key={aIdx} className="amenity-item">
+                      {iconMap[amenity.icon] || <span>❓</span>}
+                      <span title={amenity.nameEng}>{amenity.nameKor}</span>
+                    </span>
+                  ))}
                 {rt.roomAmenities.every((amenity) => !amenity.isActive) && (
                   <span>활성화된 시설이 없습니다.</span>
                 )}
@@ -689,7 +572,7 @@ function RoomTypeEditor({ roomTypes, setRoomTypes, amenities, onSave }) {
       </div>
       <div className="room-type-actions">
         <button
-          className="hotel-settings-action-btn add-btn"
+          className="hotel-settings-room-add-btn"
           onClick={addRoomType}
           aria-label="객실 타입 추가"
         >
@@ -1111,7 +994,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors, onSave }) {
       aria-label="객실 레이아웃 편집 섹션"
     >
       <div className="layout-header">
-        <h2>객실 레이아웃 편집</h2>
+        <h2>◉ 객실 레이아웃 편집</h2>
         <button
           className="hotel-settings-btn generate-btn"
           onClick={generateInitialLayout}
@@ -2154,7 +2037,7 @@ export default function HotelSettingsPage() {
 
   return (
     <div className="hotel-settings-page" aria-label="호텔 설정 페이지">
-      <h1>호텔 설정</h1>
+      <h1>HOTEL BASIC SETTINGS</h1>
       <div className="hotel-settings-button-group">
         <button
           className="hotel-settings-btn"
