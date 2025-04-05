@@ -1780,6 +1780,11 @@ export default function HotelSettingsPage() {
         );
         setRoomTypes([...initializedDefaultRoomTypes]);
         setIsExisting(false);
+        setError(
+          language === 'kor'
+            ? '호텔 ID가 없습니다. 초기 설정이 필요합니다.'
+            : 'Hotel ID not found. Initial setup is required.'
+        );
         return;
       }
 
@@ -1827,6 +1832,11 @@ export default function HotelSettingsPage() {
           setTotalRooms(
             initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
           );
+          setError(
+            language === 'kor'
+              ? '호텔 설정이 없습니다. 초기 설정이 필요합니다.'
+              : 'Hotel settings not found. Initial setup is required.'
+          );
         }
 
         if (userData) {
@@ -1844,14 +1854,39 @@ export default function HotelSettingsPage() {
             adminName: userData.adminName || '정보 없음',
           });
         } else {
-          setError('사용자 정보를 불러오지 못했습니다.');
+          setError(
+            language === 'kor'
+              ? '사용자 정보를 불러오지 못했습니다.'
+              : 'Failed to load user information.'
+          );
         }
       } catch (err) {
-        setError(
-          '호텔 설정 또는 사용자 정보 로딩 실패: ' +
-            (err.response?.data?.message || err.message)
-        );
-        setIsExisting(false);
+        // 에러가 "설정이 존재하지 않음"과 관련된 경우 (예: 404)
+        if (err.response?.status === 404) {
+          setIsExisting(false);
+          setRoomTypes([...initializedDefaultRoomTypes]);
+          setFloors(
+            DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] }))
+          );
+          setTotalRooms(
+            initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
+          );
+          setError(
+            language === 'kor'
+              ? '호텔 설정이 없습니다. 초기 설정이 필요합니다.'
+              : 'Hotel settings not found. Initial setup is required.'
+          );
+        } else {
+          // 기타 에러 (서버 오류, 네트워크 문제 등)
+          setError(
+            language === 'kor'
+              ? '호텔 설정 또는 사용자 정보 로딩 실패: ' +
+                  (err.response?.data?.message || err.message)
+              : 'Failed to load hotel settings or user info: ' +
+                  (err.response?.data?.message || err.message)
+          );
+          setIsExisting(false);
+        }
       }
     }
 
@@ -2126,11 +2161,18 @@ export default function HotelSettingsPage() {
         {/* isExisting이 false일 때만 "디폴트 불러오기" 버튼 표시 */}
         {!isExisting && (
           <button
-            className="hotel-settings-btn"
+            className="hotel-settings-btn default-load-btn"
             onClick={handleLoadDefault}
             aria-label="디폴트 설정 불러오기"
+            style={{
+              backgroundColor: '#4CAF50', // 강조 색상
+              color: 'white',
+              fontWeight: 'bold',
+            }}
           >
-            디폴트 불러오기
+            {language === 'kor'
+              ? '디폴트 설정 불러오기'
+              : 'Load Default Settings'}
           </button>
         )}
         <button
@@ -2161,8 +2203,35 @@ export default function HotelSettingsPage() {
         </button>
       </div>
       {error && (
-        <p className="error-message" role="alert">
+        <p
+          className={
+            error.includes('초기 설정이 필요합니다') ||
+            error.includes('Initial setup is required')
+              ? 'info-message'
+              : 'error-message'
+          }
+          role="alert"
+          style={{
+            color:
+              error.includes('초기 설정이 필요합니다') ||
+              error.includes('Initial setup is required')
+                ? '#4CAF50'
+                : 'red',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            margin: '20px 0',
+          }}
+        >
           {error}
+          {(error.includes('초기 설정이 필요합니다') ||
+            error.includes('Initial setup is required')) && (
+            <span>
+              {' '}
+              {language === 'kor'
+                ? '위의 "디폴트 설정 불러오기" 버튼을 눌러 시작하세요.'
+                : 'Click the "Load Default Settings" button above to get started.'}
+            </span>
+          )}
         </p>
       )}
       <nav className="tabs">

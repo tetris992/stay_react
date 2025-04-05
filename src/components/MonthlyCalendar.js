@@ -43,13 +43,20 @@ const MonthlyCalendar = ({
   onReturnView,
   onDateNavigate,
 }) => {
+  // 취소된 예약 제외
+  const filteredReservations = useMemo(
+    () => reservations.filter((res) => !res.isCancelled),
+    [reservations]
+  );
+  console.log('[MonthlyCalendar] filteredReservations:', filteredReservations);
+
   const filteredRoomTypes = useMemo(
     () => roomTypes.filter((rt) => rt.roomInfo?.toLowerCase() !== 'none'),
     [roomTypes]
   );
 
   const today = startOfDay(new Date());
-  const todayStr = format(today, 'yyyy-MM-dd'); // 문자열로 오늘 날짜
+  const todayStr = format(today, 'yyyy-MM-dd');
   const calendarStart = today;
   const calendarEnd = endOfMonth(addMonths(today, 1));
 
@@ -68,7 +75,7 @@ const MonthlyCalendar = ({
 
   const unassignedDates = useMemo(() => {
     const dates = new Set();
-    reservations.forEach((res) => {
+    filteredReservations.forEach((res) => {
       if (!res.roomNumber && res.checkIn) {
         const checkInDate = new Date(res.checkIn);
         if (!isNaN(checkInDate.getTime())) {
@@ -77,7 +84,7 @@ const MonthlyCalendar = ({
       }
     });
     return Array.from(dates).sort();
-  }, [reservations]);
+  }, [filteredReservations]);
 
   const [selectedRange, setSelectedRange] = useState(null);
   const [selectedDate, setSelectedDate] = useState(today);
@@ -90,19 +97,38 @@ const MonthlyCalendar = ({
     for (let i = -1; i <= 1; i++) {
       selectedDates.push(format(addDays(baseDate, i), 'yyyy-MM-dd'));
     }
-    return calculateRoomAvailability(
-      reservations,
+    const result = calculateRoomAvailability(
+      filteredReservations,
       roomTypes,
       calcFromDate,
       calcToDate,
       gridSettings,
       selectedDates
     );
-  }, [reservations, roomTypes, gridSettings, selectedDate, today]);
+    console.log('[MonthlyCalendar] availabilityByDate:', result);
+    return result;
+  }, [filteredReservations, roomTypes, gridSettings, selectedDate, today]);
+
+  // gridSettings에서 객실 수 계산
+  const roomCounts = useMemo(() => {
+    const counts = {};
+    if (gridSettings?.floors) {
+      gridSettings.floors.forEach((floor) => {
+        floor.containers.forEach((cell) => {
+          if (cell.isActive) {
+            const typeKey = cell.roomInfo.toLowerCase();
+            counts[typeKey] = (counts[typeKey] || 0) + 1;
+          }
+        });
+      });
+    }
+    console.log('[MonthlyCalendar] roomCounts:', counts);
+    return counts;
+  }, [gridSettings]);
 
   const handleRoomTypeMouseDown = (day, roomInfo) => {
     const dayStr = format(day, 'yyyy-MM-dd');
-    if (dayStr < todayStr) return; // 문자열 비교
+    if (dayStr < todayStr) return;
     setSelectedRange({ roomInfo, start: day, end: day });
   };
 
@@ -219,6 +245,35 @@ const MonthlyCalendar = ({
     const isToday = dateStr === todayStr;
     const isWeekend = [0, 6].includes(day.getDay());
     const dayAvailability = availabilityByDate[dateStr] || {};
+    console.log(`[MonthlyCalendar] dayAvailability for ${dateStr}:`, dayAvailability);
+
+    // 헤더에 표시할 총 재고와 가용 재고 계산
+    const roomTypeSummary = filteredRoomTypes.map((rt) => {
+      const typeKey = rt.roomInfo.toLowerCase();
+      const data = dayAvailability[typeKey] || {
+        remain: 0,
+        leftoverRooms: [],
+      };
+      const totalStock = roomCounts[typeKey] || 0;
+      const remain = data.remain;
+      const leftoverRooms = data.leftoverRooms || [];
+      return {
+        roomInfo: rt.roomInfo,
+        totalStock,
+        remain,
+        leftoverRooms,
+      };
+    });
+
+    // 헤더에 표시할 텍스트 생성
+    const summaryText = roomTypeSummary
+      .map(
+        (rt) =>
+          `${rt.roomInfo.toLowerCase()}: ${rt.remain}${
+            rt.leftoverRooms.length > 0 ? ` (${rt.leftoverRooms.join(', ')})` : ''
+          }`
+      )
+      .join('\n');
 
     return (
       <div
@@ -233,6 +288,7 @@ const MonthlyCalendar = ({
               className="header-date"
               style={{ cursor: 'pointer' }}
               onClick={(e) => handleHeaderClick(day, e)}
+              title={summaryText} // 헤더에 총 재고와 가용 재고 표시
             >
               {format(day, 'MM/dd (EEE)', { locale: ko })}
             </span>
@@ -260,7 +316,8 @@ const MonthlyCalendar = ({
             const remain = data.remain;
             const leftoverRooms = data.leftoverRooms || [];
             const selected = isRoomTypeSelected(day, rt.roomInfo);
-            const isAllAvailable = remain === rt.stock && remain > 0;
+            const totalStock = roomCounts[typeKey] || 0;
+            const isAllAvailable = remain === totalStock && remain > 0;
 
             return (
               <div

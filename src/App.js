@@ -165,8 +165,8 @@ function sendOtaTogglesToExtension(otaToggles) {
    (★ 추가) roomTypes에 roomNumbers 채워주는 함수
    ================================ */
 function buildRoomTypesWithNumbers(roomTypes, containers) {
-  console.log('[buildRoomTypesWithNumbers] 시작');
-  console.log('기존 roomTypes:', roomTypes);
+  // console.log('[buildRoomTypesWithNumbers] 시작');
+  // console.log('기존 roomTypes:', roomTypes);
   console.log('gridSettings.containers:', containers);
 
   // 1) roomTypes를 복제하면서, roomNumbers 필드를 빈 배열로 초기화
@@ -181,9 +181,16 @@ function buildRoomTypesWithNumbers(roomTypes, containers) {
     const found = cloned.find(
       (rt) => (rt.roomInfo || '').toLowerCase() === tKey
     );
-    if (found && cont.roomNumber) {
+    if (found && cont.roomNumber && cont.isActive) {
       found.roomNumbers.push(cont.roomNumber);
     }
+  });
+
+  // 3) stock 값을 roomNumbers.length로 동기화
+  cloned.forEach((rt) => {
+    rt.roomNumbers = [...new Set(rt.roomNumbers)];
+    rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+    rt.stock = rt.roomNumbers.length;
   });
 
   console.log('[buildRoomTypesWithNumbers] 최종 roomTypes:', cloned);
