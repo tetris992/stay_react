@@ -93,6 +93,7 @@ function buildRoomTypesWithNumbers(roomTypes, containers) {
   const cloned = roomTypes.map((rt) => ({
     ...rt,
     roomNumbers: [],
+    stock: 0, // 초기 stock 값을 0으로 설정
   }));
 
   containers.forEach((cont) => {
@@ -100,9 +101,16 @@ function buildRoomTypesWithNumbers(roomTypes, containers) {
     const found = cloned.find(
       (rt) => (rt.roomInfo || '').toLowerCase() === tKey
     );
-    if (found && cont.roomNumber) {
+    if (found && cont.roomNumber && cont.isActive) {
       found.roomNumbers.push(cont.roomNumber);
     }
+  });
+
+  // roomNumbers를 기반으로 stock 값을 업데이트
+  cloned.forEach((rt) => {
+    rt.roomNumbers = [...new Set(rt.roomNumbers)]; // 중복 제거
+    rt.roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10)); // 정렬
+    rt.stock = rt.roomNumbers.length; // stock 값을 roomNumbers 길이로 설정
   });
 
   return cloned;
@@ -1840,7 +1848,6 @@ export default function HotelSettingsPage() {
         }
 
         if (userData) {
-          // User 문서의 필드 업데이트 (User 정보가 우선순위인 경우)
           setHotelName(userData.hotelName || '');
           setHotelAddress(userData.address || '');
           setEmail(userData.email || '');
@@ -1861,7 +1868,6 @@ export default function HotelSettingsPage() {
           );
         }
       } catch (err) {
-        // 에러가 "설정이 존재하지 않음"과 관련된 경우 (예: 404)
         if (err.response?.status === 404) {
           setIsExisting(false);
           setRoomTypes([...initializedDefaultRoomTypes]);
@@ -1877,7 +1883,6 @@ export default function HotelSettingsPage() {
               : 'Hotel settings not found. Initial setup is required.'
           );
         } else {
-          // 기타 에러 (서버 오류, 네트워크 문제 등)
           setError(
             language === 'kor'
               ? '호텔 설정 또는 사용자 정보 로딩 실패: ' +
@@ -1946,30 +1951,53 @@ export default function HotelSettingsPage() {
   const updatedRoomTypes = useMemo(() => {
     const newRoomTypes = [...roomTypes];
     let hasChanges = false;
+
+    // gridSettings.floors의 containers를 기반으로 roomCounts 계산
+    const roomCounts = {};
     floors.forEach((floor) => {
-      floor.containers.forEach((cont) => {
-        if (cont.roomInfo && cont.roomNumber) {
-          const typeIdx = newRoomTypes.findIndex(
-            (rt) => rt.roomInfo === cont.roomInfo
-          );
-          if (typeIdx !== -1) {
-            const currentRoomNumbers = newRoomTypes[typeIdx].roomNumbers || [];
-            if (!currentRoomNumbers.includes(cont.roomNumber)) {
-              newRoomTypes[typeIdx].roomNumbers = (
-                currentRoomNumbers || []
-              ).concat([cont.roomNumber]);
-              newRoomTypes[typeIdx].roomNumbers.sort(
-                (a, b) => parseInt(a, 10) - parseInt(b, 10)
-              );
-              newRoomTypes[typeIdx].stock =
-                newRoomTypes[typeIdx].roomNumbers.length;
-              hasChanges = true;
-            }
+      if (floor.containers && Array.isArray(floor.containers)) {
+        floor.containers.forEach((cont) => {
+          if (cont.isActive && cont.roomInfo && cont.roomNumber) {
+            const typeKey = cont.roomInfo.toLowerCase();
+            roomCounts[typeKey] = (roomCounts[typeKey] || 0) + 1;
           }
-        }
-      });
+        });
+      }
     });
-    return { roomTypes: hasChanges ? newRoomTypes : roomTypes, hasChanges };
+
+    // roomTypes의 roomNumbers와 stock 값을 업데이트
+    newRoomTypes.forEach((rt) => {
+      const typeKey = rt.roomInfo.toLowerCase();
+      const currentRoomNumbers = floors
+        .flatMap((floor) =>
+          floor.containers
+            .filter(
+              (cont) =>
+                cont.roomInfo.toLowerCase() === typeKey &&
+                cont.roomNumber &&
+                cont.isActive
+            )
+            .map((cont) => cont.roomNumber)
+        )
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+      // roomNumbers가 변경되었는지 확인
+      const currentRoomNumbersStr = (rt.roomNumbers || []).sort().join(',');
+      const newRoomNumbersStr = currentRoomNumbers.join(',');
+      if (currentRoomNumbersStr !== newRoomNumbersStr) {
+        rt.roomNumbers = currentRoomNumbers;
+        hasChanges = true;
+      }
+
+      // stock 값 업데이트
+      const newStock = roomCounts[typeKey] || 0;
+      if (rt.stock !== newStock) {
+        rt.stock = newStock;
+        hasChanges = true;
+      }
+    });
+
+    return { roomTypes: newRoomTypes, hasChanges };
   }, [floors, roomTypes]);
 
   useEffect(() => {
@@ -1987,9 +2015,7 @@ export default function HotelSettingsPage() {
       hotelId,
       isExisting,
       totalRooms: newTotal,
-      roomTypes: updatedRoomTypes.hasChanges
-        ? updatedRoomTypes.roomTypes
-        : roomTypes,
+      roomTypes: updatedRoomTypes.roomTypes,
       floors,
       amenities,
       hotelAddress,
@@ -2006,9 +2032,8 @@ export default function HotelSettingsPage() {
     phoneNumber,
     hotelName,
     updatedRoomTypes.hasChanges,
-    roomTypes,
-    amenities,
     updatedRoomTypes.roomTypes,
+    amenities,
   ]);
 
   // 탭별 부분 저장 함수들
@@ -2059,14 +2084,41 @@ export default function HotelSettingsPage() {
       alert('호텔 ID는 필수입니다.');
       return;
     }
-    // 공통 시설 + 객실 타입 시설 모두 담아서 전송
-    const payload = {
-      hotelId,
-      amenities, // 공통 시설
-      roomTypes: roomTypes.map((rt) => ({
+
+    // gridSettings.floors의 containers를 기반으로 roomTypes의 stock 값을 계산
+    const roomCounts = {};
+    floors.forEach((floor) => {
+      if (floor.containers && Array.isArray(floor.containers)) {
+        floor.containers.forEach((cont) => {
+          if (cont.isActive && cont.roomInfo) {
+            const typeKey = cont.roomInfo.toLowerCase();
+            roomCounts[typeKey] = (roomCounts[typeKey] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // roomTypes의 stock 값을 업데이트
+    const updatedRoomTypes = roomTypes.map((rt) => {
+      const typeKey = rt.roomInfo.toLowerCase();
+      const stock = roomCounts[typeKey] || 0;
+      return {
         ...rt,
+        isBaseRoom: rt.isBaseRoom, // 기존의 isBaseRoom 값을 명시적으로 포함
+        stock, // gridSettings 기준으로 stock 업데이트
         aliases: (rt.aliases || []).filter(Boolean),
-        stock: (rt.roomNumbers || []).length,
+        roomNumbers: floors
+          .flatMap((floor) =>
+            floor.containers
+              .filter(
+                (cont) =>
+                  cont.roomInfo.toLowerCase() === typeKey &&
+                  cont.roomNumber &&
+                  cont.isActive
+              )
+              .map((cont) => cont.roomNumber)
+          )
+          .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
         roomAmenities: rt.roomAmenities.map((amenity) => ({
           nameKor: amenity.nameKor,
           nameEng: amenity.nameEng,
@@ -2074,12 +2126,20 @@ export default function HotelSettingsPage() {
           type: amenity.type,
           isActive: amenity.isActive,
         })),
-      })),
+      };
+    });
+    
+
+    const payload = {
+      hotelId,
+      amenities, // 공통 시설
+      roomTypes: updatedRoomTypes,
     };
 
     try {
       await updateHotelSettings(hotelId, payload);
       alert('객실 타입 및 공통 시설 정보가 저장되었습니다.');
+      setRoomTypes(updatedRoomTypes); // 상태 업데이트
     } catch (err) {
       alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
@@ -2090,13 +2150,52 @@ export default function HotelSettingsPage() {
       alert('호텔 ID는 필수입니다.');
       return;
     }
+
+    // gridSettings.floors의 containers를 기반으로 roomTypes의 stock 값을 계산
+    const roomCounts = {};
+    floors.forEach((floor) => {
+      if (floor.containers && Array.isArray(floor.containers)) {
+        floor.containers.forEach((cont) => {
+          if (cont.isActive && cont.roomInfo) {
+            const typeKey = cont.roomInfo.toLowerCase();
+            roomCounts[typeKey] = (roomCounts[typeKey] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    // roomTypes의 stock 값을 업데이트
+    const updatedRoomTypes = roomTypes.map((rt) => {
+      const typeKey = rt.roomInfo.toLowerCase();
+      const stock = roomCounts[typeKey] || 0;
+      return {
+        ...rt,
+        stock, // gridSettings 기준으로 stock 업데이트
+        roomNumbers: floors
+          .flatMap((floor) =>
+            floor.containers
+              .filter(
+                (cont) =>
+                  cont.roomInfo.toLowerCase() === typeKey &&
+                  cont.roomNumber &&
+                  cont.isActive
+              )
+              .map((cont) => cont.roomNumber)
+          )
+          .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
+      };
+    });
+
     const payload = {
       hotelId,
       gridSettings: { floors },
+      roomTypes: updatedRoomTypes,
     };
+
     try {
       await updateHotelSettings(hotelId, payload);
       alert('레이아웃 정보가 저장되었습니다.');
+      setRoomTypes(updatedRoomTypes); // 상태 업데이트
     } catch (err) {
       alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
