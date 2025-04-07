@@ -52,13 +52,38 @@ const FACILITY_SUB_CATEGORIES = [
   'cafe',
   'convenienceStore',
   'garden',
+  'others',
 ];
+// 표시용 이름 매핑 (한국어와 영어 지원)
+const FACILITY_SUB_CATEGORY_NAMES = {
+  lobby: { kor: '로비', eng: 'Lobby' },
+  restaurant: { kor: '레스토랑', eng: 'Restaurant' },
+  pool: { kor: '수영장', eng: 'Pool' },
+  gym: { kor: '체육관', eng: 'Gym' },
+  parkingLot: { kor: '주차장', eng: 'Parking Lot' },
+
+  laundryRoom: { kor: '세탁실', eng: 'Laundry Room' },
+  loungeArea: { kor: '라운지', eng: 'Lounge Area' },
+  terrace: { kor: '테라스', eng: 'Terrace' },
+  rooftop: { kor: '루프탑', eng: 'Rooftop' },
+  spaSauna: { kor: '스파/사우나', eng: 'Spa/Sauna' },
+  businessCenter: { kor: '비즈니스 센터', eng: 'Business Center' },
+  meetingRoom: { kor: '회의실', eng: 'Meeting Room' },
+  banquetHall: { kor: '연회장', eng: 'Banquet Hall' },
+  kidsClub: { kor: '키즈 클럽', eng: 'Kids Club' },
+  barLounge: { kor: '바/라운지', eng: 'Bar/Lounge' },
+  cafe: { kor: '카페', eng: 'Cafe' },
+  convenienceStore: { kor: '편의점', eng: 'Convenience Store' },
+  garden: { kor: '정원', eng: 'Garden' },
+  others: { kor: '기타', eng: 'Others' },
+};
 
 // 사진 업로드 관련 상수
-const DEFAULT_PASSWORD = '##11';
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const DEFAULT_PASSWORD = '1111';
 const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_RESOLUTION = { width: 1920, height: 1080 };
+// 사진 업로드 관련 상수 (2024년 스마트폰 기준)
+const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_RESOLUTION = { width: 1440, height: 1440 }; // 1440x1440
 
 // 초기 객실 타입 설정 – DEFAULT_AMENITIES에서 in‑room만 필터링
 const initializedDefaultRoomTypes = defaultRoomTypes.map((rt) => ({
@@ -1240,7 +1265,7 @@ function LayoutEditor({ roomTypes, setRoomTypes, floors, setFloors, onSave }) {
 }
 
 // PhotoUploadSection은 업로드/삭제 시 바로 API 호출되므로 저장 버튼 없음
-function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
+function PhotoUploadSection({ hotelId, roomTypes, hotelInfo, language }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -1262,14 +1287,22 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
       if (response.data.valid || password === DEFAULT_PASSWORD) {
         setIsAuthenticated(true);
       } else {
-        setPasswordError('비밀번호가 올바르지 않습니다.');
+        setPasswordError(
+          language === 'kor'
+            ? '비밀번호가 올바르지 않습니다.'
+            : 'Invalid password.'
+        );
       }
     } catch (err) {
       if (password === DEFAULT_PASSWORD) {
         setIsAuthenticated(true);
       } else {
         setPasswordError(
-          '비밀번호 인증 실패: ' + (err.response?.data?.message || err.message)
+          language === 'kor'
+            ? '비밀번호 인증 실패: ' +
+                (err.response?.data?.message || err.message)
+            : 'Password authentication failed: ' +
+                (err.response?.data?.message || err.message)
         );
       }
     }
@@ -1277,7 +1310,11 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
 
   useEffect(() => {
     if (!hotelId || !roomTypes) {
-      setError('호텔 ID 또는 객실 타입 정보가 없습니다.');
+      setError(
+        language === 'kor'
+          ? '호텔 ID 또는 객실 타입 정보가 없습니다.'
+          : 'Hotel ID or room type information is missing.'
+      );
       return;
     }
     const initialRoomPhotos = {};
@@ -1307,25 +1344,33 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
         const response = await api.get('/api/hotel-settings/photos', {
           params: { hotelId },
         });
-        const photos = response.data.photos || [];
+        console.log('[PhotoUploadSection] Fetched photos:', response.data); // 디버깅 로그 추가
+
+        // commonPhotos와 roomPhotos를 직접 사용
+        const commonPhotos = response.data.commonPhotos || [];
+        const roomPhotosData = response.data.roomPhotos || [];
+
+        // roomPhotos 처리
         const newRoomPhotos = { ...initialRoomPhotos };
-        photos
-          .filter((photo) => photo.category === 'room')
-          .forEach((photo) => {
-            if (newRoomPhotos[photo.subCategory]) {
-              newRoomPhotos[photo.subCategory].push({
-                photoUrl: photo.photoUrl,
-                order: photo.order,
-              });
-            }
-          });
+        roomPhotosData.forEach((photo) => {
+          if (newRoomPhotos[photo.subCategory]) {
+            newRoomPhotos[photo.subCategory].push({
+              photoUrl: photo.photoUrl,
+              order: photo.order,
+            });
+          }
+        });
         setRoomPhotos(newRoomPhotos);
-        const newExteriorPhotos = photos
+
+        // exteriorPhotos 처리 (commonPhotos에서 exterior 필터링)
+        const newExteriorPhotos = commonPhotos
           .filter((photo) => photo.category === 'exterior')
           .map((photo) => ({ photoUrl: photo.photoUrl, order: photo.order }));
         setExteriorPhotos(newExteriorPhotos);
+
+        // facilityPhotos 처리 (commonPhotos에서 facility 필터링)
         const newFacilityPhotos = { ...initialFacilityPhotos };
-        photos
+        commonPhotos
           .filter((photo) => photo.category === 'facility')
           .forEach((photo) => {
             if (newFacilityPhotos[photo.subCategory]) {
@@ -1338,19 +1383,38 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
         setFacilityPhotos(newFacilityPhotos);
       } catch (err) {
         setError(
-          '사진 로드 실패: ' + (err.response?.data?.message || err.message)
+          language === 'kor'
+            ? '사진 로드 실패: ' + (err.response?.data?.message || err.message)
+            : 'Failed to load photos: ' +
+                (err.response?.data?.message || err.message)
         );
       }
     };
     fetchPhotos();
-  }, [hotelId, roomTypes]);
+  }, [hotelId, roomTypes, language]);
 
   const validateFile = (file) => {
     if (!ALLOWED_FORMATS.includes(file.type)) {
-      return `허용된 파일 형식은 ${ALLOWED_FORMATS.join(', ')}입니다.`;
+      return language === 'kor'
+        ? `허용된 파일 형식은 ${ALLOWED_FORMATS.join(
+            ', '
+          )}입니다. (현재 파일: ${file.type})`
+        : `Allowed file formats are ${ALLOWED_FORMATS.join(
+            ', '
+          )}. (Current file: ${file.type})`;
     }
     if (file.size > MAX_FILE_SIZE) {
-      return '파일 크기는 5MB를 초과할 수 없습니다.';
+      return language === 'kor'
+        ? `파일 크기는 ${
+            MAX_FILE_SIZE / 1024 / 1024
+          }MB를 초과할 수 없습니다. (현재 크기: ${(
+            file.size /
+            1024 /
+            1024
+          ).toFixed(2)}MB)`
+        : `File size cannot exceed ${
+            MAX_FILE_SIZE / 1024 / 1024
+          }MB. (Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB)`;
     }
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -1361,37 +1425,140 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
           img.height > MAX_RESOLUTION.height
         ) {
           reject(
-            `해상도는 ${MAX_RESOLUTION.width}x${MAX_RESOLUTION.height}을 초과할 수 없습니다.`
+            language === 'kor'
+              ? `해상도는 ${MAX_RESOLUTION.width}x${MAX_RESOLUTION.height}을 초과할 수 없습니다. (현재 해상도: ${img.width}x${img.height})`
+              : `Resolution cannot exceed ${MAX_RESOLUTION.width}x${MAX_RESOLUTION.height}. (Current resolution: ${img.width}x${img.height})`
           );
         } else {
           resolve();
         }
         URL.revokeObjectURL(img.src);
       };
-      img.onerror = () => reject('이미지 로드 실패');
+      img.onerror = () =>
+        reject(
+          language === 'kor' ? '이미지 로드 실패' : 'Failed to load image'
+        );
     });
   };
 
-  const handleFileChange = (category, subCategory, e) => {
+  const resizeImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let { width, height } = img;
+
+        // 해상도 조정
+        if (width > MAX_RESOLUTION.width || height > MAX_RESOLUTION.height) {
+          const ratio = Math.min(
+            MAX_RESOLUTION.width / width,
+            MAX_RESOLUTION.height / height
+          );
+          width = width * ratio;
+          height = height * ratio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // WebP 포맷으로 변환, 품질 조정
+        canvas.toBlob(
+          (blob) => {
+            if (blob.size > MAX_FILE_SIZE) {
+              // 품질을 더 낮춰 재시도
+              canvas.toBlob(
+                (smallerBlob) => {
+                  if (smallerBlob.size > MAX_FILE_SIZE) {
+                    reject(
+                      language === 'kor'
+                        ? '조정 후에도 파일 크기가 3MB를 초과합니다.'
+                        : 'File size exceeds 3MB even after resizing.'
+                    );
+                  } else {
+                    const resizedFile = new File(
+                      [smallerBlob],
+                      file.name.replace(/\.[^/.]+$/, '.webp'),
+                      {
+                        type: 'image/webp',
+                        lastModified: Date.now(),
+                      }
+                    );
+                    resolve(resizedFile);
+                  }
+                },
+                'image/webp',
+                0.6 // 품질 60%로 설정
+              );
+            } else {
+              const resizedFile = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, '.webp'),
+                {
+                  type: 'image/webp',
+                  lastModified: Date.now(),
+                }
+              );
+              resolve(resizedFile);
+            }
+          },
+          'image/webp',
+          0.8 // 초기 품질 80%로 설정
+        );
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () =>
+        reject(
+          language === 'kor' ? '이미지 로드 실패' : 'Failed to load image'
+        );
+    });
+  };
+
+  const handleFileChange = async (category, subCategory, e) => {
     const files = Array.from(e.target.files);
-    const filePromises = files.map((file) => validateFile(file));
-    Promise.all(filePromises)
-      .then(() => {
-        if (category === 'room') {
-          setRoomFiles((prev) => ({
-            ...prev,
-            [subCategory]: files.map((file) => ({ file, order: 1 })),
-          }));
-        } else if (category === 'exterior') {
-          setExteriorFiles(files.map((file) => ({ file, order: 1 })));
-        } else if (category === 'facility') {
-          setFacilityFiles((prev) => ({
-            ...prev,
-            [subCategory]: files.map((file) => ({ file, order: 1 })),
-          }));
+    const resizedFiles = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const validationError = await validateFile(file);
+          if (validationError) {
+            throw new Error(validationError);
+          }
+          return file;
+        } catch (err) {
+          if (
+            err.message.includes('파일 크기는') ||
+            err.message.includes('해상도는')
+          ) {
+            setError(
+              language === 'kor'
+                ? err.message + ' - 자동으로 크기를 조정합니다.'
+                : err.message + ' - Automatically resizing the image.'
+            );
+            return await resizeImage(file);
+          }
+          throw err;
         }
       })
-      .catch((err) => setError(err));
+    );
+    try {
+      if (category === 'room') {
+        setRoomFiles((prev) => ({
+          ...prev,
+          [subCategory]: resizedFiles.map((file) => ({ file, order: 1 })),
+        }));
+      } else if (category === 'exterior') {
+        setExteriorFiles(resizedFiles.map((file) => ({ file, order: 1 })));
+      } else if (category === 'facility') {
+        setFacilityFiles((prev) => ({
+          ...prev,
+          [subCategory]: resizedFiles.map((file) => ({ file, order: 1 })),
+        }));
+      }
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleOrderChange = (category, subCategory, index, value) => {
@@ -1425,21 +1592,22 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
         ? exteriorFiles
         : facilityFiles[subCategory];
     if (!files || files.length === 0) {
-      setError('파일을 선택하세요.');
+      setError(
+        language === 'kor' ? '파일을 선택하세요.' : 'Please select a file.'
+      );
       return;
     }
     try {
-      const uploadPromises = files.map(async (fileObj) => {
-        const formData = new FormData();
+      const formData = new FormData();
+      files.forEach((fileObj, index) => {
         formData.append('photo', fileObj.file);
-        formData.append('hotelId', hotelId);
-        formData.append('category', category);
-        formData.append('subCategory', subCategory);
-        formData.append('order', fileObj.order);
-        const response = await api.post('/api/hotel-settings/photos', formData);
-        return { photoUrl: response.data.photo.photoUrl, order: fileObj.order };
+        formData.append(`order[${index}]`, fileObj.order);
       });
-      const newPhotos = await Promise.all(uploadPromises);
+      formData.append('hotelId', hotelId);
+      formData.append('category', category);
+      formData.append('subCategory', subCategory);
+      const response = await api.post('/api/hotel-settings/photos', formData);
+      const newPhotos = response.data.photos;
       if (category === 'room') {
         setRoomPhotos((prev) => ({
           ...prev,
@@ -1456,11 +1624,28 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
         }));
         setFacilityFiles((prev) => ({ ...prev, [subCategory]: [] }));
       }
-      setMessage('사진이 성공적으로 업로드되었습니다.');
+      setMessage(
+        language === 'kor'
+          ? '사진이 성공적으로 업로드되었습니다.'
+          : 'Photo uploaded successfully.'
+      );
       setError('');
     } catch (err) {
-      const errorMsg = err.response?.data?.message || '알 수 없는 오류';
-      setError(`업로드 실패: ${errorMsg}`);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        (language === 'kor'
+          ? '사진 업로드에 실패했습니다. 서버 오류입니다.'
+          : 'Failed to upload photo. Server error.');
+      setError(
+        language === 'kor'
+          ? `업로드 실패: ${errorMsg} (${
+              err.response?.status || '알 수 없는 상태 코드'
+            })`
+          : `Upload failed: ${errorMsg} (${
+              err.response?.status || 'Unknown status code'
+            })`
+      );
       setMessage('');
     }
   };
@@ -1489,11 +1674,21 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
           ),
         }));
       }
-      setMessage('사진이 삭제되었습니다.');
+      setMessage(
+        language === 'kor'
+          ? '사진이 삭제되었습니다.'
+          : 'Photo has been deleted.'
+      );
       setError('');
     } catch (err) {
-      const errorMsg = err.response?.data?.message || '알 수 없는 오류';
-      setError(`삭제 실패: ${errorMsg}`);
+      const errorMsg =
+        err.response?.data?.message ||
+        (language === 'kor' ? '알 수 없는 오류' : 'Unknown error');
+      setError(
+        language === 'kor'
+          ? `삭제 실패: ${errorMsg}`
+          : `Delete failed: ${errorMsg}`
+      );
       setMessage('');
     }
   };
@@ -1502,21 +1697,29 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
     return (
       <div className="photo-upload-container">
         <div className="password-card">
-          <h1>호텔 사진 관리</h1>
+          <h1>
+            {language === 'kor' ? '호텔 사진 관리' : 'Hotel Photo Management'}
+          </h1>
           <div className="password-prompt">
-            <label htmlFor="password">관리자 비밀번호 입력</label>
+            <label htmlFor="password">
+              {language === 'kor'
+                ? '관리자 비밀번호 입력'
+                : 'Enter Admin Password'}
+            </label>
             <input
               type="password"
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호를 입력하세요"
+              placeholder={
+                language === 'kor' ? '비밀번호를 입력하세요' : 'Enter password'
+              }
             />
             <button
               className="photo-upload-submit-password-btn"
               onClick={handlePasswordSubmit}
             >
-              확인
+              {language === 'kor' ? '확인' : 'Submit'}
             </button>
             {passwordError && <p className="error-message">{passwordError}</p>}
           </div>
@@ -1529,43 +1732,61 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
     <div className="photo-upload-container">
       <div className="hotel-info-section">
         <div className="hotel-info-box">
-          <h2>호텔 정보</h2>
+          <h2>{language === 'kor' ? '호텔 정보' : 'Hotel Information'}</h2>
           {hotelInfo ? (
             <div className="hotel-details">
               <p>
-                <strong>호텔 ID:</strong> {hotelInfo.hotelId}
+                <strong>{language === 'kor' ? '호텔 ID:' : 'Hotel ID:'}</strong>{' '}
+                {hotelInfo.hotelId}
               </p>
               <p>
-                <strong>호텔 이름:</strong> {hotelInfo.hotelName}
+                <strong>
+                  {language === 'kor' ? '호텔 이름:' : 'Hotel Name:'}
+                </strong>{' '}
+                {hotelInfo.hotelName}
               </p>
               <p>
-                <strong>주소:</strong> {hotelInfo.address}
+                <strong>{language === 'kor' ? '주소:' : 'Address:'}</strong>{' '}
+                {hotelInfo.address}
               </p>
               <p>
-                <strong>관리자 이름:</strong> {hotelInfo.adminName}
+                <strong>
+                  {language === 'kor' ? '관리자 이름:' : 'Admin Name:'}
+                </strong>{' '}
+                {hotelInfo.adminName}
               </p>
               <p>
-                <strong>이메일:</strong> {hotelInfo.email}
+                <strong>{language === 'kor' ? '이메일:' : 'Email:'}</strong>{' '}
+                {hotelInfo.email}
               </p>
               <p>
-                <strong>전화번호:</strong> {hotelInfo.phoneNumber}
+                <strong>
+                  {language === 'kor' ? '전화번호:' : 'Phone Number:'}
+                </strong>{' '}
+                {hotelInfo.phoneNumber}
               </p>
             </div>
           ) : (
-            <p>호텔 정보를 로드할 수 없습니다.</p>
+            <p>
+              {language === 'kor'
+                ? '호텔 정보를 로드할 수 없습니다.'
+                : 'Unable to load hotel information.'}
+            </p>
           )}
         </div>
       </div>
       {error && <p className="error-message center-text">{error}</p>}
       {message && <p className="success-message center-text">{message}</p>}
       <section className="photo-upload-section">
-        <h2 className="section-title">객실 사진</h2>
+        <h2 className="section-title">
+          {language === 'kor' ? '객실 사진' : 'Room Photos'}
+        </h2>
         {roomTypes &&
           roomTypes.map((rt) => (
             <div key={rt.roomInfo} className="photo-upload-card">
               <div className="photo-upload-header">
                 <h3>
-                  {rt.nameKor} ({rt.nameEng})
+                  {language === 'kor' ? rt.nameKor : rt.nameEng} ({rt.nameEng})
                 </h3>
               </div>
               <div className="photo-upload-input">
@@ -1592,7 +1813,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                       }
                       min="1"
                       max="100"
-                      placeholder="순서"
+                      placeholder={language === 'kor' ? '순서' : 'Order'}
                       className="order-input"
                     />
                   </div>
@@ -1601,7 +1822,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                   className="photo-upload-upload-btn"
                   onClick={() => handleUpload('room', rt.roomInfo)}
                 >
-                  <FaCamera /> 업로드
+                  <FaCamera /> {language === 'kor' ? '업로드' : 'Upload'}
                 </button>
               </div>
               <div className="photo-thumbnails">
@@ -1613,11 +1834,15 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                       onClick={() =>
                         handleDelete('room', rt.roomInfo, photo.photoUrl)
                       }
-                      aria-label="사진 삭제"
+                      aria-label={
+                        language === 'kor' ? '사진 삭제' : 'Delete photo'
+                      }
                     >
                       <FaTrash />
                     </button>
-                    <span className="thumbnail-order">순서: {photo.order}</span>
+                    <span className="thumbnail-order">
+                      {language === 'kor' ? '순서:' : 'Order:'} {photo.order}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1625,7 +1850,9 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
           ))}
       </section>
       <section className="photo-upload-section">
-        <h2 className="section-title">호텔 전경 사진</h2>
+        <h2 className="section-title">
+          {language === 'kor' ? '호텔 전경 사진' : 'Hotel Exterior Photos'}
+        </h2>
         <div className="photo-upload-card">
           <div className="photo-upload-input">
             <input
@@ -1651,7 +1878,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                   }
                   min="1"
                   max="100"
-                  placeholder="순서"
+                  placeholder={language === 'kor' ? '순서' : 'Order'}
                   className="order-input"
                 />
               </div>
@@ -1660,7 +1887,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
               className="photo-upload-upload-btn"
               onClick={() => handleUpload('exterior', 'default')}
             >
-              <FaCamera /> 업로드
+              <FaCamera /> {language === 'kor' ? '업로드' : 'Upload'}
             </button>
           </div>
           <div className="photo-thumbnails">
@@ -1672,22 +1899,26 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                   onClick={() =>
                     handleDelete('exterior', 'default', photo.photoUrl)
                   }
-                  aria-label="사진 삭제"
+                  aria-label={language === 'kor' ? '사진 삭제' : 'Delete photo'}
                 >
                   <FaTrash />
                 </button>
-                <span className="thumbnail-order">순서: {photo.order}</span>
+                <span className="thumbnail-order">
+                  {language === 'kor' ? '순서:' : 'Order:'} {photo.order}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </section>
       <section className="photo-upload-section">
-        <h2 className="section-title">기타 시설 사진</h2>
+        <h2 className="section-title">
+          {language === 'kor' ? '기타 시설 사진' : 'Facility Photos'}
+        </h2>
         {Object.keys(facilityPhotos).map((subCat) => (
           <div key={subCat} className="photo-upload-card">
             <div className="photo-upload-header">
-              <h3>{subCat.charAt(0).toUpperCase() + subCat.slice(1)}</h3>
+              <h3>{FACILITY_SUB_CATEGORY_NAMES[subCat][language]}</h3>
             </div>
             <div className="photo-upload-input">
               <input
@@ -1713,7 +1944,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                     }
                     min="1"
                     max="100"
-                    placeholder="순서"
+                    placeholder={language === 'kor' ? '순서' : 'Order'}
                     className="order-input"
                   />
                 </div>
@@ -1722,7 +1953,7 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                 className="photo-upload-upload-btn"
                 onClick={() => handleUpload('facility', subCat)}
               >
-                <FaCamera /> 업로드
+                <FaCamera /> {language === 'kor' ? '업로드' : 'Upload'}
               </button>
             </div>
             <div className="photo-thumbnails">
@@ -1734,11 +1965,15 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo }) {
                     onClick={() =>
                       handleDelete('facility', subCat, photo.photoUrl)
                     }
-                    aria-label="사진 삭제"
+                    aria-label={
+                      language === 'kor' ? '사진 삭제' : 'Delete photo'
+                    }
                   >
                     <FaTrash />
                   </button>
-                  <span className="thumbnail-order">순서: {photo.order}</span>
+                  <span className="thumbnail-order">
+                    {language === 'kor' ? '순서:' : 'Order:'} {photo.order}
+                  </span>
                 </div>
               ))}
             </div>
@@ -2128,7 +2363,6 @@ export default function HotelSettingsPage() {
         })),
       };
     });
-    
 
     const payload = {
       hotelId,
@@ -2365,6 +2599,7 @@ export default function HotelSettingsPage() {
           사진 업로드
         </button>
       </nav>
+      {/* // HotelSettingsPage 컴포넌트 내 tab-content 부분 수정 */}
       <div className="tab-content">
         {activeTab === 'info' && (
           <HotelInfoSection
@@ -2422,6 +2657,7 @@ export default function HotelSettingsPage() {
             hotelId={hotelId}
             roomTypes={roomTypes}
             hotelInfo={hotelInfo}
+            language={language} // language prop 추가
           />
         )}
       </div>

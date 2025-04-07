@@ -14,13 +14,22 @@ const api = axios.create({
 // 토큰 가져오기 함수
 const getAccessToken = () => localStorage.getItem('accessToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
+const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
 api.interceptors.request.use(
   (config) => {
     console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
-    console.log('[api.js] Request Body:', config.data); // 요청 본문 로그 추가
+    console.log('[api.js] Request Body:', config.data);
     const token = localStorage.getItem('accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log(
+        '[api.js] Setting Authorization header:',
+        config.headers.Authorization
+      );
+    } else {
+      console.log('[api.js] No accessToken found in localStorage');
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -39,19 +48,31 @@ api.interceptors.request.use(
       !isRefreshTokenRequest &&
       !skipCsrf
     ) {
-      try {
-        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-        config.headers['X-CSRF-Token'] = data.csrfToken;
-        config.headers['X-CSRF-Token-Id'] = data.tokenId;
-        localStorage.setItem('csrfToken', data.csrfToken);
-        localStorage.setItem('csrfTokenId', data.tokenId);
-      } catch (error) {
-        console.error('Failed to fetch CSRF token:', error);
-        throw new ApiError(
-          error.response?.status || 500,
-          'CSRF 토큰을 가져오지 못했습니다. 페이지를 새로고침 후 다시 시도해주세요.'
-        );
+      let csrfToken = getCsrfToken();
+      let csrfTokenId = getCsrfTokenId();
+      if (!csrfToken || !csrfTokenId) {
+        try {
+          const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+          csrfToken = data.csrfToken;
+          csrfTokenId = data.tokenId;
+          localStorage.setItem('csrfToken', csrfToken);
+          localStorage.setItem('csrfTokenId', csrfTokenId);
+          console.log(
+            `[api.js] Setting CSRF token: ${csrfToken}, tokenId: ${csrfTokenId}`
+          );
+        } catch (error) {
+          console.error('[api.js] Failed to fetch CSRF token:', error);
+          throw new ApiError(
+            error.response?.status || 500,
+            'CSRF 토큰을 가져오지 못했습니다. 페이지를 새로고침 후 다시 시도해주세요.'
+          );
+        }
       }
+      config.headers['X-CSRF-Token'] = csrfToken;
+      config.headers['X-CSRF-Token-Id'] = csrfTokenId;
+      console.log(
+        `[api.js] Setting CSRF headers: X-CSRF-Token=${csrfToken}, X-CSRF-Token-Id=${csrfTokenId}`
+      );
     }
     return config;
   },
@@ -105,6 +126,7 @@ api.interceptors.response.use(
         localStorage.removeItem('accessToken');
         localStorage.removeItem('hotelId');
         localStorage.removeItem('csrfToken');
+        localStorage.removeItem('csrfTokenId');
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -115,7 +137,7 @@ api.interceptors.response.use(
   }
 );
 
-// loginUser 수정
+// loginUser
 export const loginUser = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
@@ -127,7 +149,9 @@ export const loginUser = async (credentials) => {
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
+    const csrfTokenId = csrfResponse.data.tokenId;
     localStorage.setItem('csrfToken', csrfToken);
+    localStorage.setItem('csrfTokenId', csrfTokenId);
 
     if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
       const EXTENSION_ID =
@@ -172,7 +196,7 @@ export const loginUser = async (credentials) => {
   }
 };
 
-// refreshToken 수정
+// refreshToken
 export const refreshToken = async () => {
   try {
     const response = await api.post('/api/auth/refresh-token');
@@ -181,7 +205,9 @@ export const refreshToken = async () => {
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
+    const csrfTokenId = csrfResponse.data.tokenId;
     localStorage.setItem('csrfToken', csrfToken);
+    localStorage.setItem('csrfTokenId', csrfTokenId);
 
     if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
       const EXTENSION_ID =
@@ -215,7 +241,7 @@ export const refreshToken = async () => {
   }
 };
 
-// logoutUser 수정
+// logoutUser
 export const logoutUser = async () => {
   try {
     const accessToken = localStorage.getItem('accessToken');
@@ -241,10 +267,11 @@ export const logoutUser = async () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('hotelId');
     localStorage.removeItem('csrfToken');
+    localStorage.removeItem('csrfTokenId');
   }
 };
 
-// registerUser 수정
+// registerUser
 export const registerUser = async (userData) => {
   try {
     const response = await api.post('/api/auth/register', userData);
@@ -260,14 +287,16 @@ export const registerUser = async (userData) => {
       errorMessage = error.message;
     }
     if (statusCode === 500) {
-      errorMessage += ' 서버에서 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      errorMessage +=
+        ' 서버에서 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }
     const standardError = new Error(errorMessage);
     standardError.status = statusCode;
     throw standardError;
   }
 };
-// updateReservation 수정
+
+// updateReservation
 export const updateReservation = async (reservationId, updateData, hotelId) => {
   try {
     const response = await api.patch(
@@ -303,6 +332,7 @@ export const fetchHotelSettings = async (hotelId) => {
     const response = await api.get('/api/hotel-settings', {
       params: { hotelId },
     });
+    console.log('[fetchHotelSettings] Response:', response.data);
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 불러오기 실패:', error);
@@ -386,11 +416,9 @@ export const confirmReservation = async (reservationId, hotelId) => {
     const errorMessage =
       error.response?.data?.message || '예약 확정에 실패했습니다.';
     console.log(errorMessage);
-    throw error.response?.data || error; // 에러를 호출자에게 전달
+    throw error.response?.data || error;
   }
 };
-
-// syncReservation 함수 제거 (WebSocket으로 대체됨)
 
 export const saveOnSiteReservation = async (reservationData) => {
   try {
@@ -519,7 +547,7 @@ export const setCsrfToken = (token) => {
 };
 
 // 토큰 관리 함수 공개
-export { getAccessToken, getCsrfToken };
+export { getAccessToken, getCsrfToken, getCsrfTokenId };
 
 // payPerNight API 함수 추가
 export const payPerNight = async (reservationId, hotelId, amount, method) => {
@@ -528,8 +556,8 @@ export const payPerNight = async (reservationId, hotelId, amount, method) => {
       `/api/reservations/pay-per-night/${reservationId}`,
       {
         hotelId,
-        amount: Number(amount), // 금액을 숫자로 보장
-        method: method || 'Cash', // 결제 방법 기본값 설정
+        amount: Number(amount),
+        method: method || 'Cash',
       }
     );
     console.log(
@@ -558,7 +586,7 @@ export const payPartial = async (reservationId, hotelId, payments) => {
       `/api/reservations/${reservationId}/pay-partial`,
       {
         hotelId,
-        payments, // [{ amount, method }, ...] 형식
+        payments,
       }
     );
     console.log(
