@@ -181,7 +181,8 @@ function buildRoomTypesWithNumbers(roomTypes, containers) {
     const found = cloned.find(
       (rt) => (rt.roomInfo || '').toLowerCase() === tKey
     );
-    if (found && cont.roomNumber && cont.isActive) { // isActive가 true인 객실만 포함
+    if (found && cont.roomNumber && cont.isActive) {
+      // isActive가 true인 객실만 포함
       found.roomNumbers.push(cont.roomNumber);
     }
   });
@@ -777,25 +778,49 @@ const App = () => {
   const [isLogViewerOpen, setIsLogViewerOpen] = useState(false);
 
   const lastLogRef = useRef('');
-
-  // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않음, 배열 길이 제한 적용
+  // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않고, 배열 길이 제한 적용
   const logMessage = useCallback(
-    (message) => {
-      // 개발 환경에서만 로그 수집
+    (message, customActionType) => {
+      // 로그 수집은 개발 환경에서만 (필요 시 조건 제거 가능)
       if (process.env.NODE_ENV !== 'development') return;
+
+      // 같은 메시지가 연속해서 들어오면 기록하지 않음
       if (message === lastLogRef.current) return;
       lastLogRef.current = message;
+
       const timestamp = new Date().toISOString();
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+
+      // 기본 actionType은 customActionType이 없으면 메시지 내용으로 결정합니다.
+      let actionType = customActionType || 'other';
+      if (!customActionType) {
+        const lowerMessage = message.toLowerCase();
+        if (lowerMessage.includes('deleted') || lowerMessage.includes('삭제')) {
+          actionType = 'delete';
+        } else if (
+          lowerMessage.includes('created') ||
+          lowerMessage.includes('생성') ||
+          lowerMessage.includes('새 예약')
+        ) {
+          actionType = 'create';
+        } else if (
+          lowerMessage.includes('moved') ||
+          lowerMessage.includes('이동')
+        ) {
+          actionType = 'move';
+        } else if (
+          lowerMessage.includes('updated') ||
+          lowerMessage.includes('수정')
+        ) {
+          actionType = 'update';
+        }
+      }
+
       setLogs((prev) => {
         const newLogs = [
           ...prev,
-          {
-            timestamp,
-            message,
-            selectedDate: format(selectedDate, 'yyyy-MM-dd'),
-          },
+          { timestamp, message, selectedDate: formattedDate, actionType },
         ];
-        // 최대 로그 개수 제한: 오래된 로그 삭제
         if (newLogs.length > MAX_LOGS) {
           return newLogs.slice(newLogs.length - MAX_LOGS);
         }
@@ -813,28 +838,6 @@ const App = () => {
       console.error('로그 저장 실패:', e);
     }
   }, [logs]);
-
-  // 콘솔 로그 오버라이드: 개발 환경에서만 적용
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return;
-    const originalConsoleLog = console.log;
-    console.log = (...args) => {
-      const msg = args.join(' ');
-      if (
-        msg.includes('Successfully moved') ||
-        msg.toLowerCase().includes('deleted') ||
-        msg.includes('Successfully created') ||
-        msg.includes('Room created') ||
-        msg.includes('새 예약')
-      ) {
-        logMessage(msg);
-      }
-      // originalConsoleLog(...args);
-    };
-    return () => {
-      console.log = originalConsoleLog;
-    };
-  }, [logMessage]);
 
   // 로그 뷰어 열기/닫기 함수
   const openLogViewer = () => setIsLogViewerOpen(true);
@@ -1590,14 +1593,34 @@ const App = () => {
   const handleDelete = useCallback(
     async (reservationId, hotelIdParam, siteName) => {
       try {
+        const reservation = allReservations.find(
+          (res) => res._id === reservationId
+        );
+        if (!reservation) {
+          console.warn(`No reservation found for ID: ${reservationId}`);
+          throw new Error('Reservation not found');
+        }
+
         await deleteReservation(reservationId, hotelIdParam, siteName);
+
+        // 세부 정보 포함 로그 기록
+        const { customerName, phoneNumber, checkIn, checkOut } = reservation;
+        logMessage(
+          `[handleDelete] Deleted reservation ${reservationId} (사이트: ${siteName}) - 예약자: ${
+            customerName || '정보 없음'
+          }, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${
+            checkIn || '정보 없음'
+          }, 체크아웃: ${checkOut || '정보 없음'}`,
+          'delete'
+        );
+
         await loadReservations();
       } catch (error) {
         console.error(`Failed to delete reservation ${reservationId}:`, error);
         throw error;
       }
     },
-    [loadReservations]
+    [loadReservations, logMessage, allReservations]
   );
 
   const sendMessageAsync = (id, message) =>
@@ -1689,7 +1712,6 @@ const App = () => {
           console.warn(`No reservation found for ID: ${reservationId}`);
           return;
         }
-
         if (
           currentReservation.roomNumber === newRoomNumber &&
           currentReservation.roomInfo === newRoomInfo
@@ -1697,9 +1719,7 @@ const App = () => {
           console.log(`No change in room assignment for ${reservationId}`);
           return;
         }
-
         const oldRoom = currentReservation.roomNumber || '미배정';
-
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         const checkInTime = hotelSettings?.checkInTime || '16:00';
         const checkOutTime = hotelSettings?.checkOutTime || '11:00';
@@ -1741,8 +1761,18 @@ const App = () => {
           setUpdatedReservationId(reservationId);
           setTimeout(() => setUpdatedReservationId(null), 10000);
 
-          const logMsg = `[handleRoomChangeAndSync] Successfully moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber}`;
-          console.log(logMsg, updatedReservation);
+          // 세부 정보 포함 로그 기록
+          const { customerName, phoneNumber, checkIn, checkOut } =
+            currentReservation;
+          logMessage(
+            `[handleRoomChangeAndSync] Moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber} - 예약자: ${
+              customerName || '정보 없음'
+            }, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${
+              checkIn || '정보 없음'
+            }, 체크아웃: ${checkOut || '정보 없음'}`,
+            'move'
+          );
+
           return updatedReservations;
         });
       } catch (error) {
@@ -1757,7 +1787,8 @@ const App = () => {
       loadReservations,
       allReservations,
       hotelSettings,
-    ] // selectedDate 제거
+      logMessage,
+    ]
   );
 
   const availabilityByDate = useMemo(() => {
@@ -1802,11 +1833,10 @@ const App = () => {
         (res) => res._id === reservationId
       );
       if (!currentReservation) return;
-
+  
       try {
-        // 수정 시작 시 loadedReservations에 예약 ID 추가 (점선 표시)
         setLoadedReservations((prev) => [...prev, reservationId]);
-
+  
         const currentPrice = String(currentReservation.price ?? '');
         const updatedPrice = String(updatedData.price ?? '');
         const currentCheckOut = formatDate(
@@ -1821,7 +1851,7 @@ const App = () => {
           currentReservation.specialRequests ?? ''
         ).trim();
         const updatedSpecialReq = (updatedData.specialRequests ?? '').trim();
-
+  
         let changes = [];
         if (currentPrice !== updatedPrice) {
           changes.push(`가격: ${currentPrice} -> ${updatedPrice}`);
@@ -1841,22 +1871,18 @@ const App = () => {
         if (currentPayment !== updatedPayment) {
           changes.push(`결제방법: ${currentPayment} -> ${updatedPayment}`);
         }
-
         if (changes.length === 0) {
           console.log('변경된 세부 정보가 없습니다. 업데이트를 생략합니다.');
           return;
         }
-
-        const changeLog = `예약 ${reservationId} 부분 업데이트됨:\n${changes.join(
-          '\n'
-        )}`;
-
+        const changeLog = `예약 ${reservationId} 부분 업데이트됨:\n${changes.join('\n')}`;
+  
         const newCheckIn = updatedData.checkIn || currentReservation.checkIn;
         const newCheckOut = updatedData.checkOut || currentReservation.checkOut;
         const newParsedCheckInDate = parseDate(newCheckIn);
         const newParsedCheckOutDate = parseDate(newCheckOut);
-
-        const response = await updateReservation(
+  
+        await updateReservation(
           reservationId,
           {
             ...updatedData,
@@ -1885,31 +1911,27 @@ const App = () => {
           },
           hotelId
         );
-
-        console.log(
-          `[handlePartialUpdate] Backend response for reservation ${reservationId}:`,
-          response
+  
+        // 세부 정보 포함 로그 기록 (changeLog 사용)
+        const { customerName, phoneNumber, checkIn, checkOut } = currentReservation;
+        logMessage(
+          `[handlePartialUpdate] ${changeLog} - 예약자: ${customerName || '정보 없음'}, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${checkOut || '정보 없음'}`,
+          'update'
         );
-
+  
         setUpdatedReservationId(reservationId);
         setTimeout(() => setUpdatedReservationId(null), 10000);
-        console.log(changeLog);
-        logMessage(changeLog);
-
-        // 상태 업데이트 및 수정 완료 처리
         setAllReservations((prev) => {
           const updated = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedData } : res
           );
           filterReservationsByDate(updated, selectedDate);
-          // 수정 완료 후 loadedReservations에서 제거 (실선으로 전환)
           setLoadedReservations((prev) =>
             prev.filter((id) => id !== reservationId)
           );
           return updated;
         });
-
-        // 퇴실 처리 시 매출 반영 (대실만 해당)
+  
         if (
           updatedData.isCheckedOut &&
           updatedData.manuallyCheckedOut &&
@@ -1924,15 +1946,11 @@ const App = () => {
               currentReservation.totalPrice || currentReservation.price || 0;
             setDailyTotal((prev) => {
               const newTotal = prev.total + totalPrice;
-              return {
-                ...prev,
-                total: newTotal,
-              };
+              return { ...prev, total: newTotal };
             });
-            console.log(
-              `[handlePartialUpdate] Added to dailyTotal: ${totalPrice}, New dailyTotal: ${
-                dailyTotal.total + totalPrice
-              }`
+            logMessage(
+              `[handlePartialUpdate] 퇴실 매출 반영: ${totalPrice} 추가됨 - 예약자: ${customerName || '정보 없음'}, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${checkOut || '정보 없음'}`,
+              'update'
             );
           }
         }
@@ -1953,7 +1971,6 @@ const App = () => {
       logMessage,
       filterReservationsByDate,
       selectedDate,
-      dailyTotal,
     ]
   );
 
@@ -2493,6 +2510,7 @@ const App = () => {
     let newReservationId = null;
 
     try {
+      // 입력 데이터를 reservationData 객체로 구성
       const reservationData = {
         siteName: '현장예약',
         reservations: [
@@ -2510,7 +2528,7 @@ const App = () => {
         selectedDate: selectedDate.toISOString(),
       };
 
-      // OTA 예약의 경우 기존 DB의 duration 값을 유지
+      // OTA 예약이 아니라면 대실인 경우 기존 예약의 duration 값을 그대로 유지
       if (reservationId && data.siteName !== '현장예약') {
         const existingReservation = allReservations.find(
           (res) => res._id === reservationId
@@ -2521,12 +2539,11 @@ const App = () => {
         }
       }
 
+      // 업데이트(수정)일 경우
       if (reservationId) {
         console.log(
           '[handleFormSave] Updating reservation with data:',
-          reservationData.reservations[0],
-          'selectedDate:',
-          reservationData.selectedDate
+          reservationData.reservations[0]
         );
         await updateReservation(
           reservationId,
@@ -2537,11 +2554,15 @@ const App = () => {
           },
           hotelId
         );
-        console.log(
-          '[handleFormSave] Update successful for reservation:',
-          reservationId
+        // 로그 메시지에 예약자, 전화번호, 체크인, 체크아웃 정보를 추가합니다.
+        const { customerName, phoneNumber, checkIn, checkOut } =
+          reservationData.reservations[0];
+        logMessage(
+          `[handleFormSave] Updated reservation ${reservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
+          'update'
         );
       } else {
+        // 생성(등록)일 경우
         let response = await saveOnSiteReservation(reservationData);
         console.log('[handleFormSave] API Response:', response);
         if (!response) {
@@ -2552,10 +2573,7 @@ const App = () => {
             createdReservationIds: [data.reservationNo || `${Date.now()}`],
           };
         }
-        if (
-          response.createdReservationIds &&
-          Array.isArray(response.createdReservationIds)
-        ) {
+        if (Array.isArray(response.createdReservationIds)) {
           newReservationId = response.createdReservationIds[0];
         } else if (
           response.message &&
@@ -2567,15 +2585,20 @@ const App = () => {
           throw new Error('응답에서 createdReservationIds를 찾을 수 없습니다.');
         }
 
-        // 새 예약을 즉시 allReservations에 추가 (함수형 업데이트로 최신 상태 보장)
         const processedReservation = processReservation({
           _id: newReservationId,
           ...reservationData.reservations[0],
         });
         setAllReservations((prev) => [...prev, processedReservation]);
         setNewlyCreatedId(newReservationId);
+        // 생성 로그에도 예약자, 전화번호, 체크인, 체크아웃 정보를 추가합니다.
+        const { customerName, phoneNumber, checkIn, checkOut } =
+          reservationData.reservations[0];
+        logMessage(
+          `[handleFormSave] Created new reservation ${newReservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
+          'create'
+        );
 
-        // 체크인 날짜가 있으면 selectedDate 동기화 및 필터링
         if (data.checkIn) {
           const parsedDate = parseDate(data.checkIn);
           setSelectedDate(parsedDate);
@@ -2583,8 +2606,7 @@ const App = () => {
             [...allReservations, processedReservation],
             parsedDate
           );
-
-          // 카드 요소가 렌더링될 때까지 재시도하며 스크롤 이동
+          // 카드 하이라이트: 예약 카드가 보일 때까지 재시도
           const attemptHighlight = (attemptsLeft = 5, delay = 200) => {
             const card = document.querySelector(
               `.room-card[data-id="${newReservationId}"]`
@@ -2592,15 +2614,11 @@ const App = () => {
             if (card) {
               card.classList.add('onsite-created');
               card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              // 10초 후 강조 효과 제거
-              const timeoutId = setTimeout(() => {
+              setTimeout(() => {
                 card.classList.remove('onsite-created');
               }, 10000);
-              return timeoutId;
+              return;
             } else if (attemptsLeft > 0) {
-              console.warn(
-                `Card not found, retrying (${attemptsLeft} attempts left)`
-              );
               return setTimeout(
                 () => attemptHighlight(attemptsLeft - 1, delay),
                 delay
@@ -2611,22 +2629,18 @@ const App = () => {
               );
             }
           };
-          // 200ms 후 시도 시작
           setTimeout(() => attemptHighlight(), 200);
         }
-
         setTimeout(() => setNewlyCreatedId(null), 10000);
       }
 
       setShowGuestForm(false);
-      if (data.onComplete && typeof data.onComplete === 'function')
+      if (data.onComplete && typeof data.onComplete === 'function') {
         data.onComplete();
+      }
 
       const idToRemove = reservationId || newReservationId;
       if (idToRemove) {
-        console.log(
-          `Removing ${idToRemove} from loadedReservations after save`
-        );
         setLoadedReservations((prev) => prev.filter((id) => id !== idToRemove));
       }
       await loadReservations();
@@ -2638,12 +2652,10 @@ const App = () => {
           : error.message || '저장 실패'
       );
       setShowGuestForm(false);
-      if (data.onComplete && typeof data.onComplete === 'function')
+      if (data.onComplete && typeof data.onComplete === 'function') {
         data.onComplete();
+      }
       if (reservationId) {
-        console.log(
-          `Removing ${reservationId} from loadedReservations due to error`
-        );
         setLoadedReservations((prev) =>
           prev.filter((id) => id !== reservationId)
         );

@@ -1,49 +1,203 @@
 .log-viewer-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.log-viewer {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 1200px;
+  max-width: 90vw;
+  height: 90vh; /* 고정 높이 설정 */
+  overflow: hidden; /* 창 크기 고정 */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  font-family: Arial, sans-serif;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0; /* 헤더 크기 고정 */
+}
+
+.log-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.log-viewer-title h2 {
+  font-size: 2em;
+  margin: 0;
+}
+
+.log-viewer-header select {
+  padding: 5px 10px;
+  font-size: 1em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.log-viewer-header button {
+  padding: 8px 15px;
+  font-size: 1.1em;
+  background-color: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.log-viewer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+  flex-shrink: 0; /* 필터 영역 크기 고정 */
+}
+
+.log-viewer-filters button {
+  padding: 8px 16px;
+  font-size: 1em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  color: black;
+  cursor: pointer;
+}
+
+.log-viewer-filters button.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.log-viewer-filters input {
+  width: 300px; /* 고정 너비 설정 */
+  padding: 10px;
+  font-size: 1.2em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box; /* 패딩 포함 크기 고정 */
+}
+
+.log-viewer-content {
+  flex: 1; /* 남은 공간 채우기 */
+  overflow-y: auto; /* 콘텐츠만 스크롤 */
+}
+
+.log-viewer-date-group h3 {
+  border-top: 2px solid #000;
+  padding-top: 15px;
+  font-size: 1.6em;
+  margin-bottom: 10px;
+}
+
+.log-viewer-entry {
+  margin: 10px 0;
+  font-size: 1.2em;
+  line-height: 1.6;
+  padding: 5px 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  height: 40px; /* 고정 높이 설정 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-viewer-timestamp {
+  font-weight: bold;
+  color: #333;
+}
+
+.log-viewer-empty p {
+  font-size: 1.2em;
+  color: #666;
+}
+
+.log-viewer-empty p:last-child {
+  font-size: 1em;
+  color: #888;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
   .log-viewer {
-    font-family: Arial, sans-serif;
-    box-sizing: border-box;
-    overflow-x: hidden;
+    width: 90%;
+    padding: 20px;
+    height: 90vh; /* 고정 높이 유지 */
   }
-  
-  .log-viewer h2 {
-    margin: 0 0 10px 0;
+
+  .log-viewer-title h2 {
+    font-size: 1.5em;
   }
-  
-  .log-viewer h3 {
-    margin: 10px 0 5px;
+
+  .log-viewer-header select,
+  .log-viewer-filters input {
+    font-size: 1em;
+    padding: 8px;
   }
-  
-  .log-viewer p {
-    margin: 5px 0;
-    word-wrap: break-word;
-    max-width: 100%;
-    white-space: pre-wrap;
+
+  .log-viewer-filters button {
+    padding: 6px 12px;
+    font-size: 0.9em;
   }
-  
-  /* 출력 시 A4 너비로 고정 */
-  @media print {
-    .log-viewer {
-      width: 794px !important; /* a4Width 값 사용 */
-      max-width: 794px !important;
-      height: auto;
-      max-height: none;
-      overflow: visible;
-    }
-  
-    .log-viewer-overlay {
-      position: static;
-      background: none;
-    }
+
+  .log-viewer-filters input {
+    width: 100%; /* 반응형에서 입력 필드 너비 조정 */
+    max-width: 300px; /* 최대 너비 유지 */
   }
+
+  .log-viewer-entry {
+    font-size: 1em;
+    height: 40px; /* 고정 높이 유지 */
+  }
+}
+
+/* 출력 시 A4 너비로 고정 */
+@media print {
+  .log-viewer {
+    width: 794px !important;
+    max-width: 794px !important;
+    height: auto;
+    overflow: visible;
+    position: static;
+    transform: none;
+    padding: 20px;
+  }
+
+  .log-viewer-overlay {
+    position: static;
+    background: none;
+  }
+
+  .log-viewer-header select,
+  .log-viewer-filters input,
+  .log-viewer-filters button:not([onClick="onClose"]) {
+    display: none;
+  }
+
+  .log-viewer-entry {
+    height: auto; /* 인쇄 시 높이 제한 해제 */
+    white-space: normal; /* 인쇄 시 줄바꿈 허용 */
+  }
+}
