@@ -1723,7 +1723,7 @@ const App = () => {
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         const checkInTime = hotelSettings?.checkInTime || '16:00';
         const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
+  
         const updatedData = {
           roomNumber: newRoomNumber,
           roomInfo: newRoomInfo,
@@ -1744,15 +1744,32 @@ const App = () => {
                 new Date(currentReservation.checkOut),
                 'yyyy-MM-dd'
               )}T${checkOutTime}:00+09:00`,
-          selectedDate: selectedDate.toISOString(),
+          // selectedDate는 서버에서 필요하지 않으므로 제거
         };
-
+  
+        // CSRF 토큰 확인 및 재발급 시도
+        const csrfToken = localStorage.getItem('csrfToken');
+        if (!csrfToken) {
+          console.warn('CSRF token not found in localStorage');
+          try {
+            const response = await api.get('/api/auth/csrf-token', {
+              withCredentials: true,
+            });
+            const newCsrfToken = response.data.csrfToken;
+            localStorage.setItem('csrfToken', newCsrfToken);
+            console.log('New CSRF token fetched:', newCsrfToken);
+          } catch (csrfError) {
+            console.error('Failed to fetch new CSRF token:', csrfError);
+            throw new Error('CSRF 토큰을 가져오지 못했습니다.');
+          }
+        }
+  
         const updatedReservation = await updateReservation(
           reservationId,
           updatedData,
           hotelId
         );
-
+  
         setAllReservations((prevReservations) => {
           const updatedReservations = prevReservations.map((res) =>
             res._id === reservationId ? { ...res, ...updatedReservation } : res
@@ -1760,7 +1777,7 @@ const App = () => {
           filterReservationsByDate(updatedReservations, selectedDate);
           setUpdatedReservationId(reservationId);
           setTimeout(() => setUpdatedReservationId(null), 10000);
-
+  
           // 세부 정보 포함 로그 기록
           const { customerName, phoneNumber, checkIn, checkOut } =
             currentReservation;
@@ -1772,12 +1789,16 @@ const App = () => {
             }, 체크아웃: ${checkOut || '정보 없음'}`,
             'move'
           );
-
+  
           return updatedReservations;
         });
       } catch (error) {
         console.error('객실 이동 후 실시간 업데이트 실패:', error);
-        alert('객실 이동 후 업데이트에 실패했습니다.');
+        if (error.response?.status === 403) {
+          alert('CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.');
+        } else {
+          alert('객실 이동 후 업데이트에 실패했습니다.');
+        }
         await loadReservations();
       }
     },
@@ -2188,12 +2209,20 @@ const App = () => {
 
   const handleReservationDeleted = useCallback(
     (data, callback) => {
-      console.log(`Received reservationDeleted: ${data.reservationId}`);
+      console.log(`Received reservationDeleted: ${data.reservationId}`, data);
       if (isJoinedHotel) {
         setAllReservations((prev) => {
           const updated = prev.filter((res) => res._id !== data.reservationId);
           const filtered = filterReservationsByDate(updated, selectedDate);
           setActiveReservations(filtered);
+  
+          // 서버에서 전송된 예약 세부 정보로 로그 기록
+          const { customerName, phoneNumber, checkIn, checkOut, siteName } = data.reservation || {};
+          logMessage(
+            `Deleted reservation ${siteName === '현장예약' ? '현장예약' : '단잠'} (사이트: ${siteName || '알 수 없음'}) - 예약자: ${customerName || '정보 없음'}, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${checkOut || '정보 없음'}`,
+            'delete'
+          );
+  
           callback?.({ success: true });
           return updated;
         });
@@ -2201,9 +2230,8 @@ const App = () => {
         callback?.({ success: false, error: 'Not joined to hotel room' });
       }
     },
-    [isJoinedHotel, filterReservationsByDate, selectedDate]
+    [isJoinedHotel, filterReservationsByDate, selectedDate, logMessage]
   );
-
   const handleForceLogout = useCallback(
     (data, callback) => {
       console.log('Force logout received:', data.message);

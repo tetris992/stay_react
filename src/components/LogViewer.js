@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { format } from 'date-fns';
 import './LogViewer.css';
 
 const LogViewer = ({ logs, onClose }) => {
@@ -27,6 +28,12 @@ const LogViewer = ({ logs, onClose }) => {
       '$1'
     );
 
+    // 4. WEB- 뒤의 UUID를 단잠으로 변경
+    cleanedMessage = cleanedMessage.replace(
+      /WEB-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g,
+      '단잠'
+    );
+
     return cleanedMessage;
   };
 
@@ -40,7 +47,9 @@ const LogViewer = ({ logs, onClose }) => {
         (filter === 'delete' && log.actionType === 'delete') ||
         (filter === 'move' && log.actionType === 'move') ||
         (filter === 'update' && log.actionType === 'update');
-      const matchesSearch = log.message.toLowerCase().includes(trimmedSearchTerm);
+      const matchesSearch = log.message
+        .toLowerCase()
+        .includes(trimmedSearchTerm);
       return matchesFilter && matchesSearch;
     });
     setFilteredLogsState(filtered);
@@ -69,12 +78,38 @@ const LogViewer = ({ logs, onClose }) => {
     }, {});
   }, [filteredLogsState]);
 
-  // 정렬된 날짜 목록
+  // 오늘 날짜 계산
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  // 정렬된 날짜 목록 (오늘 날짜를 맨 위로)
   const sortedDates = useMemo(() => {
-    return Object.keys(groupedLogs).sort((a, b) =>
-      sortOrder === 'desc' ? new Date(b) - new Date(a) : new Date(a) - new Date(b)
-    );
-  }, [groupedLogs, sortOrder]);
+    const dates = Object.keys(groupedLogs);
+    // 오늘 날짜를 맨 위로 배치
+    const todayIndex = dates.indexOf(today);
+    let sorted = [...dates];
+
+    if (todayIndex !== -1) {
+      // 오늘 날짜가 존재하면 맨 위로 이동
+      sorted.splice(todayIndex, 1);
+      // 나머지 날짜를 sortOrder에 따라 정렬
+      sorted.sort((a, b) =>
+        sortOrder === 'desc'
+          ? new Date(b) - new Date(a)
+          : new Date(a) - new Date(b)
+      );
+      // 오늘 날짜를 맨 위에 추가
+      sorted.unshift(today);
+    } else {
+      // 오늘 날짜가 없으면 기존 정렬 유지
+      sorted.sort((a, b) =>
+        sortOrder === 'desc'
+          ? new Date(b) - new Date(a)
+          : new Date(a) - new Date(b)
+      );
+    }
+
+    return sorted;
+  }, [groupedLogs, sortOrder, today]);
 
   // 로그 정렬 (각 날짜 내에서 시간순 정렬)
   const sortedGroupedLogs = useMemo(() => {
@@ -96,26 +131,16 @@ const LogViewer = ({ logs, onClose }) => {
 
   return (
     <div className="log-viewer-overlay" onClick={onClose}>
-      <div
-        className="log-viewer"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="log-viewer-header"
-        >
+      <div className="log-viewer" onClick={(e) => e.stopPropagation()}>
+        <div className="log-viewer-header">
           <div className="log-viewer-title">
             <h2>과거 내역확인</h2>
-            <select
-              value={sortOrder}
-              onChange={handleSortChange}
-            >
+            <select value={sortOrder} onChange={handleSortChange}>
               <option value="desc">최신순 (내림차순)</option>
               <option value="asc">오래된순 (오름차순)</option>
             </select>
           </div>
-          <button onClick={onClose}>
-            Close
-          </button>
+          <button onClick={onClose}>Close</button>
         </div>
 
         <div className="log-viewer-filters">
@@ -162,7 +187,10 @@ const LogViewer = ({ logs, onClose }) => {
           {logs.length === 0 ? (
             <div className="log-viewer-empty">
               <p>No logs found in the system.</p>
-              <p>로그가 수집되지 않았습니다. 예약 생성, 삭제, 이동, 수정 작업을 수행해 보세요.</p>
+              <p>
+                로그가 수집되지 않았습니다. 예약 생성, 삭제, 이동, 수정 작업을
+                수행해 보세요.
+              </p>
             </div>
           ) : filteredLogsState.length === 0 ? (
             <div className="log-viewer-empty">
