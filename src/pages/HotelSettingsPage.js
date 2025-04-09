@@ -23,6 +23,9 @@ import {
   FaCamera,
 } from 'react-icons/fa';
 
+import extractCoordinates from './extractCoordinates';
+import { FaMapMarkerAlt } from 'react-icons/fa';
+
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,6 +34,8 @@ import api from '../api/api';
 
 // 기본 층 설정
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
+// 전역 스코프에 extractCoordinates 노출
+window.extractCoordinates = extractCoordinates;
 
 // 기타 시설 서브 카테고리 목록
 const FACILITY_SUB_CATEGORIES = [
@@ -338,7 +343,38 @@ function HotelInfoSection({
   setCheckInTime,
   checkOutTime,
   setCheckOutTime,
+  onCoordinatesUpdate, 
+  initialCoordinates,
 }) {
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState('');
+  const [coordinates, setCoordinates] = useState(initialCoordinates); // 좌표 상태 추가
+
+  // 좌표 추출 핸들러
+  const handleExtractCoordinates = async () => {
+    if (!hotelAddress) {
+      setError('주소를 먼저 입력해주세요.');
+      return;
+    }
+
+    setIsFetching(true);
+    setError('');
+    try {
+      console.log('Calling extractCoordinates with address:', hotelAddress);
+      const { latitude, longitude } = await extractCoordinates(hotelAddress);
+      console.log('Extracted Coordinates:', { latitude, longitude });
+      setCoordinates({ latitude, longitude }); // 좌표 상태 업데이트
+      if (onCoordinatesUpdate) {
+        onCoordinatesUpdate({ latitude, longitude }); // 상위 컴포넌트로 좌표 전달
+      }
+    } catch (err) {
+      console.error('Extract Coordinates Error:', err.message);
+      setError(err.message);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   return (
     <section className="hotel-info-section" aria-label="호텔 기본 정보 섹션">
       <div className="info-columns">
@@ -381,6 +417,34 @@ function HotelInfoSection({
                   aria-label="호텔 주소 입력"
                 />
               </label>
+              <button
+                onClick={handleExtractCoordinates}
+                disabled={isFetching}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  cursor: isFetching ? 'not-allowed' : 'pointer',
+                  marginTop: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <FaMapMarkerAlt style={{ marginRight: '5px' }} />
+                {isFetching ? '좌표 추출 중...' : '좌표 추출'}
+              </button>
+              {error && (
+                <p style={{ color: 'red', marginTop: '5px' }}>{error}</p>
+              )}
+              {coordinates && (
+                <div style={{ marginTop: '10px' }}>
+                  <p>
+                    위도: {coordinates.latitude}, 경도: {coordinates.longitude}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="info-column">
               <label>
@@ -2006,6 +2070,12 @@ export default function HotelSettingsPage() {
   const [checkInTime, setCheckInTime] = useState('16:00');
   const [checkOutTime, setCheckOutTime] = useState('11:00');
   const [hotelInfo, setHotelInfo] = useState(null);
+  const [coordinates, setCoordinates] = useState(null); // 좌표 상태 추가
+
+  // 좌표 업데이트 핸들러
+  const handleCoordinatesUpdate = (coords) => {
+    setCoordinates(coords);
+  };
 
   // 언어 전환 함수
   const toggleLanguage = () => {
@@ -2056,7 +2126,6 @@ export default function HotelSettingsPage() {
           }));
           setRoomTypes(updatedRoomTypes);
 
-          // 나머지 호텔 설정 필드 업데이트
           setTotalRooms(hotelData.totalRooms || 0);
           setFloors(hotelData.gridSettings?.floors || []);
           setAmenities(hotelData.amenities || DEFAULT_AMENITIES);
@@ -2066,6 +2135,12 @@ export default function HotelSettingsPage() {
           setHotelAddress(hotelData.address || '');
           setEmail(hotelData.email || '');
           setPhoneNumber(hotelData.phoneNumber || '');
+          if (hotelData.latitude && hotelData.longitude) {
+            setCoordinates({
+              latitude: hotelData.latitude,
+              longitude: hotelData.longitude,
+            });
+          }
         } else {
           setIsExisting(false);
           setRoomTypes([...initializedDefaultRoomTypes]);
@@ -2278,6 +2353,11 @@ export default function HotelSettingsPage() {
       return;
     }
 
+    if (!coordinates) {
+      alert('좌표를 먼저 추출해주세요.');
+      return;
+    }
+
     // User 업데이트용 payload (hotelId 제외)
     const userPayload = {
       hotelName,
@@ -2290,11 +2370,13 @@ export default function HotelSettingsPage() {
     const settingsPayload = {
       hotelId,
       hotelName,
-      hotelAddress,
+      address: hotelAddress,
       email,
       phoneNumber,
       checkInTime,
       checkOutTime,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
     };
 
     try {
@@ -2477,6 +2559,7 @@ export default function HotelSettingsPage() {
     setEmail(orig.email);
     setPhoneNumber(orig.phoneNumber);
     setHotelName(orig.hotelName);
+    setCoordinates(orig.coordinates); // 좌표 복원
     alert('변경 사항이 취소되었습니다.');
   };
 
@@ -2621,6 +2704,8 @@ export default function HotelSettingsPage() {
             setCheckOutTime={setCheckOutTime}
             onSave={handleSaveHotelInfo}
             onCancel={handleCancel}
+            onCoordinatesUpdate={handleCoordinatesUpdate}
+            initialCoordinates={coordinates}
           />
         )}
         {activeTab === 'roomTypes' && (
