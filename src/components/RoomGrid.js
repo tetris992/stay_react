@@ -24,7 +24,6 @@ import {
 import { checkConflict } from '../utils/checkConflict';
 import LogViewer from './LogViewer';
 
-
 const ContainerCell = React.memo(
   ({
     cont,
@@ -340,7 +339,8 @@ const ContainerCell = React.memo(
 
     // 고객 이름이 "판매보류" 또는 "판매중지"인 경우 감지
     const hasSoldOutReservation = assignedReservations.some(
-      (res) => res.customerName === '판매보류' || res.customerName === '판매중지'
+      (res) =>
+        res.customerName === '판매보류' || res.customerName === '판매중지'
     );
 
     if (isMinimalMode) {
@@ -613,7 +613,7 @@ function RoomGrid({
   fullReservations,
   allReservations,
   showGuestForm,
-  isMinimalModeEnabled, 
+  isMinimalModeEnabled,
   handleCardFlip,
   flippedReservationIds,
 }) {
@@ -737,7 +737,6 @@ function RoomGrid({
         return isIncluded || isSameDayStay;
       });
   }, [fullReservations, selectedDate]);
-
 
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;

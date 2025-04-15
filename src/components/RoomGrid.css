@@ -227,6 +227,24 @@
   margin-bottom: 20px;
 }
 
+.unassigned-section.warning {
+  animation: warningBlink 1s infinite;  /* 1초 지속, 무한 반복 */
+  animation-delay: 0s;                  /* 즉시 시작 */
+}
+
+.unassigned-warning-text {
+  color: #ff0000;
+  font-weight: bold;
+  margin: 10px 0;
+  padding: 5px;
+  text-align: center;
+  display: none;
+}
+
+.unassigned-section.warning .unassigned-warning-text {
+  display: block;
+}
+
 .unassigned-header {
   display: flex;
   justify-content: space-between;
@@ -316,4 +334,10 @@
 
 .unassigned-reservations-list_all {
   margin: 5px;
+}
+
+@keyframes warningBlink {
+  0% { border-color: #ff4444; background-color: #fff9f9; }
+  50% { border-color: #ff0000; box-shadow: 0 0 10px #ff0000; background-color: #fff0f0; }
+  100% { border-color: #ff4444; background-color: #fff9f9; }
 }
