@@ -781,17 +781,17 @@ const App = () => {
   // 로그 수집 함수: 마지막 메시지와 동일하면 기록하지 않고, 배열 길이 제한 적용
   const logMessage = useCallback(
     (message, customActionType) => {
-      // 로그 수집은 개발 환경에서만 (필요 시 조건 제거 가능)
-      if (process.env.NODE_ENV !== 'development') return;
-
       // 같은 메시지가 연속해서 들어오면 기록하지 않음
       if (message === lastLogRef.current) return;
       lastLogRef.current = message;
 
-      const timestamp = new Date().toISOString();
+      // 한국 시간으로 타임스탬프 생성
+      const now = new Date();
+      const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const timestamp = koreaTime.toISOString();
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
-      // 기본 actionType은 customActionType이 없으면 메시지 내용으로 결정합니다.
+      // actionType 결정
       let actionType = customActionType || 'other';
       if (!customActionType) {
         const lowerMessage = message.toLowerCase();
@@ -816,16 +816,27 @@ const App = () => {
         }
       }
 
+      const logEntry = {
+        timestamp,
+        message,
+        selectedDate: formattedDate,
+        actionType,
+      };
+
+      // 로그 상태 업데이트
       setLogs((prev) => {
-        const newLogs = [
-          ...prev,
-          { timestamp, message, selectedDate: formattedDate, actionType },
-        ];
-        if (newLogs.length > MAX_LOGS) {
-          return newLogs.slice(newLogs.length - MAX_LOGS);
-        }
-        return newLogs;
+        const newLogs = [...prev, logEntry];
+        return newLogs.length > MAX_LOGS ? newLogs.slice(-MAX_LOGS) : newLogs;
       });
+
+      // localStorage에 즉시 저장
+      try {
+        const storedLogs = JSON.parse(localStorage.getItem('logs') || '[]');
+        const updatedLogs = [...storedLogs, logEntry].slice(-MAX_LOGS);
+        localStorage.setItem('logs', JSON.stringify(updatedLogs));
+      } catch (e) {
+        console.error('로그 저장 실패:', e);
+      }
     },
     [selectedDate]
   );
@@ -1719,7 +1730,7 @@ const App = () => {
         const isOTA = availableOTAs.includes(currentReservation.siteName);
         const checkInTime = hotelSettings?.checkInTime || '16:00';
         const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-  
+
         // 업데이트 데이터 구성 (selectedDate 제거)
         const updatedData = {
           roomNumber: newRoomNumber,
@@ -1729,14 +1740,20 @@ const App = () => {
             ? currentReservation.checkIn
             : currentReservation.type === 'dayUse'
             ? currentReservation.checkIn
-            : `${format(new Date(currentReservation.checkIn), 'yyyy-MM-dd')}T${checkInTime}:00+09:00`,
+            : `${format(
+                new Date(currentReservation.checkIn),
+                'yyyy-MM-dd'
+              )}T${checkInTime}:00+09:00`,
           checkOut: isOTA
             ? currentReservation.checkOut
             : currentReservation.type === 'dayUse'
             ? currentReservation.checkOut
-            : `${format(new Date(currentReservation.checkOut), 'yyyy-MM-dd')}T${checkOutTime}:00+09:00`,
+            : `${format(
+                new Date(currentReservation.checkOut),
+                'yyyy-MM-dd'
+              )}T${checkOutTime}:00+09:00`,
         };
-  
+
         // CSRF 토큰 검증 (없으면 재요청)
         let csrfToken = localStorage.getItem('csrfToken');
         if (!csrfToken) {
@@ -1753,14 +1770,14 @@ const App = () => {
             throw new Error('CSRF 토큰을 가져오지 못했습니다.');
           }
         }
-  
+
         // 업데이트 요청은 updateReservation(PATCH) 호출
         const updatedReservation = await updateReservation(
           reservationId,
           updatedData,
           hotelId
         );
-  
+
         // 예약 목록 상태 업데이트 및 필터링 (selectedDate는 상태에서 가져옴)
         setAllReservations((prevReservations) =>
           prevReservations.map((res) =>
@@ -1776,12 +1793,16 @@ const App = () => {
         );
         setUpdatedReservationId(reservationId);
         setTimeout(() => setUpdatedReservationId(null), 10000);
-  
+
         // 로그 기록
         const { customerName, phoneNumber, checkIn, checkOut } =
           currentReservation;
         logMessage(
-          `[handleRoomChangeAndSync] Moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber} - 예약자: ${customerName || '정보 없음'}, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${checkOut || '정보 없음'}`,
+          `[handleRoomChangeAndSync] Moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber} - 예약자: ${
+            customerName || '정보 없음'
+          }, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${
+            checkIn || '정보 없음'
+          }, 체크아웃: ${checkOut || '정보 없음'}`,
           'move'
         );
       } catch (error) {
@@ -1804,7 +1825,6 @@ const App = () => {
       selectedDate,
     ]
   );
-  
 
   const availabilityByDate = useMemo(() => {
     if (!allReservations || !finalRoomTypes) {
