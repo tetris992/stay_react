@@ -32,6 +32,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { toZonedTime } from 'date-fns-tz';
 import api from '../api/api';
 
+const generateUniqueId = () => {
+  return uuidv4();
+};
+
 // 기본 층 설정
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
 // 전역 스코프에 extractCoordinates 노출
@@ -343,7 +347,7 @@ function HotelInfoSection({
   setCheckInTime,
   checkOutTime,
   setCheckOutTime,
-  onCoordinatesUpdate, 
+  onCoordinatesUpdate,
   initialCoordinates,
 }) {
   const [isFetching, setIsFetching] = useState(false);
@@ -2048,6 +2052,702 @@ function PhotoUploadSection({ hotelId, roomTypes, hotelInfo, language }) {
   );
 }
 
+function EventSettingsSection({
+  hotelId,
+  language,
+  events,
+  setEvents,
+  roomTypes,
+}) {
+  const generateUniqueId = () => {
+    return uuidv4();
+  };
+
+  const [newEvent, setNewEvent] = useState({
+    uuid: generateUniqueId(),
+    eventName: '',
+    startDate: '',
+    endDate: '',
+    discountType: 'percentage',
+    discountValue: '',
+    applicableRoomTypes: [],
+  });
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+
+  const handleEventChange = (e) => {
+    const { name, value } = e.target;
+    if (editingEvent) {
+      setEditingEvent((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else {
+      setNewEvent((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleRoomTypeSelection = (roomTypeId) => {
+    if (editingEvent) {
+      setEditingEvent((prev) => ({
+        ...prev,
+        applicableRoomTypes: prev.applicableRoomTypes.includes(roomTypeId)
+          ? prev.applicableRoomTypes.filter((id) => id !== roomTypeId)
+          : [...prev.applicableRoomTypes, roomTypeId],
+      }));
+    } else {
+      setNewEvent((prev) => ({
+        ...prev,
+        applicableRoomTypes: prev.applicableRoomTypes.includes(roomTypeId)
+          ? prev.applicableRoomTypes.filter((id) => id !== roomTypeId)
+          : [...prev.applicableRoomTypes, roomTypeId],
+      }));
+    }
+  };
+
+  const toggleEventStatus = async (eventUuid) => {
+    try {
+      setEvents((prev) => {
+        const updatedEvents = prev.map((event) =>
+          event.uuid === eventUuid
+            ? { ...event, isActive: !event.isActive }
+            : event
+        );
+        console.log('[toggleEventStatus] Updated events:', updatedEvents);
+        return updatedEvents;
+      });
+
+      const updatedEvents = events.map((event) => ({
+        uuid: event.uuid,
+        eventName: event.eventName || '특가 이벤트',
+        startDate: toZonedTime(
+          new Date(event.startDate),
+          'Asia/Seoul'
+        ).toISOString(),
+        endDate: toZonedTime(
+          new Date(event.endDate),
+          'Asia/Seoul'
+        ).toISOString(),
+        discountType: event.discountType || 'percentage',
+        discountValue: Number(event.discountValue) || 0,
+        isActive: event.uuid === eventUuid ? !event.isActive : event.isActive,
+        applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
+          ? event.applicableRoomTypes.filter(
+              (roomType) => roomType && roomType.trim()
+            )
+          : [],
+      }));
+
+      const payload = {
+        eventSettings: updatedEvents,
+      };
+
+      console.log(
+        '[toggleEventStatus] Sending payload to backend:',
+        JSON.stringify(payload)
+      );
+
+      await updateHotelSettings(hotelId, payload);
+
+      setMessage(
+        language === 'kor'
+          ? '이벤트 상태가 업데이트되었습니다.'
+          : 'Event status updated successfully.'
+      );
+      setError('');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[toggleEventStatus] Error:', err);
+      setError(
+        language === 'kor'
+          ? `이벤트 상태 업데이트 실패: ${err.message}`
+          : `Failed to update event status: ${err.message}`
+      );
+      setEvents((prev) => [...prev]);
+    }
+  };
+
+  const validateEvent = (event, existingEvents = [], editingUuid = null) => {
+    console.log('[validateEvent] Validating event:', JSON.stringify(event));
+
+    if (!event.eventName || event.eventName.trim() === '') {
+      throw new Error(
+        language === 'kor'
+          ? '이벤트 이름을 입력해주세요.'
+          : 'Please enter an event name'
+      );
+    }
+
+    if (!event.uuid) {
+      throw new Error(
+        language === 'kor'
+          ? '이벤트 고유 식별자가 필요합니다.'
+          : 'Event UUID is required'
+      );
+    }
+
+    if (!event.startDate || !event.endDate) {
+      throw new Error(
+        language === 'kor'
+          ? '시작일과 종료일을 입력해주세요.'
+          : 'Please enter both start and end dates'
+      );
+    }
+
+    const startDateKST = toZonedTime(new Date(event.startDate), 'Asia/Seoul');
+    const endDateKST = toZonedTime(new Date(event.endDate), 'Asia/Seoul');
+
+    if (isNaN(startDateKST.getTime()) || isNaN(endDateKST.getTime())) {
+      throw new Error(
+        language === 'kor'
+          ? '유효한 날짜를 입력해주세요.'
+          : 'Please enter valid dates'
+      );
+    }
+
+    if (startDateKST >= endDateKST) {
+      throw new Error(
+        language === 'kor'
+          ? '종료일은 시작일보다 이후여야 합니다.'
+          : 'End date must be after start date'
+      );
+    }
+
+    if (event.discountValue === undefined || isNaN(event.discountValue)) {
+      throw new Error(
+        language === 'kor'
+          ? '유효한 할인 값을 입력해주세요.'
+          : 'Please enter a valid discount value'
+      );
+    }
+
+    if (event.discountType === 'percentage') {
+      if (event.discountValue < 0 || event.discountValue > 100) {
+        throw new Error(
+          language === 'kor'
+            ? '할인율은 0에서 100 사이여야 합니다.'
+            : 'Discount percentage must be between 0 and 100'
+        );
+      }
+    } else if (event.discountType === 'fixed') {
+      if (event.discountValue <= 0) {
+        throw new Error(
+          language === 'kor'
+            ? '할인 금액은 0보다 커야 합니다.'
+            : 'Discount amount must be greater than 0'
+        );
+      }
+    } else {
+      throw new Error(
+        language === 'kor'
+          ? '유효한 할인 유형을 선택해주세요 (percentage 또는 fixed).'
+          : 'Please select a valid discount type (percentage or fixed)'
+      );
+    }
+
+    if (
+      !Array.isArray(event.applicableRoomTypes) ||
+      event.applicableRoomTypes.length === 0
+    ) {
+      throw new Error(
+        language === 'kor'
+          ? '최소 하나 이상의 객실 타입을 선택해주세요.'
+          : 'Please select at least one room type'
+      );
+    }
+
+    // 중복 체크 (모두 허용, UI에서 표시)
+    const overlappingEvent = existingEvents.find((existingEvent) => {
+      if (editingUuid && existingEvent.uuid === editingUuid) return false;
+      const existingStart = toZonedTime(
+        new Date(existingEvent.startDate),
+        'Asia/Seoul'
+      );
+      const existingEnd = toZonedTime(
+        new Date(existingEvent.endDate),
+        'Asia/Seoul'
+      );
+      return (
+        (startDateKST >= existingStart && startDateKST <= existingEnd) ||
+        (endDateKST >= existingStart && endDateKST <= existingEnd) ||
+        (startDateKST <= existingStart && endDateKST >= existingEnd)
+      );
+    });
+
+    // UI에 모두 표시하므로 경고만 남기고 오류 발생 안 함
+    if (overlappingEvent) {
+      console.warn(
+        `[validateEvent] Overlap detected with ${
+          overlappingEvent.eventName
+        } for rooms ${event.applicableRoomTypes.join(', ')}`
+      );
+    }
+  };
+
+  const handleAddEvent = () => {
+    try {
+      const eventToValidate = {
+        ...newEvent,
+        uuid: newEvent.uuid || generateUniqueId(),
+      };
+      validateEvent(eventToValidate, events);
+      const startDateKST = toZonedTime(
+        new Date(eventToValidate.startDate),
+        'Asia/Seoul'
+      );
+      const endDateKST = toZonedTime(
+        new Date(eventToValidate.endDate),
+        'Asia/Seoul'
+      );
+      const newEventWithId = {
+        ...eventToValidate,
+        isActive: true,
+        startDate: startDateKST.toISOString().split('T')[0],
+        endDate: endDateKST.toISOString().split('T')[0],
+      };
+      console.log('[handleAddEvent] Adding event:', newEventWithId);
+      setEvents((prev) => [...prev, newEventWithId]);
+      setNewEvent({
+        uuid: generateUniqueId(),
+        eventName: '',
+        startDate: '',
+        endDate: '',
+        discountType: 'percentage',
+        discountValue: '',
+        applicableRoomTypes: [],
+      });
+      setShowEventForm(false);
+      setMessage(
+        language === 'kor'
+          ? '이벤트가 추가되었습니다.'
+          : 'Event has been added.'
+      );
+      setError('');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[handleAddEvent] Validation error:', err.message);
+      setError(err.message);
+    }
+  };
+
+  const handleEditEvent = (event) => {
+    setEditingEvent({
+      ...event,
+      startDate: event.startDate,
+      endDate: event.endDate,
+    });
+    setShowEventForm(true);
+  };
+
+  const handleUpdateEvent = () => {
+    try {
+      if (!editingEvent.uuid) {
+        throw new Error(
+          language === 'kor'
+            ? '수정 중인 이벤트의 UUID가 없습니다.'
+            : 'Editing event is missing UUID'
+        );
+      }
+      validateEvent(editingEvent, events, editingEvent.uuid);
+      const startDateKST = toZonedTime(
+        new Date(editingEvent.startDate),
+        'Asia/Seoul'
+      );
+      const endDateKST = toZonedTime(
+        new Date(editingEvent.endDate),
+        'Asia/Seoul'
+      );
+      const updatedEvent = {
+        ...editingEvent,
+        startDate: startDateKST.toISOString().split('T')[0],
+        endDate: endDateKST.toISOString().split('T')[0],
+      };
+      console.log('[handleUpdateEvent] Updating event:', updatedEvent);
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.uuid === editingEvent.uuid ? updatedEvent : event
+        )
+      );
+      setEditingEvent(null);
+      setShowEventForm(false);
+      setMessage(
+        language === 'kor'
+          ? '이벤트가 수정되었습니다.'
+          : 'Event has been updated.'
+      );
+      setError('');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[handleUpdateEvent] Validation error:', err.message);
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteEvent = (eventUuid) => {
+    setEvents((prev) => prev.filter((event) => event.uuid !== eventUuid));
+    setMessage(
+      language === 'kor'
+        ? '이벤트가 삭제되었습니다.'
+        : 'Event has been deleted.'
+    );
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEvent(null);
+    setShowEventForm(false);
+  };
+
+  // 최대 할인 계산 함수
+  const getMaxDiscount = (roomType, date) => {
+    const targetDate = toZonedTime(new Date(date), 'Asia/Seoul')
+      .toISOString()
+      .split('T')[0];
+    return events
+      .filter((event) => event.isActive)
+      .filter((event) => {
+        const start = toZonedTime(new Date(event.startDate), 'Asia/Seoul')
+          .toISOString()
+          .split('T')[0];
+        const end = toZonedTime(new Date(event.endDate), 'Asia/Seoul')
+          .toISOString()
+          .split('T')[0];
+        return (
+          targetDate >= start &&
+          targetDate <= end &&
+          event.applicableRoomTypes.includes(roomType)
+        );
+      })
+      .reduce((max, event) => {
+        if (event.discountType === 'percentage') {
+          return Math.max(max, event.discountValue);
+        } else if (event.discountType === 'fixed') {
+          return Math.max(max, event.discountValue);
+        }
+        return max;
+      }, 0);
+  };
+
+  return (
+    <section className="hotel-settings-event-section">
+      <h2>{language === 'kor' ? '◉ 이벤트 설정' : 'Event Settings'}</h2>
+      {error && <p className="hotel-settings-event-error">{error}</p>}
+      {message && <p className="hotel-settings-event-success">{message}</p>}
+
+      {showEventForm && (
+        <div className="hotel-settings-event-item">
+          <h4>
+            {editingEvent
+              ? language === 'kor'
+                ? '이벤트 수정'
+                : 'Edit Event'
+              : language === 'kor'
+              ? '이벤트 설정'
+              : 'Event Configuration'}
+          </h4>
+          <div className="hotel-settings-event-form">
+            <div className="hotel-settings-event-field-row full-width">
+              <label>
+                {language === 'kor' ? '이벤트 이름' : 'Event Name'}
+                <input
+                  type="text"
+                  name="eventName"
+                  placeholder={
+                    language === 'kor'
+                      ? '이벤트 이름을 입력하세요'
+                      : 'Enter event name'
+                  }
+                  value={
+                    editingEvent ? editingEvent.eventName : newEvent.eventName
+                  }
+                  onChange={handleEventChange}
+                />
+              </label>
+            </div>
+            <div className="hotel-settings-event-field-row">
+              <label>
+                {language === 'kor' ? '할인 유형' : 'Discount Type'}
+                <select
+                  name="discountType"
+                  value={
+                    editingEvent
+                      ? editingEvent.discountType
+                      : newEvent.discountType
+                  }
+                  onChange={handleEventChange}
+                >
+                  <option value="percentage">
+                    {language === 'kor' ? '퍼센트 (%)' : 'Percentage (%)'}
+                  </option>
+                  <option value="fixed">
+                    {language === 'kor' ? '고정 금액' : 'Fixed Amount'}
+                  </option>
+                </select>
+              </label>
+              <label>
+                {language === 'kor' ? '할인 값' : 'Discount Value'}
+                <input
+                  type="number"
+                  name="discountValue"
+                  placeholder={
+                    language === 'kor' ? '할인 값' : 'Discount Value'
+                  }
+                  min="0"
+                  value={
+                    editingEvent
+                      ? editingEvent.discountValue
+                      : newEvent.discountValue
+                  }
+                  onChange={handleEventChange}
+                />
+              </label>
+            </div>
+            <div className="hotel-settings-event-field-row">
+              <label>
+                {language === 'kor' ? '시작일' : 'Start Date'}
+                <input
+                  type="date"
+                  name="startDate"
+                  value={
+                    editingEvent ? editingEvent.startDate : newEvent.startDate
+                  }
+                  onChange={handleEventChange}
+                />
+              </label>
+              <label>
+                {language === 'kor' ? '종료일' : 'End Date'}
+                <input
+                  type="date"
+                  name="endDate"
+                  value={editingEvent ? editingEvent.endDate : newEvent.endDate}
+                  onChange={handleEventChange}
+                />
+              </label>
+            </div>
+            <div className="hotel-settings-event-field-row full-width">
+              <label>
+                {language === 'kor' ? '적용된 객실' : 'Applied Room Types'}
+                <div className="hotel-settings-event-room-types-checkbox">
+                  {roomTypes.map((roomType) => (
+                    <div
+                      key={roomType.roomInfo}
+                      className="hotel-settings-event-room-type-checkbox-item"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`room-type-${roomType.roomInfo}`}
+                        checked={
+                          editingEvent
+                            ? editingEvent.applicableRoomTypes.includes(
+                                roomType.roomInfo
+                              )
+                            : newEvent.applicableRoomTypes.includes(
+                                roomType.roomInfo
+                              )
+                        }
+                        onChange={() =>
+                          handleRoomTypeSelection(roomType.roomInfo)
+                        }
+                      />
+                      <label htmlFor={`room-type-${roomType.roomInfo}`}>
+                        {language === 'kor'
+                          ? roomType.nameKor
+                          : roomType.nameEng}
+                        <span className="room-type-stock">
+                          (재고 {roomType.stock}{' '}
+                          {language === 'kor' ? '개' : 'rooms'})
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </label>
+            </div>
+            <div className="hotel-settings-event-actions">
+              <button
+                className="hotel-settings-event-btn save"
+                onClick={editingEvent ? handleUpdateEvent : handleAddEvent}
+              >
+                {editingEvent
+                  ? language === 'kor'
+                    ? '이벤트 수정'
+                    : 'Update Event'
+                  : language === 'kor'
+                  ? '이벤트 저장'
+                  : 'Save Event'}
+              </button>
+              <button
+                type="button"
+                className="hotel-settings-event-btn close"
+                onClick={
+                  editingEvent
+                    ? handleCancelEdit
+                    : () => setShowEventForm(false)
+                }
+              >
+                {language === 'kor' ? '닫기' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="hotel-settings-event-add-btn-container">
+        {!showEventForm && (
+          <button
+            className="hotel-settings-event-btn create"
+            onClick={() => setShowEventForm(true)}
+          >
+            {language === 'kor' ? '새 이벤트 추가' : 'Add New Event'}
+          </button>
+        )}
+      </div>
+
+      <div className="hotel-settings-event-list">
+        <h4 className="hotel-settings-event-list-header">
+          {language === 'kor' ? '진행 중인 이벤트' : 'Current Events'}
+        </h4>
+        {events.map((event) => {
+          const maxDiscount = getMaxDiscount(
+            event.applicableRoomTypes[0],
+            new Date()
+          );
+          return (
+            <div key={event.uuid} className="hotel-settings-event-item">
+              <div className="hotel-settings-event-item-header">
+                <h3>{event.eventName}</h3>
+                <div className="hotel-settings-event-item-actions">
+                  <button
+                    className="hotel-settings-event-edit-btn"
+                    onClick={() => handleEditEvent(event)}
+                  >
+                    {language === 'kor' ? '수정' : 'Edit'}
+                  </button>
+                  <button
+                    className={`hotel-settings-event-status-btn ${
+                      event.isActive ? 'pause' : 'resume'
+                    }`}
+                    onClick={() => toggleEventStatus(event.uuid)}
+                  >
+                    {event.isActive
+                      ? language === 'kor'
+                        ? '일시중지'
+                        : 'Pause'
+                      : language === 'kor'
+                      ? '재개'
+                      : 'Resume'}
+                  </button>
+                  <button
+                    className="hotel-settings-event-remove-btn"
+                    onClick={() => handleDeleteEvent(event.uuid)}
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginBottom: '15px' }}>
+                <p>
+                  {language === 'kor' ? '할인 유형' : 'Discount Type'}:{' '}
+                  {event.discountType === 'percentage'
+                    ? language === 'kor'
+                      ? '퍼센트 (%)'
+                      : 'Percentage (%)'
+                    : language === 'kor'
+                    ? '고정 금액'
+                    : 'Fixed Amount'}
+                </p>
+                <p>
+                  {language === 'kor' ? '할인 값' : 'Discount Value'}:{' '}
+                  {event.discountType === 'percentage'
+                    ? `${event.discountValue}%`
+                    : `${event.discountValue}원`}
+                  {maxDiscount > event.discountValue && (
+                    <span style={{ color: 'red' }}>
+                      {' '}
+                      (최대 적용: {maxDiscount}%
+                      {event.discountType === 'fixed' ? '원' : ''})
+                    </span>
+                  )}
+                </p>
+                <p>
+                  {language === 'kor' ? '기간' : 'Period'}:{' '}
+                  {
+                    toZonedTime(new Date(event.startDate), 'Asia/Seoul')
+                      .toISOString()
+                      .split('T')[0]
+                  }{' '}
+                  -{' '}
+                  {
+                    toZonedTime(new Date(event.endDate), 'Asia/Seoul')
+                      .toISOString()
+                      .split('T')[0]
+                  }
+                </p>
+                <p>
+                  {language === 'kor' ? '상태' : 'Status'}:{' '}
+                  <span
+                    className={`hotel-settings-event-status ${
+                      event.isActive ? 'active' : 'inactive'
+                    }`}
+                  >
+                    {event.isActive
+                      ? language === 'kor'
+                        ? '활성화'
+                        : 'Active'
+                      : language === 'kor'
+                      ? '비활성화'
+                      : 'Inactive'}
+                  </span>
+                </p>
+              </div>
+              <div style={{ marginTop: '20px', textAlign: 'left' }}>
+                <h4
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 'normal',
+                    marginBottom: '10px',
+                    color: '#333',
+                  }}
+                >
+                  {language === 'kor' ? '적용된 객실' : 'Applied Room Types'}
+                </h4>
+                <div>
+                  {event.applicableRoomTypes.map((roomTypeId) => {
+                    const appliedRoomType = roomTypes.find(
+                      (rt) => rt.roomInfo === roomTypeId
+                    );
+                    return (
+                      appliedRoomType && (
+                        <div
+                          key={roomTypeId}
+                          style={{
+                            color: '#2B6CB0',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                          }}
+                        >
+                          {language === 'kor'
+                            ? appliedRoomType.nameKor
+                            : appliedRoomType.nameEng}
+                        </div>
+                      )
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // 메인 컴포넌트
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
@@ -2071,13 +2771,13 @@ export default function HotelSettingsPage() {
   const [checkOutTime, setCheckOutTime] = useState('11:00');
   const [hotelInfo, setHotelInfo] = useState(null);
   const [coordinates, setCoordinates] = useState(null); // 좌표 상태 추가
+  const [events, setEvents] = useState([]); // event
+  const [message, setMessage] = useState('');
 
-  // 좌표 업데이트 핸들러
   const handleCoordinatesUpdate = (coords) => {
     setCoordinates(coords);
   };
 
-  // 언어 전환 함수
   const toggleLanguage = () => {
     setLanguage((prev) => (prev === 'kor' ? 'eng' : 'kor'));
   };
@@ -2092,6 +2792,7 @@ export default function HotelSettingsPage() {
           initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
         );
         setRoomTypes([...initializedDefaultRoomTypes]);
+        setEvents([]); // 초기 이벤트 배열
         setIsExisting(false);
         setError(
           language === 'kor'
@@ -2109,26 +2810,33 @@ export default function HotelSettingsPage() {
 
         if (hotelData && hotelData._id) {
           setIsExisting(true);
-
-          // containers 배열을 추출 (객실 번호를 위해)
           const containers =
             hotelData.gridSettings?.floors?.flatMap(
               (floor) => floor.containers
             ) || [];
-
-          // buildRoomTypesWithNumbers 함수를 사용하여 roomTypes를 업데이트
           const updatedRoomTypes = buildRoomTypesWithNumbers(
             hotelData.roomTypes,
             containers
           ).map((rt) => ({
             ...rt,
-            isBaseRoom: rt.isBaseRoom || false, // 서버 데이터에 isBaseRoom이 없으면 false로 설정
+            isBaseRoom: rt.isBaseRoom || false,
           }));
           setRoomTypes(updatedRoomTypes);
-
           setTotalRooms(hotelData.totalRooms || 0);
           setFloors(hotelData.gridSettings?.floors || []);
           setAmenities(hotelData.amenities || DEFAULT_AMENITIES);
+          setEvents(
+            hotelData.eventSettings.map((event) => ({
+              id: event._id || Date.now(),
+              eventName: event.eventName,
+              startDate: new Date(event.startDate).toISOString().split('T')[0],
+              endDate: new Date(event.endDate).toISOString().split('T')[0],
+              discountType: event.discountType,
+              discountValue: event.discountValue,
+              isActive: event.isActive,
+              applicableRoomTypes: event.applicableRoomTypes || [],
+            })) || []
+          ); // 이벤트 데이터 로드
           setCheckInTime(hotelData.checkInTime || '16:00');
           setCheckOutTime(hotelData.checkOutTime || '11:00');
           setHotelName(hotelData.hotelName || '');
@@ -2150,6 +2858,7 @@ export default function HotelSettingsPage() {
           setTotalRooms(
             initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
           );
+          setEvents([]); // 초기 이벤트 배열
           setError(
             language === 'kor'
               ? '호텔 설정이 없습니다. 초기 설정이 필요합니다.'
@@ -2187,6 +2896,7 @@ export default function HotelSettingsPage() {
           setTotalRooms(
             initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
           );
+          setEvents([]); // 초기 이벤트 배열
           setError(
             language === 'kor'
               ? '호텔 설정이 없습니다. 초기 설정이 필요합니다.'
@@ -2346,7 +3056,6 @@ export default function HotelSettingsPage() {
     amenities,
   ]);
 
-  // 탭별 부분 저장 함수들
   const handleSaveHotelInfo = async () => {
     if (!hotelId) {
       alert('호텔 ID는 필수입니다.');
@@ -2546,6 +3255,73 @@ export default function HotelSettingsPage() {
     }
   };
 
+  const handleSaveEvents = async () => {
+    try {
+      if (!hotelId) {
+        setError(
+          language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
+        );
+        return;
+      }
+  
+      if (!events || events.length === 0) {
+        setMessage(
+          language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
+        );
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+  
+      const formattedEvents = events.map((event) => {
+        const startDateKST = toZonedTime(
+          new Date(event.startDate),
+          'Asia/Seoul'
+        );
+        const endDateKST = toZonedTime(new Date(event.endDate), 'Asia/Seoul');
+        return {
+          uuid: event.uuid || generateUniqueId(),
+          eventName: event.eventName || '특가 이벤트',
+          startDate: startDateKST.toISOString(),
+          endDate: endDateKST.toISOString(),
+          discountType: event.discountType || 'percentage',
+          discountValue: Number(event.discountValue) || 0,
+          isActive: event.isActive ?? true,
+          applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
+            ? event.applicableRoomTypes.filter(
+                (roomType) => roomType && roomType.trim()
+              )
+            : [],
+        };
+      });
+  
+      const payload = {
+        eventSettings: formattedEvents,
+      };
+  
+      console.log(
+        '[handleSaveEvents] Sending payload:',
+        JSON.stringify(payload)
+      );
+  
+      await updateHotelSettings(hotelId, payload);
+      setMessage(
+        language === 'kor'
+          ? '이벤트가 저장되었습니다.'
+          : 'Events saved successfully'
+      );
+      setError('');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[handleSaveEvents] Error:', err);
+      setError(
+        language === 'kor'
+          ? `이벤트 저장 실패: ${err.message}`
+          : `Failed to save events: ${err.message}`
+      );
+      setMessage('');
+    }
+  };
+
   const handleCancel = () => {
     if (!originalDataRef.current) return;
     const orig = originalDataRef.current;
@@ -2574,7 +3350,6 @@ export default function HotelSettingsPage() {
         >
           메인으로
         </button>
-        {/* isExisting이 false일 때만 "디폴트 불러오기" 버튼 표시 */}
         {!isExisting && (
           <button
             className="hotel-settings-btn default-load-btn"
@@ -2681,8 +3456,13 @@ export default function HotelSettingsPage() {
         >
           사진 업로드
         </button>
+        <button
+          className={activeTab === 'events' ? 'active' : ''}
+          onClick={() => setActiveTab('events')}
+        >
+          이벤트 설정
+        </button>
       </nav>
-      {/* // HotelSettingsPage 컴포넌트 내 tab-content 부분 수정 */}
       <div className="tab-content">
         {activeTab === 'info' && (
           <HotelInfoSection
@@ -2745,8 +3525,16 @@ export default function HotelSettingsPage() {
             language={language} // language prop 추가
           />
         )}
+        {activeTab === 'events' && (
+          <EventSettingsSection
+            hotelId={hotelId}
+            language={language}
+            events={events}
+            setEvents={setEvents}
+            roomTypes={roomTypes}
+          />
+        )}
       </div>
-      {/* 탭 콘텐츠 아래, 중앙에 활성 탭별로 저장 버튼을 렌더링 */}
       <div className="save-section">
         {activeTab === 'info' && (
           <button
@@ -2780,7 +3568,17 @@ export default function HotelSettingsPage() {
             시설 저장
           </button>
         )}
+        {activeTab === 'events' && (
+          <button
+            className="hotel-settings-btn save-btn"
+            onClick={handleSaveEvents}
+          >
+            {language === 'kor' ? '이벤트 설정 저장' : 'Save Event Settings'}
+          </button>
+        )}
       </div>
+      {message && <p className="success-message">{message}</p>}
+      {error && <p className="error-message">{error}</p>}
     </div>
   );
 }
