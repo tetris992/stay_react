@@ -135,11 +135,10 @@ const DraggableReservationCard = ({
 
   // [중요] 판매중단 상태를 여러 문자열로 처리
   const isSoldOut =
-  (reservation.customerName || '').replace(/\s/g, '') === '판매보류' ||
-  (reservation.customerName || '').replace(/\s/g, '') === '판매중단' ||
-  (reservation.customerName || '').replace(/\s/g, '') === '판매중지' ||
-  (reservation.customerName || '').replace(/\s/g, '') === '판매금지';
-
+    (reservation.customerName || '').replace(/\s/g, '') === '판매보류' ||
+    (reservation.customerName || '').replace(/\s/g, '') === '판매중단' ||
+    (reservation.customerName || '').replace(/\s/g, '') === '판매중지' ||
+    (reservation.customerName || '').replace(/\s/g, '') === '판매금지';
 
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';

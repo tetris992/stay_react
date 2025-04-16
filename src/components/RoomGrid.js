@@ -375,9 +375,7 @@ const ContainerCell = React.memo(
       return (
         <div
           ref={dropRef}
-          className={`grid-cell minimal-mode ${
-            cont.roomInfo === 'none' ? 'empty' : ''
-          } ${hasSoldOutReservation ? 'sold-out' : ''}`}
+          className="grid-cell minimal-mode"
           style={{
             border: '1px solid #ccc',
             borderRadius: '8px',
@@ -385,8 +383,6 @@ const ContainerCell = React.memo(
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '150px',
-            minWidth: '150px',
             backgroundColor: isOver && canDrop ? '#fff9e3' : containerBg,
           }}
         >
@@ -418,60 +414,41 @@ const ContainerCell = React.memo(
               {conflictMessage}
             </div>
           )}
-          <div
-            className="room-number-container"
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-start',
-              width: '100%',
-              margin: '5px',
-              paddingLeft: '10px',
-            }}
-          >
-            <span
-              className="room-number"
+          <div style={{ textAlign: 'center' }}>
+            <div
               style={{
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
-                color: '#666',
+                marginBottom: '5px',
               }}
             >
               {cont.roomNumber || '미설정'}
-            </span>
-          </div>
-          <div
-            className="content-container"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flex: 1,
-            }}
-          >
-            <span
-              className="status-text"
+            </div>
+            <div
               style={{
+                fontSize: '0.8rem',
+                color: 'gray',
+              }}
+            >
+              {cont.roomInfo || '미설정'}
+            </div>
+            <div
+              style={{
+                marginTop: '5px',
                 color: displayColor,
-                fontSize: '3rem',
                 fontWeight: 'bold',
               }}
             >
               {displayStatus}
-            </span>
-            {infoText && (
-              <span
-                className="info-text"
-                style={{ fontSize: '1rem', color: '#666', marginTop: '5px' }}
-              >
-                {infoText}
-              </span>
-            )}
-            {checkedOutCount > 0 && (
-              <span className="checked-out-count" style={{ marginTop: '5px' }}>
-                +{checkedOutCount}
-              </span>
-            )}
+            </div>
+            <div
+              style={{
+                marginTop: '5px',
+                fontSize: '0.8rem',
+              }}
+            >
+              {infoText}
+            </div>
           </div>
         </div>
       );
@@ -480,21 +457,12 @@ const ContainerCell = React.memo(
     return (
       <div
         ref={dropRef}
-        className={`grid-cell ${cont.roomInfo === 'none' ? 'empty' : ''} ${
-          hasSoldOutReservation ? 'sold-out' : ''
-        }`}
+        className="grid-cell"
         style={{
           border: '1px solid #ccc',
           borderRadius: '8px',
-          padding: '8px',
+          backgroundColor: isOver && canDrop ? '#fff9e3' : 'white',
           position: 'relative',
-          minHeight: '450px',
-          minWidth: '330px',
-          backgroundColor: hasSoldOutReservation
-            ? '#f0f0f0'
-            : isOver && canDrop
-            ? '#fff9e3'
-            : 'transparent',
         }}
       >
         {conflictMessage && (
@@ -528,7 +496,6 @@ const ContainerCell = React.memo(
         <div
           className="container-label"
           style={{
-            marginLeft: '5px',
             marginBottom: '5px',
             borderBottom: '1px solid #ddd',
             display: 'flex',
@@ -547,8 +514,7 @@ const ContainerCell = React.memo(
             style={{
               fontSize: '1rem',
               color: 'gray',
-              marginLeft: '15%',
-              flexGrow: 1,
+              marginLeft: 'auto',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -914,7 +880,10 @@ function RoomGrid({
                       <div
                         key={`${res._id || res.reservationNo}-${index}`}
                         style={{
-                          width: isMinimalModeEnabled ? '150px' : '320px',
+                          flex: isMinimalModeEnabled ? 'none' : '1 1 330px',
+                          minWidth: isMinimalModeEnabled ? '150px' : '330px',
+                          width: isMinimalModeEnabled ? '150px' : 'auto',
+                          boxSizing: 'border-box',
                         }}
                       >
                         <DraggableReservationCard

@@ -307,6 +307,15 @@ const GuestFormModal = ({
     const now = new Date();
     const defaultCheckInTime = hotelSettings?.checkInTime || '16:00';
     const defaultCheckOutTime = hotelSettings?.checkOutTime || '11:00';
+
+    // 디버깅 로그 추가
+    console.log('[GuestFormModal] 호텔 설정 시간:', {
+      hotelId,
+      checkInTime: defaultCheckInTime,
+      checkOutTime: defaultCheckOutTime,
+      rawSettings: hotelSettings,
+    });
+
     if (initialData && initialData._id) {
       initEditMode(now, defaultCheckInTime, defaultCheckOutTime);
     } else {
@@ -1135,6 +1144,23 @@ const GuestFormModal = ({
     }
   };
 
+  // 시간 변경 핸들러 추가 (체크인/체크아웃 시간 선택 시)
+  const handleTimeChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+
+      // 체크인/체크아웃 날짜와 시간을 ISO 문자열로 업데이트
+      if (name === 'checkInTime') {
+        updated.checkIn = `${prev.checkInDate}T${value}:00+09:00`;
+      } else if (name === 'checkOutTime') {
+        updated.checkOut = `${prev.checkOutDate}T${value}:00+09:00`;
+      }
+
+      return updated;
+    });
+  }, []);
+
   return ReactDOM.createPortal(
     <div className="guest-form-modal">
       <div className="modal-card">
@@ -1228,7 +1254,7 @@ const GuestFormModal = ({
                   type="time"
                   name="checkInTime"
                   value={formData.checkInTime}
-                  onChange={handleInputChange}
+                  onChange={handleTimeChange}
                   disabled={isSubmitting}
                 />
               </label>
@@ -1260,7 +1286,7 @@ const GuestFormModal = ({
                   type="time"
                   name="checkOutTime"
                   value={formData.checkOutTime}
-                  onChange={handleInputChange}
+                  onChange={handleTimeChange}
                   disabled={isSubmitting}
                 />
               </label>

@@ -52,43 +52,42 @@ html {
 ========================================================================== */
 .layout-grid {
   display: grid;
-  gap: 10px;
+  gap: 10px !important;
   box-sizing: border-box;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 330px));
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   width: 100%;
+  max-width: 100%;
   transition: grid-template-columns 0.3s ease;
   overflow: visible !important;
 }
 
 @media (min-width: 3840px) {
   .layout-grid {
-    grid-template-columns: repeat(14, minmax(330px, 330px));
-    gap: 8px;
-    width: 100%;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px !important;
   }
 }
-
 
 @media (min-width: 2560px) and (max-width: 3839px) {
   .layout-grid {
-    grid-template-columns: repeat(auto-fit, minmax(330px, 330px));
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px !important;
   }
 }
-
 
 @media (min-width: 1920px) and (max-width: 2559px) {
   .layout-grid {
-    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px !important;
   }
 }
-
 
 @media (max-width: 1919px) {
   .layout-grid {
-    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px !important;
   }
 }
-
 
 .layout-grid[data-cells='12'] {
   grid-auto-flow: column;
@@ -349,11 +348,7 @@ html {
   min-width: 800px;
   margin: 0 auto;
   padding: var(--min-gap);
-  background: linear-gradient(
-    135deg,
-    #f9f9f9,
-    #e8ecef
-  );
+  background: linear-gradient(135deg, #f9f9f9, #e8ecef);
   min-height: 100vh;
   overflow-y: auto;
 }
@@ -443,7 +438,6 @@ html {
   transform: scale(1.05);
 }
 
-
 .error-message {
   color: #ff4d4f;
   font-size: 14px;
@@ -453,7 +447,6 @@ html {
   padding: 8px;
   border-radius: 4px;
 }
-
 
 .success-message {
   color: #52c41a;
@@ -471,11 +464,7 @@ html {
 .hotel-info-section {
   margin-bottom: 30px;
   padding: 20px;
-  background: linear-gradient(
-    135deg,
-    #d7d7d8,
-    #605a67
-  ); 
+  background: linear-gradient(135deg, #d7d7d8, #605a67);
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   color: white;
@@ -545,7 +534,6 @@ html {
   margin-bottom: 20px;
   font-weight: 800;
 }
-
 
 @media (max-width: 768px) {
   .info-columns-split {
@@ -1164,7 +1152,6 @@ html {
   border-radius: 3px;
 }
 
-
 @media (max-width: 768px) {
   .photo-upload-container {
     padding: 10px;
@@ -1370,7 +1357,6 @@ html {
   background-color: goldenrod;
 }
 
-
 .common-amenities-section {
   margin-bottom: 20px;
   padding: 15px;
@@ -1379,7 +1365,6 @@ html {
   border-radius: 6px;
 }
 
-
 .common-amenities-section h2 {
   font-size: 18px;
   margin-bottom: 10px;
@@ -1387,13 +1372,11 @@ html {
   font-weight: 700;
 }
 
-
 .common-amenities-container {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
 }
-
 
 .common-amenity-item {
   display: inline-flex;
