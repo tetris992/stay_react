@@ -17,67 +17,40 @@ const getCsrfToken = () => localStorage.getItem('csrfToken');
 const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
 api.interceptors.request.use(
-  (config) => {
-    console.log('[api.js] Request URL:', `${BASE_URL}${config.url}`);
-    console.log('[api.js] Request Body:', config.data);
+  async (config) => {
+    // — 1. Auth 헤더 설정
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log(
-        '[api.js] Setting Authorization header:',
-        config.headers.Authorization
-      );
-    } else {
-      console.log('[api.js] No accessToken found in localStorage');
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
-api.interceptors.request.use(
-  async (config) => {
-    const isGetRequest = config.method === 'get';
-    const isCsrfTokenRequest = config.url === '/api/csrf-token';
-    const isRefreshTokenRequest = config.url === '/api/auth/refresh-token';
-    const skipCsrf = config.skipCsrf || false;
-
+    // — 2. CSRF 토큰 설정 (GET/CSRF 요청 등은 건너뛰기)
+    const skipMethods = ['get'];
+    const skipUrls   = ['/api/csrf-token', '/api/auth/refresh-token'];
     if (
-      !isGetRequest &&
-      !isCsrfTokenRequest &&
-      !isRefreshTokenRequest &&
-      !skipCsrf
+      !skipMethods.includes(config.method) &&
+      !skipUrls.some(u => config.url.startsWith(u)) &&
+      !config.skipCsrf
     ) {
-      let csrfToken = getCsrfToken();
-      let csrfTokenId = getCsrfTokenId();
+      let csrfToken   = localStorage.getItem('csrfToken');
+      let csrfTokenId = localStorage.getItem('csrfTokenId');
       if (!csrfToken || !csrfTokenId) {
-        try {
-          const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-          csrfToken = data.csrfToken;
-          csrfTokenId = data.tokenId;
-          localStorage.setItem('csrfToken', csrfToken);
-          localStorage.setItem('csrfTokenId', csrfTokenId);
-          console.log(
-            `[api.js] Setting CSRF token: ${csrfToken}, tokenId: ${csrfTokenId}`
-          );
-        } catch (error) {
-          console.error('[api.js] Failed to fetch CSRF token:', error);
-          throw new ApiError(
-            error.response?.status || 500,
-            'CSRF 토큰을 가져오지 못했습니다. 페이지를 새로고침 후 다시 시도해주세요.'
-          );
-        }
+        const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
+        csrfToken   = data.csrfToken;
+        csrfTokenId = data.tokenId;
+        localStorage.setItem('csrfToken', csrfToken);
+        localStorage.setItem('csrfTokenId', csrfTokenId);
       }
-      config.headers['X-CSRF-Token'] = csrfToken;
+      config.headers['X-CSRF-Token']    = csrfToken;
       config.headers['X-CSRF-Token-Id'] = csrfTokenId;
-      console.log(
-        `[api.js] Setting CSRF headers: X-CSRF-Token=${csrfToken}, X-CSRF-Token-Id=${csrfTokenId}`
-      );
     }
+
+    // — 3. 디버깅 로그
+    console.log('[api.js] Request:', config.method.toUpperCase(), config.url, config.data);
     return config;
   },
   (error) => Promise.reject(error)
-);
+); //통합함
 
 let isRefreshing = false;
 let failedQueue = [];
@@ -94,6 +67,32 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // CSRF 토큰 에러 처리 (403)
+    if (error.response && error.response.status === 403 && !originalRequest._retryCsrf) {
+      originalRequest._retryCsrf = true;
+      try {
+        const { data } = await api.get('/api/csrf-token', { skipCsrf: true, timeout: 10000 });
+        const newCsrfToken = data.csrfToken;
+        const newCsrfTokenId = data.tokenId;
+        localStorage.setItem('csrfToken', newCsrfToken);
+        localStorage.setItem('csrfTokenId', newCsrfTokenId);
+        console.log('[api.js] Refreshed CSRF token:', newCsrfToken);
+
+        // 원래 요청에 새 CSRF 토큰 적용 후 재시도
+        originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
+        originalRequest.headers['X-CSRF-Token-Id'] = newCsrfTokenId;
+        return api(originalRequest);
+      } catch (csrfError) {
+        console.error('[api.js] Failed to refresh CSRF token:', csrfError);
+        throw new ApiError(
+          403,
+          'CSRF 토큰 갱신에 실패했습니다. 로그아웃 후 다시 로그인해주세요.'
+        );
+      }
+    }
+
+    // 401 에러 처리 (기존 코드 유지)
     if (
       error.response &&
       error.response.status === 401 &&
@@ -115,7 +114,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await api.post('/api/auth/refresh-token');
+        const { data } = await api.post('/api/auth/refresh-token', {}, { timeout: 10000 });
         const { accessToken } = data;
         localStorage.setItem('accessToken', accessToken);
         originalRequest.headers.Authorization = 'Bearer ' + accessToken;
@@ -133,6 +132,7 @@ api.interceptors.response.use(
         isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -346,7 +346,7 @@ export const updateHotelSettings = async (hotelId, settings) => {
       `/api/hotel-settings/${hotelId}`,
       settings
     );
-    return response.data.data;
+    return response.data.hotelSettings;
   } catch (error) {
     console.error('호텔 설정 업데이트 실패:', error);
     throw error.response?.data || error;

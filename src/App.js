@@ -2347,9 +2347,9 @@ const App = () => {
           withCredentials: true,
           query: { hotelId, accessToken: getAccessToken() },
           reconnection: true,
-          reconnectionAttempts: Infinity,
-          reconnectionDelay: 500,
-          reconnectionDelayMax: 3000,
+          reconnectionAttempts: 5, // 재연결 시도 횟수 제한
+          reconnectionDelay: 1000, // 초기 재연결 지연 시간
+          reconnectionDelayMax: 5000, // 최대 재연결 지연 시간
           randomizationFactor: 0.5,
           timeout: 10000,
           autoConnect: false,
@@ -2384,8 +2384,6 @@ const App = () => {
           console.error('WebSocket connection error:', error.message);
           setIsConnecting(false);
           setIsJoinedHotel(false);
-          // 사용자에게 연결 실패 알림 (필요 시 추가)
-          // alert('WebSocket 연결에 실패했습니다. 네트워크 상태를 확인해주세요.');
         };
 
         const handleDisconnect = (reason) => {
@@ -2430,11 +2428,12 @@ const App = () => {
           console.error('WebSocket reconnection failed after all attempts');
           setIsConnecting(false);
           setIsJoinedHotel(false);
-          loadReservations().catch((error) =>
-            console.error('Fallback load failed:', error)
-          );
-          // 사용자에게 재연결 실패 알림 (필요 시 추가)
-          // alert('WebSocket 재연결에 실패했습니다. 예약 데이터를 새로고침합니다.');
+          // loadReservations 호출 지연
+          setTimeout(() => {
+            loadReservations().catch((error) =>
+              console.error('Fallback load failed:', error)
+            );
+          }, 2000);
         };
 
         // 이벤트 리스너 등록
@@ -2507,7 +2506,6 @@ const App = () => {
     handleForceLogout,
     isConnecting,
   ]);
-
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prevDate) => {
       const newDate = addDays(prevDate, -1);
