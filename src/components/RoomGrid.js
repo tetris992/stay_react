@@ -880,9 +880,8 @@ function RoomGrid({
                       <div
                         key={`${res._id || res.reservationNo}-${index}`}
                         style={{
-                          flex: isMinimalModeEnabled ? 'none' : '1 1 330px',
-                          minWidth: isMinimalModeEnabled ? '150px' : '330px',
-                          width: isMinimalModeEnabled ? '150px' : 'auto',
+                          flex: '0 0 320px',
+                          width: '320px',
                           boxSizing: 'border-box',
                         }}
                       >
