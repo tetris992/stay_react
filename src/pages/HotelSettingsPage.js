@@ -3168,10 +3168,8 @@ export default function HotelSettingsPage() {
   const [hotelId, setHotelId] = useState(localStorage.getItem('hotelId') || '');
   const [isExisting, setIsExisting] = useState(false);
   const [error, setError] = useState('');
-  const [totalRooms, setTotalRooms] = useState(
-    initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
-  );
-  const [roomTypes, setRoomTypes] = useState([...initializedDefaultRoomTypes]);
+  const [totalRooms, setTotalRooms] = useState(0); // 초기값을 0으로 설정
+  const [roomTypes, setRoomTypes] = useState([]); // 초기값을 빈 배열로 설정
   const [floors, setFloors] = useState([]);
   const [amenities, setAmenities] = useState([...DEFAULT_AMENITIES]);
   const [hotelAddress, setHotelAddress] = useState('');
@@ -3205,7 +3203,7 @@ export default function HotelSettingsPage() {
         navigate('/login');
         return;
       }
-  
+
       try {
         // 병렬로 호텔 설정과 사용자 정보 가져오기
         const [hotelData, userData] = await Promise.all([
@@ -3218,7 +3216,7 @@ export default function HotelSettingsPage() {
             return null;
           }),
         ]);
-  
+
         // 사용자 정보 처리 (우선 적용)
         if (userData) {
           setHotelName(userData.hotelName || '');
@@ -3252,23 +3250,71 @@ export default function HotelSettingsPage() {
             adminName: '정보 없음',
           });
         }
-  
+
         // 호텔 설정 처리
         if (hotelData && hotelData._id) {
           setIsExisting(true);
           const containers =
             hotelData.gridSettings?.floors?.flatMap(
-              (floor) => floor.containers
+              (floor) => floor.containers || []
             ) || [];
-          const updatedRoomTypes = buildRoomTypesWithNumbers(
-            hotelData.roomTypes,
+
+          // gridSettings.floors에서 고유한 객실 타입 추출
+          const activeTypes = new Set(
             containers
-          ).map((rt) => ({
-            ...rt,
-            isBaseRoom: rt.isBaseRoom || false,
-          }));
+              .filter((c) => c.roomInfo && c.isActive)
+              .map((c) => c.roomInfo.toLowerCase())
+          );
+
+          // roomTypes에서 activeTypes에 해당하는 항목만 필터링
+          let updatedRoomTypes = hotelData.roomTypes
+            .filter((rt) => activeTypes.has(rt.roomInfo.toLowerCase()))
+            .map((rt) => ({
+              ...rt,
+              isBaseRoom: rt.isBaseRoom || false,
+              roomAmenities: rt.roomAmenities || DEFAULT_AMENITIES.filter(
+                (a) => a.type === 'in-room'
+              ).map((a) => ({
+                nameKor: a.nameKor,
+                nameEng: a.nameEng,
+                icon: a.icon,
+                type: a.type,
+                isActive: false,
+              })),
+              photos: rt.photos || [],
+            }));
+
+          // gridSettings에 있지만 roomTypes에 없는 타입 추가
+          activeTypes.forEach((typeKey) => {
+            if (!updatedRoomTypes.some((rt) => rt.roomInfo.toLowerCase() === typeKey)) {
+              updatedRoomTypes.push({
+                roomInfo: typeKey,
+                nameKor: typeKey.charAt(0).toUpperCase() + typeKey.slice(1),
+                nameEng: typeKey.charAt(0).toUpperCase() + typeKey.slice(1),
+                price: 0,
+                aliases: [],
+                stock: 0,
+                roomNumbers: [],
+                isBaseRoom: false,
+                roomAmenities: DEFAULT_AMENITIES.filter(
+                  (a) => a.type === 'in-room'
+                ).map((a) => ({
+                  nameKor: a.nameKor,
+                  nameEng: a.nameEng,
+                  icon: a.icon,
+                  type: a.type,
+                  isActive: false,
+                })),
+                photos: [],
+              });
+            }
+          });
+
+          updatedRoomTypes = buildRoomTypesWithNumbers(updatedRoomTypes, containers);
           setRoomTypes(updatedRoomTypes);
-          setTotalRooms(hotelData.totalRooms || 0);
+          setTotalRooms(
+            containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive).length
+          );
           setFloors(hotelData.gridSettings?.floors || []);
           setAmenities(hotelData.amenities || DEFAULT_AMENITIES);
           setEvents(
@@ -3292,19 +3338,19 @@ export default function HotelSettingsPage() {
             });
           }
         } else {
+          // 최초 설정: 빈 상태로 초기화
           setIsExisting(false);
-          setRoomTypes([...initializedDefaultRoomTypes]);
-          setFloors(
-            DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] }))
-          );
-          setTotalRooms(
-            initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
-          );
+          setRoomTypes([]);
+          setFloors([]);
+          setTotalRooms(0);
           setEvents([]);
+          setAmenities(DEFAULT_AMENITIES);
+          setCheckInTime('16:00');
+          setCheckOutTime('11:00');
           setError(
             language === 'kor'
-              ? '호텔 설정이 없습니다. 초기 설정이 필요합니다.'
-              : 'Hotel settings not found. Initial setup is required.'
+              ? '호텔 설정이 없습니다. 레이아웃 탭에서 층과 객실을 추가해 주세요.'
+              : 'No hotel settings found. Please add floors and rooms in the Layout tab.'
           );
         }
       } catch (err) {
@@ -3315,13 +3361,9 @@ export default function HotelSettingsPage() {
             : `Failed to load data: ${err.message}. Setting defaults.`
         );
         setIsExisting(false);
-        setRoomTypes([...initializedDefaultRoomTypes]);
-        setFloors(
-          DEFAULT_FLOORS.map((floorNum) => ({ floorNum, containers: [] }))
-        );
-        setTotalRooms(
-          initializedDefaultRoomTypes.reduce((sum, rt) => sum + rt.stock, 0)
-        );
+        setRoomTypes([]);
+        setFloors([]);
+        setTotalRooms(0);
         setEvents([]);
         setHotelName('');
         setHotelAddress('');
@@ -3337,7 +3379,7 @@ export default function HotelSettingsPage() {
         });
       }
     }
-  
+
     loadData();
   }, [hotelId, language, navigate]);
 
@@ -3388,6 +3430,7 @@ export default function HotelSettingsPage() {
     setRoomTypes(defaultRoomTypesCopy);
     setFloors(newFloors);
     setTotalRooms(defaultRoomTypesCopy.reduce((sum, rt) => sum + rt.stock, 0));
+    setError(''); // 에러 메시지 초기화
     alert('디폴트 설정이 불러와졌습니다.');
   };
 
@@ -3528,58 +3571,63 @@ export default function HotelSettingsPage() {
       return;
     }
 
+    const activeTypes = new Set();
     const roomCounts = {};
     floors.forEach((floor) => {
       if (floor.containers && Array.isArray(floor.containers)) {
         floor.containers.forEach((cont) => {
           if (cont.isActive && cont.roomInfo) {
             const typeKey = cont.roomInfo.toLowerCase();
+            activeTypes.add(typeKey);
             roomCounts[typeKey] = (roomCounts[typeKey] || 0) + 1;
           }
         });
       }
     });
 
-    const updatedRoomTypes = roomTypes.map((rt) => {
-      const typeKey = rt.roomInfo.toLowerCase();
-      const stock = roomCounts[typeKey] || 0;
-      return {
-        ...rt,
-        isBaseRoom: rt.isBaseRoom,
-        stock,
-        aliases: (rt.aliases || []).filter(Boolean),
-        roomNumbers: floors
-          .flatMap((floor) =>
-            floor.containers
-              .filter(
-                (cont) =>
-                  cont.roomInfo.toLowerCase() === typeKey &&
-                  cont.roomNumber &&
-                  cont.isActive
-              )
-              .map((cont) => cont.roomNumber)
-          )
-          .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
-        roomAmenities: rt.roomAmenities.map((amenity) => ({
-          nameKor: amenity.nameKor,
-          nameEng: amenity.nameEng,
-          icon: amenity.icon,
-          type: amenity.type,
-          isActive: amenity.isActive,
-        })),
-      };
-    });
+    const updatedRoomTypes = roomTypes
+      .filter((rt) => activeTypes.has(rt.roomInfo.toLowerCase()))
+      .map((rt) => {
+        const typeKey = rt.roomInfo.toLowerCase();
+        return {
+          ...rt,
+          isBaseRoom: rt.isBaseRoom,
+          stock: roomCounts[typeKey] || 0,
+          aliases: (rt.aliases || []).filter(Boolean),
+          roomNumbers: floors
+            .flatMap((floor) =>
+              floor.containers
+                .filter(
+                  (cont) =>
+                    cont.roomInfo.toLowerCase() === typeKey &&
+                    cont.roomNumber &&
+                    cont.isActive
+                )
+                .map((cont) => cont.roomNumber)
+            )
+            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
+          roomAmenities: rt.roomAmenities.map((amenity) => ({
+            nameKor: amenity.nameKor,
+            nameEng: amenity.nameEng,
+            icon: amenity.icon,
+            type: amenity.type,
+            isActive: amenity.isActive,
+          })),
+        };
+      });
 
     const payload = {
       hotelId,
       amenities,
       roomTypes: updatedRoomTypes,
+      totalRooms: Object.values(roomCounts).reduce((sum, count) => sum + count, 0),
     };
 
     try {
       await updateHotelSettings(hotelId, payload);
       alert('객실 타입 및 공통 시설 정보가 저장되었습니다.');
       setRoomTypes(updatedRoomTypes);
+      setTotalRooms(payload.totalRooms);
     } catch (err) {
       alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
@@ -3591,49 +3639,54 @@ export default function HotelSettingsPage() {
       return;
     }
 
+    const activeTypes = new Set();
     const roomCounts = {};
     floors.forEach((floor) => {
       if (floor.containers && Array.isArray(floor.containers)) {
         floor.containers.forEach((cont) => {
           if (cont.isActive && cont.roomInfo) {
             const typeKey = cont.roomInfo.toLowerCase();
+            activeTypes.add(typeKey);
             roomCounts[typeKey] = (roomCounts[typeKey] || 0) + 1;
           }
         });
       }
     });
 
-    const updatedRoomTypes = roomTypes.map((rt) => {
-      const typeKey = rt.roomInfo.toLowerCase();
-      const stock = roomCounts[typeKey] || 0;
-      return {
-        ...rt,
-        stock,
-        roomNumbers: floors
-          .flatMap((floor) =>
-            floor.containers
-              .filter(
-                (cont) =>
-                  cont.roomInfo.toLowerCase() === typeKey &&
-                  cont.roomNumber &&
-                  cont.isActive
-              )
-              .map((cont) => cont.roomNumber)
-          )
-          .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
-      };
-    });
+    const updatedRoomTypes = roomTypes
+      .filter((rt) => activeTypes.has(rt.roomInfo.toLowerCase()))
+      .map((rt) => {
+        const typeKey = rt.roomInfo.toLowerCase();
+        return {
+          ...rt,
+          stock: roomCounts[typeKey] || 0,
+          roomNumbers: floors
+            .flatMap((floor) =>
+              floor.containers
+                .filter(
+                  (cont) =>
+                    cont.roomInfo.toLowerCase() === typeKey &&
+                    cont.roomNumber &&
+                    cont.isActive
+                )
+                .map((cont) => cont.roomNumber)
+            )
+            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
+        };
+      });
 
     const payload = {
       hotelId,
       gridSettings: { floors },
       roomTypes: updatedRoomTypes,
+      totalRooms: Object.values(roomCounts).reduce((sum, count) => sum + count, 0),
     };
 
     try {
       await updateHotelSettings(hotelId, payload);
       alert('레이아웃 정보가 저장되었습니다.');
       setRoomTypes(updatedRoomTypes);
+      setTotalRooms(payload.totalRooms);
     } catch (err) {
       alert('저장 실패: ' + (err.response?.data?.message || err.message));
     }
@@ -3684,7 +3737,6 @@ export default function HotelSettingsPage() {
         return;
       }
 
-      // 이벤트 유효성 검사
       const formattedEvents = updatedEvents.map((event) => {
         if (!event.uuid) {
           throw new Error(
@@ -3751,7 +3803,6 @@ export default function HotelSettingsPage() {
         };
       });
 
-      // UUID 중복 검사
       const uuids = formattedEvents.map((event) => event.uuid);
       if (new Set(uuids).size !== uuids.length) {
         throw new Error(
@@ -3910,7 +3961,8 @@ export default function HotelSettingsPage() {
         <p
           className={
             error.includes('초기 설정이 필요합니다') ||
-            error.includes('Initial setup is required')
+            error.includes('Initial setup is required') ||
+            error.includes('레이아웃 탭에서')
               ? 'info-message'
               : 'error-message'
           }
@@ -3918,7 +3970,8 @@ export default function HotelSettingsPage() {
           style={{
             color:
               error.includes('초기 설정이 필요합니다') ||
-              error.includes('Initial setup is required')
+              error.includes('Initial setup is required') ||
+              error.includes('레이아웃 탭에서')
                 ? '#4CAF50'
                 : 'red',
             fontWeight: 'bold',
@@ -3928,12 +3981,13 @@ export default function HotelSettingsPage() {
         >
           {error}
           {(error.includes('초기 설정이 필요합니다') ||
-            error.includes('Initial setup is required')) && (
+            error.includes('Initial setup is required') ||
+            error.includes('레이아웃 탭에서')) && (
             <span>
               {' '}
               {language === 'kor'
-                ? '위의 "디폴트 설정 불러오기" 버튼을 눌러 시작하세요.'
-                : 'Click the "Load Default Settings" button above to get started.'}
+                ? '위의 "디폴트 설정 불러오기" 버튼을 눌러 시작하거나, 레이아웃 탭에서 직접 설정을 추가하세요.'
+                : 'Click the "Load Default Settings" button above to get started, or add settings directly in the Layout tab.'}
             </span>
           )}
         </p>

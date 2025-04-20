@@ -288,12 +288,31 @@ const App = () => {
   // finalRoomTypes에서 'none' 제외
   const finalRoomTypes = useMemo(() => {
     const { roomTypes = [], gridSettings = {} } = hotelSettings || {};
-    const containers = gridSettings.floors
-      ? gridSettings.floors.flatMap((floor) => floor.containers || [])
-      : [];
-    if (!roomTypes.length) return [];
-    const merged = buildRoomTypesWithNumbers(roomTypes, containers);
-    return merged.filter((rt) => rt.roomInfo.toLowerCase() !== 'none');
+    if (!gridSettings.floors) return [];
+  
+    // gridSettings.floors에서 고유한 룸타입 추출
+    const activeTypes = new Set();
+    gridSettings.floors.forEach((floor) => {
+      (floor.containers || []).forEach((cell) => {
+        if (
+          cell.roomInfo &&
+          cell.roomNumber &&
+          cell.roomNumber.trim() !== '' &&
+          cell.isActive
+        ) {
+          activeTypes.add(cell.roomInfo.toLowerCase());
+        }
+      });
+    });
+  
+    // roomTypes에서 activeTypes에 해당하는 항목만 필터링
+    const filteredRoomTypes = roomTypes.filter((rt) =>
+      activeTypes.has(rt.roomInfo.toLowerCase())
+    );
+  
+    const containers = gridSettings.floors.flatMap((floor) => floor.containers || []);
+    const merged = buildRoomTypesWithNumbers(filteredRoomTypes, containers);
+    return merged;
   }, [hotelSettings]);
 
   const buildMonthlyDailyBreakdown = useCallback(
