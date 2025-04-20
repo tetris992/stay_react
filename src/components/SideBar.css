@@ -289,7 +289,7 @@
   position: relative;
   width: 180px;
   height: 180px;
-  margin: 20px auto;
+  margin: 5px auto;
 }
 .chart-center {
   position: absolute;
@@ -304,6 +304,7 @@
   margin: 2px 0;
   font-weight: bold;
 }
+
 
 /* 로딩 스피너 */
 .spinning {
@@ -522,3 +523,24 @@
   gap: 10px;
   margin-bottom: 12px;
 }
+
+
+.room-status-section {
+  margin-bottom: 20px;
+}
+
+.room-status-content {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+}
+
+
+/* 사이드바 축소 시 스타일 */
+@media (max-width: 350px) {
+  .room-status-content {
+    padding: 5px;
+  }
+}
+

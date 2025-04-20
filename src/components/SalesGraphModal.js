@@ -72,7 +72,6 @@ function SalesGraphModal({
     return sum;
   });
 
-  // 최대 매출 금액 계산
   const maxTotal = Math.max(...totals);
 
   const remainingDataset = {
@@ -140,7 +139,7 @@ function SalesGraphModal({
       y: {
         stacked: true,
         beginAtZero: true,
-        max: maxTotal * 1.1, // 최대 매출의 110%로 설정
+        max: maxTotal * 1.1,
         ticks: {
           callback: (value) => `₩${value.toLocaleString()}`,
         },
@@ -149,7 +148,6 @@ function SalesGraphModal({
     },
   };
 
-  // 나머지 코드는 동일
   const safeMonthlyDailyBreakdown = Array.isArray(monthlyDailyBreakdown)
     ? monthlyDailyBreakdown
     : [];

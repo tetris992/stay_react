@@ -1,56 +1,76 @@
 .accounting-info {
-  display: flex;
-  flex-direction: column;
-  width: 240px;
-  height: auto;
-  margin-top: 20px;
-  font-size: 1rem;
-  border: none;
-  /* border-bottom: 1px solid rgb(212, 17, 17); */
-  padding: 0px;
-  box-sizing: border-box;
-  /* overflow-y: auto; */
-}
-
-h4 {
-  padding: 12px;
-  background-color: #9a9a9a6a;
-  border: 1px solid #ddd;
+  margin-top: 10px;
+  padding: 15px;
+  background-color: #f8f9fa;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: left;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: bold;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%; /* 고정 너비 */
+  box-sizing: border-box; /* padding 포함 너비 계산 */
 }
 
-.accounting-title {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  width: 90%;
-}
 .accounting-buttons {
   display: flex;
-  justify-content: end;
-  margin-right: 20px;
-  font-size: 14px;
-  width: 20%;
-}
-
-.accounting-detail {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
   margin-bottom: 10px;
 }
 
-.accounting-info li {
+.sales-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #007bff;
+}
+
+.sales-button:hover {
+  color: #0056b3;
+}
+
+.accounting-detail {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+.accounting-detail li {
   display: flex;
   justify-content: space-between;
-  padding: 0px 20px;
-  font-weight: 900;
-  font-size: 1.1rem;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #555;
+  white-space: normal; /* 줄 바꿈 허용 */
+  word-break: break-word; /* 긴 단어 줄 바꿈 */
+}
+
+.accounting-detail li span:first-child {
+  font-weight: 600;
+  color: #333;
+  flex: 1; /* 텍스트가 고정된 공간을 차지하도록 */
+  min-width: 0; /* 텍스트가 컨테이너를 넘지 않도록 */
+}
+
+.accounting-detail ul {
+  list-style: none;
+  padding-left: 20px;
+  margin: 5px 0 0 0;
+  width: 100%;
+}
+
+.accounting-detail ul li {
+  padding: 4px 0;
+  font-size: 13px;
+  color: #666;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.no-data-message {
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+  margin: 10px 0;
 }

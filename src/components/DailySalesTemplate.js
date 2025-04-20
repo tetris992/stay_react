@@ -30,10 +30,19 @@ const DailySalesTemplate = ({
     return format(date, 'yyyy-MM-dd');
   };
 
-  // 총합계 데이터 추출
   const totalSummary = dailySalesReport.find((item) => item.reservationId === 'totalSummary');
-  const paymentTotals = totalSummary?.paymentTotals || { Cash: 0, Card: 0, OTA: 0, Pending: 0 };
-  const typeTotals = totalSummary?.typeTotals || { '현장숙박': 0, '현장대실': 0 };
+  const paymentTotals = totalSummary?.paymentTotals || { Cash: 0, Card: 0, AccountTransfer: 0, OTA: 0, Pending: 0 };
+  const typeTotals = totalSummary?.typeTotals || { 현장숙박: 0, 현장대실: 0 };
+  const danjamTotal = totalSummary?.danjamTotal || 0;
+
+  console.log(
+    `[DailySalesTemplate] Payment Totals for ${format(selectedDate, 'yyyy-MM-dd')}:`,
+    paymentTotals
+  );
+  console.log(
+    `[DailySalesTemplate] Danjam Total for ${format(selectedDate, 'yyyy-MM-dd')}:`,
+    danjamTotal
+  );
 
   return (
     <div className="daily-sales-template">
@@ -51,7 +60,7 @@ const DailySalesTemplate = ({
         <tbody>
           {dailySalesReport.length > 0 ? (
             dailySalesReport.map((sale) => {
-              if (sale.reservationId === 'totalSummary') return null; // 총합계는 테이블에 표시하지 않음
+              if (sale.reservationId === 'totalSummary') return null;
               const [rawCheckIn, rawCheckOut] = sale.checkInCheckOut.split(' ~ ');
               const checkInDate = formatDateOnly(rawCheckIn);
               const checkOutDate = formatDateOnly(rawCheckOut);
@@ -141,21 +150,28 @@ const DailySalesTemplate = ({
         </div>
       </div>
 
-      {/* 총합계 섹션 추가 */}
       <div className="total-summary">
         <h3>총합계</h3>
         <ul className="total-summary-list">
           <li>
-            <span>현금 매출: </span>
+            <span>현금 매출 (단잠 포함): </span>
             <span>₩{paymentTotals.Cash.toLocaleString()}원</span>
           </li>
           <li>
-            <span>카드 매출: </span>
+            <span>카드 매출 (단잠 포함): </span>
             <span>₩{paymentTotals.Card.toLocaleString()}원</span>
+          </li>
+          <li>
+            <span>계좌이체 매출 (단잠 포함): </span>
+            <span>₩{paymentTotals.AccountTransfer.toLocaleString()}원</span>
           </li>
           <li>
             <span>OTA 매출: </span>
             <span>₩{paymentTotals.OTA.toLocaleString()}원</span>
+          </li>
+          <li>
+            <span>단잠 매출: </span>
+            <span>₩{danjamTotal.toLocaleString()}원</span>
           </li>
           <li>
             <span>미결제 매출: </span>
@@ -176,7 +192,27 @@ const DailySalesTemplate = ({
 };
 
 DailySalesTemplate.propTypes = {
-  dailySalesReport: PropTypes.array.isRequired,
+  dailySalesReport: PropTypes.arrayOf(
+    PropTypes.shape({
+      reservationId: PropTypes.string,
+      roomNumber: PropTypes.string,
+      customerName: PropTypes.string,
+      roomInfo: PropTypes.string,
+      checkInCheckOut: PropTypes.string,
+      price: PropTypes.number,
+      siteInfo: PropTypes.string,
+      paymentMethod: PropTypes.string,
+      paymentTotals: PropTypes.shape({
+        Cash: PropTypes.number,
+        Card: PropTypes.number,
+        AccountTransfer: PropTypes.number,
+        OTA: PropTypes.number,
+        Pending: PropTypes.number,
+      }),
+      typeTotals: PropTypes.object,
+      danjamTotal: PropTypes.number,
+    })
+  ).isRequired,
   dailyTotal: PropTypes.number.isRequired,
   monthlySales: PropTypes.number.isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,

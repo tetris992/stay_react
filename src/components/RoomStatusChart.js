@@ -1,54 +1,41 @@
-// src/components/RoomStatusChart.js
-
-import React from 'react';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart, ArcElement, Tooltip, Legend } from 'chart.js';
+import React, { useEffect, useState } from 'react';
 import './RoomStatusChart.css';
 
-Chart.register(ArcElement, Tooltip, Legend);
-
 function RoomStatusChart({ totalRooms, roomsSold, remainingRooms }) {
-  const data = {
-    labels: ['판매된 객실', '잔여 객실'],
-    datasets: [
-      {
-        data: [roomsSold, remainingRooms],
-        backgroundColor: ['#36A2EB', '#A9A9A9'],
-        hoverBackgroundColor: ['#FF6384', '#36A2EB'],
-        borderWidth: 0,
-      },
-    ],
-  };
+  const soldPercentage = (roomsSold / totalRooms) * 100;
+  const soldHeight = `${soldPercentage}%`; // 판매된 객실 비율
+  const remainingHeight = `${100 - soldPercentage}%`; // 잔여 객실 비율
 
-  const options = {
-    cutout: '70%', // 도넛의 두께 조절
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false, // 범례 숨기기
-      },
-      tooltip: {
-        callbacks: {
-          label: function (context) {
-            const label = context.label || '';
-            const value = context.parsed || 0;
-            const percentage = ((value / totalRooms) * 100).toFixed(1);
-            return `${label}: ${value} (${percentage}%)`;
-          },
-        },
-      },
-    },
-  };
+  const [isAnimated, setIsAnimated] = useState(false);
+
+  // 페이지 로드 시 애니메이션 시작
+  useEffect(() => {
+    setIsAnimated(true);
+  }, []);
 
   return (
-    <div className="room-status-chart-container">
-      <Doughnut data={data} options={options} />
-      <div className="chart-center">
-        <p>판매</p>
-        <p>{roomsSold}</p>
-        <p>잔여</p>
-        <p>{remainingRooms}</p>
+    <div className="room-status-tower-container">
+      <div className="tower-wrapper">
+        <div className="tower">
+          <div
+            className={`tower-filled ${isAnimated ? 'animate' : ''}`}
+            style={{ height: soldHeight }}
+            title={`판매된 객실: ${roomsSold} (${soldPercentage.toFixed(1)}%)`}
+          />
+          <div
+            className="tower-remaining"
+            style={{ height: remainingHeight }}
+            title={`잔여 객실: ${remainingRooms}`}
+          />
+        </div>
+        <div className="tower-percentage">
+          {soldPercentage.toFixed(1)}%
+        </div>
+      </div>
+      <div className="status-info">
+        <p className="status-sub">
+          판매: {roomsSold} / 잔여: {remainingRooms}
+        </p>
       </div>
     </div>
   );

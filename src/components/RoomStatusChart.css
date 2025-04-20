@@ -1,23 +1,110 @@
-/* src/components/RoomStatusChart.css */
+.room-status-tower-container {
+  position: relative;
+  width: 100px; /* 타워 너비 */
+  height: 180px; /* 전체 높이 조정 */
+  margin: 0 auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* 수직 중앙 정렬 */
+}
 
-.room-status-chart-container {
-    position: relative;
-    width: 180px;
-    height: 180px;
-    margin: 0 auto;
+.tower-wrapper {
+  position: relative;
+  width: 60px;
+  height: 120px; /* 타워 높이 조정 */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.tower {
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ddd;
+}
+
+.tower-filled {
+  width: 100%;
+  background: linear-gradient(0deg, #36A2EB, #4FACFE);
+  position: absolute;
+  bottom: 0;
+  transition: height 1.5s ease-out;
+}
+
+.tower-filled.animate {
+  animation: fillTower 1.5s ease-out forwards;
+}
+
+.tower-remaining {
+  width: 100%;
+  background: linear-gradient(0deg, #A9A9A9, #D3D3D3);
+  position: absolute;
+  top: 0;
+}
+
+.tower-percentage {
+  position: absolute;
+  top: -25px; /* 위쪽 마진 조정 */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+}
+
+.status-info {
+  text-align: center;
+  margin-top: 10px; /* 아래 마진 줄임 */
+}
+
+.status-sub {
+  margin: 0;
+  font-size: 18px;
+  color: #888;
+  font-weight: bold;
+}
+
+/* 애니메이션 */
+@keyframes fillTower {
+  0% {
+    height: 0;
   }
-  
-  .chart-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    font-size: 16px;
-    color: #333;
+  100% {
+    height: var(--height);
   }
-  
-  .chart-center p {
-    margin: 0;
-  }
-  
+}
+
+/* 호버 효과 */
+.tower-wrapper:hover .tower-filled {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* 사이드바 축소 시 스타일 */
+.sidebar.collapsed .room-status-tower-container {
+  width: 50px;
+  height: 50px;
+  padding: 5px;
+}
+
+.sidebar.collapsed .tower-wrapper {
+  width: 30px;
+  height: 30px;
+}
+
+.sidebar.collapsed .tower-percentage {
+  font-size: 10px;
+  top: -15px;
+}
+
+.sidebar.collapsed .status-info {
+  font-size: 8px;
+}

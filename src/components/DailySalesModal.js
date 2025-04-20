@@ -147,7 +147,7 @@ const DailySalesModal = ({
         <DailySalesTemplate
           dailySalesReport={dailySalesReport}
           dailyTotal={dailyTotal.total || 0}
-          monthlySales={monthlySales} 
+          monthlySales={monthlySales}
           selectedDate={selectedDate}
           totalRooms={totalRooms}
           remainingRooms={remainingRooms}
@@ -162,18 +162,39 @@ const DailySalesModal = ({
 DailySalesModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onRequestClose: PropTypes.func.isRequired,
-  dailySalesReport: PropTypes.array.isRequired,
+  dailySalesReport: PropTypes.arrayOf(
+    PropTypes.shape({
+      reservationId: PropTypes.string,
+      roomNumber: PropTypes.string,
+      customerName: PropTypes.string,
+      roomInfo: PropTypes.string,
+      checkInCheckOut: PropTypes.string,
+      price: PropTypes.number,
+      siteInfo: PropTypes.string,
+      paymentMethod: PropTypes.string,
+      paymentTotals: PropTypes.shape({
+        Cash: PropTypes.number,
+        Card: PropTypes.number,
+        AccountTransfer: PropTypes.number,
+        OTA: PropTypes.number,
+        Pending: PropTypes.number,
+      }),
+      typeTotals: PropTypes.object,
+      danjamTotal: PropTypes.number,
+    })
+  ).isRequired,
   dailyTotal: PropTypes.shape({
     total: PropTypes.number,
     paymentTotals: PropTypes.object,
     typeTotals: PropTypes.object,
-    dailyBreakdown: PropTypes.array.isRequired, 
+    dailyBreakdown: PropTypes.array.isRequired,
   }).isRequired,
   selectedDate: PropTypes.instanceOf(Date).isRequired,
   totalRooms: PropTypes.number.isRequired,
   remainingRooms: PropTypes.number.isRequired,
   occupancyRate: PropTypes.number.isRequired,
   dailyAverageRoomPrice: PropTypes.number.isRequired,
+  monthlySales: PropTypes.number.isRequired,
 };
 
 export default DailySalesModal;
