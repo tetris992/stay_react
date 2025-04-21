@@ -2246,11 +2246,12 @@ function EventSettingsSection({
       );
     }
 
-    if (startDateKST >= endDateKST) {
+    // 수정: 당일 이벤트를 허용하도록 조건 변경
+    if (startDateKST > endDateKST) {
       throw new Error(
         language === 'kor'
-          ? '종료일은 시작일보다 이후여야 합니다.'
-          : 'End date must be after start date'
+          ? '종료일은 시작일보다 이후이거나 같은 날짜여야 합니다.'
+          : 'End date must be on or after start date'
       );
     }
 
@@ -2342,6 +2343,27 @@ function EventSettingsSection({
       setNewEvent((prev) => ({
         ...prev,
         [name]: parsedValue,
+      }));
+    }
+  };
+
+  // "당일 이벤트" 버튼 클릭 처리
+  const handleSameDayEvent = () => {
+    const todayKST = toZonedTime(new Date(), 'Asia/Seoul')
+      .toISOString()
+      .split('T')[0];
+
+    if (editingEvent) {
+      setEditingEvent((prev) => ({
+        ...prev,
+        startDate: todayKST,
+        endDate: todayKST,
+      }));
+    } else {
+      setNewEvent((prev) => ({
+        ...prev,
+        startDate: todayKST,
+        endDate: todayKST,
       }));
     }
   };
@@ -2930,6 +2952,22 @@ function EventSettingsSection({
                   required
                 />
               </label>
+              <button
+                className="hotel-settings-event-sameday-btn"
+                onClick={handleSameDayEvent}
+                disabled={isLoading}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  marginLeft: '10px',
+                }}
+              >
+                {language === 'kor' ? '당일 이벤트' : 'Same Day Event'}
+              </button>
             </div>
             <div className="hotel-settings-event-field-row full-width">
               <label>
@@ -3728,7 +3766,7 @@ export default function HotelSettingsPage() {
           language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
         );
       }
-
+  
       if (!updatedEvents || updatedEvents.length === 0) {
         setMessage(
           language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
@@ -3736,7 +3774,7 @@ export default function HotelSettingsPage() {
         setTimeout(() => setMessage(''), 3000);
         return;
       }
-
+  
       const formattedEvents = updatedEvents.map((event) => {
         if (!event.uuid) {
           throw new Error(
@@ -3745,13 +3783,13 @@ export default function HotelSettingsPage() {
               : 'Event UUID is missing.'
           );
         }
-
+  
         const startDateKST = toZonedTime(
           new Date(event.startDate),
           'Asia/Seoul'
         );
         const endDateKST = toZonedTime(new Date(event.endDate), 'Asia/Seoul');
-
+  
         if (isNaN(startDateKST.getTime()) || isNaN(endDateKST.getTime())) {
           throw new Error(
             language === 'kor'
@@ -3759,15 +3797,16 @@ export default function HotelSettingsPage() {
               : `Invalid date format (Event: ${event.eventName}).`
           );
         }
-
-        if (startDateKST >= endDateKST) {
+  
+        // 수정: 당일 이벤트를 허용하도록 조건 변경
+        if (startDateKST > endDateKST) {
           throw new Error(
             language === 'kor'
-              ? `종료일은 시작일보다 이후여야 합니다 (이벤트: ${event.eventName}).`
-              : `End date must be after start date (Event: ${event.eventName}).`
+              ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (이벤트: ${event.eventName}).`
+              : `End date must be on or after start date (Event: ${event.eventName}).`
           );
         }
-
+  
         const discountValue = Number(event.discountValue) || 0;
         if (
           event.discountType === 'percentage' &&
@@ -3786,7 +3825,7 @@ export default function HotelSettingsPage() {
               : `Discount amount must be greater than 0 (Event: ${event.eventName}).`
           );
         }
-
+  
         return {
           uuid: event.uuid,
           eventName: event.eventName || '특가 이벤트',
@@ -3802,7 +3841,7 @@ export default function HotelSettingsPage() {
             : [],
         };
       });
-
+  
       const uuids = formattedEvents.map((event) => event.uuid);
       if (new Set(uuids).size !== uuids.length) {
         throw new Error(
@@ -3811,12 +3850,12 @@ export default function HotelSettingsPage() {
             : 'Duplicate event UUIDs detected.'
         );
       }
-
+  
       const payload = {
         eventSettings: formattedEvents,
         roomTypes,
       };
-
+  
       console.log('[handleSaveEvents] Sending payload:', {
         eventSettings: formattedEvents,
         roomTypes: roomTypes.map((rt) => ({
@@ -3825,10 +3864,10 @@ export default function HotelSettingsPage() {
           fixedDiscount: rt.fixedDiscount,
         })),
       });
-
+  
       const updatedSettings = await updateHotelSettings(hotelId, payload);
       console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
-
+  
       if (!updatedSettings || !updatedSettings.roomTypes) {
         throw new Error(
           language === 'kor'
@@ -3836,13 +3875,13 @@ export default function HotelSettingsPage() {
             : 'Hotel settings data not found in server response.'
         );
       }
-
+  
       setRoomTypes(updatedSettings.roomTypes);
       console.log(
         '[handleSaveEvents] Updated roomTypes with discount:',
         updatedSettings.roomTypes
       );
-
+  
       const updatedRoomTypes = updatedSettings.roomTypes;
       const affectedRooms = updatedRoomTypes
         .filter((rt) => rt.discount > 0 || rt.fixedDiscount > 0)
@@ -3852,7 +3891,7 @@ export default function HotelSettingsPage() {
               rt.fixedDiscount > 0 ? `${rt.fixedDiscount}원` : `${rt.discount}%`
             } 할인 적용`
         );
-
+  
       const feedbackMessage =
         affectedRooms.length > 0
           ? `${
@@ -3863,7 +3902,7 @@ export default function HotelSettingsPage() {
           : language === 'kor'
           ? '이벤트가 저장되었습니다.'
           : 'Events saved successfully';
-
+  
       setMessage(feedbackMessage);
       setError('');
       setTimeout(() => setMessage(''), 5000);
