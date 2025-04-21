@@ -29,7 +29,7 @@ import { FaMapMarkerAlt } from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, format } from 'date-fns-tz';
 import api from '../api/api';
 
 // 기본 층 설정
@@ -2349,21 +2349,26 @@ function EventSettingsSection({
 
   // "당일 이벤트" 버튼 클릭 처리
   const handleSameDayEvent = () => {
-    const todayKST = toZonedTime(new Date(), 'Asia/Seoul')
-      .toISOString()
-      .split('T')[0];
+    // 클라이언트의 로컬 시간 기준으로 현재 날짜를 계산
+    const today = new Date();
+
+    // KST 시간대로 변환 (필요 시)
+    const todayKST = toZonedTime(today, 'Asia/Seoul');
+
+    // yyyy-MM-dd 형식으로 포맷팅
+    const todayStr = format(todayKST, 'yyyy-MM-dd');
 
     if (editingEvent) {
       setEditingEvent((prev) => ({
         ...prev,
-        startDate: todayKST,
-        endDate: todayKST,
+        startDate: todayStr,
+        endDate: todayStr,
       }));
     } else {
       setNewEvent((prev) => ({
         ...prev,
-        startDate: todayKST,
-        endDate: todayKST,
+        startDate: todayStr,
+        endDate: todayStr,
       }));
     }
   };
@@ -2711,6 +2716,12 @@ function EventSettingsSection({
 
     setIsLoading(true);
     try {
+      // 백엔드로 DELETE 요청 전송
+      await api.delete('/api/hotel-settings/event', {
+        data: { hotelId: localStorage.getItem('hotelId'), eventUuid },
+      });
+
+      // 로컬 상태에서도 이벤트 제거
       const updatedEvents = events.filter((event) => event.uuid !== eventUuid);
       setEvents(updatedEvents);
 
@@ -2760,16 +2771,6 @@ function EventSettingsSection({
 
       setMessage(feedbackMessage);
       setError('');
-
-      if (typeof onEventsChange === 'function') {
-        await onEventsChange(updatedEvents);
-      } else {
-        throw new Error(
-          language === 'kor'
-            ? '이벤트 삭제 실패: onEventsChange가 정의되지 않았습니다.'
-            : 'Failed to delete event: onEventsChange is not defined.'
-        );
-      }
 
       setTimeout(() => setMessage(''), 5000);
     } catch (err) {
@@ -3759,171 +3760,179 @@ export default function HotelSettingsPage() {
     }
   };
 
-  const handleSaveEvents = async (updatedEvents) => {
-    try {
-      if (!hotelId) {
-        throw new Error(
-          language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
-        );
-      }
-  
-      if (!updatedEvents || updatedEvents.length === 0) {
-        setMessage(
-          language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
-        );
-        setTimeout(() => setMessage(''), 3000);
-        return;
-      }
-  
-      const formattedEvents = updatedEvents.map((event) => {
-        if (!event.uuid) {
-          throw new Error(
-            language === 'kor'
-              ? '이벤트 UUID가 누락되었습니다.'
-              : 'Event UUID is missing.'
-          );
-        }
-  
-        const startDateKST = toZonedTime(
-          new Date(event.startDate),
-          'Asia/Seoul'
-        );
-        const endDateKST = toZonedTime(new Date(event.endDate), 'Asia/Seoul');
-  
-        if (isNaN(startDateKST.getTime()) || isNaN(endDateKST.getTime())) {
-          throw new Error(
-            language === 'kor'
-              ? `유효하지 않은 날짜입니다 (이벤트: ${event.eventName}).`
-              : `Invalid date format (Event: ${event.eventName}).`
-          );
-        }
-  
-        // 수정: 당일 이벤트를 허용하도록 조건 변경
-        if (startDateKST > endDateKST) {
-          throw new Error(
-            language === 'kor'
-              ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (이벤트: ${event.eventName}).`
-              : `End date must be on or after start date (Event: ${event.eventName}).`
-          );
-        }
-  
-        const discountValue = Number(event.discountValue) || 0;
-        if (
-          event.discountType === 'percentage' &&
-          (discountValue < 0 || discountValue > 100)
-        ) {
-          throw new Error(
-            language === 'kor'
-              ? `할인율은 0~100% 사이여야 합니다 (이벤트: ${event.eventName}).`
-              : `Discount percentage must be between 0 and 100 (Event: ${event.eventName}).`
-          );
-        }
-        if (event.discountType === 'fixed' && discountValue <= 0) {
-          throw new Error(
-            language === 'kor'
-              ? `할인 금액은 0보다 커야 합니다 (이벤트: ${event.eventName}).`
-              : `Discount amount must be greater than 0 (Event: ${event.eventName}).`
-          );
-        }
-  
-        return {
-          uuid: event.uuid,
-          eventName: event.eventName || '특가 이벤트',
-          startDate: startDateKST.toISOString(),
-          endDate: endDateKST.toISOString(),
-          discountType: event.discountType || 'percentage',
-          discountValue,
-          isActive: event.isActive ?? true,
-          applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
-            ? event.applicableRoomTypes.filter(
-                (roomType) => roomType && roomType.trim()
-              )
-            : [],
-        };
-      });
-  
-      const uuids = formattedEvents.map((event) => event.uuid);
-      if (new Set(uuids).size !== uuids.length) {
-        throw new Error(
-          language === 'kor'
-            ? '중복된 이벤트 UUID가 있습니다.'
-            : 'Duplicate event UUIDs detected.'
-        );
-      }
-  
-      const payload = {
-        eventSettings: formattedEvents,
-        roomTypes,
-      };
-  
-      console.log('[handleSaveEvents] Sending payload:', {
-        eventSettings: formattedEvents,
-        roomTypes: roomTypes.map((rt) => ({
-          roomInfo: rt.roomInfo,
-          discount: rt.discount,
-          fixedDiscount: rt.fixedDiscount,
-        })),
-      });
-  
-      const updatedSettings = await updateHotelSettings(hotelId, payload);
-      console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
-  
-      if (!updatedSettings || !updatedSettings.roomTypes) {
-        throw new Error(
-          language === 'kor'
-            ? '서버 응답에서 호텔 설정 데이터를 찾을 수 없습니다.'
-            : 'Hotel settings data not found in server response.'
-        );
-      }
-  
-      setRoomTypes(updatedSettings.roomTypes);
-      console.log(
-        '[handleSaveEvents] Updated roomTypes with discount:',
-        updatedSettings.roomTypes
+const handleSaveEvents = async (updatedEvents) => {
+  try {
+    if (!hotelId) {
+      throw new Error(
+        language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
       );
-  
-      const updatedRoomTypes = updatedSettings.roomTypes;
-      const affectedRooms = updatedRoomTypes
-        .filter((rt) => rt.discount > 0 || rt.fixedDiscount > 0)
-        .map(
-          (rt) =>
-            `${rt.nameKor}: ${
-              rt.fixedDiscount > 0 ? `${rt.fixedDiscount}원` : `${rt.discount}%`
-            } 할인 적용`
-        );
-  
-      const feedbackMessage =
-        affectedRooms.length > 0
-          ? `${
-              language === 'kor'
-                ? '이벤트가 저장되었습니다. 할인 적용 객실: '
-                : 'Events saved successfully. Discount applied to: '
-            }${affectedRooms.join(', ')}`
-          : language === 'kor'
-          ? '이벤트가 저장되었습니다.'
-          : 'Events saved successfully';
-  
-      setMessage(feedbackMessage);
-      setError('');
-      setTimeout(() => setMessage(''), 5000);
-    } catch (err) {
-      console.error('[handleSaveEvents] Error:', {
-        message: err.message,
-        response: err.response,
-        request: err.request,
-      });
-      setError(
-        language === 'kor'
-          ? `이벤트 저장 실패: ${err.message}${
-              err.response ? ` (상태 코드: ${err.response.status})` : ''
-            }`
-          : `Failed to save events: ${err.message}${
-              err.response ? ` (Status code: ${err.response.status})` : ''
-            }`
-      );
-      setMessage('');
     }
-  };
+
+    if (!updatedEvents || updatedEvents.length === 0) {
+      setMessage(
+        language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
+      );
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    const formattedEvents = updatedEvents.map((event) => {
+      if (!event.uuid) {
+        throw new Error(
+          language === 'kor'
+            ? '이벤트 UUID가 누락되었습니다.'
+            : 'Event UUID is missing.'
+        );
+      }
+
+      // startDate와 endDate를 yyyy-MM-dd 형식으로 유지
+      const startDateStr = event.startDate; // 이미 yyyy-MM-dd 형식
+      const endDateStr = event.endDate;     // 이미 yyyy-MM-dd 형식
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+        throw new Error(
+          language === 'kor'
+            ? `유효하지 않은 날짜 형식입니다 (이벤트: ${event.eventName}).`
+            : `Invalid date format (Event: ${event.eventName}).`
+        );
+      }
+
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error(
+          language === 'kor'
+            ? `유효하지 않은 날짜입니다 (이벤트: ${event.eventName}).`
+            : `Invalid date format (Event: ${event.eventName}).`
+        );
+      }
+
+      if (startDate > endDate) {
+        throw new Error(
+          language === 'kor'
+            ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (이벤트: ${event.eventName}).`
+            : `End date must be on or after start date (Event: ${event.eventName}).`
+        );
+      }
+
+      const discountValue = Number(event.discountValue) || 0;
+      if (
+        event.discountType === 'percentage' &&
+        (discountValue < 0 || discountValue > 100)
+      ) {
+        throw new Error(
+          language === 'kor'
+            ? `할인율은 0~100% 사이여야 합니다 (이벤트: ${event.eventName}).`
+            : `Discount percentage must be between 0 and 100 (Event: ${event.eventName}).`
+        );
+      }
+      if (event.discountType === 'fixed' && discountValue <= 0) {
+        throw new Error(
+          language === 'kor'
+            ? `할인 금액은 0보다 커야 합니다 (이벤트: ${event.eventName}).`
+            : `Discount amount must be greater than 0 (Event: ${event.eventName}).`
+        );
+      }
+
+      return {
+        uuid: event.uuid,
+        eventName: event.eventName || '특가 이벤트',
+        startDate: startDateStr, // yyyy-MM-dd 형식 문자열
+        endDate: endDateStr,     // yyyy-MM-dd 형식 문자열
+        discountType: event.discountType || 'percentage',
+        discountValue,
+        isActive: event.isActive ?? true,
+        applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
+          ? event.applicableRoomTypes.filter(
+              (roomType) => roomType && roomType.trim()
+            )
+          : [],
+      };
+    });
+
+    const uuids = formattedEvents.map((event) => event.uuid);
+    if (new Set(uuids).size !== uuids.length) {
+      throw new Error(
+        language === 'kor'
+          ? '중복된 이벤트 UUID가 있습니다.'
+          : 'Duplicate event UUIDs detected.'
+      );
+    }
+
+    const payload = {
+      eventSettings: formattedEvents,
+      roomTypes,
+    };
+
+    console.log('[handleSaveEvents] Sending payload:', {
+      eventSettings: formattedEvents,
+      roomTypes: roomTypes.map((rt) => ({
+        roomInfo: rt.roomInfo,
+        discount: rt.discount,
+        fixedDiscount: rt.fixedDiscount,
+      })),
+    });
+
+    const updatedSettings = await updateHotelSettings(hotelId, payload);
+    console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
+
+    if (!updatedSettings || !updatedSettings.roomTypes) {
+      throw new Error(
+        language === 'kor'
+          ? '서버 응답에서 호텔 설정 데이터를 찾을 수 없습니다.'
+          : 'Hotel settings data not found in server response.'
+      );
+    }
+
+    setRoomTypes(updatedSettings.roomTypes);
+    console.log(
+      '[handleSaveEvents] Updated roomTypes with discount:',
+      updatedSettings.roomTypes
+    );
+
+    const updatedRoomTypes = updatedSettings.roomTypes;
+    const affectedRooms = updatedRoomTypes
+      .filter((rt) => rt.discount > 0 || rt.fixedDiscount > 0)
+      .map(
+        (rt) =>
+          `${rt.nameKor}: ${
+            rt.fixedDiscount > 0 ? `${rt.fixedDiscount}원` : `${rt.discount}%`
+          } 할인 적용`
+      );
+
+    const feedbackMessage =
+      affectedRooms.length > 0
+        ? `${
+            language === 'kor'
+              ? '이벤트가 저장되었습니다. 할인 적용 객실: '
+              : 'Events saved successfully. Discount applied to: '
+          }${affectedRooms.join(', ')}`
+        : language === 'kor'
+        ? '이벤트가 저장되었습니다.'
+        : 'Events saved successfully';
+
+    setMessage(feedbackMessage);
+    setError('');
+    setTimeout(() => setMessage(''), 5000);
+  } catch (err) {
+    console.error('[handleSaveEvents] Error:', {
+      message: err.message,
+      response: err.response,
+      request: err.request,
+    });
+    setError(
+      language === 'kor'
+        ? `이벤트 저장 실패: ${err.message}${
+            err.response ? ` (상태 코드: ${err.response.status})` : ''
+          }`
+        : `Failed to save events: ${err.message}${
+            err.response ? ` (Status code: ${err.response.status})` : ''
+          }`
+    );
+    setMessage('');
+  }
+};
 
   const handleCancel = () => {
     if (!originalDataRef.current) return;
