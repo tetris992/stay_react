@@ -2027,3 +2027,805 @@ html {
   background-color: #dff0d8;
   border-radius: 4px;
 }
+
+/* ==========================================================================
+   11. COUPON SETTINGS SECTION (개선 - 가로 테이블 형태로 수정, KST 시간 처리 반영)
+========================================================================== */
+
+/* 전체 섹션 스타일 */
+.hotel-settings-coupon-section {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+}
+
+/* 섹션 헤더 */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.hotel-settings-coupon-section h2 {
+  font-size: 24px;
+  color: #2c3e50;
+  font-weight: 700;
+  border-left: 4px solid #6e8efb;
+  padding-left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.lock-icon {
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.lock-icon.locked {
+  color: #ef4444; /* 잠금 상태: 빨간색 */
+}
+
+.lock-icon.unlocked {
+  color: #16a34a; /* 잠금 해제 상태: 초록색 */
+}
+
+.lock-message {
+  font-size: 14px;
+  color: #ef4444;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* 공통 섹션 블록 스타일 (로열티 쿠폰 설정, 발행된 쿠폰 목록, 월별 쿠폰 통계에 적용) */
+.coupon-section-block {
+  margin-bottom: 30px;
+  padding: 15px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 공통 섹션 헤더 스타일 */
+.coupon-section-block h4,
+.hotel-settings-coupon-list-header,
+.monthly-stats h5,
+.stats-chart h5 {
+  font-size: 18px;
+  color: #34495e;
+  margin: 0 0 15px 0;
+  font-weight: 600;
+  padding: 10px 15px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
+
+/* 제목과 버튼을 수평으로 정렬하는 컨테이너 */
+.header-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+/* 버튼 컨테이너 스타일 */
+.header-button-container {
+  display: flex;
+  align-items: center;
+}
+
+/* 드롭다운 버튼과 제목 간 간격 조정 */
+.header-button-container .dropdown-toggle {
+  margin-left: 10px;
+}
+
+/* "새 쿠폰 발행" 버튼과 제목 간 간격 조정 */
+.header-button-container .hotel-settings-coupon-btn.create {
+  margin-left: 10px;
+}
+
+/* 쿠폰 발행 폼 컨테이너 */
+.coupon-form-container {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+/* "모든 객실에 적용" 체크박스 */
+.apply-to-all-section {
+  margin-bottom: 15px;
+}
+
+.apply-to-all-section label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.apply-to-all-section input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 쿠폰 폼 테이블 */
+.coupon-form-table {
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  overflow-x: auto; /* 테이블이 길어질 경우 스크롤 가능 */
+}
+
+/* 테이블 헤더 */
+.coupon-form-header {
+  display: table-header-group;
+  background-color: #e5e7eb;
+  font-weight: 600;
+}
+
+.coupon-form-header .coupon-form-cell {
+  padding: 12px 10px;
+  font-size: 13px;
+  color: #4b5563;
+  text-align: center;
+  border-bottom: 1px solid #d1d5db;
+  white-space: nowrap; /* 헤더 텍스트 줄바꿈 방지 */
+}
+
+/* 테이블 행 */
+.coupon-form-row {
+  display: table-row;
+  position: relative;
+}
+
+/* 선택된 행에 테두리 추가 */
+.coupon-form-row.selected-row {
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  z-index: 1;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 테이블 셀 */
+.coupon-form-cell {
+  display: table-cell;
+  padding: 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+/* 체크박스 셀 */
+.coupon-form-cell:first-child {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.coupon-form-cell input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.coupon-form-cell input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 입력 필드 및 셀렉트 스타일 */
+.coupon-form-cell input,
+.coupon-form-cell select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background-color: #f9fafb;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.coupon-form-cell input:focus,
+.coupon-form-cell select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  outline: none;
+}
+
+.coupon-form-cell input:disabled,
+.coupon-form-cell select:disabled {
+  background-color: #e5e7eb;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 필드별 너비 조정 (날짜 필드 포함) */
+.coupon-form-cell input[name='code'] {
+  width: 120px;
+}
+
+.coupon-form-cell input[name='name'] {
+  width: 200px;
+}
+
+.coupon-form-cell select[name='discountType'] {
+  width: 100px;
+}
+
+.coupon-form-cell input[name='startDate'],
+.coupon-form-cell input[name='endDate'] {
+  width: 150px;
+  font-size: 13px; /* 날짜 입력 필드 가독성 향상 */
+}
+
+.coupon-form-cell input[name='issuedAt'] {
+  width: 160px;
+  font-size: 13px;
+}
+
+/* 할인 값 입력 필드 */
+.discount-value-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 90px;
+}
+
+.discount-value-input.fixed {
+  width: 120px;
+}
+
+.coupon-form-cell input[name='discountValue'] {
+  width: 100%;
+  padding-right: 25px;
+}
+
+.discount-value-input span {
+  position: absolute;
+  right: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.discount-value-input.percentage span {
+  right: 5px;
+}
+
+/* 기간 설정 버튼 */
+.duration-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.duration-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: #e5e7eb;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.duration-btn:hover {
+  background-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.duration-btn.active {
+  background-color: #4caf50;
+  color: #fff;
+  border-color: #4caf50;
+}
+
+.duration-btn:disabled {
+  background-color: #e5e7eb;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 쿠폰 폼 액션 버튼 */
+.coupon-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hotel-settings-coupon-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.hotel-settings-coupon-btn.save {
+  background-color: #2ecc71;
+}
+
+.hotel-settings-coupon-btn.save:hover {
+  background-color: #27ae60;
+}
+
+.hotel-settings-coupon-btn.close {
+  background-color: #6b7280;
+}
+
+.hotel-settings-coupon-btn.close:hover {
+  background-color: #4b5563;
+}
+
+/* 쿠폰 발행 버튼 */
+.hotel-settings-coupon-btn.create {
+  background-color: #3b82f6;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.hotel-settings-coupon-btn.create:hover {
+  background-color: #2563eb;
+}
+
+/* 발행된 쿠폰 목록 */
+.hotel-settings-coupon-list {
+  margin-top: 20px;
+}
+
+/* 쿠폰 그룹 스타일 */
+.coupon-group {
+  margin-bottom: 20px;
+}
+
+.coupon-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.coupon-group-header h3 {
+  margin: 0;
+  padding-left: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.toggle-icon {
+  font-size: 16px;
+  margin-left: 10px;
+  transition: transform 0.3s ease;
+}
+
+.toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.group-delete {
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.group-delete:hover {
+  background-color: #cc0000;
+}
+
+.coupon-group-details {
+  padding: 10px;
+}
+
+.coupon-card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coupon-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  width: 300px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: rgba(167, 167, 167, 0.543);
+}
+
+.coupon-card:hover {
+  background-color: rgba(148, 208, 199, 0.543);
+  border: 1px solid #fc0d0d;
+}
+
+.coupon-card-content {
+  margin-bottom: 10px;
+}
+
+.coupon-card-content p {
+  margin: 5px 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.coupon-card-actions {
+  display: flex;
+  gap: 5px;
+  justify-content: flex-end;
+}
+
+/* 삭제 버튼 스타일 */
+.coupon-card-actions .delete-btn {
+  background-color: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coupon-card-actions .delete-btn:hover {
+  background-color: #dc2626;
+}
+
+.coupon-card-actions .delete-btn:disabled {
+  background-color: #d1d5db;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loyalty-form-row {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.loyalty-form-cell {
+  flex: 1;
+}
+
+.loyalty-form-cell label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.loyalty-form-cell input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.discount-range-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discount-range-input input {
+  width: 80px;
+}
+
+.discount-range-input span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* 월별 쿠폰 통계 섹션 */
+.coupon-stats-section {
+  margin-top: 20px;
+}
+
+/* 드롭다운 스타일 */
+.dropdown-wrapper {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.dropdown-toggle {
+  background-color: #3b82f6;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.dropdown-toggle:hover {
+  background-color: #2563eb;
+}
+
+.dropdown-icon {
+  transition: transform 0.3s ease;
+}
+
+.dropdown-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  min-width: 150px;
+}
+
+.dropdown-menu button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.dropdown-menu button:hover {
+  background-color: #f3f4f6;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stats-table thead {
+  background-color: #e5e7eb;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stats-table th {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.stats-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.stats-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.chart-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.chart-container p {
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* 메시지 스타일 */
+.hotel-settings-coupon-error {
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+  background-color: #fee2e2;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.hotel-settings-coupon-success {
+  color: #16a34a;
+  font-size: 14px;
+  text-align: center;
+  background-color: #dcfce7;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* 관리자 인증 모달 */
+.admin-auth-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+  text-align: center;
+}
+
+.modal-content input {
+  margin: 10px 0;
+  padding: 5px;
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.modal-actions button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.modal-actions button:first-child {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.modal-actions button:first-child:hover {
+  background-color: #2563eb;
+}
+
+.modal-actions button:last-child {
+  background-color: #6b7280;
+  color: #fff;
+}
+
+.modal-actions button:last-child:hover {
+  background-color: #4b5563;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .loyalty-form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .coupon-form-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .coupon-form-row {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .coupon-form-cell {
+    display: inline-block;
+    min-width: 120px;
+  }
+
+  .coupon-form-cell input,
+  .coupon-form-cell select {
+    width: 100%;
+    min-width: 100px;
+  }
+
+  .header-with-button {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-button-container {
+    margin-top: 10px;
+  }
+
+  .coupon-card {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .stats-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .hotel-settings-coupon-section h2 {
+    font-size: 20px;
+  }
+
+  .coupon-section-block h4,
+  .hotel-settings-coupon-list-header,
+  .monthly-stats h5,
+  .stats-chart h5 {
+    font-size: 16px;
+  }
+
+  .coupon-form-cell {
+    padding: 8px 5px;
+  }
+
+  .coupon-form-cell input,
+  .coupon-form-cell select {
+    font-size: 12px;
+  }
+}

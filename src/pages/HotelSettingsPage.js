@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Chart } from 'chart.js/auto';
 import {
   fetchHotelSettings,
   updateHotelSettings,
@@ -22,6 +23,7 @@ import {
   FaUndo,
   FaCamera,
 } from 'react-icons/fa';
+import { parseDate, formatDate } from '../utils/dateParser'
 
 import extractCoordinates from './extractCoordinates';
 import { FaMapMarkerAlt } from 'react-icons/fa';
@@ -29,8 +31,18 @@ import { FaMapMarkerAlt } from 'react-icons/fa';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
-import { toZonedTime, format } from 'date-fns-tz';
+import { format, toZonedTime } from 'date-fns-tz'; // addDays를 올바르게 임포트
+import { addDays } from 'date-fns';
 import api from '../api/api';
+
+// import {
+//   validateDiscountDates,
+//   validateDiscountValue,
+//   DiscountFormFields,
+//   RandomDiscountFields,
+//   ConditionFields,
+//   DiscountListItem,
+// } from '../components/DiscountFormFields';
 
 // 기본 층 설정
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
@@ -3199,6 +3211,1489 @@ function EventSettingsSection({
   );
 }
 
+
+// 편의 함수 정의
+const safeLower = (str) => (typeof str === 'string' ? str.toLowerCase() : '');
+
+function CouponSettingsSection({
+  language,
+  coupons,
+  setCoupons,
+  roomTypes,
+  onCouponsChange,
+  hotelId,
+}) {
+  const generateUniqueId = () => uuidv4();
+  const generateCouponCode = () => {
+    return `COUPON-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+  };
+
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [showCouponForm, setShowCouponForm] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [selectedRoomTypes, setSelectedRoomTypes] = useState(
+    roomTypes && roomTypes.length > 0
+      ? roomTypes.reduce((acc, rt) => {
+          if (rt && rt.roomInfo) {
+            acc[rt.roomInfo] = false;
+          }
+          return acc;
+        }, {})
+      : {}
+  );
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filterType, setFilterType] = useState('issued');
+  const [monthlyStats, setMonthlyStats] = useState({});
+
+  const [loyaltySettings, setLoyaltySettings] = useState({
+    visit5: { name: '5회 방문 쿠폰', discountType: 'percentage', randomMin: 10, randomMax: 50 },
+    visit10: { name: '10회 방문 쿠폰', discountType: 'percentage', randomMin: 50, randomMax: 90 },
+  });
+
+  const ADMIN_PASSWORD = '1111';
+
+  useEffect(() => {
+    const fetchLoyaltySettings = async () => {
+      try {
+        const { data: { loyaltyCoupons } } = await api.get(`/api/hotel-settings/${hotelId}/loyalty-coupons`);
+        if (loyaltyCoupons && Array.isArray(loyaltyCoupons)) {
+          const updatedSettings = {};
+          loyaltyCoupons.forEach((coupon) => {
+            const key = coupon.visits === 5 ? 'visit5' : coupon.visits === 10 ? 'visit10' : null;
+            if (key) {
+              updatedSettings[key] = {
+                name: key === 'visit5' ? '5회 방문 쿠폰' : '10회 방문 쿠폰',
+                discountType: coupon.discountType || 'percentage',
+                randomMin: coupon.randomMin || 0,
+                randomMax: coupon.randomMax || 0,
+              };
+            }
+          });
+          setLoyaltySettings((prev) => ({
+            ...prev,
+            ...(updatedSettings.visit5 && { visit5: updatedSettings.visit5 }),
+            ...(updatedSettings.visit10 && { visit10: updatedSettings.visit10 }),
+          }));
+        }
+      } catch (err) {
+        console.error('[fetchLoyaltySettings] Error:', err);
+        setError(
+          language === 'kor'
+            ? '로열티 설정을 불러오지 못했습니다.'
+            : 'Failed to load loyalty settings.'
+        );
+      }
+    };
+    fetchLoyaltySettings();
+  }, [hotelId, language]);
+
+  // 월별 통계 데이터 계산
+  useEffect(() => {
+    const calculateMonthlyStats = () => {
+      const stats = {};
+
+      coupons.forEach((coupon) => {
+        const issuedAt = coupon.issuedAt;
+        if (!issuedAt || typeof issuedAt !== 'string') {
+          return;
+        }
+
+        const issuedDate = parseDate(issuedAt);
+        if (!issuedDate || isNaN(issuedDate.getTime())) {
+          return;
+        }
+
+        const monthKey = format(issuedDate, 'yyyy-MM');
+
+        if (!stats[monthKey]) {
+          stats[monthKey] = { issued: 0, used: 0, deleted: 0 };
+        }
+
+        stats[monthKey].issued += 1;
+        if (coupon.usedCount > 0) {
+          stats[monthKey].used += 1;
+        }
+        if (coupon.isDeleted) {
+          stats[monthKey].deleted += 1;
+        }
+      });
+
+      setMonthlyStats(stats);
+    };
+
+    calculateMonthlyStats();
+  }, [coupons]);
+
+  // Chart.js를 사용하여 그래프 렌더링
+  useEffect(() => {
+    const ctx = document.getElementById('couponStatsChart')?.getContext('2d');
+    if (!ctx) return;
+
+    let chartInstance = null;
+
+    const createChart = () => {
+      const months = Object.keys(monthlyStats).sort();
+      const issuedData = months.map((month) => monthlyStats[month].issued);
+      const usedData = months.map((month) => monthlyStats[month].used);
+      const deletedData = months.map((month) => monthlyStats[month].deleted);
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: language === 'kor' ? '발행된 쿠폰' : 'Issued Coupons',
+              data: issuedData,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)',
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 1,
+            },
+            {
+              label: language === 'kor' ? '사용된 쿠폰' : 'Used Coupons',
+              data: usedData,
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1,
+            },
+            {
+              label: language === 'kor' ? '삭제된 쿠폰' : 'Deleted Coupons',
+              data: deletedData,
+              backgroundColor: 'rgba(255, 99, 132, 0.6)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: language === 'kor' ? '쿠폰 수' : 'Number of Coupons',
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: language === 'kor' ? '월' : 'Month',
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+          },
+        },
+      });
+    };
+
+    createChart();
+
+    return () => {
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+    };
+  }, [monthlyStats, language]);
+
+  const initialCoupon = (roomType) => {
+    const now = new Date();
+    const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX"); // 로컬 오프셋(XXX) 사용
+    const startDate = format(now, "yyyy-MM-dd");
+    const endDate = format(now, "yyyy-MM-dd");
+
+    return {
+      roomType: roomType && roomType.roomInfo ? roomType.roomInfo : '',
+      uuid: generateUniqueId(),
+      code: generateCouponCode(),
+      name: '',
+      startDate: startDate,
+      endDate: endDate,
+      discountType: 'percentage',
+      discountValue: '',
+      couponCount: '',
+      issuedAt: issuedAt,
+      autoDistribute: true,
+      autoValidity: true,
+      validityDays: 1,
+      duration: 1,
+      usedCount: 0,
+      usedAt: null,
+      isDeleted: false,
+    };
+  };
+
+  const [newCoupons, setNewCoupons] = useState(
+    roomTypes && roomTypes.length > 0
+      ? roomTypes.map((roomType) => initialCoupon(roomType))
+      : []
+  );
+
+  const handleApplyToAllToggle = () => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => handleApplyToAllToggle);
+      setShowPasswordModal(true);
+      return;
+    }
+
+    setApplyToAll((prev) => {
+      const newState = !prev;
+      setSelectedRoomTypes(
+        roomTypes && roomTypes.length > 0
+          ? roomTypes.reduce((acc, rt) => {
+              if (rt && rt.roomInfo) {
+                acc[rt.roomInfo] = newState ? true : false; // "모든 객실" 선택 시 모든 객실 선택, 해제 시 초기화
+              }
+              return acc;
+            }, {})
+          : {}
+      );
+      return newState;
+    });
+  };
+
+  const handleRoomTypeSelection = (roomType) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleRoomTypeSelection(roomType));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    setSelectedRoomTypes((prev) => ({
+      ...prev,
+      [roomType]: !prev[roomType],
+    }));
+    setApplyToAll(false); // 개별 객실 선택 시 applyToAll을 false로 설정
+  };
+
+  const validateCoupon = (coupon, existingCoupons = [], editingUuid = null) => {
+    if (!coupon.uuid) {
+      throw new Error(
+        language === 'kor'
+          ? '쿠폰 고유 식별자가 필요합니다.'
+          : 'Coupon UUID is required'
+      );
+    }
+
+    if (!coupon.code || coupon.code.trim() === '') {
+      throw new Error(
+        language === 'kor'
+          ? '쿠폰 코드를 입력해주세요.'
+          : 'Please enter a coupon code'
+      );
+    }
+
+    if (
+      existingCoupons.some(
+        (c) => c.code === coupon.code && c.uuid !== editingUuid
+      )
+    ) {
+      throw new Error(
+        language === 'kor'
+          ? '이미 사용 중인 쿠폰 코드입니다.'
+          : 'This coupon code is already in use.'
+      );
+    }
+
+    if (!coupon.name || coupon.name.trim() === '') {
+      throw new Error(
+        language === 'kor'
+          ? '쿠폰 이름을 입력해주세요.'
+          : 'Please enter a coupon name'
+      );
+    }
+
+    if (!coupon.startDate || !coupon.endDate) {
+      throw new Error(
+        language === 'kor'
+          ? '유효기간을 입력해주세요.'
+          : 'Please enter the validity period'
+      );
+    }
+
+    const startDate = parseDate(coupon.startDate);
+    const endDate = parseDate(coupon.endDate);
+
+    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error(
+        language === 'kor'
+          ? '유효한 날짜를 입력해주세요.'
+          : 'Please enter valid dates'
+      );
+    }
+
+    if (startDate > endDate) {
+      throw new Error(
+        language === 'kor'
+          ? '종료일은 시작일보다 이후이거나 같은 날짜여야 합니다.'
+          : 'End date must be on or after start date'
+      );
+    }
+
+    const discountValue = parseFloat(coupon.discountValue);
+    if (!isNaN(discountValue) && discountValue > 0) {
+      if (coupon.discountType === 'percentage') {
+        if (discountValue > 100) {
+          throw new Error(
+            language === 'kor'
+              ? `할인율은 0에서 100 사이여야 합니다.`
+              : `Discount percentage must be between 0 and 100.`
+          );
+        }
+      } else if (coupon.discountType === 'fixed') {
+        if (discountValue <= 0) {
+          throw new Error(
+            language === 'kor'
+              ? `할인 금액은 0보다 커야 합니다.`
+              : `Discount amount must be greater than 0.`
+          );
+        }
+      }
+    } else {
+      throw new Error(
+        language === 'kor'
+          ? `할인 값을 입력해주세요.`
+          : `Please enter a discount value.`
+      );
+    }
+  };
+
+  const handleCouponChange = (roomType, e) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleCouponChange(roomType, e));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    const { name, value } = e.target;
+    const parsedValue =
+      name === 'discountValue' || name === 'couponCount'
+        ? parseFloat(value) || ''
+        : value;
+
+    setNewCoupons((prev) =>
+      prev.map((coupon) =>
+        coupon.roomType === roomType
+          ? { ...coupon, [name]: parsedValue }
+          : coupon
+      )
+    );
+  };
+
+  const handleDurationSelect = (roomType, duration) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleDurationSelect(roomType, duration));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    const today = new Date();
+    const startDate = format(today, 'yyyy-MM-dd');
+    const endDate = format(addDays(today, duration - 1), 'yyyy-MM-dd');
+
+    setNewCoupons((prev) =>
+      prev.map((coupon) =>
+        coupon.roomType === roomType
+          ? {
+              ...coupon,
+              startDate: startDate,
+              endDate: endDate,
+              duration,
+              validityDays: duration,
+            }
+          : coupon
+      )
+    );
+
+    const durationMessage =
+      duration === 1
+        ? language === 'kor'
+          ? '유효기간이 당일로 설정되었습니다.'
+          : 'Validity period set to today.'
+        : language === 'kor'
+        ? `유효기간이 ${duration}일로 설정되었습니다.`
+        : `Validity period set to ${duration} days.`;
+    setMessage(durationMessage);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleLoyaltyChange = (visitType, field, value) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleLoyaltyChange(visitType, field, value));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    const parsedValue =
+      field === 'randomMin' || field === 'randomMax'
+        ? parseFloat(value) || 0
+        : value;
+    setLoyaltySettings((prev) => ({
+      ...prev,
+      [visitType]: {
+        ...prev[visitType],
+        [field]: parsedValue,
+      },
+    }));
+  };
+
+  const saveLoyaltySettings = async () => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => saveLoyaltySettings);
+      setShowPasswordModal(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { visit5, visit10 } = loyaltySettings;
+      if (
+        visit5.randomMin < 0 ||
+        visit5.randomMin > 100 ||
+        visit5.randomMax < 0 ||
+        visit5.randomMax > 100 ||
+        visit5.randomMin > visit5.randomMax ||
+        visit10.randomMin < 0 ||
+        visit10.randomMin > 100 ||
+        visit10.randomMax < 0 ||
+        visit10.randomMax > 100 ||
+        visit10.randomMin > visit10.randomMax
+      ) {
+        throw new Error(
+          language === 'kor'
+            ? '할인율 범위가 유효하지 않습니다. (0~100% 사이, 최소값 < 최대값)'
+            : 'Discount range is invalid. (0~100%, min < max)'
+        );
+      }
+
+      if (!visit5.name || !visit10.name) {
+        throw new Error(
+          language === 'kor'
+            ? '로열티 쿠폰 이름을 입력해주세요.'
+            : 'Please enter names for loyalty coupons.'
+        );
+      }
+
+      const loyaltyCoupons = [
+        {
+          visits: 5,
+          discountType: visit5.discountType,
+          randomMin: visit5.randomMin,
+          randomMax: visit5.randomMax,
+        },
+        {
+          visits: 10,
+          discountType: visit10.discountType,
+          randomMin: visit10.randomMin,
+          randomMax: visit10.randomMax,
+        },
+      ];
+
+      await api.put(`/api/hotel-settings/${hotelId}/loyalty-coupons`, loyaltyCoupons);
+
+      setMessage(
+        language === 'kor'
+          ? '로열티 쿠폰 설정이 저장되었습니다.'
+          : 'Loyalty coupon settings have been saved.'
+      );
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[saveLoyaltySettings] Error:', err);
+      setError(
+        language === 'kor'
+          ? `로열티 설정 저장에 실패했습니다: ${err.message}`
+          : `Failed to save loyalty settings: ${err.message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddCoupon = async () => {
+    if (isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const selectedTypes = Object.keys(selectedRoomTypes).filter(
+        (roomType) => selectedRoomTypes[roomType]
+      );
+
+      console.log('[handleAddCoupon] applyToAll:', applyToAll);
+      console.log('[handleAddCoupon] selectedRoomTypes:', selectedRoomTypes);
+      console.log('[handleAddCoupon] selectedTypes:', selectedTypes);
+
+      if (selectedTypes.length > 0 && applyToAll) {
+        console.log('[handleAddCoupon] Forcing applyToAll to false as specific room types are selected');
+        setApplyToAll(false);
+      }
+
+      if (!applyToAll && selectedTypes.length === 0) {
+        throw new Error(
+          language === 'kor'
+            ? '적어도 하나의 객실을 선택해주세요.'
+            : 'Please select at least one room type.'
+        );
+      }
+
+      const couponsToAdd = applyToAll
+        ? newCoupons
+        : newCoupons.filter((coupon) => selectedTypes.includes(coupon.roomType));
+
+      if (couponsToAdd.length === 0) {
+        throw new Error(
+          language === 'kor'
+            ? '선택된 객실에 대한 쿠폰 정보를 입력해주세요.'
+            : 'Please enter coupon information for the selected room types.'
+        );
+      }
+
+      const validatedCoupons = [];
+      for (const coupon of couponsToAdd) {
+        const numCoupons = parseInt(coupon.couponCount, 10);
+        const hasName = coupon.name.trim() !== '';
+        const hasDiscountValue = coupon.discountValue !== '' && coupon.discountValue > 0;
+        const hasCouponCount = numCoupons > 0;
+
+        if (!hasName || !hasDiscountValue || !hasCouponCount) {
+          throw new Error(
+            language === 'kor'
+              ? `쿠폰 이름, 할인 값, 쿠폰 개수를 입력해주세요 (객실: ${coupon.roomType}).`
+              : `Please enter coupon name, discount value, and coupon count (Room: ${coupon.roomType}).`
+          );
+        }
+
+        const now = new Date();
+        const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX"); // 로컬 오프셋(XXX) 사용
+        for (let i = 0; i < numCoupons; i++) {
+          const couponToValidate = {
+            ...coupon,
+            uuid: generateUniqueId(),
+            code: generateCouponCode(),
+            maxUses: 1,
+            usedCount: 0,
+            usedAt: null,
+            issuedAt: issuedAt,
+            applicableRoomType: applyToAll ? 'all' : coupon.roomType.toLowerCase(),
+            roomType: coupon.roomType.toLowerCase(), // roomType 필드 추가
+            autoDistribute: coupon.autoDistribute || true,
+            autoValidity: coupon.autoValidity || true,
+            validityDays: coupon.duration || 1,
+            isDeleted: false,
+          };
+
+          validateCoupon(couponToValidate, coupons);
+          validatedCoupons.push({
+            ...couponToValidate,
+            isActive: true,
+          });
+        }
+      }
+
+      console.log('[handleAddCoupon] Sending coupons to backend:', validatedCoupons);
+
+      // 쿠폰 생성 요청
+      const response = await api.post('/api/hotel-settings/coupons', {
+        hotelId,
+        coupons: validatedCoupons,
+      });
+
+      // 서버 응답 데이터를 로컬 상태에 바로 추가
+      setCoupons((prev) => [...prev, ...response.data.coupons]);
+      console.log('[handleAddCoupon] Updated coupons:', [...coupons, ...response.data.coupons]);
+
+      const feedbackMessage =
+        language === 'kor'
+          ? '쿠폰이 추가되었습니다.'
+          : 'Coupons have been added.';
+
+      setNewCoupons(
+        roomTypes && roomTypes.length > 0
+          ? roomTypes.map((roomType) => initialCoupon(roomType))
+          : []
+      );
+      setShowCouponForm(false);
+      setApplyToAll(false);
+      setSelectedRoomTypes(
+        roomTypes && roomTypes.length > 0
+          ? roomTypes.reduce((acc, rt) => {
+              if (rt && rt.roomInfo) {
+                acc[rt.roomInfo] = false;
+              }
+              return acc;
+            }, {})
+          : {}
+      );
+      setMessage(feedbackMessage);
+      setError('');
+
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      console.error('[handleAddCoupon] Validation error:', err.message);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCoupon = async (couponUuid) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleDeleteCoupon(couponUuid));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    if (isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const couponToDelete = coupons.find((coupon) => coupon.uuid === couponUuid);
+      if (couponToDelete.usedCount > 0) {
+        const updatedCoupons = coupons
+          .filter((coupon) => coupon.uuid !== couponUuid)
+          .map((coupon) => ({
+            ...coupon,
+            applicableRoomType:
+              Array.isArray(coupon.applicableRoomTypes) &&
+              coupon.applicableRoomTypes.length > 0
+                ? coupon.applicableRoomTypes[0]
+                : coupon.applicableRoomType || 'all',
+            applicableRoomTypes: undefined,
+          }));
+        setCoupons(updatedCoupons);
+
+        setMessage(
+          language === 'kor'
+            ? '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
+            : 'Used coupons cannot be deleted. Removed from UI only.'
+        );
+
+        if (typeof onCouponsChange === 'function') {
+          await onCouponsChange(updatedCoupons);
+        }
+      } else {
+        await api.delete('/api/hotel-settings/coupons', {
+          data: { hotelId, couponUuid },
+        });
+
+        const updatedCoupons = coupons
+          .map((coupon) =>
+            coupon.uuid === couponUuid
+              ? { ...coupon, isDeleted: true }
+              : coupon
+          )
+          .map((coupon) => ({
+            ...coupon,
+            applicableRoomType:
+              Array.isArray(coupon.applicableRoomTypes) &&
+              coupon.applicableRoomTypes.length > 0
+                ? coupon.applicableRoomTypes[0]
+                : coupon.applicableRoomType || 'all',
+            applicableRoomTypes: undefined,
+          }));
+        setCoupons(updatedCoupons);
+
+        setMessage(
+          language === 'kor'
+            ? '쿠폰이 삭제되었습니다.'
+            : 'Coupon has been deleted.'
+        );
+
+        if (typeof onCouponsChange === 'function') {
+          await onCouponsChange(updatedCoupons);
+        }
+      }
+
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      console.error('[handleDeleteCoupon] Error:', err);
+      setError(
+        language === 'kor'
+          ? `쿠폰 삭제 실패: ${err.message}`
+          : `Failed to delete coupon: ${err.message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteGroup = async (groupCoupons) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleDeleteGroup(groupCoupons));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    if (isLoading) return;
+
+    setIsLoading(true);
+    try {
+      // 모든 쿠폰에 대해 삭제 호출 (usedCount 조건 제거)
+      for (const coupon of groupCoupons) {
+        await api.delete('/api/hotel-settings/coupons', {
+          data: { hotelId, couponUuid: coupon.uuid },
+        });
+      }
+
+      // UI에서 모든 쿠폰 제거
+      const updatedCoupons = coupons
+        .filter((coupon) => !groupCoupons.some((gc) => gc.uuid === coupon.uuid))
+        .map((coupon) => ({
+          ...coupon,
+          applicableRoomType:
+            Array.isArray(coupon.applicableRoomTypes) &&
+            coupon.applicableRoomTypes.length > 0
+              ? coupon.applicableRoomTypes[0]
+              : coupon.applicableRoomType || 'all',
+          applicableRoomTypes: undefined,
+        }));
+      setCoupons(updatedCoupons);
+
+      const feedbackMessage =
+        language === 'kor'
+          ? '그룹 내 모든 쿠폰이 삭제되었습니다.'
+          : 'All coupons in the group have been deleted.';
+
+      setMessage(feedbackMessage);
+      setError('');
+
+      if (typeof onCouponsChange === 'function') {
+        await onCouponsChange(updatedCoupons);
+      }
+
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      console.error('[handleDeleteGroup] Error:', err);
+      setError(
+        language === 'kor'
+          ? `그룹 삭제 실패: ${err.message}`
+          : `Failed to delete group: ${err.message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAdminAuth = () => {
+    if (adminPasswordInput === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true);
+      setShowPasswordModal(false);
+      setAdminPasswordInput('');
+      if (pendingAction) {
+        pendingAction();
+        setPendingAction(null);
+      }
+    } else {
+      setError(
+        language === 'kor'
+          ? '관리자 번호가 올바르지 않습니다.'
+          : 'Invalid admin password.'
+      );
+      setAdminPasswordInput('');
+    }
+  };
+
+  const handleLockClick = () => {
+    if (isAdminAuthenticated) {
+      setIsAdminAuthenticated(false);
+    } else {
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCoupon(null);
+    setNewCoupons(
+      roomTypes && roomTypes.length > 0
+        ? roomTypes.map((roomType) => initialCoupon(roomType))
+        : []
+    );
+    setShowCouponForm(false);
+    setApplyToAll(false);
+    setSelectedRoomTypes(
+      roomTypes && roomTypes.length > 0
+        ? roomTypes.reduce((acc, rt) => {
+            if (rt && rt.roomInfo) {
+              acc[rt.roomInfo] = false;
+            }
+            return acc;
+          }, {})
+        : {}
+    );
+    setError('');
+  };
+
+  const groupCoupons = () => {
+    let filteredCoupons = coupons;
+    if (filterType === 'used') {
+      filteredCoupons = coupons.filter((coupon) => coupon.usedCount > 0);
+    } else if (filterType === 'deleted') {
+      filteredCoupons = coupons.filter((coupon) => coupon.isDeleted);
+    } else {
+      filteredCoupons = coupons.filter((coupon) => !coupon.isDeleted);
+    }
+
+    const grouped = filteredCoupons.reduce((acc, coupon) => {
+      const key = `${coupon.name}-${coupon.applicableRoomType || 'unknown'}`;
+      if (!acc[key]) {
+        acc[key] = {
+          name: coupon.name || 'Unnamed Coupon',
+          roomType: coupon.applicableRoomType || 'all',
+          coupons: [],
+        };
+      }
+      acc[key].coupons.push(coupon);
+      return acc;
+    }, {});
+    return Object.values(grouped);
+  };
+
+  const toggleGroup = (key) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const toggleDropdown = () => {
+    setShowDropdown((prev) => !prev);
+  };
+
+  const handleFilterChange = (type) => {
+    setFilterType(type);
+    setShowDropdown(false);
+  };
+
+  const groupedCoupons = groupCoupons();
+
+  return (
+    <section className="hotel-settings-coupon-section">
+      <div className="section-header">
+        <h2>
+          {language === 'kor' ? '◉ 쿠폰 발행' : 'Coupon Issuance'}
+          <span
+            className={`lock-icon ${isAdminAuthenticated ? 'unlocked' : 'locked'}`}
+            onClick={handleLockClick}
+            title={
+              language === 'kor'
+                ? '쿠폰을 발행/삭제하려면 관리자 비밀번호를 입력해야 합니다.'
+                : 'Enter admin password to issue/delete coupons.'
+            }
+          >
+            {isAdminAuthenticated ? '🔓' : '🔒'}
+          </span>
+        </h2>
+        {!isAdminAuthenticated && (
+          <p className="lock-message">
+            {language === 'kor' ? '잠금을 풀어 수정하세요' : 'Unlock to edit'}
+          </p>
+        )}
+      </div>
+      {error && <p className="hotel-settings-coupon-error">{error}</p>}
+      {message && <p className="hotel-settings-coupon-success">{message}</p>}
+      {isLoading && <p>{language === 'kor' ? '저장 중...' : 'Saving...'}</p>}
+
+      {/* 관리자 인증 모달 */}
+      {showPasswordModal && (
+        <div className="admin-auth-modal">
+          <div className="modal-content">
+            <h3>{language === 'kor' ? '관리자 인증' : 'Admin Authentication'}</h3>
+            <p>{language === 'kor' ? '관리자 번호를 입력해주세요:' : 'Please enter the admin password:'}</p>
+            <input
+              type="password"
+              value={adminPasswordInput}
+              onChange={(e) => setAdminPasswordInput(e.target.value)}
+              placeholder={language === 'kor' ? '관리자 번호' : 'Admin Password'}
+            />
+            <div className="modal-actions">
+              <button onClick={handleAdminAuth}>
+                {language === 'kor' ? '확인' : 'Confirm'}
+              </button>
+              <button onClick={() => setShowPasswordModal(false)}>
+                {language === 'kor' ? '취소' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 로열티 쿠폰 설정 섹션 */}
+      <div className="loyalty-coupon-settings coupon-section-block">
+        <h4>{language === 'kor' ? '로열티 쿠폰 설정' : 'Loyalty Coupon Settings'}</h4>
+        <div className="loyalty-form">
+          <div className="loyalty-form-row">
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '5회 방문 쿠폰 이름' : '5 Visits Coupon Name'}</label>
+              <input
+                type="text"
+                value={loyaltySettings.visit5?.name || '5회 방문 쿠폰'}
+                onChange={(e) => handleLoyaltyChange('visit5', 'name', e.target.value)}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '5회 방문 할인율 범위 (%)' : '5 Visits Discount Range (%)'}</label>
+              <div className="discount-range-input">
+                <input
+                  type="number"
+                  value={loyaltySettings.visit5?.randomMin || 0}
+                  onChange={(e) => handleLoyaltyChange('visit5', 'randomMin', e.target.value)}
+                  min="0"
+                  max="100"
+                  disabled={isLoading || !isAdminAuthenticated}
+                />
+                <span> ~ </span>
+                <input
+                  type="number"
+                  value={loyaltySettings.visit5?.randomMax || 0}
+                  onChange={(e) => handleLoyaltyChange('visit5', 'randomMax', e.target.value)}
+                  min="0"
+                  max="100"
+                  disabled={isLoading || !isAdminAuthenticated}
+                />
+              </div>
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '10회 방문 쿠폰 이름' : '10 Visits Coupon Name'}</label>
+              <input
+                type="text"
+                value={loyaltySettings.visit10?.name || '10회 방문 쿠폰'}
+                onChange={(e) => handleLoyaltyChange('visit10', 'name', e.target.value)}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '10회 방문 할인율 범위 (%)' : '10 Visits Discount Range (%)'}</label>
+              <div className="discount-range-input">
+                <input
+                  type="number"
+                  value={loyaltySettings.visit10?.randomMin || 0}
+                  onChange={(e) => handleLoyaltyChange('visit10', 'randomMin', e.target.value)}
+                  min="0"
+                  max="100"
+                  disabled={isLoading || !isAdminAuthenticated}
+                />
+                <span> ~ </span>
+                <input
+                  type="number"
+                  value={loyaltySettings.visit10?.randomMax || 0}
+                  onChange={(e) => handleLoyaltyChange('visit10', 'randomMax', e.target.value)}
+                  min="0"
+                  max="100"
+                  disabled={isLoading || !isAdminAuthenticated}
+                />
+              </div>
+            </div>
+            <div className="loyalty-form-cell">
+              <button
+                className="hotel-settings-coupon-btn save"
+                onClick={saveLoyaltySettings}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                {language === 'kor' ? '저장' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showCouponForm && (
+        <div className="coupon-form-container coupon-section-block">
+          <h4>
+            {editingCoupon
+              ? language === 'kor'
+                ? '쿠폰 수정'
+                : 'Edit Coupon'
+              : language === 'kor'
+              ? '쿠폰 발행'
+              : 'Issue Coupon'}
+          </h4>
+          <div className="apply-to-all-section">
+            <label>
+              <input
+                type="checkbox"
+                checked={applyToAll}
+                onChange={handleApplyToAllToggle}
+                disabled={isLoading}
+              />
+              {language === 'kor' ? '모든 객실에 적용' : 'Apply to All Rooms'}
+            </label>
+          </div>
+          <div className="coupon-form-table">
+            <div className="coupon-form-row coupon-form-header">
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '선택' : 'Select'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '적용 객실' : 'Applicable Room'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '고유 쿠폰 코드' : 'Coupon Code'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '쿠폰 이름' : 'Coupon Name'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '쿠폰 개수' : 'Coupon Count'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '발행형태' : 'Discount Type'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '유효기간 시작일' : 'Start Date'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '유효기간 종료일' : 'End Date'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '발행일시' : 'Issued At'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '할인 값' : 'Discount Value'}</label>
+              </div>
+              <div className="coupon-form-cell">
+                <label>{language === 'kor' ? '기간 설정' : 'Duration'}</label>
+              </div>
+            </div>
+
+            {newCoupons.length === 0 ? (
+              <div className="coupon-form-row">
+                <div className="coupon-form-cell" style={{ textAlign: 'center', width: '100%' }}>
+                  <p>
+                    {language === 'kor'
+                      ? '객실 정보를 불러올 수 없습니다. 관리자에게 문의하세요.'
+                      : 'Unable to load room information. Please contact the administrator.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              newCoupons.map((coupon) => (
+                <div
+                  className={`coupon-form-row ${applyToAll || selectedRoomTypes[coupon.roomType] ? 'selected-row' : ''}`}
+                  key={coupon.roomType || coupon.uuid}
+                >
+                  <div className="coupon-form-cell">
+                    <input
+                      type="checkbox"
+                      checked={applyToAll || selectedRoomTypes[coupon.roomType]}
+                      onChange={() => handleRoomTypeSelection(coupon.roomType)}
+                      disabled={isLoading || applyToAll}
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="text"
+                      value={
+                        applyToAll
+                          ? language === 'kor' ? '모든 객실' : 'All Rooms'
+                          : !roomTypes || !coupon.roomType
+                          ? language === 'kor' ? '알 수 없음' : 'Unknown'
+                          : coupon.roomType === 'all'
+                          ? language === 'kor' ? '모든 객실' : 'All Rooms'
+                          : roomTypes && roomTypes.length > 0
+                          ? language === 'kor'
+                            ? roomTypes.find((rt) => rt && rt.roomInfo && rt.roomInfo === coupon.roomType)?.nameKor || '알 수 없음'
+                            : roomTypes.find((rt) => rt && rt.roomInfo && rt.roomInfo === coupon.roomType)?.nameEng || 'Unknown'
+                          : language === 'kor' ? '알 수 없음' : 'Unknown'
+                      }
+                      readOnly
+                      disabled
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="text"
+                      name="code"
+                      value={coupon.code}
+                      readOnly
+                      disabled={isLoading}
+                      className="coupon-code-input"
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="text"
+                      name="name"
+                      value={coupon.name}
+                      onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                      disabled={isLoading || !isAdminAuthenticated}
+                      required
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="number"
+                      name="couponCount"
+                      value={coupon.couponCount}
+                      onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                      disabled={isLoading || !isAdminAuthenticated}
+                      min="1"
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <select
+                      name="discountType"
+                      value={coupon.discountType}
+                      onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                      disabled={isLoading || !isAdminAuthenticated}
+                    >
+                      <option value="percentage">
+                        {language === 'kor' ? '정률 (%)' : 'Percentage (%)'}
+                      </option>
+                      <option value="fixed">
+                        {language === 'kor' ? '정액 (원)' : 'Fixed Amount (₩)'}
+                      </option>
+                    </select>
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={coupon.startDate}
+                      onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                      disabled={isLoading || !isAdminAuthenticated}
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={coupon.endDate}
+                      onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                      disabled={isLoading || !isAdminAuthenticated}
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <input
+                      type="text"
+                      name="issuedAt"
+                      value={formatDate(parseDate(coupon.issuedAt), "yyyy-MM-dd HH:mm:ss")}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+                  <div className="coupon-form-cell">
+                    <div className={`discount-value-input ${coupon.discountType}`}>
+                      <input
+                        type="number"
+                        name="discountValue"
+                        value={coupon.discountValue}
+                        onChange={(e) => handleCouponChange(coupon.roomType, e)}
+                        disabled={isLoading || !isAdminAuthenticated}
+                        min="0"
+                      />
+                      <span>{coupon.discountType === 'percentage' ? '%' : '₩'}</span>
+                    </div>
+                  </div>
+                  <div className="coupon-form-cell duration-buttons">
+                    {[1, 7, 30].map((d) => (
+                      <button
+                        key={d}
+                        className={`duration-btn ${coupon.duration === d ? 'active' : ''}`}
+                        onClick={() => handleDurationSelect(coupon.roomType, d)}
+                        disabled={isLoading || !isAdminAuthenticated}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="coupon-form-actions">
+            <button
+              className="hotel-settings-coupon-btn save"
+              onClick={handleAddCoupon}
+              disabled={isLoading}
+            >
+              {language === 'kor' ? '발행' : 'Issue'}
+            </button>
+            <button
+              className="hotel-settings-coupon-btn close"
+              onClick={handleCancelEdit}
+              disabled={isLoading}
+            >
+              {language === 'kor' ? '취소' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="hotel-settings-coupon-list coupon-section-block">
+        <div className="header-with-button">
+          <h4 className="hotel-settings-coupon-list-header">
+            {language === 'kor' ? '발행된 쿠폰 목록' : 'Issued Coupons'}
+          </h4>
+          {!showCouponForm && (
+            <div className="header-button-container">
+              <button
+                className="hotel-settings-coupon-btn create"
+                onClick={() => setShowCouponForm(true)}
+                disabled={isLoading}
+              >
+                {language === 'kor' ? '새 쿠폰 발행' : 'Issue New Coupon'}
+              </button>
+            </div>
+          )}
+        </div>
+        {groupedCoupons.length === 0 ? (
+          <p>
+            {language === 'kor'
+              ? '해당 조건에 맞는 쿠폰이 없습니다.'
+              : 'No coupons match the selected criteria.'}
+          </p>
+        ) : (
+          groupedCoupons.map((group, index) => {
+            const key = `${group.name}-${group.roomType}-${index}`;
+            const isExpanded = expandedGroups[key];
+            const roomName =
+              group.roomType === 'all'
+                ? language === 'kor'
+                  ? '모든 객실'
+                  : 'All Rooms'
+                : roomTypes && roomTypes.length > 0 && group.roomType
+                ? language === 'kor'
+                  ? roomTypes.find(
+                      (rt) =>
+                        rt &&
+                        rt.roomInfo &&
+                        safeLower(rt.roomInfo) === safeLower(group.roomType)
+                    )?.nameKor || (group.roomType || '알 수 없음')
+                  : roomTypes.find(
+                      (rt) =>
+                        rt &&
+                        rt.roomInfo &&
+                        safeLower(rt.roomInfo) === safeLower(group.roomType)
+                    )?.nameEng || (group.roomType || 'Unknown')
+                : group.roomType || (language === 'kor' ? '알 수 없음' : 'Unknown');
+
+            return (
+              <div key={key} className="coupon-group">
+                <div className="coupon-group-header">
+                  <h3 onClick={() => toggleGroup(key)}>
+                    {group.name} ({roomName}) - {group.coupons.length}{' '}
+                    {language === 'kor' ? '개' : 'coupons'}
+                    <span className={`toggle-icon ${isExpanded ? 'expanded' : ''}`}>
+                      {isExpanded ? '▲' : '▼'}
+                    </span>
+                  </h3>
+                  <button
+                    className="group-delete"
+                    onClick={() => handleDeleteGroup(group.coupons)}
+                    disabled={isLoading}
+                  >
+                    {language === 'kor' ? '전체 삭제' : 'Delete All'}
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className="coupon-group-details">
+                    <div className="coupon-card-container">
+                      {group.coupons.map((coupon) => {
+                        const currentDate = format(new Date(), 'yyyy-MM-dd');
+                        const startDate = coupon.startDate;
+                        const endDate = coupon.endDate;
+                        const isExpired = startDate > currentDate || endDate < currentDate;
+                        const isUsed = coupon.usedCount > 0;
+                        const statusReason =
+                          !coupon.isActive && isExpired
+                            ? language === 'kor'
+                              ? '만료됨 - 유효기간이 지났습니다'
+                              : 'Expired - Validity period has passed'
+                            : !coupon.isActive
+                            ? language === 'kor'
+                              ? '비활성화'
+                              : 'Inactive'
+                            : isUsed
+                            ? language === 'kor'
+                              ? '사용완료'
+                              : 'Used'
+                            : language === 'kor'
+                            ? '사용전'
+                            : 'Not Used';
+
+                        return (
+                          <div key={coupon.uuid} className="coupon-card">
+                            <div className="coupon-card-content">
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '쿠폰 이름' : 'Coupon Name'}:
+                                </strong>{' '}
+                                {coupon.name}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '쿠폰 코드' : 'Coupon Code'}:
+                                </strong>{' '}
+                                {coupon.code}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor'
+                                    ? '적용 객실'
+                                    : 'Applicable Room'}
+                                  :
+                                </strong>{' '}
+                                {coupon.applicableRoomType === 'all'
+                                  ? language === 'kor' ? '모든 객실' : 'All Rooms'
+                                  : roomTypes && roomTypes.length > 0
+                                  ? language === 'kor'
+                                    ? roomTypes.find(
+                                        (rt) =>
+                                          rt &&
+                                          rt.roomInfo &&
+                                          safeLower(rt.roomInfo) ===
+                                            safeLower(coupon.applicableRoomType)
+                                      )?.nameKor || coupon.applicableRoomType
+                                    : roomTypes.find(
+                                        (rt) =>
+                                          rt &&
+                                          rt.roomInfo &&
+                                          safeLower(rt.roomInfo) ===
+                                            safeLower(coupon.applicableRoomType)
+                                      )?.nameEng || coupon.applicableRoomType
+                                  : coupon.applicableRoomType}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '할인 유형' : 'Discount Type'}:
+                                </strong>{' '}
+                                {coupon.discountType === 'percentage'
+                                  ? '정률 (%)'
+                                  : '정액 (₩)'}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '할인 값' : 'Discount Value'}:
+                                </strong>{' '}
+                                {coupon.discountValue}
+                                {coupon.discountType === 'percentage' ? '%' : '원'}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '유효기간' : 'Validity'}:
+                                </strong>{' '}
+                                {startDate} ~ {endDate}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '생성 일시' : 'Created At'}:
+                                </strong>{' '}
+                                {formatDate(parseDate(coupon.issuedAt), "yyyy-MM-dd HH:mm:ss")}
+                              </p>
+                              <p>
+                                <strong>
+                                  {language === 'kor' ? '상태' : 'Status'}:
+                                </strong>{' '}
+                                {statusReason}
+                              </p>
+                              {isUsed && coupon.usedAt && (
+                                <p>
+                                  <strong>
+                                    {language === 'kor' ? '사용 일시' : 'Used At'}:
+                                  </strong>{' '}
+                                  {formatDate(parseDate(coupon.usedAt), "yyyy-MM-dd HH:mm:ss")}
+                                </p>
+                              )}
+                            </div>
+                            <div className="coupon-card-actions">
+                              <button
+                                className="delete-btn"
+                                onClick={() => handleDeleteCoupon(coupon.uuid)}
+                                disabled={isLoading}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 통계 섹션 */}
+      <div className="coupon-stats-section">
+        {/* 월별 통계 테이블 */}
+        <div className="monthly-stats coupon-section-block">
+          <div className="header-with-button">
+            <h5>{language === 'kor' ? '월별 쿠폰 통계' : 'Monthly Coupon Stats'}</h5>
+            <div className="header-button-container">
+              <button className="dropdown-toggle" onClick={toggleDropdown}>
+                {language === 'kor' ? '쿠폰 통계 보기' : 'View Coupon Stats'}
+                <span className={`dropdown-icon ${showDropdown ? 'expanded' : ''}`}>
+                  ▼
+                </span>
+              </button>
+              {showDropdown && (
+                <div className="dropdown-menu">
+                  <button onClick={() => handleFilterChange('issued')}>
+                    {language === 'kor' ? '발행된 쿠폰' : 'Issued Coupons'}
+                  </button>
+                  <button onClick={() => handleFilterChange('used')}>
+                    {language === 'kor' ? '사용된 쿠폰' : 'Used Coupons'}
+                  </button>
+                  <button onClick={() => handleFilterChange('deleted')}>
+                    {language === 'kor' ? '삭제된 쿠폰' : 'Deleted Coupons'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>{language === 'kor' ? '월' : 'Month'}</th>
+                <th>{language === 'kor' ? '발행된 쿠폰' : 'Issued'}</th>
+                <th>{language === 'kor' ? '사용된 쿠폰' : 'Used'}</th>
+                <th>{language === 'kor' ? '삭제된 쿠폰' : 'Deleted'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(monthlyStats).sort().map((month) => (
+                <tr key={month}>
+                  <td>{month}</td>
+                  <td>{monthlyStats[month].issued}</td>
+                  <td>{monthlyStats[month].used}</td>
+                  <td>{monthlyStats[month].deleted}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 월별 통계 그래프 */}
+        <div className="stats-chart coupon-section-block">
+          <h5>{language === 'kor' ? '월별 쿠폰 통계 그래프' : 'Monthly Coupon Stats Chart'}</h5>
+          <div className="chart-container">
+            {Object.keys(monthlyStats).length > 0 ? (
+              <canvas id="couponStatsChart" />
+            ) : (
+              <p>{language === 'kor' ? '데이터가 없습니다.' : 'No data available.'}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
   const originalDataRef = useRef(null);
@@ -3207,8 +4702,8 @@ export default function HotelSettingsPage() {
   const [hotelId, setHotelId] = useState(localStorage.getItem('hotelId') || '');
   const [isExisting, setIsExisting] = useState(false);
   const [error, setError] = useState('');
-  const [totalRooms, setTotalRooms] = useState(0); // 초기값을 0으로 설정
-  const [roomTypes, setRoomTypes] = useState([]); // 초기값을 빈 배열로 설정
+  const [totalRooms, setTotalRooms] = useState(0);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [floors, setFloors] = useState([]);
   const [amenities, setAmenities] = useState([...DEFAULT_AMENITIES]);
   const [hotelAddress, setHotelAddress] = useState('');
@@ -3220,6 +4715,7 @@ export default function HotelSettingsPage() {
   const [hotelInfo, setHotelInfo] = useState(null);
   const [coordinates, setCoordinates] = useState(null);
   const [events, setEvents] = useState([]);
+  const [coupons, setCoupons] = useState([]); // 추가: coupons 상태
   const [message, setMessage] = useState('');
 
   const handleCoordinatesUpdate = (coords) => {
@@ -3232,7 +4728,6 @@ export default function HotelSettingsPage() {
 
   useEffect(() => {
     async function loadData() {
-      // 호텔 ID 검증
       if (!hotelId) {
         setError(
           language === 'kor'
@@ -3242,9 +4737,8 @@ export default function HotelSettingsPage() {
         navigate('/login');
         return;
       }
-
+  
       try {
-        // 병렬로 호텔 설정과 사용자 정보 가져오기
         const [hotelData, userData] = await Promise.all([
           fetchHotelSettings(hotelId).catch((err) => {
             console.error('[fetchHotelSettings] Error:', err);
@@ -3255,8 +4749,7 @@ export default function HotelSettingsPage() {
             return null;
           }),
         ]);
-
-        // 사용자 정보 처리 (우선 적용)
+  
         if (userData) {
           setHotelName(userData.hotelName || '');
           setHotelAddress(userData.address || '');
@@ -3289,43 +4782,45 @@ export default function HotelSettingsPage() {
             adminName: '정보 없음',
           });
         }
-
-        // 호텔 설정 처리
+  
         if (hotelData && hotelData._id) {
           setIsExisting(true);
           const containers =
             hotelData.gridSettings?.floors?.flatMap(
               (floor) => floor.containers || []
             ) || [];
-
-          // gridSettings.floors에서 고유한 객실 타입 추출
+  
           const activeTypes = new Set(
             containers
               .filter((c) => c.roomInfo && c.isActive)
               .map((c) => c.roomInfo.toLowerCase())
           );
-
-          // roomTypes에서 activeTypes에 해당하는 항목만 필터링
+  
           let updatedRoomTypes = hotelData.roomTypes
             .filter((rt) => activeTypes.has(rt.roomInfo.toLowerCase()))
             .map((rt) => ({
               ...rt,
               isBaseRoom: rt.isBaseRoom || false,
-              roomAmenities: rt.roomAmenities || DEFAULT_AMENITIES.filter(
-                (a) => a.type === 'in-room'
-              ).map((a) => ({
-                nameKor: a.nameKor,
-                nameEng: a.nameEng,
-                icon: a.icon,
-                type: a.type,
-                isActive: false,
-              })),
+              roomAmenities:
+                rt.roomAmenities ||
+                DEFAULT_AMENITIES.filter((a) => a.type === 'in-room').map(
+                  (a) => ({
+                    nameKor: a.nameKor,
+                    nameEng: a.nameEng,
+                    icon: a.icon,
+                    type: a.type,
+                    isActive: false,
+                  })
+                ),
               photos: rt.photos || [],
             }));
-
-          // gridSettings에 있지만 roomTypes에 없는 타입 추가
+  
           activeTypes.forEach((typeKey) => {
-            if (!updatedRoomTypes.some((rt) => rt.roomInfo.toLowerCase() === typeKey)) {
+            if (
+              !updatedRoomTypes.some(
+                (rt) => rt.roomInfo.toLowerCase() === typeKey
+              )
+            ) {
               updatedRoomTypes.push({
                 roomInfo: typeKey,
                 nameKor: typeKey.charAt(0).toUpperCase() + typeKey.slice(1),
@@ -3348,11 +4843,15 @@ export default function HotelSettingsPage() {
               });
             }
           });
-
-          updatedRoomTypes = buildRoomTypesWithNumbers(updatedRoomTypes, containers);
+  
+          updatedRoomTypes = buildRoomTypesWithNumbers(
+            updatedRoomTypes,
+            containers
+          );
           setRoomTypes(updatedRoomTypes);
           setTotalRooms(
-            containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive).length
+            containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive)
+              .length
           );
           setFloors(hotelData.gridSettings?.floors || []);
           setAmenities(hotelData.amenities || DEFAULT_AMENITIES);
@@ -3368,6 +4867,38 @@ export default function HotelSettingsPage() {
               applicableRoomTypes: event.applicableRoomTypes || [],
             }))
           );
+          console.log('[loadData] hotelData.coupons:', hotelData.coupons); // 디버깅 로그 추가
+          setCoupons(
+            (hotelData.coupons || []).map((coupon) => ({
+              uuid: coupon.uuid || uuidv4(),
+              code: coupon.code || '',
+              name: coupon.name || '할인 쿠폰',
+              startDate: new Date(coupon.startDate).toISOString().split('T')[0],
+              endDate: new Date(coupon.endDate).toISOString().split('T')[0],
+              autoValidity: coupon.autoValidity ?? true,
+              validityDays: coupon.validityDays || 30,
+              discountType: coupon.discountType || 'percentage',
+              discountValue: coupon.discountValue || 0,
+              isActive: coupon.isActive ?? true,
+              applicableRoomType: coupon.applicableRoomType,
+              maxUses: coupon.maxUses || null,
+              stackWithEvents: coupon.stackWithEvents ?? false,
+              usedCount: coupon.usedCount || 0,
+              condition: coupon.condition || {
+                type: 'none',
+                value: null,
+                minPrice: null,
+                maxPrice: null,
+              },
+              isRandom: coupon.isRandom || false,
+              randomMin: coupon.randomMin || '',
+              randomMax: coupon.randomMax || '',
+              autoDistribute: coupon.autoDistribute || false,
+              issuedAt: coupon.issuedAt || format(toZonedTime(new Date(), 'Asia/Seoul'), 'yyyy-MM-dd HH:mm:ss'),
+              usedAt: coupon.usedAt || null,
+              isDeleted: coupon.isDeleted || false,
+            }))
+          );
           setCheckInTime(hotelData.checkInTime || '16:00');
           setCheckOutTime(hotelData.checkOutTime || '11:00');
           if (hotelData.latitude && hotelData.longitude) {
@@ -3377,12 +4908,12 @@ export default function HotelSettingsPage() {
             });
           }
         } else {
-          // 최초 설정: 빈 상태로 초기화
           setIsExisting(false);
           setRoomTypes([]);
           setFloors([]);
           setTotalRooms(0);
           setEvents([]);
+          setCoupons([]);
           setAmenities(DEFAULT_AMENITIES);
           setCheckInTime('16:00');
           setCheckOutTime('11:00');
@@ -3404,6 +4935,7 @@ export default function HotelSettingsPage() {
         setFloors([]);
         setTotalRooms(0);
         setEvents([]);
+        setCoupons([]);
         setHotelName('');
         setHotelAddress('');
         setEmail('');
@@ -3418,7 +4950,7 @@ export default function HotelSettingsPage() {
         });
       }
     }
-
+  
     loadData();
   }, [hotelId, language, navigate]);
 
@@ -3469,7 +5001,8 @@ export default function HotelSettingsPage() {
     setRoomTypes(defaultRoomTypesCopy);
     setFloors(newFloors);
     setTotalRooms(defaultRoomTypesCopy.reduce((sum, rt) => sum + rt.stock, 0));
-    setError(''); // 에러 메시지 초기화
+    setCoupons([]);
+    setError('');
     alert('디폴트 설정이 불러와졌습니다.');
   };
 
@@ -3543,6 +5076,7 @@ export default function HotelSettingsPage() {
       email,
       phoneNumber,
       hotelName,
+      coupons,
     };
   }, [
     floors,
@@ -3555,6 +5089,7 @@ export default function HotelSettingsPage() {
     updatedRoomTypes.hasChanges,
     updatedRoomTypes.roomTypes,
     amenities,
+    coupons,
   ]);
 
   const handleSaveHotelInfo = async () => {
@@ -3659,7 +5194,10 @@ export default function HotelSettingsPage() {
       hotelId,
       amenities,
       roomTypes: updatedRoomTypes,
-      totalRooms: Object.values(roomCounts).reduce((sum, count) => sum + count, 0),
+      totalRooms: Object.values(roomCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      ),
     };
 
     try {
@@ -3718,7 +5256,10 @@ export default function HotelSettingsPage() {
       hotelId,
       gridSettings: { floors },
       roomTypes: updatedRoomTypes,
-      totalRooms: Object.values(roomCounts).reduce((sum, count) => sum + count, 0),
+      totalRooms: Object.values(roomCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      ),
     };
 
     try {
@@ -3760,179 +5301,421 @@ export default function HotelSettingsPage() {
     }
   };
 
-const handleSaveEvents = async (updatedEvents) => {
-  try {
-    if (!hotelId) {
-      throw new Error(
-        language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
-      );
-    }
-
-    if (!updatedEvents || updatedEvents.length === 0) {
-      setMessage(
-        language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
-      );
-      setTimeout(() => setMessage(''), 3000);
-      return;
-    }
-
-    const formattedEvents = updatedEvents.map((event) => {
-      if (!event.uuid) {
+  const handleSaveEvents = async (updatedEvents) => {
+    try {
+      if (!hotelId) {
         throw new Error(
-          language === 'kor'
-            ? '이벤트 UUID가 누락되었습니다.'
-            : 'Event UUID is missing.'
+          language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
         );
       }
 
-      // startDate와 endDate를 yyyy-MM-dd 형식으로 유지
-      const startDateStr = event.startDate; // 이미 yyyy-MM-dd 형식
-      const endDateStr = event.endDate;     // 이미 yyyy-MM-dd 형식
-
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) || !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
-        throw new Error(
-          language === 'kor'
-            ? `유효하지 않은 날짜 형식입니다 (이벤트: ${event.eventName}).`
-            : `Invalid date format (Event: ${event.eventName}).`
+      if (!updatedEvents || updatedEvents.length === 0) {
+        setMessage(
+          language === 'kor' ? '저장할 이벤트가 없습니다.' : 'No events to save'
         );
+        setTimeout(() => setMessage(''), 3000);
+        return;
       }
 
-      const startDate = new Date(startDateStr);
-      const endDate = new Date(endDateStr);
-
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        throw new Error(
-          language === 'kor'
-            ? `유효하지 않은 날짜입니다 (이벤트: ${event.eventName}).`
-            : `Invalid date format (Event: ${event.eventName}).`
-        );
-      }
-
-      if (startDate > endDate) {
-        throw new Error(
-          language === 'kor'
-            ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (이벤트: ${event.eventName}).`
-            : `End date must be on or after start date (Event: ${event.eventName}).`
-        );
-      }
-
-      const discountValue = Number(event.discountValue) || 0;
-      if (
-        event.discountType === 'percentage' &&
-        (discountValue < 0 || discountValue > 100)
-      ) {
-        throw new Error(
-          language === 'kor'
-            ? `할인율은 0~100% 사이여야 합니다 (이벤트: ${event.eventName}).`
-            : `Discount percentage must be between 0 and 100 (Event: ${event.eventName}).`
-        );
-      }
-      if (event.discountType === 'fixed' && discountValue <= 0) {
-        throw new Error(
-          language === 'kor'
-            ? `할인 금액은 0보다 커야 합니다 (이벤트: ${event.eventName}).`
-            : `Discount amount must be greater than 0 (Event: ${event.eventName}).`
-        );
-      }
-
-      return {
-        uuid: event.uuid,
-        eventName: event.eventName || '특가 이벤트',
-        startDate: startDateStr, // yyyy-MM-dd 형식 문자열
-        endDate: endDateStr,     // yyyy-MM-dd 형식 문자열
-        discountType: event.discountType || 'percentage',
-        discountValue,
-        isActive: event.isActive ?? true,
-        applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
-          ? event.applicableRoomTypes.filter(
-              (roomType) => roomType && roomType.trim()
-            )
-          : [],
-      };
-    });
-
-    const uuids = formattedEvents.map((event) => event.uuid);
-    if (new Set(uuids).size !== uuids.length) {
-      throw new Error(
-        language === 'kor'
-          ? '중복된 이벤트 UUID가 있습니다.'
-          : 'Duplicate event UUIDs detected.'
-      );
-    }
-
-    const payload = {
-      eventSettings: formattedEvents,
-      roomTypes,
-    };
-
-    console.log('[handleSaveEvents] Sending payload:', {
-      eventSettings: formattedEvents,
-      roomTypes: roomTypes.map((rt) => ({
-        roomInfo: rt.roomInfo,
-        discount: rt.discount,
-        fixedDiscount: rt.fixedDiscount,
-      })),
-    });
-
-    const updatedSettings = await updateHotelSettings(hotelId, payload);
-    console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
-
-    if (!updatedSettings || !updatedSettings.roomTypes) {
-      throw new Error(
-        language === 'kor'
-          ? '서버 응답에서 호텔 설정 데이터를 찾을 수 없습니다.'
-          : 'Hotel settings data not found in server response.'
-      );
-    }
-
-    setRoomTypes(updatedSettings.roomTypes);
-    console.log(
-      '[handleSaveEvents] Updated roomTypes with discount:',
-      updatedSettings.roomTypes
-    );
-
-    const updatedRoomTypes = updatedSettings.roomTypes;
-    const affectedRooms = updatedRoomTypes
-      .filter((rt) => rt.discount > 0 || rt.fixedDiscount > 0)
-      .map(
-        (rt) =>
-          `${rt.nameKor}: ${
-            rt.fixedDiscount > 0 ? `${rt.fixedDiscount}원` : `${rt.discount}%`
-          } 할인 적용`
-      );
-
-    const feedbackMessage =
-      affectedRooms.length > 0
-        ? `${
+      const formattedEvents = updatedEvents.map((event) => {
+        if (!event.uuid) {
+          throw new Error(
             language === 'kor'
-              ? '이벤트가 저장되었습니다. 할인 적용 객실: '
-              : 'Events saved successfully. Discount applied to: '
-          }${affectedRooms.join(', ')}`
-        : language === 'kor'
-        ? '이벤트가 저장되었습니다.'
-        : 'Events saved successfully';
+              ? '이벤트 UUID가 누락되었습니다.'
+              : 'Event UUID is missing.'
+          );
+        }
 
-    setMessage(feedbackMessage);
-    setError('');
-    setTimeout(() => setMessage(''), 5000);
-  } catch (err) {
-    console.error('[handleSaveEvents] Error:', {
-      message: err.message,
-      response: err.response,
-      request: err.request,
-    });
-    setError(
-      language === 'kor'
-        ? `이벤트 저장 실패: ${err.message}${
-            err.response ? ` (상태 코드: ${err.response.status})` : ''
-          }`
-        : `Failed to save events: ${err.message}${
-            err.response ? ` (Status code: ${err.response.status})` : ''
-          }`
-    );
-    setMessage('');
-  }
-};
+        const startDateStr = event.startDate;
+        const endDateStr = event.endDate;
+
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)
+        ) {
+          throw new Error(
+            language === 'kor'
+              ? `유효하지 않은 날짜 형식입니다 (이벤트: ${event.eventName}).`
+              : `Invalid date format (Event: ${event.eventName}).`
+          );
+        }
+
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          throw new Error(
+            language === 'kor'
+              ? `유효하지 않은 날짜입니다 (이벤트: ${event.eventName}).`
+              : `Invalid date format (Event: ${event.eventName}).`
+          );
+        }
+
+        if (startDate > endDate) {
+          throw new Error(
+            language === 'kor'
+              ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (이벤트: ${event.eventName}).`
+              : `End date must be on or after start date (Event: ${event.eventName}).`
+          );
+        }
+
+        const discountValue = Number(event.discountValue) || 0;
+        if (
+          event.discountType === 'percentage' &&
+          (discountValue < 0 || discountValue > 100)
+        ) {
+          throw new Error(
+            language === 'kor'
+              ? `할인율은 0~100% 사이여야 합니다 (이벤트: ${event.eventName}).`
+              : `Discount percentage must be between 0 and 100 (Event: ${event.eventName}).`
+          );
+        }
+        if (event.discountType === 'fixed' && discountValue <= 0) {
+          throw new Error(
+            language === 'kor'
+              ? `할인 금액은 0보다 커야 합니다 (이벤트: ${event.eventName}).`
+              : `Discount amount must be greater than 0 (Event: ${event.eventName}).`
+          );
+        }
+
+        return {
+          uuid: event.uuid,
+          eventName: event.eventName || '특가 이벤트',
+          startDate: startDateStr,
+          endDate: endDateStr,
+          discountType: event.discountType || 'percentage',
+          discountValue,
+          isActive: event.isActive ?? true,
+          applicableRoomTypes: Array.isArray(event.applicableRoomTypes)
+            ? event.applicableRoomTypes.filter(
+                (roomType) => roomType && roomType.trim()
+              )
+            : [],
+        };
+      });
+
+      const uuids = formattedEvents.map((event) => event.uuid);
+      if (new Set(uuids).size !== uuids.length) {
+        throw new Error(
+          language === 'kor'
+            ? '중복된 이벤트 UUID가 있습니다.'
+            : 'Duplicate event UUIDs detected.'
+        );
+      }
+
+      const payload = {
+        eventSettings: formattedEvents,
+        roomTypes,
+      };
+
+      console.log('[handleSaveEvents] Sending payload:', {
+        eventSettings: formattedEvents,
+        roomTypes: roomTypes.map((rt) => ({
+          roomInfo: rt.roomInfo,
+          discount: rt.discount,
+          fixedDiscount: rt.fixedDiscount,
+        })),
+      });
+
+      const updatedSettings = await updateHotelSettings(hotelId, payload);
+      console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
+
+      if (!updatedSettings || !updatedSettings.roomTypes) {
+        throw new Error(
+          language === 'kor'
+            ? '서버 응답에서 호텔 설정 데이터를 찾을 수 없습니다.'
+            : 'Hotel settings data not found in server response.'
+        );
+      }
+
+      setRoomTypes(updatedSettings.roomTypes);
+      console.log(
+        '[handleSaveEvents] Updated roomTypes with discount:',
+        updatedSettings.roomTypes
+      );
+
+      const updatedRoomTypes = updatedSettings.roomTypes;
+      const affectedRooms = updatedRoomTypes
+        .filter((rt) => rt.discount > 0 || rt.fixedDiscount > 0)
+        .map(
+          (rt) =>
+            `${rt.nameKor}: ${
+              rt.fixedDiscount > 0 ? `${rt.fixedDiscount}원` : `${rt.discount}%`
+            } 할인 적용`
+        );
+
+      const feedbackMessage =
+        affectedRooms.length > 0
+          ? `${
+              language === 'kor'
+                ? '이벤트가 저장되었습니다. 할인 적용 객실: '
+                : 'Events saved successfully. Discount applied to: '
+            }${affectedRooms.join(', ')}`
+          : language === 'kor'
+          ? '이벤트가 저장되었습니다.'
+          : 'Events saved successfully';
+
+      setMessage(feedbackMessage);
+      setError('');
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      console.error('[handleSaveEvents] Error:', {
+        message: err.message,
+        response: err.response,
+        request: err.request,
+      });
+      setError(
+        language === 'kor'
+          ? `이벤트 저장 실패: ${err.message}${
+              err.response ? ` (상태 코드: ${err.response.status})` : ''
+            }`
+          : `Failed to save events: ${err.message}${
+              err.response ? ` (Status code: ${err.response.status})` : ''
+            }`
+      );
+      setMessage('');
+    }
+  };
+
+  const handleSaveCoupons = async (updatedCoupons) => {
+    try {
+      if (!hotelId) {
+        throw new Error(
+          language === 'kor' ? '호텔 ID가 필요합니다.' : 'Hotel ID is required'
+        );
+      }
+  
+      if (!updatedCoupons || updatedCoupons.length === 0) {
+        setMessage(
+          language === 'kor' ? '저장할 쿠폰이 없습니다.' : 'No coupons to save'
+        );
+        setTimeout(() => setMessage(''), 3000);
+        return;
+      }
+  
+      const formattedCoupons = updatedCoupons.map((coupon) => {
+        if (!coupon.uuid) {
+          throw new Error(
+            language === 'kor'
+              ? '쿠폰 UUID가 누락되었습니다.'
+              : 'Coupon UUID is missing.'
+          );
+        }
+  
+        const startDateStr = coupon.startDate;
+        const endDateStr = coupon.endDate;
+  
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(startDateStr) ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)
+        ) {
+          throw new Error(
+            language === 'kor'
+              ? `유효하지 않은 날짜 형식입니다 (쿠폰: ${coupon.name}).`
+              : `Invalid date format (Coupon: ${coupon.name}).`
+          );
+        }
+  
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+  
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          throw new Error(
+            language === 'kor'
+              ? `유효하지 않은 날짜입니다 (쿠폰: ${coupon.name}).`
+              : `Invalid date format (Coupon: ${coupon.name}).`
+          );
+        }
+  
+        if (startDate > endDate) {
+          throw new Error(
+            language === 'kor'
+              ? `종료일은 시작일보다 이후이거나 같은 날짜여야 합니다 (쿠폰: ${coupon.name}).`
+              : `End date must be on or after start date (Coupon: ${coupon.name}).`
+          );
+        }
+  
+        const discountValue = Number(coupon.discountValue) || 0;
+        if (
+          coupon.discountType === 'percentage' &&
+          (discountValue < 0 || discountValue > 100)
+        ) {
+          throw new Error(
+            language === 'kor'
+              ? `할인율은 0~100% 사이여야 합니다 (쿠폰: ${coupon.name}).`
+              : `Discount percentage must be between 0 and 100 (Coupon: ${coupon.name}).`
+          );
+        }
+        if (coupon.discountType === 'fixed' && discountValue <= 0) {
+          throw new Error(
+            language === 'kor'
+              ? `할인 금액은 0보다 커야 합니다 (쿠폰: ${coupon.name}).`
+              : `Discount amount must be greater than 0 (Coupon: ${coupon.name}).`
+          );
+        }
+  
+        if (coupon.isRandom) {
+          const randomMin = Number(coupon.randomMin) || 0;
+          const randomMax = Number(coupon.randomMax) || 0;
+          if (randomMin >= randomMax) {
+            throw new Error(
+              language === 'kor'
+                ? `최소 할인 값은 최대 할인 값보다 작아야 합니다 (쿠폰: ${coupon.name}).`
+                : `Minimum discount value must be less than maximum discount value (Coupon: ${coupon.name}).`
+            );
+          }
+          if (coupon.discountType === 'percentage') {
+            if (randomMin < 0 || randomMax > 100) {
+              throw new Error(
+                language === 'kor'
+                  ? `랜덤 할인율은 0~100% 사이여야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Random discount percentage must be between 0 and 100 (Coupon: ${coupon.name}).`
+              );
+            }
+          } else if (coupon.discountType === 'fixed') {
+            if (randomMin <= 0 || randomMax <= 0) {
+              throw new Error(
+                language === 'kor'
+                  ? `랜덤 할인 금액은 0보다 커야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Random discount amount must be greater than 0 (Coupon: ${coupon.name}).`
+              );
+            }
+          }
+        }
+  
+        if (coupon.condition && coupon.condition.type !== 'none') {
+          if (coupon.condition.type === 'visitCount') {
+            const visitCount = parseInt(coupon.condition.value, 10);
+            if (isNaN(visitCount) || visitCount <= 0) {
+              throw new Error(
+                language === 'kor'
+                  ? `방문 횟수는 1 이상의 숫자여야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Visit count must be a number greater than 0 (Coupon: ${coupon.name}).`
+              );
+            }
+          } else if (coupon.condition.type === 'topN') {
+            const topN = parseInt(coupon.condition.value, 10);
+            if (isNaN(topN) || topN <= 0) {
+              throw new Error(
+                language === 'kor'
+                  ? `상위 N명은 1 이상의 숫자여야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Top N must be a number greater than 0 (Coupon: ${coupon.name}).`
+              );
+            }
+          } else if (coupon.condition.type === 'priceRange') {
+            const minPrice = parseFloat(coupon.condition.minPrice);
+            const maxPrice = parseFloat(coupon.condition.maxPrice);
+            if (
+              (minPrice !== null && (isNaN(minPrice) || minPrice < 0)) ||
+              (maxPrice !== null && (isNaN(maxPrice) || maxPrice <= 0))
+            ) {
+              throw new Error(
+                language === 'kor'
+                  ? `가격 범위는 유효한 숫자여야 하며, 0 이상이어야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Price range must be a valid number and greater than 0 (Coupon: ${coupon.name}).`
+              );
+            }
+            if (
+              minPrice !== null &&
+              maxPrice !== null &&
+              minPrice >= maxPrice
+            ) {
+              throw new Error(
+                language === 'kor'
+                  ? `최소 가격은 최대 가격보다 작아야 합니다 (쿠폰: ${coupon.name}).`
+                  : `Minimum price must be less than maximum price (Coupon: ${coupon.name}).`
+              );
+            }
+          }
+        }
+  
+        return {
+          uuid: coupon.uuid,
+          code: coupon.code,
+          name: coupon.name || '할인 쿠폰',
+          startDate: startDateStr,
+          endDate: endDateStr,
+          discountType: coupon.discountType || 'percentage',
+          discountValue,
+          isActive: coupon.isActive ?? true,
+          applicableRoomType: coupon.applicableRoomType, // 단일 필드 추가
+          applicableRoomTypes: Array.isArray(coupon.applicableRoomTypes)
+            ? coupon.applicableRoomTypes.filter(
+                (roomType) => roomType && roomType.trim()
+              )
+            : [],
+          maxUses: coupon.maxUses ? parseInt(coupon.maxUses, 10) : null,
+          stackWithEvents: coupon.stackWithEvents ?? false,
+          usedCount: coupon.usedCount || 0,
+          condition: coupon.condition || {
+            type: 'none',
+            value: null,
+            minPrice: null,
+            maxPrice: null,
+          },
+          isRandom: coupon.isRandom || false,
+          randomMin: coupon.isRandom ? parseFloat(coupon.randomMin) : null,
+          randomMax: coupon.isRandom ? parseFloat(coupon.randomMax) : null,
+          autoValidity: coupon.autoValidity ?? true,
+          validityDays: coupon.autoValidity
+            ? parseInt(coupon.validityDays, 10)
+            : null,
+          autoDistribute: coupon.autoDistribute || false,
+        };
+      });
+  
+      const uuids = formattedCoupons.map((coupon) => coupon.uuid);
+      if (new Set(uuids).size !== uuids.length) {
+        throw new Error(
+          language === 'kor'
+            ? '중복된 쿠폰 UUID가 있습니다.'
+            : 'Duplicate coupon UUIDs detected.'
+        );
+      }
+  
+      const codes = formattedCoupons.map((coupon) => coupon.code);
+      if (new Set(codes).size !== codes.length) {
+        throw new Error(
+          language === 'kor'
+            ? '중복된 쿠폰 코드가 있습니다.'
+            : 'Duplicate coupon codes detected.'
+        );
+      }
+  
+      const payload = {
+        coupons: formattedCoupons,
+      };
+  
+      console.log('[handleSaveCoupons] Sending payload:', payload);
+  
+      const updatedSettings = await updateHotelSettings(hotelId, payload);
+      console.log('[handleSaveCoupons] Updated Settings:', updatedSettings);
+  
+      setMessage(
+        language === 'kor'
+          ? '쿠폰이 저장되었습니다.'
+          : 'Coupons saved successfully'
+      );
+      setError('');
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      console.error('[handleSaveCoupons] Error:', {
+        message: err.message,
+        response: err.response,
+        request: err.request,
+      });
+      setError(
+        language === 'kor'
+          ? `쿠폰 저장 실패: ${err.message}${
+              err.response ? ` (상태 코드: ${err.response.status})` : ''
+            }`
+          : `Failed to save coupons: ${err.message}${
+              err.response ? ` (Status code: ${err.response.status})` : ''
+            }`
+      );
+      setMessage('');
+    }
+  };
 
   const handleCancel = () => {
     if (!originalDataRef.current) return;
@@ -3948,6 +5731,7 @@ const handleSaveEvents = async (updatedEvents) => {
     setPhoneNumber(orig.phoneNumber);
     setHotelName(orig.hotelName);
     setCoordinates(orig.coordinates);
+    setCoupons(orig.coupons);
     alert('변경 사항이 취소되었습니다.');
   };
 
@@ -4077,6 +5861,12 @@ const handleSaveEvents = async (updatedEvents) => {
         >
           이벤트 설정
         </button>
+        <button
+          className={activeTab === 'coupons' ? 'active' : ''}
+          onClick={() => setActiveTab('coupons')}
+        >
+          {language === 'kor' ? '쿠폰 발행' : 'Coupon Issuance'}
+        </button>
       </nav>
       <div className="tab-content">
         {activeTab === 'info' && (
@@ -4149,6 +5939,16 @@ const handleSaveEvents = async (updatedEvents) => {
             onEventsChange={handleSaveEvents}
           />
         )}
+        {activeTab === 'coupons' && (
+          <CouponSettingsSection
+            language={language}
+            coupons={coupons}
+            setCoupons={setCoupons}
+            roomTypes={roomTypes}
+            onCouponsChange={handleSaveCoupons}
+            hotelId={hotelId}
+          />
+        )}
       </div>
       <div className="save-section">
         {activeTab === 'info' && (
@@ -4183,7 +5983,7 @@ const handleSaveEvents = async (updatedEvents) => {
             시설 저장
           </button>
         )}
-        {/* 이벤트 탭에서는 저장 버튼 제거 */}
+        {/* 이벤트 및 쿠폰 탭에서는 저장 버튼 제거 */}
       </div>
       {message && <p className="success-message">{message}</p>}
       {error && <p className="error-message">{error}</p>}
