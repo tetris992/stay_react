@@ -3,18 +3,26 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chart } from 'chart.js/auto';
-import {
+
+import api, {
   fetchHotelSettings,
   updateHotelSettings,
   registerHotel,
   fetchUserInfo,
   updateUser,
 } from '../api/api';
+
 import { defaultRoomTypes } from '../config/defaultRoomTypes';
 import DEFAULT_AMENITIES from '../config/defaultAmenities';
+import iconMap from '../config/iconMap';
+
 import { getColorForRoomType } from '../utils/getColorForRoomType';
-import './HotelSettingsPage.css';
-import iconMap from '../config/iconMap'; // 아이콘 맵을 별도의 파일로 분리하여 import
+import extractCoordinates from './extractCoordinates';
+
+import { format, addDays } from 'date-fns'; // parseISO 제거
+import { toZonedTime } from 'date-fns-tz';
+import { parseDate, formatDate } from '../utils/dateParser'; // parseDate, formatDate 임포트 추가
+
 import {
   FaBed,
   FaMinus,
@@ -22,27 +30,16 @@ import {
   FaTrash,
   FaUndo,
   FaCamera,
+  FaMapMarkerAlt,
 } from 'react-icons/fa';
-import { parseDate, formatDate } from '../utils/dateParser'
-
-import extractCoordinates from './extractCoordinates';
-import { FaMapMarkerAlt } from 'react-icons/fa';
 
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { v4 as uuidv4 } from 'uuid';
-import { format, toZonedTime } from 'date-fns-tz'; // addDays를 올바르게 임포트
-import { addDays } from 'date-fns';
-import api from '../api/api';
 
-// import {
-//   validateDiscountDates,
-//   validateDiscountValue,
-//   DiscountFormFields,
-//   RandomDiscountFields,
-//   ConditionFields,
-//   DiscountListItem,
-// } from '../components/DiscountFormFields';
+import { v4 as uuidv4 } from 'uuid';
+
+import './HotelSettingsPage.css';
+
 
 // 기본 층 설정
 const DEFAULT_FLOORS = [2, 3, 4, 5, 6, 7, 8];
@@ -3211,7 +3208,6 @@ function EventSettingsSection({
   );
 }
 
-
 // 편의 함수 정의
 const safeLower = (str) => (typeof str === 'string' ? str.toLowerCase() : '');
 
@@ -3253,13 +3249,29 @@ function CouponSettingsSection({
   const [filterType, setFilterType] = useState('issued');
   const [monthlyStats, setMonthlyStats] = useState({});
 
+  // 로열티 쿠폰 설정 (단일 값으로 변경)
   const [loyaltySettings, setLoyaltySettings] = useState({
-    visit5: { name: '5회 방문 쿠폰', discountType: 'percentage', randomMin: 10, randomMax: 50 },
-    visit10: { name: '10회 방문 쿠폰', discountType: 'percentage', randomMin: 50, randomMax: 90 },
+    visit5: { name: '5회 방문 쿠폰', discountType: 'percentage', discountValue: 30 },
+    visit10: { name: '10회 방문 쿠폰', discountType: 'percentage', discountValue: 50 },
   });
+
+  // 최초 방문 쿠폰 설정
+  const [firstVisitSettings, setFirstVisitSettings] = useState({
+    discountType: 'percentage',
+    discountValue: 10,
+    couponCount: 1,
+  });
+
+  // 고객별 쿠폰 발행을 위한 상태
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [pushCouponUuid, setPushCouponUuid] = useState(null);
 
   const ADMIN_PASSWORD = '1111';
 
+  // 로열티 쿠폰 설정 로드
   useEffect(() => {
     const fetchLoyaltySettings = async () => {
       try {
@@ -3272,8 +3284,7 @@ function CouponSettingsSection({
               updatedSettings[key] = {
                 name: key === 'visit5' ? '5회 방문 쿠폰' : '10회 방문 쿠폰',
                 discountType: coupon.discountType || 'percentage',
-                randomMin: coupon.randomMin || 0,
-                randomMax: coupon.randomMax || 0,
+                discountValue: coupon.discountValue || 0,
               };
             }
           });
@@ -3293,6 +3304,30 @@ function CouponSettingsSection({
       }
     };
     fetchLoyaltySettings();
+  }, [hotelId, language]);
+
+  // 최초 방문 쿠폰 설정 로드
+  useEffect(() => {
+    const fetchFirstVisitSettings = async () => {
+      try {
+        const { data: { firstVisitCoupons } } = await api.get(`/api/hotel-settings/${hotelId}/first-visit-coupons`);
+        if (firstVisitCoupons) {
+          setFirstVisitSettings({
+            discountType: firstVisitCoupons.discountType || 'percentage',
+            discountValue: firstVisitCoupons.discountValue || 10,
+            couponCount: firstVisitCoupons.couponCount || 1,
+          });
+        }
+      } catch (err) {
+        console.error('[fetchFirstVisitSettings] Error:', err);
+        setError(
+          language === 'kor'
+            ? '최초 방문 쿠폰 설정을 불러오지 못했습니다.'
+            : 'Failed to load first visit coupon settings.'
+        );
+      }
+    };
+    fetchFirstVisitSettings();
   }, [hotelId, language]);
 
   // 월별 통계 데이터 계산
@@ -3407,9 +3442,27 @@ function CouponSettingsSection({
     };
   }, [monthlyStats, language]);
 
+  // 실시간 업데이트를 위한 폴링 (10초마다)
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await api.get(`/api/hotel-settings/${hotelId}/coupons`);
+        const latestCoupons = response.data.coupons;
+        setCoupons(latestCoupons);
+        if (typeof onCouponsChange === 'function') {
+          await onCouponsChange(latestCoupons);
+        }
+      } catch (err) {
+        console.error('[pollCoupons] 쿠폰 목록 갱신 실패:', err);
+      }
+    }, 10_000);
+
+    return () => clearInterval(intervalId);
+  }, [hotelId, onCouponsChange, setCoupons]);
+
   const initialCoupon = (roomType) => {
     const now = new Date();
-    const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX"); // 로컬 오프셋(XXX) 사용
+    const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX");
     const startDate = format(now, "yyyy-MM-dd");
     const endDate = format(now, "yyyy-MM-dd");
 
@@ -3453,7 +3506,7 @@ function CouponSettingsSection({
         roomTypes && roomTypes.length > 0
           ? roomTypes.reduce((acc, rt) => {
               if (rt && rt.roomInfo) {
-                acc[rt.roomInfo] = newState ? true : false; // "모든 객실" 선택 시 모든 객실 선택, 해제 시 초기화
+                acc[rt.roomInfo] = newState ? true : false;
               }
               return acc;
             }, {})
@@ -3474,7 +3527,7 @@ function CouponSettingsSection({
       ...prev,
       [roomType]: !prev[roomType],
     }));
-    setApplyToAll(false); // 개별 객실 선택 시 applyToAll을 false로 설정
+    setApplyToAll(false);
   };
 
   const validateCoupon = (coupon, existingCoupons = [], editingUuid = null) => {
@@ -3636,9 +3689,7 @@ function CouponSettingsSection({
     }
 
     const parsedValue =
-      field === 'randomMin' || field === 'randomMax'
-        ? parseFloat(value) || 0
-        : value;
+      field === 'discountValue' ? parseFloat(value) || 0 : value;
     setLoyaltySettings((prev) => ({
       ...prev,
       [visitType]: {
@@ -3659,21 +3710,15 @@ function CouponSettingsSection({
     try {
       const { visit5, visit10 } = loyaltySettings;
       if (
-        visit5.randomMin < 0 ||
-        visit5.randomMin > 100 ||
-        visit5.randomMax < 0 ||
-        visit5.randomMax > 100 ||
-        visit5.randomMin > visit5.randomMax ||
-        visit10.randomMin < 0 ||
-        visit10.randomMin > 100 ||
-        visit10.randomMax < 0 ||
-        visit10.randomMax > 100 ||
-        visit10.randomMin > visit10.randomMax
+        visit5.discountValue < 0 ||
+        (visit5.discountType === 'percentage' && visit5.discountValue > 100) ||
+        visit10.discountValue < 0 ||
+        (visit10.discountType === 'percentage' && visit10.discountValue > 100)
       ) {
         throw new Error(
           language === 'kor'
-            ? '할인율 범위가 유효하지 않습니다. (0~100% 사이, 최소값 < 최대값)'
-            : 'Discount range is invalid. (0~100%, min < max)'
+            ? '할인 값이 유효하지 않습니다. (0 이상, 정률의 경우 100 이하)'
+            : 'Discount value is invalid. (0 or more, percentage <= 100)'
         );
       }
 
@@ -3689,14 +3734,12 @@ function CouponSettingsSection({
         {
           visits: 5,
           discountType: visit5.discountType,
-          randomMin: visit5.randomMin,
-          randomMax: visit5.randomMax,
+          discountValue: visit5.discountValue,
         },
         {
           visits: 10,
           discountType: visit10.discountType,
-          randomMin: visit10.randomMin,
-          randomMax: visit10.randomMax,
+          discountValue: visit10.discountValue,
         },
       ];
 
@@ -3720,6 +3763,74 @@ function CouponSettingsSection({
     }
   };
 
+  const handleFirstVisitChange = (field, value) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => handleFirstVisitChange(field, value));
+      setShowPasswordModal(true);
+      return;
+    }
+
+    const parsedValue =
+      field === 'discountValue' || field === 'couponCount'
+        ? parseFloat(value) || 0
+        : value;
+    setFirstVisitSettings((prev) => ({
+      ...prev,
+      [field]: parsedValue,
+    }));
+  };
+
+  const saveFirstVisitSettings = async () => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => saveFirstVisitSettings);
+      setShowPasswordModal(true);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { discountType, discountValue, couponCount } = firstVisitSettings;
+      if (discountValue < 0 || (discountType === 'percentage' && discountValue > 100)) {
+        throw new Error(
+          language === 'kor'
+            ? '할인 값이 유효하지 않습니다. (0 이상, 정률의 경우 100 이하)'
+            : 'Discount value is invalid. (0 or more, percentage <= 100)'
+        );
+      }
+      if (couponCount < 1) {
+        throw new Error(
+          language === 'kor'
+            ? '발행 개수는 1 이상이어야 합니다.'
+            : 'Coupon count must be at least 1.'
+        );
+      }
+
+      const firstVisitCoupons = {
+        discountType,
+        discountValue,
+        couponCount,
+      };
+
+      await api.put(`/api/hotel-settings/${hotelId}/first-visit-coupons`, firstVisitCoupons);
+
+      setMessage(
+        language === 'kor'
+          ? '최초 방문 쿠폰 설정이 저장되었습니다.'
+          : 'First visit coupon settings have been saved.'
+      );
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error('[saveFirstVisitSettings] Error:', err);
+      setError(
+        language === 'kor'
+          ? `최초 방문 쿠폰 설정 저장에 실패했습니다: ${err.message}`
+          : `Failed to save first visit coupon settings: ${err.message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAddCoupon = async () => {
     if (isLoading) return;
 
@@ -3729,12 +3840,7 @@ function CouponSettingsSection({
         (roomType) => selectedRoomTypes[roomType]
       );
 
-      console.log('[handleAddCoupon] applyToAll:', applyToAll);
-      console.log('[handleAddCoupon] selectedRoomTypes:', selectedRoomTypes);
-      console.log('[handleAddCoupon] selectedTypes:', selectedTypes);
-
       if (selectedTypes.length > 0 && applyToAll) {
-        console.log('[handleAddCoupon] Forcing applyToAll to false as specific room types are selected');
         setApplyToAll(false);
       }
 
@@ -3774,7 +3880,7 @@ function CouponSettingsSection({
         }
 
         const now = new Date();
-        const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX"); // 로컬 오프셋(XXX) 사용
+        const issuedAt = format(now, "yyyy-MM-dd'T'HH:mm:ssXXX");
         for (let i = 0; i < numCoupons; i++) {
           const couponToValidate = {
             ...coupon,
@@ -3785,7 +3891,7 @@ function CouponSettingsSection({
             usedAt: null,
             issuedAt: issuedAt,
             applicableRoomType: applyToAll ? 'all' : coupon.roomType.toLowerCase(),
-            roomType: coupon.roomType.toLowerCase(), // roomType 필드 추가
+            roomType: coupon.roomType.toLowerCase(),
             autoDistribute: coupon.autoDistribute || true,
             autoValidity: coupon.autoValidity || true,
             validityDays: coupon.duration || 1,
@@ -3800,17 +3906,12 @@ function CouponSettingsSection({
         }
       }
 
-      console.log('[handleAddCoupon] Sending coupons to backend:', validatedCoupons);
-
-      // 쿠폰 생성 요청
       const response = await api.post('/api/hotel-settings/coupons', {
         hotelId,
         coupons: validatedCoupons,
       });
 
-      // 서버 응답 데이터를 로컬 상태에 바로 추가
       setCoupons((prev) => [...prev, ...response.data.coupons]);
-      console.log('[handleAddCoupon] Updated coupons:', [...coupons, ...response.data.coupons]);
 
       const feedbackMessage =
         language === 'kor'
@@ -3938,14 +4039,12 @@ function CouponSettingsSection({
 
     setIsLoading(true);
     try {
-      // 모든 쿠폰에 대해 삭제 호출 (usedCount 조건 제거)
       for (const coupon of groupCoupons) {
         await api.delete('/api/hotel-settings/coupons', {
           data: { hotelId, couponUuid: coupon.uuid },
         });
       }
 
-      // UI에서 모든 쿠폰 제거
       const updatedCoupons = coupons
         .filter((coupon) => !groupCoupons.some((gc) => gc.uuid === coupon.uuid))
         .map((coupon) => ({
@@ -4031,6 +4130,68 @@ function CouponSettingsSection({
         : {}
     );
     setError('');
+  };
+
+  const handleCustomerSearch = async () => {
+    if (!customerSearchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await api.get('/api/customers/search', {
+        params: { query: customerSearchQuery },
+      });
+      setSearchResults(response.data.customers || []);
+    } catch (err) {
+      console.error('[handleCustomerSearch] Error:', err);
+      setError(
+        language === 'kor'
+          ? `고객 검색 실패: ${err.message}`
+          : `Failed to search customers: ${err.message}`
+      );
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handlePushCoupon = async () => {
+    if (!selectedCustomer || !pushCouponUuid) {
+      setError(
+        language === 'kor'
+          ? '고객과 쿠폰을 선택해주세요.'
+          : 'Please select a customer and a coupon.'
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await api.post(`/api/customers/${selectedCustomer._id}/push-coupon`, {
+        couponUuid: pushCouponUuid,
+      });
+      setMessage(
+        language === 'kor'
+          ? `쿠폰이 ${selectedCustomer.name}님의 쿠폰함으로 발행되었습니다.`
+          : `Coupon has been pushed to ${selectedCustomer.name}'s wallet.`
+      );
+      setTimeout(() => setMessage(''), 5000);
+      setCustomerSearchQuery('');
+      setSearchResults([]);
+      setSelectedCustomer(null);
+      setPushCouponUuid(null);
+    } catch (err) {
+      console.error('[handlePushCoupon] Error:', err);
+      setError(
+        language === 'kor'
+          ? `쿠폰 발행 실패: ${err.message}`
+          : `Failed to push coupon: ${err.message}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const groupCoupons = () => {
@@ -4142,26 +4303,26 @@ function CouponSettingsSection({
               />
             </div>
             <div className="loyalty-form-cell">
-              <label>{language === 'kor' ? '5회 방문 할인율 범위 (%)' : '5 Visits Discount Range (%)'}</label>
-              <div className="discount-range-input">
-                <input
-                  type="number"
-                  value={loyaltySettings.visit5?.randomMin || 0}
-                  onChange={(e) => handleLoyaltyChange('visit5', 'randomMin', e.target.value)}
-                  min="0"
-                  max="100"
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-                <span> ~ </span>
-                <input
-                  type="number"
-                  value={loyaltySettings.visit5?.randomMax || 0}
-                  onChange={(e) => handleLoyaltyChange('visit5', 'randomMax', e.target.value)}
-                  min="0"
-                  max="100"
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
+              <label>{language === 'kor' ? '할인 유형' : 'Discount Type'}</label>
+              <select
+                value={loyaltySettings.visit5?.discountType || 'percentage'}
+                onChange={(e) => handleLoyaltyChange('visit5', 'discountType', e.target.value)}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                <option value="percentage">{language === 'kor' ? '정률 (%)' : 'Percentage (%)'}</option>
+                <option value="fixed">{language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}</option>
+              </select>
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '5회 방문 할인 값' : '5 Visits Discount Value'}</label>
+              <input
+                type="number"
+                value={loyaltySettings.visit5?.discountValue || 0}
+                onChange={(e) => handleLoyaltyChange('visit5', 'discountValue', e.target.value)}
+                min="0"
+                max={loyaltySettings.visit5?.discountType === 'percentage' ? 100 : undefined}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
             </div>
             <div className="loyalty-form-cell">
               <label>{language === 'kor' ? '10회 방문 쿠폰 이름' : '10 Visits Coupon Name'}</label>
@@ -4173,26 +4334,26 @@ function CouponSettingsSection({
               />
             </div>
             <div className="loyalty-form-cell">
-              <label>{language === 'kor' ? '10회 방문 할인율 범위 (%)' : '10 Visits Discount Range (%)'}</label>
-              <div className="discount-range-input">
-                <input
-                  type="number"
-                  value={loyaltySettings.visit10?.randomMin || 0}
-                  onChange={(e) => handleLoyaltyChange('visit10', 'randomMin', e.target.value)}
-                  min="0"
-                  max="100"
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-                <span> ~ </span>
-                <input
-                  type="number"
-                  value={loyaltySettings.visit10?.randomMax || 0}
-                  onChange={(e) => handleLoyaltyChange('visit10', 'randomMax', e.target.value)}
-                  min="0"
-                  max="100"
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
+              <label>{language === 'kor' ? '할인 유형' : 'Discount Type'}</label>
+              <select
+                value={loyaltySettings.visit10?.discountType || 'percentage'}
+                onChange={(e) => handleLoyaltyChange('visit10', 'discountType', e.target.value)}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                <option value="percentage">{language === 'kor' ? '정률 (%)' : 'Percentage (%)'}</option>
+                <option value="fixed">{language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}</option>
+              </select>
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '10회 방문 할인 값' : '10 Visits Discount Value'}</label>
+              <input
+                type="number"
+                value={loyaltySettings.visit10?.discountValue || 0}
+                onChange={(e) => handleLoyaltyChange('visit10', 'discountValue', e.target.value)}
+                min="0"
+                max={loyaltySettings.visit10?.discountType === 'percentage' ? 100 : undefined}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
             </div>
             <div className="loyalty-form-cell">
               <button
@@ -4205,6 +4366,163 @@ function CouponSettingsSection({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 최초 방문 쿠폰 설정 섹션 */}
+      <div className="first-visit-coupon-settings coupon-section-block">
+        <h4>{language === 'kor' ? '최초 방문 쿠폰 설정' : 'First Visit Coupon Settings'}</h4>
+        <div className="first-visit-form">
+          <div className="loyalty-form-row">
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '할인 유형' : 'Discount Type'}</label>
+              <select
+                value={firstVisitSettings.discountType}
+                onChange={(e) => handleFirstVisitChange('discountType', e.target.value)}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                <option value="percentage">{language === 'kor' ? '정률 (%)' : 'Percentage (%)'}</option>
+                <option value="fixed">{language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}</option>
+              </select>
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '할인 값' : 'Discount Value'}</label>
+              <input
+                type="number"
+                value={firstVisitSettings.discountValue}
+                onChange={(e) => handleFirstVisitChange('discountValue', e.target.value)}
+                min="0"
+                max={firstVisitSettings.discountType === 'percentage' ? 100 : undefined}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
+            </div>
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '발행 개수' : 'Coupon Count'}</label>
+              <input
+                type="number"
+                value={firstVisitSettings.couponCount}
+                onChange={(e) => handleFirstVisitChange('couponCount', e.target.value)}
+                min="1"
+                disabled={isLoading || !isAdminAuthenticated}
+              />
+            </div>
+            <div className="loyalty-form-cell">
+              <button
+                className="hotel-settings-coupon-btn save"
+                onClick={saveFirstVisitSettings}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                {language === 'kor' ? '저장' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 고객별 쿠폰 발행 섹션 */}
+      <div className="customer-coupon-push coupon-section-block">
+        <h4>{language === 'kor' ? '고객별 쿠폰 발행' : 'Push Coupons to Customers'}</h4>
+        <div className="customer-search-form">
+          <div className="loyalty-form-row">
+            <div className="loyalty-form-cell">
+              <label>{language === 'kor' ? '고객 검색 (이름/전화번호)' : 'Search Customer (Name/Phone)'}</label>
+              <input
+                type="text"
+                value={customerSearchQuery}
+                onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                placeholder={language === 'kor' ? '고객 이름 또는 전화번호 입력' : 'Enter customer name or phone'}
+                disabled={isLoading || !isAdminAuthenticated}
+              />
+            </div>
+            <div className="loyalty-form-cell">
+              <button
+                className="hotel-settings-coupon-btn search"
+                onClick={handleCustomerSearch}
+                disabled={isLoading || !isAdminAuthenticated}
+              >
+                {language === 'kor' ? '검색' : 'Search'}
+              </button>
+            </div>
+          </div>
+        </div>
+        {isSearching ? (
+          <p>{language === 'kor' ? '검색 중...' : 'Searching...'}</p>
+        ) : searchResults.length > 0 ? (
+          <div className="customer-search-results">
+            <table className="customer-table">
+              <thead>
+                <tr>
+                  <th>{language === 'kor' ? '이름' : 'Name'}</th>
+                  <th>{language === 'kor' ? '전화번호' : 'Phone'}</th>
+                  <th>{language === 'kor' ? '방문 횟수' : 'Visits'}</th>
+                  <th>{language === 'kor' ? '선택' : 'Select'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map((customer) => (
+                  <tr key={customer._id}>
+                    <td>{customer.name}</td>
+                    <td>{customer.phoneNumber}</td>
+                    <td>{customer.totalVisits || 0}</td>
+                    <td>
+                      <button
+                        className="select-btn"
+                        onClick={() => setSelectedCustomer(customer)}
+                        disabled={isLoading}
+                      >
+                        {language === 'kor' ? '선택' : 'Select'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : customerSearchQuery.trim() && !isSearching ? (
+          <p>{language === 'kor' ? '검색 결과가 없습니다.' : 'No results found.'}</p>
+        ) : null}
+
+        {selectedCustomer && (
+          <div className="push-coupon-form">
+            <h5>
+              {language === 'kor'
+                ? `선택된 고객: ${selectedCustomer.name}`
+                : `Selected Customer: ${selectedCustomer.name}`}
+            </h5>
+            <div className="loyalty-form-row">
+              <div className="loyalty-form-cell">
+                <label>{language === 'kor' ? '발행할 쿠폰 선택' : 'Select Coupon to Push'}</label>
+                <select
+                  value={pushCouponUuid || ''}
+                  onChange={(e) => setPushCouponUuid(e.target.value)}
+                  disabled={isLoading || !isAdminAuthenticated}
+                >
+                  <option value="">
+                    {language === 'kor' ? '쿠폰 선택' : 'Select Coupon'}
+                  </option>
+                  {coupons
+                    .filter((coupon) => !coupon.isDeleted && coupon.isActive)
+                    .map((coupon) => (
+                      <option key={coupon.uuid} value={coupon.uuid}>
+                        {coupon.name} - {coupon.code} (
+                        {coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}%`
+                          : `${coupon.discountValue.toLocaleString()}원`})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="loyalty-form-cell">
+                <button
+                  className="hotel-settings-coupon-btn push"
+                  onClick={handlePushCoupon}
+                  disabled={isLoading || !isAdminAuthenticated || !pushCouponUuid}
+                >
+                  {language === 'kor' ? '쿠폰 발행' : 'Push Coupon'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showCouponForm && (
@@ -4693,6 +5011,7 @@ function CouponSettingsSection({
     </section>
   );
 }
+
 
 export default function HotelSettingsPage() {
   const navigate = useNavigate();
