@@ -4019,7 +4019,8 @@ function CouponSettingsSection({
       // (2) 선택 고객에게 푸시
       await Promise.all(
         selectedCustomers.map((c) =>
-          issueTargetedCoupon(hotelId, c._id, newUuid)
+          // couponUuid 키를 가진 객체로 포장
+          issueTargetedCoupon(hotelId, c._id, { couponUuid: newUuid })
         )
       );
 
@@ -4155,10 +4156,10 @@ function CouponSettingsSection({
     }
     if (isLoading) return;
     setIsLoading(true);
-  
+
     try {
       const couponToDelete = coupons.find((c) => c.uuid === couponUuid);
-  
+
       // 이미 사용된 쿠폰이면 UI에서만 필터링
       if (couponToDelete.usedCount > 0) {
         const filtered = coupons
@@ -4166,18 +4167,18 @@ function CouponSettingsSection({
           .map(normalizeRoomType);
         setCoupons(filtered);
         onCouponsChange?.(filtered);
-        setMessage('사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.');
+        setMessage(
+          '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
+        );
       } else {
         // 실제 삭제 호출 시 body 에 hotelId, couponUuid 함께 전송
         await api.delete(
           `/api/hotel-settings/${hotelId}/coupons/${couponUuid}`,
           { data: { hotelId, couponUuid } }
         );
-  
+
         const updated = coupons
-          .map((c) =>
-            c.uuid === couponUuid ? { ...c, isDeleted: true } : c
-          )
+          .map((c) => (c.uuid === couponUuid ? { ...c, isDeleted: true } : c))
           .map(normalizeRoomType);
         setCoupons(updated);
         onCouponsChange?.(updated);
@@ -4191,7 +4192,7 @@ function CouponSettingsSection({
       setIsLoading(false);
     }
   };
-  
+
   const handleDeleteGroup = async (groupCoupons) => {
     if (!isAdminAuthenticated) {
       setPendingAction(() => () => handleDeleteGroup(groupCoupons));
@@ -4200,11 +4201,11 @@ function CouponSettingsSection({
     }
     if (isLoading) return;
     setIsLoading(true);
-  
+
     // 재시도 설정
     const MAX_RETRIES = 3;
     const BASE_DELAY_MS = 500;
-  
+
     // 개별 쿠폰 삭제 시도 함수 (TransientTransactionError 발생 시 재시도)
     const deleteWithRetry = async (coupon) => {
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -4231,7 +4232,7 @@ function CouponSettingsSection({
         }
       }
     };
-  
+
     try {
       // 사용된 쿠폰(skip)과 실제 삭제할 쿠폰(delete) 분리
       const [skipped, toDelete] = groupCoupons.reduce(
@@ -4239,23 +4240,25 @@ function CouponSettingsSection({
           c.usedCount > 0 ? [[...skip, c], del] : [skip, [...del, c]],
         [[], []]
       );
-  
+
       // 실제 삭제 요청 (순차 처리)
       for (const c of toDelete) {
         await deleteWithRetry(c);
       }
-  
+
       // UI 업데이트
       let updated = coupons;
-  
+
       // 사용된 쿠폰은 UI에서만 제거
       if (skipped.length) {
         updated = updated.filter(
           (c) => !skipped.some((s) => s.uuid === c.uuid)
         );
-        setMessage('사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.');
+        setMessage(
+          '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
+        );
       }
-  
+
       // 실제 삭제된 쿠폰 제거
       updated = updated
         .map((c) =>
@@ -4265,10 +4268,10 @@ function CouponSettingsSection({
         )
         .filter((c) => !c.isDeleted)
         .map(normalizeRoomType);
-  
+
       setCoupons(updated);
       onCouponsChange?.(updated);
-  
+
       if (!skipped.length) {
         setMessage('그룹 내 모든 쿠폰이 삭제되었습니다.');
       }
@@ -4281,7 +4284,7 @@ function CouponSettingsSection({
       setIsLoading(false);
     }
   };
-  
+
   const handleAdminAuth = () => {
     if (adminPasswordInput === ADMIN_PASSWORD) {
       setIsAdminAuthenticated(true);

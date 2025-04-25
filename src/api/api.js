@@ -631,14 +631,26 @@ export const searchCustomers = async (
 };
 
 /** 고객 전용(타겟팅) 쿠폰 발행 */
-export const issueTargetedCoupon = async (hotelId, customerId, templateUuid) => {
+export const issueTargetedCoupon = async (hotelId, customerId, { templateUuid, couponUuid }) => {
+  try {
+    if (!templateUuid && !couponUuid) {
+      throw new ApiError(400, 'templateUuid 또는 couponUuid가 필요합니다.');
+    }
+    const payload = templateUuid ? { templateUuid } : { couponUuid };
     const response = await api.post(
       `/api/hotel-settings/${hotelId}/customers/${customerId}/issue-targeted-coupon`,
-      { templateUuid }
+      payload
     );
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[issueTargetedCoupon] Response:', response.data);
+    }
     return response.data.coupon;
-  };
-
+  } catch (error) {
+    console.error('쿠폰 발행 실패:', error);
+    const errorMessage = error.response?.data?.message || '쿠폰 발행에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
 
 export const pushCouponToCustomer = async (hotelId, customerId, couponUuid) => {
   try {
