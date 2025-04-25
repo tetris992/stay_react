@@ -18,39 +18,38 @@ const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
 api.interceptors.request.use(
   async (config) => {
-    // — 1. Auth 헤더 설정
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // — 2. CSRF 토큰 설정 (GET/CSRF 요청 등은 건너뛰기)
-    const skipMethods = ['get'];
-    const skipUrls   = ['/api/csrf-token', '/api/auth/refresh-token'];
+    const skipMethods = ['get', 'head'];
+    const skipUrls = ['/api/csrf-token', '/api/auth/refresh-token'];
     if (
-      !skipMethods.includes(config.method) &&
-      !skipUrls.some(u => config.url.startsWith(u)) &&
+      !skipMethods.includes(config.method.toLowerCase()) &&
+      !skipUrls.some((u) => config.url.startsWith(u)) &&
       !config.skipCsrf
     ) {
-      let csrfToken   = localStorage.getItem('csrfToken');
+      let csrfToken = localStorage.getItem('csrfToken');
       let csrfTokenId = localStorage.getItem('csrfTokenId');
       if (!csrfToken || !csrfTokenId) {
         const { data } = await api.get('/api/csrf-token', { skipCsrf: true });
-        csrfToken   = data.csrfToken;
+        csrfToken = data.csrfToken;
         csrfTokenId = data.tokenId;
         localStorage.setItem('csrfToken', csrfToken);
         localStorage.setItem('csrfTokenId', csrfTokenId);
       }
-      config.headers['X-CSRF-Token']    = csrfToken;
+      config.headers['X-CSRF-Token'] = csrfToken;
       config.headers['X-CSRF-Token-Id'] = csrfTokenId;
     }
 
-    // — 3. 디버깅 로그
-    console.log('[api.js] Request:', config.method.toUpperCase(), config.url, config.data);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[api.js] Request:', config.method.toUpperCase(), config.url, config.data);
+    }
     return config;
   },
   (error) => Promise.reject(error)
-); //통합함
+);
 
 let isRefreshing = false;
 let failedQueue = [];
@@ -601,6 +600,59 @@ export const payPartial = async (reservationId, hotelId, payments) => {
     );
     const errorMessage =
       error.response?.data?.message || '부분 결제에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+
+export const searchCustomers = async (
+  hotelId,
+  { query, minVisits, maxVisits, lastVisitDate, limit, skip }
+) => {
+  try {
+    const response = await api.get(
+      `/api/hotel-settings/${hotelId}/customers/search`,
+      { params: { query, minVisits, maxVisits, lastVisitDate, limit, skip } }
+    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[searchCustomers] Response:', response.data);
+    }
+    // customers, totalCount 둘 다 돌려줍니다
+    return {
+      customers: response.data.customers || [],
+      totalCount: response.data.totalCount || 0,
+    };
+  } catch (error) {
+    console.error('고객 검색 실패:', error);
+    const errorMessage =
+      error.response?.data?.message || '고객 검색에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+/** 고객 전용(타겟팅) 쿠폰 발행 */
+export const issueTargetedCoupon = async (hotelId, customerId, templateUuid) => {
+    const response = await api.post(
+      `/api/hotel-settings/${hotelId}/customers/${customerId}/issue-targeted-coupon`,
+      { templateUuid }
+    );
+    return response.data.coupon;
+  };
+
+
+export const pushCouponToCustomer = async (hotelId, customerId, couponUuid) => {
+  try {
+    const response = await api.post(
+      `/api/hotel-settings/${hotelId}/customers/${customerId}/push-coupon`,
+      { couponUuid }
+    );
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[pushCouponToCustomer] Response:', response.data);
+    }
+    return response.data.coupon;
+  } catch (error) {
+    console.error('쿠폰 푸시 실패:', error);
+    const errorMessage = error.response?.data?.message || '쿠폰 푸시에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
