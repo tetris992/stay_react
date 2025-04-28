@@ -12,7 +12,7 @@ import api, {
   fetchUserInfo,
   updateUser,
   searchCustomers,
-  // pushCouponToCustomer,
+  fetchUsedCoupons,
   issueTargetedCoupon,
 } from '../api/api';
 
@@ -26,7 +26,6 @@ import extractCoordinates from './extractCoordinates';
 import { format, addDays } from 'date-fns'; // parseISO 제거
 import { toZonedTime } from 'date-fns-tz';
 import { parseDate, formatDate } from '../utils/dateParser'; // parseDate, formatDate 임포트 추가
-
 import {
   FaBed,
   FaMinus,
@@ -3232,6 +3231,7 @@ function CouponSettingsSection({
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
+  const [appliedCoupons, setAppliedCoupons] = useState([]);
   const [selectedRoomTypes, setSelectedRoomTypes] = useState(
     roomTypes.reduce((acc, rt) => {
       if (rt?.roomInfo) acc[rt.roomInfo] = false;
@@ -3246,17 +3246,9 @@ function CouponSettingsSection({
   const [showDropdown, setShowDropdown] = useState(false);
   const [filterType, setFilterType] = useState('issued');
   const [monthlyStats, setMonthlyStats] = useState({});
+  // 변경
   const [loyaltySettings, setLoyaltySettings] = useState({
-    visit5: {
-      name: '5회 방문 쿠폰',
-      discountType: 'percentage',
-      discountValue: 30,
-    },
-    visit10: {
-      name: '10회 방문 쿠폰',
-      discountType: 'percentage',
-      discountValue: 50,
-    },
+    customCoupons: [],
   });
   const [firstVisitSettings, setFirstVisitSettings] = useState({
     discountType: 'percentage',
@@ -3282,6 +3274,12 @@ function CouponSettingsSection({
     endDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
   });
 
+// 사용된 쿠폰 상태
+const [usedCoupons, setUsedCoupons] = useState([]);
+const [isUsedCouponsLoading, setIsUsedCouponsLoading] = useState(false);
+const [usedCouponsError, setUsedCouponsError] = useState(null);
+  
+
   const [lastVisitDate, setLastVisitDate] = useState('');
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -3289,38 +3287,25 @@ function CouponSettingsSection({
 
   const ADMIN_PASSWORD = '1111';
 
-  // 로열티 쿠폰 설정 로드
+  // 변경
   useEffect(() => {
     const fetchLoyaltySettings = async () => {
+      setIsLoading(true);
       try {
         const {
           data: { loyaltyCoupons },
         } = await api.get(`/api/hotel-settings/${hotelId}/loyalty-coupons`);
-        if (loyaltyCoupons && Array.isArray(loyaltyCoupons)) {
-          const updatedSettings = {};
-          loyaltyCoupons.forEach((coupon) => {
-            const key =
-              coupon.visits === 5
-                ? 'visit5'
-                : coupon.visits === 10
-                ? 'visit10'
-                : null;
-            if (key) {
-              updatedSettings[key] = {
-                name: key === 'visit5' ? '5회 방문 쿠폰' : '10회 방문 쿠폰',
-                discountType: coupon.discountType || 'percentage',
-                discountValue: coupon.discountValue || 0,
-              };
-            }
-          });
-          setLoyaltySettings((prev) => ({
-            ...prev,
-            ...(updatedSettings.visit5 && { visit5: updatedSettings.visit5 }),
-            ...(updatedSettings.visit10 && {
-              visit10: updatedSettings.visit10,
-            }),
-          }));
-        }
+        setLoyaltySettings({
+          customCoupons: loyaltyCoupons || [
+            {
+              visits: 10,
+              discountType: 'percentage',
+              discountValue: 50,
+              validityDays: 30,
+              isActive: true,
+            },
+          ],
+        });
       } catch (err) {
         console.error('[fetchLoyaltySettings] Error:', err);
         setError(
@@ -3328,6 +3313,8 @@ function CouponSettingsSection({
             ? '로열티 설정을 불러오지 못했습니다.'
             : 'Failed to load loyalty settings.'
         );
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchLoyaltySettings();
@@ -3358,6 +3345,28 @@ function CouponSettingsSection({
     };
     fetchFirstVisitSettings();
   }, [hotelId, language]);
+
+  // 사용된 쿠폰 데이터 로드
+  useEffect(() => {
+    const fetchUsedCouponsData = async () => {
+      setIsUsedCouponsLoading(true);
+      try {
+        const usedCouponsData = await fetchUsedCoupons(hotelId);
+        setUsedCoupons(usedCouponsData);
+        setUsedCouponsError(null);
+      } catch (err) {
+        console.error('[fetchUsedCouponsData] Error:', err);
+        setUsedCouponsError(
+          language === 'kor'
+            ? '사용된 쿠폰 목록을 불러오지 못했습니다.'
+            : 'Failed to load used coupons.'
+        );
+      } finally {
+        setIsUsedCouponsLoading(false);
+      }
+    };
+    fetchUsedCouponsData();
+  }, [hotelId, language])
 
   // 월별 통계 데이터 계산
   useEffect(() => {
@@ -3681,83 +3690,120 @@ function CouponSettingsSection({
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleLoyaltyChange = (visitType, field, value) => {
+  const addCustomCoupon = () => {
     if (!isAdminAuthenticated) {
-      setPendingAction(
-        () => () => handleLoyaltyChange(visitType, field, value)
-      );
+      setPendingAction(() => addCustomCoupon);
       setShowPasswordModal(true);
       return;
     }
-    const parsedValue =
-      field === 'discountValue' ? parseFloat(value) || 0 : value;
     setLoyaltySettings((prev) => ({
-      ...prev,
-      [visitType]: { ...prev[visitType], [field]: parsedValue },
+      customCoupons: [
+        ...prev.customCoupons,
+        {
+          visits: 10,
+          discountType: 'percentage',
+          discountValue: 10,
+          validityDays: 30,
+          isActive: true,
+        },
+      ],
+    }));
+  };
+
+  const deleteCustomCoupon = (index) => {
+    if (!isAdminAuthenticated) {
+      setPendingAction(() => () => deleteCustomCoupon(index));
+      setShowPasswordModal(true);
+      return;
+    }
+    setLoyaltySettings((prev) => ({
+      customCoupons: prev.customCoupons.filter((_, i) => i !== index),
     }));
   };
 
   const saveLoyaltySettings = async () => {
+    // 1) 관리자 인증
     if (!isAdminAuthenticated) {
       setPendingAction(() => saveLoyaltySettings);
       setShowPasswordModal(true);
       return;
     }
+  
     setIsLoading(true);
+    setError('');
     try {
-      const { visit5, visit10 } = loyaltySettings;
-      if (
-        visit5.discountValue < 0 ||
-        (visit5.discountType === 'percentage' && visit5.discountValue > 100) ||
-        visit10.discountValue < 0 ||
-        (visit10.discountType === 'percentage' && visit10.discountValue > 100)
-      ) {
+      // 2) 새로 입력된 쿠폰 배열 보장
+      const newCoupons = Array.isArray(loyaltySettings.customCoupons)
+        ? loyaltySettings.customCoupons
+        : [];
+  
+      // 3) 기존 + 새 쿠폰 합치기
+      const allCoupons = [...appliedCoupons, ...newCoupons];
+  
+      // 4) 개별 쿠폰 유효성 검증
+      allCoupons.forEach(({ visits, discountType, discountValue, validityDays }) => {
+        if (
+          visits < 1 ||
+          validityDays < 1 ||
+          discountValue < 0 ||
+          (discountType === 'percentage' && discountValue > 100)
+        ) {
+          throw new Error(
+            language === 'kor'
+              ? '유효하지 않은 쿠폰 데이터가 있습니다.'
+              : 'There is invalid coupon data.'
+          );
+        }
+      });
+  
+      // 5) 방문 횟수 중복 검사
+      const visitsList = allCoupons.map(c => c.visits);
+      if (new Set(visitsList).size !== visitsList.length) {
         throw new Error(
           language === 'kor'
-            ? '할인 값이 유효하지 않습니다. (0 이상, 정률의 경우 100 이하)'
-            : 'Discount value is invalid. (0 or more, percentage <= 100)'
+            ? '중복된 방문 횟수가 포함되어 있습니다. 방문 횟수는 고유해야 합니다.'
+            : 'Duplicate visit counts detected. Visit counts must be unique.'
         );
       }
-      if (!visit5.name || !visit10.name) {
-        throw new Error(
-          language === 'kor'
-            ? '로열티 쿠폰 이름을 입력해주세요.'
-            : 'Please enter names for loyalty coupons.'
-        );
-      }
-      const loyaltyCoupons = [
-        {
-          visits: 5,
-          discountType: visit5.discountType,
-          discountValue: visit5.discountValue,
-        },
-        {
-          visits: 10,
-          discountType: visit10.discountType,
-          discountValue: visit10.discountValue,
-        },
-      ];
-      await api.put(
+  
+      // 6) 서버에 저장할 payload 정제
+      const payload = {
+        loyaltyCoupons: allCoupons.map(coupon => ({
+          visits: coupon.visits,
+          discountType: coupon.discountType,
+          discountValue: coupon.discountValue,
+          validityDays: coupon.validityDays,
+          isActive: coupon.isActive ?? true,
+        })),
+      };
+  
+      // 7) API 호출
+      const { data } = await api.put(
         `/api/hotel-settings/${hotelId}/loyalty-coupons`,
-        loyaltyCoupons
+        payload
       );
+  
+      // 8) 상태 업데이트 & 메시지
+      setAppliedCoupons(data.loyaltyCoupons);
+      setLoyaltySettings(prev => ({ ...prev, customCoupons: [] }));
       setMessage(
         language === 'kor'
           ? '로열티 쿠폰 설정이 저장되었습니다.'
-          : 'Loyalty coupon settings have been saved.'
+          : 'Loyalty coupon settings saved successfully.'
       );
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       console.error('[saveLoyaltySettings] Error:', err);
       setError(
         language === 'kor'
-          ? `로열티 설정 저장에 실패했습니다: ${err.message}`
-          : `Failed to save loyalty settings: ${err.message}`
+          ? `저장에 실패했습니다: ${err.message}`
+          : `Failed to save: ${err.message}`
       );
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const handleFirstVisitChange = (field, value) => {
     if (!isAdminAuthenticated) {
@@ -3798,11 +3844,16 @@ function CouponSettingsSection({
             : 'Coupon count must be at least 1.'
         );
       }
-      const firstVisitCoupons = { discountType, discountValue, couponCount };
-      await api.put(
-        `/api/hotel-settings/${hotelId}/first-visit-coupons`,
-        firstVisitCoupons
-      );
+      const firstVisitCoupons = {
+        discountType,
+        discountValue,
+        couponCount,
+        hotelId, // hotelId 추가
+      };
+      await api.put(`/api/hotel-settings/${hotelId}/first-visit-coupons`, {
+        firstVisitCoupons,
+        hotelId, // API 요청 시 hotelId 포함
+      });
       setMessage(
         language === 'kor'
           ? '최초 방문 쿠폰 설정이 저장되었습니다.'
@@ -3878,116 +3929,6 @@ function CouponSettingsSection({
     );
   };
 
-  // const handlePushCoupon = async (couponUuid) => {
-  //   if (!isAdminAuthenticated) {
-  //     setPendingAction(() => () => handlePushCoupon(couponUuid));
-  //     setShowPasswordModal(true);
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   try {
-  //     // 공용(전체/그룹) 쿠폰 발행
-  //     await pushCouponToCustomer(hotelId, couponUuid);
-
-  //     setMessage(
-  //       language === 'kor'
-  //         ? '쿠폰이 공용으로 발행되었습니다.'
-  //         : 'Coupon has been pushed to all customers.'
-  //     );
-  //     // 필요하다면 onCouponsChange 로 최신 목록 갱신
-  //     if (typeof onCouponsChange === 'function') {
-  //       const {
-  //         data: { coupons: fresh },
-  //       } = await api.get(`/api/hotel-settings/${hotelId}/coupons`);
-  //       setCoupons(fresh);
-  //       await onCouponsChange(fresh);
-  //     }
-  //   } catch (err) {
-  //     console.error('[handlePushCoupon] Error:', err);
-  //     setError(
-  //       language === 'kor'
-  //         ? `공용 쿠폰 발행 실패: ${err.message}`
-  //         : `Failed to push coupon: ${err.message}`
-  //     );
-  //   } finally {
-  //     setIsLoading(false);
-  //     setTimeout(() => setMessage(''), 5000);
-  //   }
-  // };
-
-  // const handleIssueTargetedCoupon = async () => {
-  //   if (!isAdminAuthenticated) {
-  //     setPendingAction(() => handleIssueTargetedCoupon);
-  //     setShowPasswordModal(true);
-  //     return;
-  //   }
-  //   if (selectedCustomers.length === 0) {
-  //     setError(
-  //       language === 'kor'
-  //         ? '고객을 선택해주세요.'
-  //         : 'Please select at least one customer.'
-  //     );
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   try {
-  //     // 1) 신규 쿠폰 한 건 생성 (여기서 payload는 원하는 형태로 조절)
-  //     const payload = {
-  //       uuid: generateUniqueId(),
-  //       code: generateCouponCode(),
-  //       name: language === 'kor' ? '고객별 쿠폰' : 'Targeted Coupon',
-  //       startDate: format(new Date(), 'yyyy-MM-dd'),
-  //       endDate: format(addDays(new Date(), 7), 'yyyy-MM-dd'),
-  //       discountType: 'percentage',
-  //       discountValue: 10,
-  //       couponCount: 1,
-  //       // …필요한 필드들…
-  //     };
-  //     const {
-  //       data: {
-  //         coupons: [created],
-  //       },
-  //     } = await api.post(`/api/hotel-settings/coupons`, {
-  //       hotelId,
-  //       coupons: [payload],
-  //     });
-  //     const newUuid = created.uuid;
-
-  //     // 2) 생성된 쿠폰을 각 고객에게 발행
-  //     await Promise.all(
-  //       selectedCustomers.map((c) =>
-  //         issueTargetedCoupon(hotelId, c._id, newUuid)
-  //       )
-  //     );
-
-  //     setMessage(
-  //       language === 'kor'
-  //         ? `${selectedCustomers.length}명에게 신규 쿠폰이 발행되었습니다.`
-  //         : `Issued new coupon to ${selectedCustomers.length} customers.`
-  //     );
-
-  //     // 상태 리셋
-  //     setSelectedCustomers([]);
-  //     setCustomerSearchQuery('');
-  //     setPushCouponUuid(null);
-  //     // …등등
-  //   } catch (err) {
-  //     console.error('[handleIssueTargetedCoupon]', err);
-  //     setError(
-  //       language === 'kor'
-  //         ? `발행 실패: ${err.message}`
-  //         : `Failed to issue coupons: ${err.message}`
-  //     );
-  //   } finally {
-  //     setIsLoading(false);
-  //     setTimeout(() => setMessage(''), 5000);
-  //   }
-  // };
-
-  // ★ 신규 쿠폰 생성 + 푸시 핸들러
-
   const handleCreateAndPush = async () => {
     if (selectedCustomers.length === 0) {
       setError('고객을 선택해주세요.');
@@ -4005,6 +3946,12 @@ function CouponSettingsSection({
         startDate: targetCoupon.startDate,
         endDate: targetCoupon.endDate,
         couponCount: 1,
+        hotelId, // hotelId 추가
+        applicableRoomType: 'all', // 기본적으로 모든 객실에 적용
+        isActive: true,
+        autoDistribute: false,
+        maxUses: 1,
+        usedCount: 0,
       };
       const {
         data: {
@@ -4019,7 +3966,6 @@ function CouponSettingsSection({
       // (2) 선택 고객에게 푸시
       await Promise.all(
         selectedCustomers.map((c) =>
-          // couponUuid 키를 가진 객체로 포장
           issueTargetedCoupon(hotelId, c._id, { couponUuid: newUuid })
         )
       );
@@ -4045,7 +3991,6 @@ function CouponSettingsSection({
     }
   };
 
-  // handleAddCoupon
   const handleAddCoupon = async () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -4108,6 +4053,7 @@ function CouponSettingsSection({
             autoValidity: coupon.autoValidity || true,
             validityDays: coupon.duration || 1,
             isDeleted: false,
+            hotelId, // hotelId 추가
           };
           validateCoupon(couponToValidate, coupons);
           validatedCoupons.push({ ...couponToValidate, isActive: true });
@@ -4115,7 +4061,10 @@ function CouponSettingsSection({
       }
       const response = await api.post(
         `/api/hotel-settings/${hotelId}/coupons`,
-        { hotelId, coupons: validatedCoupons }
+        {
+          hotelId,
+          coupons: validatedCoupons,
+        }
       );
       setCoupons((prev) => [...prev, ...response.data.coupons]);
       const feedbackMessage =
@@ -4148,142 +4097,211 @@ function CouponSettingsSection({
     }
   };
 
-  const handleDeleteCoupon = async (couponUuid) => {
-    if (!isAdminAuthenticated) {
-      setPendingAction(() => () => handleDeleteCoupon(couponUuid));
-      setShowPasswordModal(true);
-      return;
-    }
-    if (isLoading) return;
-    setIsLoading(true);
+  // 적용된 쿠폰 삭제
+const deleteAppliedCoupon = async (index) => {
+  setIsLoading(true);
+  try {
+    const updatedCoupons = appliedCoupons.filter((_, i) => i !== index);
+    await api.put(`/api/hotel-settings/${hotelId}/loyalty-coupons`, {
+      loyaltyCoupons: updatedCoupons,
+      hotelId,
+    });
+    setAppliedCoupons(updatedCoupons);
+    setMessage(
+      language === 'kor'
+        ? '로열티 쿠폰이 삭제되었습니다.'
+        : 'Loyalty coupon has been deleted.'
+    );
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    console.error('[deleteAppliedCoupon] Error:', err);
+    setError(
+      language === 'kor'
+        ? `로열티 쿠폰 삭제 실패: ${err.message}`
+        : `Failed to delete loyalty coupon: ${err.message}`
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-    try {
-      const couponToDelete = coupons.find((c) => c.uuid === couponUuid);
+// 적용된 쿠폰 활성화/비활성화 토글
+const toggleAppliedCoupon = async (index) => {
+  setIsLoading(true);
+  try {
+    const updatedCoupons = appliedCoupons.map((coupon, i) =>
+      i === index ? { ...coupon, isActive: !coupon.isActive } : coupon
+    );
+    await api.put(`/api/hotel-settings/${hotelId}/loyalty-coupons`, {
+      loyaltyCoupons: updatedCoupons,
+      hotelId,
+    });
+    setAppliedCoupons(updatedCoupons);
+    setMessage(
+      language === 'kor'
+        ? '로열티 쿠폰 상태가 업데이트되었습니다.'
+        : 'Loyalty coupon status has been updated.'
+    );
+    setTimeout(() => setMessage(''), 3000);
+  } catch (err) {
+    console.error('[toggleAppliedCoupon] Error:', err);
+    setError(
+      language === 'kor'
+        ? `로열티 쿠폰 상태 업데이트 실패: ${err.message}`
+        : `Failed to update loyalty coupon status: ${err.message}`
+    );
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-      // 이미 사용된 쿠폰이면 UI에서만 필터링
-      if (couponToDelete.usedCount > 0) {
-        const filtered = coupons
-          .filter((c) => c.uuid !== couponUuid)
-          .map(normalizeRoomType);
-        setCoupons(filtered);
-        onCouponsChange?.(filtered);
-        setMessage(
-          '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
-        );
-      } else {
-        // 실제 삭제 호출 시 body 에 hotelId, couponUuid 함께 전송
-        await api.delete(
-          `/api/hotel-settings/${hotelId}/coupons/${couponUuid}`,
-          { data: { hotelId, couponUuid } }
-        );
+const handleDeleteCoupon = async (couponUuid) => {
+  if (!isAdminAuthenticated) {
+    setPendingAction(() => () => handleDeleteCoupon(couponUuid));
+    setShowPasswordModal(true);
+    return;
+  }
+  if (isLoading) return;
+  setIsLoading(true);
 
-        const updated = coupons
-          .map((c) => (c.uuid === couponUuid ? { ...c, isDeleted: true } : c))
-          .map(normalizeRoomType);
-        setCoupons(updated);
-        onCouponsChange?.(updated);
-        setMessage('쿠폰이 삭제되었습니다.');
-      }
-    } catch (err) {
-      console.error('[handleDeleteCoupon]', err);
-      setError(`쿠폰 삭제 실패: ${err.message}`);
-    } finally {
-      setTimeout(() => setMessage(''), 5000);
-      setIsLoading(false);
-    }
-  };
+  try {
+    const couponToDelete = coupons.find((c) => c.uuid === couponUuid);
 
-  const handleDeleteGroup = async (groupCoupons) => {
-    if (!isAdminAuthenticated) {
-      setPendingAction(() => () => handleDeleteGroup(groupCoupons));
-      setShowPasswordModal(true);
-      return;
-    }
-    if (isLoading) return;
-    setIsLoading(true);
-
-    // 재시도 설정
-    const MAX_RETRIES = 3;
-    const BASE_DELAY_MS = 500;
-
-    // 개별 쿠폰 삭제 시도 함수 (TransientTransactionError 발생 시 재시도)
-    const deleteWithRetry = async (coupon) => {
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          await api.delete(
-            `/api/hotel-settings/${hotelId}/coupons/${coupon.uuid}`,
-            { data: { hotelId, couponUuid: coupon.uuid } }
-          );
-          return; // 삭제 성공 시 리턴
-        } catch (err) {
-          const labels = err.response?.data?.errorLabels || [];
-          // TransientTransactionError 라벨 있으면 재시도
-          if (
-            labels.includes('TransientTransactionError') &&
-            attempt < MAX_RETRIES
-          ) {
-            await new Promise((res) =>
-              setTimeout(res, BASE_DELAY_MS * attempt)
-            );
-          } else {
-            // 그 외 오류 혹은 재시도 한계 초과 시 throw
-            throw err;
-          }
-        }
-      }
-    };
-
-    try {
-      // 사용된 쿠폰(skip)과 실제 삭제할 쿠폰(delete) 분리
-      const [skipped, toDelete] = groupCoupons.reduce(
-        ([skip, del], c) =>
-          c.usedCount > 0 ? [[...skip, c], del] : [skip, [...del, c]],
-        [[], []]
-      );
-
-      // 실제 삭제 요청 (순차 처리)
-      for (const c of toDelete) {
-        await deleteWithRetry(c);
-      }
-
-      // UI 업데이트
-      let updated = coupons;
-
-      // 사용된 쿠폰은 UI에서만 제거
-      if (skipped.length) {
-        updated = updated.filter(
-          (c) => !skipped.some((s) => s.uuid === c.uuid)
-        );
-        setMessage(
-          '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
-        );
-      }
-
-      // 실제 삭제된 쿠폰 제거
-      updated = updated
-        .map((c) =>
-          toDelete.some((d) => d.uuid === c.uuid)
-            ? { ...c, isDeleted: true }
-            : c
-        )
-        .filter((c) => !c.isDeleted)
+    // 사용된 쿠폰이면 삭제 불가
+    if (couponToDelete.usedCount > 0) {
+      const filtered = coupons
+        .filter((c) => c.uuid !== couponUuid)
         .map(normalizeRoomType);
+      setCoupons(filtered);
+      onCouponsChange?.(filtered);
+      setMessage(
+        language === 'kor'
+          ? '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
+          : 'Used coupons cannot be deleted. Removed from UI only.'
+      );
+    } else {
+      // 백엔드에서 하드 삭제 호출
+      await api.delete(`/api/hotel-settings/${hotelId}/coupons/${couponUuid}`, {
+        data: { hotelId, couponUuid }
+      });
 
+      // UI에서 쿠폰 제거
+      const updated = coupons
+        .filter((c) => c.uuid !== couponUuid)
+        .map(normalizeRoomType);
       setCoupons(updated);
       onCouponsChange?.(updated);
+      setMessage(language === 'kor' ? '쿠폰이 삭제되었습니다.' : 'Coupon deleted.');
+    }
+  } catch (err) {
+    console.error('[handleDeleteCoupon]', err);
+    setError(
+      language === 'kor'
+        ? `쿠폰 삭제 실패: ${err.message}`
+        : `Failed to delete coupon: ${err.message}`
+    );
+  } finally {
+    setTimeout(() => setMessage(''), 5000);
+    setIsLoading(false);
+  }
+};
 
-      if (!skipped.length) {
-        setMessage('그룹 내 모든 쿠폰이 삭제되었습니다.');
+const handleDeleteGroup = async (groupCoupons) => {
+  if (!isAdminAuthenticated) {
+    setPendingAction(() => () => handleDeleteGroup(groupCoupons));
+    setShowPasswordModal(true);
+    return;
+  }
+  if (isLoading) return;
+  setIsLoading(true);
+
+  // 재시도 설정
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 500;
+
+  // 개별 쿠폰 삭제 시도 함수 (TransientTransactionError 발생 시 재시도)
+  const deleteWithRetry = async (coupon) => {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await api.delete(
+          `/api/hotel-settings/${hotelId}/coupons/${coupon.uuid}`,
+          { data: { hotelId, couponUuid: coupon.uuid } }
+        );
+        return; // 삭제 성공 시 리턴
+      } catch (err) {
+        const labels = err.response?.data?.errorLabels || [];
+        // TransientTransactionError 라벨 있으면 재시도
+        if (
+          labels.includes('TransientTransactionError') &&
+          attempt < MAX_RETRIES
+        ) {
+          await new Promise((res) =>
+            setTimeout(res, BASE_DELAY_MS * attempt)
+          );
+        } else {
+          // 그 외 오류 혹은 재시도 한계 초과 시 throw
+          throw err;
+        }
       }
-      setError('');
-    } catch (err) {
-      console.error('[handleDeleteGroup]', err);
-      setError(`그룹 삭제 실패: ${err.message}`);
-    } finally {
-      setTimeout(() => setMessage(''), 5000);
-      setIsLoading(false);
     }
   };
+
+  try {
+    // 사용된 쿠폰(skip)과 실제 삭제할 쿠폰(delete) 분리
+    const [skipped, toDelete] = groupCoupons.reduce(
+      ([skip, del], c) =>
+        c.usedCount > 0 ? [[...skip, c], del] : [skip, [...del, c]],
+      [[], []]
+    );
+
+    // 실제 삭제 요청 (순차 처리)
+    for (const c of toDelete) {
+      await deleteWithRetry(c);
+    }
+
+    // UI 업데이트
+    let updated = coupons;
+
+    // 사용된 쿠폰은 UI에서만 제거
+    if (skipped.length) {
+      updated = updated.filter(
+        (c) => !skipped.some((s) => s.uuid === c.uuid)
+      );
+      setMessage(
+        language === 'kor'
+          ? '사용된 쿠폰은 삭제할 수 없습니다. UI에서만 제거되었습니다.'
+          : 'Used coupons cannot be deleted. Removed from UI only.'
+      );
+    }
+
+    // 실제 삭제된 쿠폰 제거
+    updated = updated
+      .filter((c) => !toDelete.some((d) => d.uuid === c.uuid))
+      .map(normalizeRoomType);
+
+    setCoupons(updated);
+    onCouponsChange?.(updated);
+
+    if (!skipped.length) {
+      setMessage(
+        language === 'kor'
+          ? '그룹 내 모든 쿠폰이 삭제되었습니다.'
+          : 'All coupons in the group have been deleted.'
+      );
+    }
+    setError('');
+  } catch (err) {
+    console.error('[handleDeleteGroup]', err);
+    setError(
+      language === 'kor'
+        ? `그룹 삭제 실패: ${err.message}`
+        : `Failed to delete group: ${err.message}`
+    );
+  } finally {
+    setTimeout(() => setMessage(''), 5000);
+    setIsLoading(false);
+  }
+};
 
   const handleAdminAuth = () => {
     if (adminPasswordInput === ADMIN_PASSWORD) {
@@ -4431,156 +4449,214 @@ function CouponSettingsSection({
         </div>
       )}
 
-      <div className="coupon-loyalty-settings coupon-section-block">
-        <h4>
-          {language === 'kor' ? '로열티 쿠폰 설정' : 'Loyalty Coupon Settings'}
-        </h4>
-        <div className="coupon-loyalty-form">
-          <div className="coupon-loyalty-form-row">
-            <div className="coupon-loyalty-form-group">
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor'
-                    ? '5회 방문 쿠폰 이름'
-                    : '5 Visits Coupon Name'}
-                </label>
-                <input
-                  type="text"
-                  value={loyaltySettings.visit5?.name || '5회 방문 쿠폰'}
-                  onChange={(e) =>
-                    handleLoyaltyChange('visit5', 'name', e.target.value)
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor' ? '할인 유형' : 'Discount Type'}
-                </label>
-                <select
-                  value={loyaltySettings.visit5?.discountType || 'percentage'}
-                  onChange={(e) =>
-                    handleLoyaltyChange(
-                      'visit5',
-                      'discountType',
-                      e.target.value
-                    )
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  <option value="percentage">
-                    {language === 'kor' ? '정률 (%)' : 'Percentage (%)'}
-                  </option>
-                  <option value="fixed">
-                    {language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}
-                  </option>
-                </select>
-              </div>
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor'
-                    ? '5회 방문 할인 값'
-                    : '5 Visits Discount Value'}
-                </label>
-                <input
-                  type="number"
-                  value={loyaltySettings.visit5?.discountValue || 0}
-                  onChange={(e) =>
-                    handleLoyaltyChange(
-                      'visit5',
-                      'discountValue',
-                      e.target.value
-                    )
-                  }
-                  min="0"
-                  max={
-                    loyaltySettings.visit5?.discountType === 'percentage'
-                      ? 100
-                      : undefined
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-            </div>
-            <div className="coupon-loyalty-form-group">
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor'
-                    ? '10회 방문 쿠폰 이름'
-                    : '10 Visits Coupon Name'}
-                </label>
-                <input
-                  type="text"
-                  value={loyaltySettings.visit10?.name || '10회 방문 쿠폰'}
-                  onChange={(e) =>
-                    handleLoyaltyChange('visit10', 'name', e.target.value)
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor' ? '할인 유형' : 'Discount Type'}
-                </label>
-                <select
-                  value={loyaltySettings.visit10?.discountType || 'percentage'}
-                  onChange={(e) =>
-                    handleLoyaltyChange(
-                      'visit10',
-                      'discountType',
-                      e.target.value
-                    )
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  <option value="percentage">
-                    {language === 'kor' ? '정률 (%)' : 'Percentage (%)'}
-                  </option>
-                  <option value="fixed">
-                    {language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}
-                  </option>
-                </select>
-              </div>
-              <div className="coupon-loyalty-form-cell">
-                <label>
-                  {language === 'kor'
-                    ? '10회 방문 할인 값'
-                    : '10 Visits Discount Value'}
-                </label>
-                <input
-                  type="number"
-                  value={loyaltySettings.visit10?.discountValue || 0}
-                  onChange={(e) =>
-                    handleLoyaltyChange(
-                      'visit10',
-                      'discountValue',
-                      e.target.value
-                    )
-                  }
-                  min="0"
-                  max={
-                    loyaltySettings.visit10?.discountType === 'percentage'
-                      ? 100
-                      : undefined
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-            </div>
+<div className="coupon-loyalty-settings coupon-section-block">
+  <h4>
+    {language === "kor" ? "로열티 쿠폰 설정" : "Loyalty Coupon Settings"}
+  </h4>
+  <div className="coupon-loyalty-form">
+    {isLoading && <span className="coupon-loading">Loading...</span>}
+    {error && <p className="coupon-error">{error}</p>}
+    {message && <p className="coupon-success">{message}</p>}
+
+    {/* 조건 입력 섹션 */}
+    {isAdminAuthenticated && (
+      <>
+        {loyaltySettings.customCoupons.map((coupon, index) => (
+          <div className="coupon-loyalty-form-row" key={index}>
+            {/* 방문 횟수 */}
             <div className="coupon-loyalty-form-cell">
-              <div className="coupon-btn-coupon-save">
-                <button
-                  className="coupon-btn coupon-save"
-                  onClick={saveLoyaltySettings}
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  {language === 'kor' ? '저장' : 'Save'}
-                </button>
+              <label>{language === "kor" ? "방문 횟수" : "Visit Count"}</label>
+              <input
+                type="number"
+                value={coupon.visits}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value < 1) {
+                    setError("방문 횟수는 1 이상이어야 합니다.");
+                    return;
+                  }
+                  setError("");
+                  setLoyaltySettings({
+                    customCoupons: loyaltySettings.customCoupons.map((c, i) =>
+                      i === index ? { ...c, visits: value } : c
+                    ),
+                  });
+                }}
+                disabled={isLoading}
+                min="1"
+              />
+            </div>
+
+            {/* 할인 유형 */}
+            <div className="coupon-loyalty-form-cell">
+              <label>{language === "kor" ? "할인 유형" : "Discount Type"}</label>
+              <select
+                value={coupon.discountType}
+                onChange={(e) =>
+                  setLoyaltySettings({
+                    customCoupons: loyaltySettings.customCoupons.map((c, i) =>
+                      i === index ? { ...c, discountType: e.target.value } : c
+                    ),
+                  })
+                }
+                disabled={isLoading}
+              >
+                <option value="percentage">
+                  {language === "kor" ? "정률 (%)" : "Percentage (%)"}
+                </option>
+                <option value="fixed">
+                  {language === "kor" ? "정액 (원)" : "Fixed (₩)"}
+                </option>
+              </select>
+            </div>
+
+            {/* 할인 값 */}
+            <div className="coupon-loyalty-form-cell">
+              <label>{language === "kor" ? "할인 값" : "Discount Value"}</label>
+              <div className={`coupon-loyalty-discount-value-input ${coupon.discountType}`}>
+                <input
+                  type="number"
+                  value={coupon.discountValue}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (value < 0) {
+                      setError("할인 값은 0 이상이어야 합니다.");
+                      return;
+                    }
+                    if (coupon.discountType === "percentage" && value > 100) {
+                      setError("할인율은 100 이하이어야 합니다.");
+                      return;
+                    }
+                    setError("");
+                    setLoyaltySettings({
+                      customCoupons: loyaltySettings.customCoupons.map((c, i) =>
+                        i === index ? { ...c, discountValue: value } : c
+                      ),
+                    });
+                  }}
+                  min="0"
+                  max={coupon.discountType === "percentage" ? 100 : undefined}
+                  disabled={isLoading}
+                />
+                <span className="discount-unit">
+                  {coupon.discountType === "percentage" ? "%" : "원"}
+                </span>
               </div>
+            </div>
+
+            {/* 유효기간 (일) */}
+            <div className="coupon-loyalty-form-cell">
+              <label>{language === "kor" ? "유효기간 (일)" : "Validity Days"}</label>
+              <input
+                type="number"
+                value={coupon.validityDays}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (value < 1) {
+                    setError("유효기간은 1일 이상이어야 합니다.");
+                    return;
+                  }
+                  setError("");
+                  setLoyaltySettings({
+                    customCoupons: loyaltySettings.customCoupons.map((c, i) =>
+                      i === index ? { ...c, validityDays: value } : c
+                    ),
+                  });
+                }}
+                min="1"
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* 입력 행 삭제 버튼 */}
+            <button
+              className="coupon-btn coupon-delete"
+              onClick={() => deleteCustomCoupon(index)}
+              disabled={isLoading}
+            >
+              <FaTrash />
+            </button>
+          </div>
+        ))}
+        <div className="coupon-loyalty-form-actions">
+          <button
+            className="coupon-btn coupon-create"
+            onClick={addCustomCoupon}
+            disabled={isLoading}
+          >
+            {language === "kor" ? "조건 추가" : "Add Condition"}
+          </button>
+          {loyaltySettings.customCoupons.length > 0 && (
+            <button
+              className="coupon-btn coupon-save"
+              onClick={saveLoyaltySettings}
+              disabled={isLoading}
+            >
+              {language === "kor" ? "저장" : "Save"}
+            </button>
+          )}
+        </div>
+      </>
+    )}
+
+    {/* 잠금 상태 메시지 */}
+    {!isAdminAuthenticated && (
+      <p className="coupon-lock-message">
+        {language === "kor" ? "잠금을 풀어 수정하세요" : "Unlock to edit"}
+      </p>
+    )}
+
+    {/* 현재 적용중인 로열티 쿠폰 섹션 */}
+    {appliedCoupons.length > 0 && (
+      <div className="coupon-loyalty-applied">
+        <h4>{language === "kor" ? "현재 적용중인 로열티 쿠폰" : "Currently Applied Loyalty Coupons"}</h4>
+        {appliedCoupons.map((coupon, index) => (
+          <div className="coupon-loyalty-applied-row" key={index}>
+            <span className="coupon-loyalty-applied-field">
+              {language === "kor" ? "방문 횟수" : "Visit Count"}: {coupon.visits}
+            </span>
+            <span className="coupon-loyalty-applied-field">
+              {language === "kor" ? "할인 유형" : "Discount Type"}: {coupon.discountType === "percentage" ? "정률 (%)" : "정액 (₩)"}
+            </span>
+            <span className="coupon-loyalty-applied-field">
+              {language === "kor" ? "할인 값" : "Discount Value"}: {coupon.discountValue}
+              {coupon.discountType === "percentage" ? "%" : "원"}
+            </span>
+            <span className="coupon-loyalty-applied-field">
+              {language === "kor" ? "유효기간 (일)" : "Validity Days"}: {coupon.validityDays}
+            </span>
+            <div className="coupon-loyalty-applied-actions">
+              {isAdminAuthenticated && (
+                <>
+                  <button
+                    className={`coupon-btn coupon-toggle ${coupon.isActive ? "coupon-active" : "coupon-inactive"}`}
+                    onClick={() => toggleAppliedCoupon(index)}
+                    disabled={isLoading}
+                  >
+                    {coupon.isActive
+                      ? language === "kor"
+                        ? "비활성화"
+                        : "Deactivate"
+                      : language === "kor"
+                      ? "활성화"
+                      : "Activate"}
+                  </button>
+                  <button
+                    className="coupon-btn coupon-delete"
+                    onClick={() => deleteAppliedCoupon(index)}
+                    disabled={isLoading}
+                  >
+                    <FaTrash />
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        </div>
+        ))}
       </div>
+    )}
+  </div>
+</div>
 
       <div className="coupon-first-visit-settings coupon-section-block">
         <h4>
@@ -5440,6 +5516,84 @@ function CouponSettingsSection({
           })
         )}
       </div>
+      <div className="coupon-used-list coupon-section-block">
+  <h4 className="coupon-list-header">
+    {language === 'kor' ? '사용된 쿠폰 목록' : 'Used Coupons List'}
+  </h4>
+  {isUsedCouponsLoading ? (
+    <p>{language === 'kor' ? '로딩 중...' : 'Loading...'}</p>
+  ) : usedCouponsError ? (
+    <p className="coupon-error">{usedCouponsError}</p>
+  ) : usedCoupons.length === 0 ? (
+    <p>
+      {language === 'kor'
+        ? '사용된 쿠폰이 없습니다.'
+        : 'No coupons have been used.'}
+    </p>
+  ) : (
+    <table className="coupon-used-table">
+      <thead>
+        <tr>
+          <th>{language === 'kor' ? '쿠폰 코드' : 'Coupon Code'}</th>
+          <th>{language === 'kor' ? '쿠폰 이름' : 'Coupon Name'}</th>
+          <th>{language === 'kor' ? '적용 객실' : 'Applicable Room'}</th>
+          <th>{language === 'kor' ? '할인 유형' : 'Discount Type'}</th>
+          <th>{language === 'kor' ? '할인 값' : 'Discount Value'}</th>
+          <th>{language === 'kor' ? '사용 일시' : 'Used At'}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {usedCoupons.map((coupon, index) => (
+          <tr key={index}>
+            <td>{coupon.code}</td>
+            <td>{coupon.name}</td>
+            <td>
+              {coupon.applicableRoomType === 'all'
+                ? language === 'kor'
+                  ? '모든 객실'
+                  : 'All Rooms'
+                : roomTypes && roomTypes.length > 0
+                ? language === 'kor'
+                  ? roomTypes.find(
+                      (rt) =>
+                        rt &&
+                        rt.roomInfo &&
+                        safeLower(rt.roomInfo) ===
+                          safeLower(coupon.applicableRoomType)
+                    )?.nameKor || coupon.applicableRoomType
+                  : roomTypes.find(
+                      (rt) =>
+                        rt &&
+                        rt.roomInfo &&
+                        safeLower(rt.roomInfo) ===
+                          safeLower(coupon.applicableRoomType)
+                    )?.nameEng || coupon.applicableRoomType
+                : coupon.applicableRoomType}
+            </td>
+            <td>
+              {coupon.discountType === 'percentage'
+                ? language === 'kor'
+                  ? '정률 (%)'
+                  : 'Percentage (%)'
+                : language === 'kor'
+                ? '정액 (₩)'
+                : 'Fixed Amount (₩)'}
+            </td>
+            <td>
+              {coupon.discountValue}
+              {coupon.discountType === 'percentage' ? '%' : '원'}
+            </td>
+            <td>
+              {coupon.usedAt
+                ? formatDate(parseDate(coupon.usedAt), 'yyyy-MM-dd HH:mm:ss')
+                : 'N/A'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</div>
 
       <div className="coupon-stats-section">
         <div className="coupon-monthly-stats coupon-section-block">

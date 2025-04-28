@@ -669,4 +669,13 @@ export const pushCouponToCustomer = async (hotelId, customerId, couponUuid) => {
   }
 };
 
+export const fetchUsedCoupons = async (hotelId) => {
+  try {
+    const response = await api.get(`/api/hotel-settings/${hotelId}/used-coupons`); // 수정: axios 대신 api 인스턴스 사용
+    return response.data.usedCoupons || [];
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '사용된 쿠폰 목록을 가져오지 못했습니다.');
+  }
+};
+
 export default api;

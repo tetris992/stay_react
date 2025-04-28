@@ -2495,76 +2495,302 @@ html {
   gap: 5px;
   justify-content: flex-end;
 }
-
-/* 삭제 버튼 스타일 */
-.coupon-card-actions .coupon-delete-btn {
-  background-color: #ef4444;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.coupon-card-actions .coupon-delete-btn:hover {
-  background-color: #dc2626;
-}
-
 .coupon-card-actions .coupon-delete-btn:disabled {
   background-color: #d1d5db;
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* 로열티 쿠폰 설정 - 5회와 10회를 두 줄로 배치, 버튼을 오른쪽 끝에 */
-.coupon-loyalty-form-row {
-  display: flex;
-  flex-direction: column; /* 두 줄로 배치 */
-  gap: 15px;
-  align-items: stretch;
+/* 로열쿠폰 */
+/* 로열티 쿠폰 설정 - 동적 입력 폼 */
+.coupon-loyalty-settings {
+  margin-top: 20px;
 }
 
-.coupon-loyalty-form-group {
+.coupon-loyalty-form {
+  padding: 10px;
+}
+
+.coupon-loyalty-form-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
+  justify-content: space-between;
   align-items: center;
-  justify-content: space-between; /* 요소들을 양 끝으로 분배 */
+  gap: 15px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .coupon-loyalty-form-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
   flex: 1;
-  min-width: 200px; /* 최소 너비 설정 */
 }
 
 .coupon-loyalty-form-cell label {
   font-size: 14px;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 5px;
-  display: block;
+  margin-right: 8px;
+  white-space: nowrap;
 }
 
 .coupon-loyalty-form-cell input,
 .coupon-loyalty-form-cell select {
-  width: 100%;
   padding: 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 13px;
   color: #374151;
   background-color: #f9fafb;
+  width: 100px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 저장 버튼을 오른쪽 끝에 배치 */
-.coupon-loyalty-form-cell:last-child {
-  flex: 0 0 auto; /* 버튼 크기 고정 */
-  margin-left: auto; /* 오른쪽 끝으로 이동 */
+.coupon-loyalty-form-cell select {
+  width: 120px;
 }
+
+.coupon-loyalty-form-cell input:focus,
+.coupon-loyalty-form-cell select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  outline: none;
+}
+
+.coupon-loyalty-form-cell input:disabled,
+.coupon-loyalty-form-cell select:disabled {
+  background-color: #e5e7eb;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* 할인 값 입력 필드 */
+.coupon-loyalty-discount-value-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100px;
+}
+
+.coupon-loyalty-discount-value-input input {
+  width: 100%;
+  padding-right: 25px;
+}
+
+.coupon-loyalty-discount-value-input .discount-unit {
+  position: absolute;
+  right: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  pointer-events: none;
+}
+
+/* 액션 버튼 */
+.coupon-loyalty-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+  width: 100%;
+}
+
+.coupon-btn.coupon-create {
+  background-color: #3b82f6;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.coupon-btn.coupon-create:hover {
+  background-color: #2563eb;
+}
+
+.coupon-btn.coupon-save {
+  background-color: #2ecc71;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.coupon-btn.coupon-save:hover {
+  background-color: #27ae60;
+}
+
+.coupon-btn.coupon-delete {
+  background-color: #ef4444;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.coupon-btn.coupon-delete:hover {
+  background-color: #dc2626;
+}
+
+.coupon-btn.coupon-delete svg {
+  font-size: 16px;
+}
+
+/* 현재 적용중인 로열티 쿠폰 섹션 */
+.coupon-loyalty-applied {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.coupon-loyalty-applied h4 {
+  font-size: 18px;
+  color: #34495e;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.coupon-loyalty-applied-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.coupon-loyalty-applied-field {
+  font-size: 14px;
+  color: #374151;
+}
+
+.coupon-loyalty-applied-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.coupon-btn.coupon-toggle {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.coupon-btn.coupon-toggle.coupon-active {
+  background-color: #f0ad4e;
+}
+
+.coupon-btn.coupon-toggle.coupon-active:hover {
+  background-color: #e0a800;
+}
+
+.coupon-btn.coupon-toggle.coupon-inactive {
+  background-color: #5cb85c;
+}
+
+.coupon-btn.coupon-toggle.coupon-inactive:hover {
+  background-color: #4cae4c;
+}
+
+.coupon-btn:disabled {
+  background-color: #d1d5db;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.coupon-loading {
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.coupon-lock-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ef4444;
+  text-align: center;
+  background-color: #fef2f2;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .coupon-loyalty-form-row,
+  .coupon-loyalty-applied-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .coupon-loyalty-form-cell,
+  .coupon-loyalty-applied-field {
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 100%;
+  }
+
+  .coupon-loyalty-form-cell label {
+    margin-bottom: 5px;
+  }
+
+  .coupon-loyalty-form-cell input,
+  .coupon-loyalty-form-cell select {
+    width: 100%;
+  }
+
+  .coupon-loyalty-discount-value-input {
+    width: 100%;
+  }
+
+  .coupon-loyalty-form-actions,
+  .coupon-loyalty-applied-actions {
+    justify-content: center;
+  }
+
+  .coupon-lock-message {
+    font-size: 12px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .coupon-loyalty-form-cell input,
+  .coupon-loyalty-form-cell select {
+    font-size: 12px;
+  }
+
+  .coupon-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .coupon-loyalty-applied-field {
+    font-size: 12px;
+  }
+}
+
 
 /* 최초 방문 쿠폰 설정 - 한 줄로 배치, 버튼을 오른쪽 끝에 */
 .coupon-first-visit-form-row {
@@ -2572,13 +2798,14 @@ html {
   flex-wrap: nowrap; /* 한 줄로 유지 */
   gap: 15px;
   align-items: center;
-  justify-content: space-between; /* 요소들을 양 끝으로 분배 */
+  justify-content: flex-start; /* 요소들을 양 끝으로 분배 */
 }
 
 .coupon-first-visit-form-group {
   display: flex;
   gap: 15px;
   flex-wrap: nowrap; /* 한 줄로 유지 */
+  
 }
 
 .coupon-first-visit-form-cell {
