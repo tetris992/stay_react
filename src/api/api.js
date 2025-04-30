@@ -671,10 +671,89 @@ export const pushCouponToCustomer = async (hotelId, customerId, couponUuid) => {
 
 export const fetchUsedCoupons = async (hotelId) => {
   try {
-    const response = await api.get(`/api/hotel-settings/${hotelId}/used-coupons`); // 수정: axios 대신 api 인스턴스 사용
+    const response = await api.get(`/api/hotel-settings/${hotelId}/used-coupons`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[fetchUsedCoupons] Response:', response.data);
+    }
     return response.data.usedCoupons || [];
   } catch (error) {
-    throw new Error(error.response?.data?.message || '사용된 쿠폰 목록을 가져오지 못했습니다.');
+    console.error('[fetchUsedCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '사용된 쿠폰 목록을 가져오지 못했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+// 만료된 쿠폰 삭제 API 호출
+export const deleteExpiredCoupons = async (hotelId) => {
+  try {
+    const response = await api.delete(`/api/hotel-settings/${hotelId}/expired-coupons`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[deleteExpiredCoupons] Response:', response.data);
+    }
+    return response.data;
+  } catch (error) {
+    console.error('[deleteExpiredCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '만료된 쿠폰 삭제에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+// api.js (기존 코드 유지, 중복 제거 및 개선된 헬퍼 함수 추가)
+
+export const fetchLoyaltyCoupons = async (hotelId) => {
+  try {
+    const { data } = await api.get(`/api/hotel-settings/${hotelId}/loyalty-coupons`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[fetchLoyaltyCoupons] Response:', data);
+    }
+    return data.loyaltyCoupons || [];
+  } catch (error) {
+    console.error('[fetchLoyaltyCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '로열티 쿠폰 설정을 가져오지 못했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+export const saveLoyaltyCoupons = async (hotelId, loyaltyCoupons) => {
+  try {
+    const payload = { loyaltyCoupons };
+    const { data } = await api.put(`/api/hotel-settings/${hotelId}/loyalty-coupons`, payload);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[saveLoyaltyCoupons] Response:', data);
+    }
+    return data.loyaltyCoupons;
+  } catch (error) {
+    console.error('[saveLoyaltyCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '로열티 쿠폰 설정 저장에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+export const fetchFirstVisitCoupons = async (hotelId) => {
+  try {
+    const { data } = await api.get(`/api/hotel-settings/${hotelId}/first-visit-coupons`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[fetchFirstVisitCoupons] Response:', data);
+    }
+    return data.firstVisitCoupons || { discountType: 'percentage', discountValue: 10, couponCount: 1 };
+  } catch (error) {
+    console.error('[fetchFirstVisitCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '최초 방문 쿠폰 설정을 가져오지 못했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
+  }
+};
+
+export const saveFirstVisitCoupons = async (hotelId, settings) => {
+  try {
+    const { data } = await api.put(`/api/hotel-settings/${hotelId}/first-visit-coupons`, settings);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[saveFirstVisitCoupons] Response:', data);
+    }
+    return data.firstVisitCoupons;
+  } catch (error) {
+    console.error('[saveFirstVisitCoupons] Error:', error);
+    const errorMessage = error.response?.data?.message || '최초 방문 쿠폰 설정 저장에 실패했습니다.';
+    throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
 

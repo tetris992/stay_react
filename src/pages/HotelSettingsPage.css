@@ -3239,6 +3239,16 @@ html {
   justify-content: right;
 }
 
+.coupon-checked-in {
+  color: #2ecc71; /* 초록색 */
+  font-weight: bold;
+}
+
+.coupon-reserved {
+  color: #e67e22; /* 주황색 */
+  font-weight: bold;
+}
+
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
