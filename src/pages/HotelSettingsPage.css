@@ -3337,3 +3337,69 @@ html {
     font-size: 12px;
   }
 }
+
+/* 사용된 쿠폰 목록 테이블 스타일 */
+.coupon-used-table {
+  width: 100%;
+  border-collapse: collapse; /* 셀 간 간격 제거 */
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 테이블 헤더 스타일 */
+.coupon-used-table thead {
+  background-color: #e5e7eb;
+}
+
+.coupon-used-table th,
+.coupon-used-table td {
+  padding: 12px; /* 패딩 일치 */
+  text-align: center;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle; /* 수직 중앙 정렬 */
+  line-height: 1.5; /* 라인 높이 일치 */
+}
+
+/* 테이블 헤더 스타일 */
+.coupon-used-table th {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+/* 테이블 바디 스타일 */
+.coupon-used-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.coupon-used-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* 체크인 상태에 따른 색상 */
+.coupon-checked-in {
+  color: #2ecc71; /* 초록색 */
+  font-weight: bold;
+}
+
+.coupon-reserved {
+  color: #e67e22; /* 주황색 */
+  font-weight: bold;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .coupon-used-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .coupon-used-table th,
+  .coupon-used-table td {
+    min-width: 120px; /* 최소 너비 설정으로 가독성 확보 */
+  }
+}
