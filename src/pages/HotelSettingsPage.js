@@ -12,7 +12,7 @@ import api, {
   fetchUserInfo,
   updateUser,
   searchCustomers,
-  fetchUsedCoupons,
+  fetchUsedCoupons, // 이게 백앤드 프런트 이름 같음. 이래도 되나 ?
   issueTargetedCoupon,
   deleteExpiredCoupons,
   fetchLoyaltyCoupons, // 추가
@@ -3441,6 +3441,8 @@ function CouponSettingsSection({
         setUsedCoupons((prev) =>
           prev.filter((c) => c.couponUuid !== data.couponUuid)
         );
+        // 상태 강제 새로고침
+        fetchUsedCouponsData();
       }
     });
 

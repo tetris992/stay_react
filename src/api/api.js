@@ -44,7 +44,12 @@ api.interceptors.request.use(
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[api.js] Request:', config.method.toUpperCase(), config.url, config.data);
+      console.log(
+        '[api.js] Request:',
+        config.method.toUpperCase(),
+        config.url,
+        config.data
+      );
     }
     return config;
   },
@@ -68,10 +73,17 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // CSRF 토큰 에러 처리 (403)
-    if (error.response && error.response.status === 403 && !originalRequest._retryCsrf) {
+    if (
+      error.response &&
+      error.response.status === 403 &&
+      !originalRequest._retryCsrf
+    ) {
       originalRequest._retryCsrf = true;
       try {
-        const { data } = await api.get('/api/csrf-token', { skipCsrf: true, timeout: 10000 });
+        const { data } = await api.get('/api/csrf-token', {
+          skipCsrf: true,
+          timeout: 10000,
+        });
         const newCsrfToken = data.csrfToken;
         const newCsrfTokenId = data.tokenId;
         localStorage.setItem('csrfToken', newCsrfToken);
@@ -113,7 +125,11 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await api.post('/api/auth/refresh-token', {}, { timeout: 10000 });
+        const { data } = await api.post(
+          '/api/auth/refresh-token',
+          {},
+          { timeout: 10000 }
+        );
         const { accessToken } = data;
         localStorage.setItem('accessToken', accessToken);
         originalRequest.headers.Authorization = 'Bearer ' + accessToken;
@@ -604,7 +620,6 @@ export const payPartial = async (reservationId, hotelId, payments) => {
   }
 };
 
-
 export const searchCustomers = async (
   hotelId,
   { query, minVisits, maxVisits, lastVisitDate, limit, skip }
@@ -631,7 +646,11 @@ export const searchCustomers = async (
 };
 
 /** 고객 전용(타겟팅) 쿠폰 발행 */
-export const issueTargetedCoupon = async (hotelId, customerId, { templateUuid, couponUuid }) => {
+export const issueTargetedCoupon = async (
+  hotelId,
+  customerId,
+  { templateUuid, couponUuid }
+) => {
   try {
     if (!templateUuid && !couponUuid) {
       throw new ApiError(400, 'templateUuid 또는 couponUuid가 필요합니다.');
@@ -647,7 +666,8 @@ export const issueTargetedCoupon = async (hotelId, customerId, { templateUuid, c
     return response.data.coupon;
   } catch (error) {
     console.error('쿠폰 발행 실패:', error);
-    const errorMessage = error.response?.data?.message || '쿠폰 발행에 실패했습니다.';
+    const errorMessage =
+      error.response?.data?.message || '쿠폰 발행에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
@@ -664,21 +684,26 @@ export const pushCouponToCustomer = async (hotelId, customerId, couponUuid) => {
     return response.data.coupon;
   } catch (error) {
     console.error('쿠폰 푸시 실패:', error);
-    const errorMessage = error.response?.data?.message || '쿠폰 푸시에 실패했습니다.';
+    const errorMessage =
+      error.response?.data?.message || '쿠폰 푸시에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
 
 export const fetchUsedCoupons = async (hotelId) => {
   try {
-    const response = await api.get(`/api/hotel-settings/${hotelId}/used-coupons`);
+    const response = await api.get(
+      `/api/hotel-settings/${hotelId}/used-coupons`
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[fetchUsedCoupons] Response:', response.data);
     }
     return response.data.usedCoupons || [];
   } catch (error) {
     console.error('[fetchUsedCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '사용된 쿠폰 목록을 가져오지 못했습니다.';
+    const errorMessage =
+      error.response?.data?.message ||
+      '사용된 쿠폰 목록을 가져오지 못했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
@@ -686,14 +711,17 @@ export const fetchUsedCoupons = async (hotelId) => {
 // 만료된 쿠폰 삭제 API 호출
 export const deleteExpiredCoupons = async (hotelId) => {
   try {
-    const response = await api.delete(`/api/hotel-settings/${hotelId}/expired-coupons`);
+    const response = await api.delete(
+      `/api/hotel-settings/${hotelId}/expired-coupons`
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[deleteExpiredCoupons] Response:', response.data);
     }
     return response.data;
   } catch (error) {
     console.error('[deleteExpiredCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '만료된 쿠폰 삭제에 실패했습니다.';
+    const errorMessage =
+      error.response?.data?.message || '만료된 쿠폰 삭제에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
@@ -702,14 +730,18 @@ export const deleteExpiredCoupons = async (hotelId) => {
 
 export const fetchLoyaltyCoupons = async (hotelId) => {
   try {
-    const { data } = await api.get(`/api/hotel-settings/${hotelId}/loyalty-coupons`);
+    const { data } = await api.get(
+      `/api/hotel-settings/${hotelId}/loyalty-coupons`
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[fetchLoyaltyCoupons] Response:', data);
     }
     return data.loyaltyCoupons || [];
   } catch (error) {
     console.error('[fetchLoyaltyCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '로열티 쿠폰 설정을 가져오지 못했습니다.';
+    const errorMessage =
+      error.response?.data?.message ||
+      '로열티 쿠폰 설정을 가져오지 못했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
@@ -717,42 +749,61 @@ export const fetchLoyaltyCoupons = async (hotelId) => {
 export const saveLoyaltyCoupons = async (hotelId, loyaltyCoupons) => {
   try {
     const payload = { loyaltyCoupons };
-    const { data } = await api.put(`/api/hotel-settings/${hotelId}/loyalty-coupons`, payload);
+    const { data } = await api.put(
+      `/api/hotel-settings/${hotelId}/loyalty-coupons`,
+      payload
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[saveLoyaltyCoupons] Response:', data);
     }
     return data.loyaltyCoupons;
   } catch (error) {
     console.error('[saveLoyaltyCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '로열티 쿠폰 설정 저장에 실패했습니다.';
+    const errorMessage =
+      error.response?.data?.message || '로열티 쿠폰 설정 저장에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
 
 export const fetchFirstVisitCoupons = async (hotelId) => {
   try {
-    const { data } = await api.get(`/api/hotel-settings/${hotelId}/first-visit-coupons`);
+    const { data } = await api.get(
+      `/api/hotel-settings/${hotelId}/first-visit-coupons`
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[fetchFirstVisitCoupons] Response:', data);
     }
-    return data.firstVisitCoupons || { discountType: 'percentage', discountValue: 10, couponCount: 1 };
+    return (
+      data.firstVisitCoupons || {
+        discountType: 'percentage',
+        discountValue: 10,
+        couponCount: 1,
+      }
+    );
   } catch (error) {
     console.error('[fetchFirstVisitCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '최초 방문 쿠폰 설정을 가져오지 못했습니다.';
+    const errorMessage =
+      error.response?.data?.message ||
+      '최초 방문 쿠폰 설정을 가져오지 못했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
 
 export const saveFirstVisitCoupons = async (hotelId, settings) => {
   try {
-    const { data } = await api.put(`/api/hotel-settings/${hotelId}/first-visit-coupons`, settings);
+    const { data } = await api.put(
+      `/api/hotel-settings/${hotelId}/first-visit-coupons`,
+      settings
+    );
     if (process.env.NODE_ENV !== 'production') {
       console.log('[saveFirstVisitCoupons] Response:', data);
     }
     return data.firstVisitCoupons;
   } catch (error) {
     console.error('[saveFirstVisitCoupons] Error:', error);
-    const errorMessage = error.response?.data?.message || '최초 방문 쿠폰 설정 저장에 실패했습니다.';
+    const errorMessage =
+      error.response?.data?.message ||
+      '최초 방문 쿠폰 설정 저장에 실패했습니다.';
     throw new ApiError(error.response?.status || 500, errorMessage);
   }
 };
