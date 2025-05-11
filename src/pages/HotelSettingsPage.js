@@ -253,6 +253,10 @@ function AmenitiesSection({
     });
   };
 
+  
+  
+  
+  
   // 기본 객실이 설정되었는지 확인
   const isBaseRoomSet = roomTypes.some((rt) => rt.isBaseRoom);
 
@@ -6321,7 +6325,8 @@ export default function HotelSettingsPage() {
       alert('호텔 ID는 필수입니다.');
       return;
     }
-
+  
+    // Calculate active room types and counts
     const activeTypes = new Set();
     const roomCounts = {};
     floors.forEach((floor) => {
@@ -6335,7 +6340,8 @@ export default function HotelSettingsPage() {
         });
       }
     });
-
+  
+    // Filter and update roomTypes, ensuring only in-room amenities
     const updatedRoomTypes = roomTypes
       .filter((rt) => activeTypes.has(rt.roomInfo.toLowerCase()))
       .map((rt) => {
@@ -6355,9 +6361,35 @@ export default function HotelSettingsPage() {
                 .map((cont) => cont.roomNumber)
             )
             .sort((a, b) => parseInt(a, 10) - parseInt(b, 10)),
+          roomAmenities: Array.isArray(rt.roomAmenities)
+            ? rt.roomAmenities
+                .filter((amenity) => amenity.type === 'in-room')
+                .map((amenity) => ({
+                  nameKor: amenity.nameKor,
+                  nameEng: amenity.nameEng,
+                  icon: amenity.icon,
+                  type: amenity.type,
+                  isActive: amenity.isActive,
+                }))
+            : [],
         };
       });
-
+  
+    // Validate roomAmenities
+    const invalidRoomTypes = updatedRoomTypes.filter((rt) =>
+      rt.roomAmenities.some((amenity) => amenity.type !== 'in-room')
+    );
+    if (invalidRoomTypes.length > 0) {
+      console.error('Invalid room amenities detected:', invalidRoomTypes);
+      alert(
+        language === 'kor'
+          ? '오류: 일부 객실 타입에 in-room이 아닌 어메니티가 포함되어 있습니다.'
+          : 'Error: Some room types contain non-in-room amenities.'
+      );
+      return;
+    }
+  
+    // Construct payload
     const payload = {
       hotelId,
       gridSettings: { floors },
@@ -6367,14 +6399,31 @@ export default function HotelSettingsPage() {
         0
       ),
     };
-
+  
+    // Debug log
+    console.log('[handleSaveLayout] Sending payload:', payload);
+  
     try {
       await updateHotelSettings(hotelId, payload);
-      alert('레이아웃 정보가 저장되었습니다.');
-      setRoomTypes(updatedRoomTypes);
+      alert(
+        language === 'kor'
+          ? '레이아웃 정보가 저장되었습니다.'
+          : 'Layout information has been saved.'
+      );
+      setRoomTypes(updatedRoomTypes); // Update state with filtered roomAmenities
       setTotalRooms(payload.totalRooms);
     } catch (err) {
-      alert('저장 실패: ' + (err.response?.data?.message || err.message));
+      console.error('[handleSaveLayout] 저장 실패:', {
+        error: err,
+        payload,
+      });
+      const errorMessage =
+        err.response?.data?.message || err.message || '알 수 없는 오류';
+      alert(
+        language === 'kor'
+          ? `저장 실패: ${errorMessage}`
+          : `Save failed: ${errorMessage}`
+      );
     }
   };
 
