@@ -52,7 +52,7 @@ body {
   overflow-y: auto;
   background-color: rgba(244, 244, 244, 0.9);
   border-right: 1px solid #ddd;
-  height: 100vh;
+  height: calc(100vh - 140px);
 }
 
 /* 메인컨텐츠 */

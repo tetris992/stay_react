@@ -817,4 +817,22 @@ formData
 return response.data; // { photos: [...] }
 };
 
+
+export const addRoomContainer = async (hotelId, roomInfo, roomNumber, floorNum) => {
+  try {
+    const response = await api.post(
+      `/api/hotel-settings/${hotelId}/containers`,
+      { roomInfo, roomNumber, floorNum },
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+    return response.data.container;
+  } catch (error) {
+    console.error('Error adding room container:', error);
+    throw error.response?.data || error;
+  }
+};
+
+
 export default api;
