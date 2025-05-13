@@ -603,10 +603,12 @@ function RoomGrid({
 
   const floors = useMemo(() => {
     const loadedFloors = hotelSettings?.gridSettings?.floors || [];
-    return loadedFloors.map((floor) => ({
-      ...floor,
-      containers: sortContainers([...(floor.containers || [])]),
-    }));
+    return loadedFloors
+      .filter((floor) => (floor.containers || []).length > 0) // ← 빈 층 제거
+      .map((floor) => ({
+        ...floor,
+        containers: sortContainers([...(floor.containers || [])]),
+      }));
   }, [hotelSettings]);
 
   const floorInventories = useMemo(() => {
@@ -934,6 +936,7 @@ function RoomGrid({
             )}
 
             {floors
+              .filter((floor) => (floor.containers || []).length > 0)
               .slice()
               .reverse()
               .map((floor) => {

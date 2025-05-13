@@ -593,39 +593,30 @@ function RoomTypeEditor({
     });
   }, [floors, setRoomTypes]);
 
-  // 수정: 초기 마운트 시 roomNumbersBackup 복원
-  useEffect(() => {
-    setRoomTypes((prev) =>
-      prev.map((rt) => ({
-        ...rt,
-        roomNumbers: rt.roomNumbersBackup?.length
-          ? rt.roomNumbersBackup
-          : rt.roomNumbers || [],
-        stock: rt.roomNumbersBackup?.length || rt.roomNumbers?.length || 0,
-        roomNumbersBackup: rt.roomNumbersBackup?.length
-          ? rt.roomNumbersBackup
-          : rt.roomNumbers || [],
-      }))
-    );
-    console.log('[RoomTypeEditor] Initial restore, roomNumbersBackup synced');
-  }, [setRoomTypes]);
+  // 삭제: roomNumbersBackup 초기화 및 복구 관련 useEffect 제거
+  // 삭제: restoreRoomNumbers 함수 제거
 
-  // 수정: roomNumbersBackup 복구
-  const restoreRoomNumbers = () => {
-    setRoomTypes((prev) =>
-      prev.map((rt) => ({
-        ...rt,
-        roomNumbers: rt.roomNumbersBackup?.length
-          ? rt.roomNumbersBackup
-          : rt.roomNumbers || [],
-        stock: rt.roomNumbersBackup?.length || rt.roomNumbers?.length || 0,
-      }))
-    );
-    alert(language === 'kor' ? '객실 번호가 복구되었습니다.' : 'Room numbers restored.');
-  };
-
-  // 수정: id 필드 추가
   const addRoomType = () => {
+    // 기존 객실에서 roomAmenities 설정 복사
+    const baseRoomType = roomTypes.find((rt) => rt.isBaseRoom) || roomTypes[0]; // 기본 객실 또는 첫 번째 객실 참조
+    const copiedRoomAmenities = baseRoomType
+      ? baseRoomType.roomAmenities.map((amenity) => ({
+          nameKor: amenity.nameKor,
+          nameEng: amenity.nameEng,
+          icon: amenity.icon,
+          type: 'in-room',
+          isActive: amenity.isActive, // 기존 설정 유지
+        }))
+      : amenities
+          .filter((a) => a.type === 'in-room')
+          .map((a) => ({
+            nameKor: a.nameKor,
+            nameEng: a.nameEng,
+            icon: a.icon,
+            type: 'in-room',
+            isActive: false, // 기본값으로 초기화
+          }));
+  
     setRoomTypes((prev) => [
       ...prev,
       {
@@ -637,17 +628,23 @@ function RoomTypeEditor({
         stock: 0,
         aliases: ['', '', '', ''],
         roomNumbers: [],
-        roomNumbersBackup: [],
-        floorSettings: {},
-        startRoomNumbers: {},
-        roomAmenities: amenities
-          .filter((a) => a.type === 'in-room')
-          .map((a) => ({ ...a, isActive: false })),
+        floorSettings: floors.reduce((acc, floor) => {
+          acc[floor.floorNum] = 0;
+          return acc;
+        }, {}),
+        startRoomNumbers: floors.reduce((acc, floor) => {
+          acc[floor.floorNum] = '';
+          return acc;
+        }, {}),
+        roomAmenities: copiedRoomAmenities, // 복사된 설정 적용
         photos: [],
         discount: 0,
         fixedDiscount: 0,
       },
     ]);
+  
+    // 공통 시설은 초기화하지 않음 (기존 상태 유지)
+    // 사용자 알림 제거
   };
 
   const updateRoomType = (index, field, value, aliasIndex = null) => {
@@ -862,14 +859,7 @@ function RoomTypeEditor({
         >
           <FaPlusSquare /> {language === 'kor' ? '저장' : 'Save'}
         </button>
-        <button
-          className="hotel-settings-btn restore-btn"
-          onClick={restoreRoomNumbers}
-          style={{ marginLeft: 16 }}
-          aria-label={language === 'kor' ? '객실 번호 복구' : 'Restore Room Numbers'}
-        >
-          {language === 'kor' ? '객실 번호 복구' : 'Restore Room Numbers'}
-        </button>
+        {/* 삭제: 복구 버튼 제거 */}
       </div>
     </section>
   );
@@ -888,7 +878,6 @@ function LayoutEditor({
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 수정: 층 추가 (제한 제거, 최소 1 이상)
   const addFloor = () => {
     if (isAdding) return;
     setIsAdding(true);
@@ -912,7 +901,6 @@ function LayoutEditor({
     }
   };
 
-  // 수정: 층 삭제 시 roomTypes 동기화
   const removeFloor = (floorNum) => {
     setFloors((prev) => {
       if (!prev) return prev;
@@ -941,7 +929,6 @@ function LayoutEditor({
     }
   };
 
-  // 수정: 객실 추가 시 동적 객실 번호 생성
   const addContainer = (floorNum) => {
     if (isAdding || roomTypes.length === 0) {
       alert(language === 'kor' ? '먼저 객실 타입을 추가해주세요.' : 'Please add a room type first.');
@@ -1005,7 +992,6 @@ function LayoutEditor({
     }
   };
 
-  // 수정: 객실 업데이트 시 검증 강화
   const updateContainer = (floorNum, containerId, field, value) => {
     setFloors((prev) => {
       const updated = [...prev];
@@ -1189,17 +1175,18 @@ function LayoutEditor({
     });
   };
 
-  // 수정: 초기 2~15층 레이아웃, 동적 편집 가능
   const generateLayout = () => {
     if (isGenerating || roomTypes.length === 0) {
       alert(language === 'kor' ? '먼저 객실 타입을 추가해주세요.' : 'Please add a room type first.');
       return;
     }
+    // 중첩 제거: 기존 floors 완전 초기화
+    setFloors([]);
     setIsGenerating(true);
     try {
       const defaultRoomType = roomTypes[0];
-      const newFloors = Array.from({ length: 14 }, (_, i) => {
-        const floorNum = i + 2; // 초기 2~15층
+      const newFloors = Array.from({ length: 15 }, (_, i) => {
+        const floorNum = i + 1; // 초기 1~15층
         const containers = Array.from({ length: 6 }, (_, j) => {
           const roomNumber = `${floorNum}${String(j + 1).padStart(2, '0')}`;
           const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
@@ -1229,7 +1216,7 @@ function LayoutEditor({
         return updatedTypes;
       });
       console.log('[LayoutEditor] Generated layout:', newFloors);
-      alert(language === 'kor' ? '초기 레이아웃이 생성되었습니다: 2층부터 15층까지, 각 층에 6개의 객실.' : 'Initial layout generated: Floors 2 to 15, each with 6 rooms.');
+      alert(language === 'kor' ? '초기 레이아웃이 생성되었습니다: 1층부터 15층까지, 각 층에 6개의 객실.' : 'Initial layout generated: Floors 1 to 15, each with 6 rooms.');
     } catch (error) {
       console.error('[LayoutEditor] Error generating layout:', error);
       alert(language === 'kor' ? '레이아웃 생성 중 오류가 발생했습니다.' : 'Error generating layout.');
@@ -1239,158 +1226,156 @@ function LayoutEditor({
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <section className="layout-editor-section" aria-label={language === 'kor' ? '객실 레이아웃 편집 섹션' : 'Room Layout Editor Section'}>
-        <div className="layout-header">
-          <h2>{language === 'kor' ? '◉ 객실 레이아웃 편집' : '◉ Room Layout Editor'}</h2>
-          <button
-            className="hotel-settings-btn generate-btn"
-            onClick={generateLayout}
-            disabled={isGenerating}
-            title={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
-            aria-label={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
-          >
-            {language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
-          </button>
-          <button
-            className="hotel-settings-btn undo-btn"
-            onClick={undoRemoveFloor}
-            title={language === 'kor' ? '되돌리기' : 'Undo'}
-            aria-label={language === 'kor' ? '삭제 되돌리기' : 'Undo Deletion'}
-          >
-            <FaUndo />
-          </button>
-          <button
-            className="hotel-settings-btn add-floor-btn"
-            onClick={addFloor}
-            disabled={isAdding}
-            title={language === 'kor' ? '층 추가' : 'Add Floor'}
-            aria-label={language === 'kor' ? '층 추가' : 'Add Floor'}
-          >
-            <FaPlus /> {language === 'kor' ? '층 추가' : 'Add Floor'}
-          </button>
-        </div>
-        <div className="floor-grid">
-          {floors
-            .slice()
-            .sort((a, b) => b.floorNum - a.floorNum)
-            .map((floor) => (
-              <div key={floor.floorNum} className="floor-row">
-                <div className="floor-header">
-                  <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
-                    {floor.floorNum}F
-                    <FaMinus
-                      onClick={() => removeFloor(floor.floorNum)}
-                      className="remove-icon"
-                      title={language === 'kor' ? '객실 층 삭제' : 'Delete Floor'}
-                      aria-label={language === 'kor' ? `층 ${floor.floorNum} 삭제` : `Delete Floor ${floor.floorNum}`}
-                    />
-                  </h3>
-                </div>
-                <div className="containers">
-                  {floor.containers.map((cont, index) => (
-                    <div
-                      key={cont.containerId}
-                      className="container-box"
-                      style={{ backgroundColor: getColorForRoomType(cont.roomInfo) }}
+    <section className="layout-editor-section" aria-label={language === 'kor' ? '객실 레이아웃 편집 섹션' : 'Room Layout Editor Section'}>
+      <div className="layout-header">
+        <h2>{language === 'kor' ? '◉ 객실 레이아웃 편집' : '◉ Room Layout Editor'}</h2>
+        <button
+          className="hotel-settings-btn generate-btn"
+          onClick={generateLayout}
+          disabled={isGenerating}
+          title={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
+          aria-label={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
+        >
+          {language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
+        </button>
+        <button
+          className="hotel-settings-btn undo-btn"
+          onClick={undoRemoveFloor}
+          title={language === 'kor' ? '되돌리기' : 'Undo'}
+          aria-label={language === 'kor' ? '삭제 되돌리기' : 'Undo Deletion'}
+        >
+          <FaUndo />
+        </button>
+        <button
+          className="hotel-settings-btn add-floor-btn"
+          onClick={addFloor}
+          disabled={isAdding}
+          title={language === 'kor' ? '층 추가' : 'Add Floor'}
+          aria-label={language === 'kor' ? '층 추가' : 'Add Floor'}
+        >
+          <FaPlus /> {language === 'kor' ? '층 추가' : 'Add Floor'}
+        </button>
+      </div>
+      <div className="floor-grid">
+        {floors
+          .slice()
+          .sort((a, b) => b.floorNum - a.floorNum)
+          .map((floor) => (
+            <div key={floor.floorNum} className="floor-row">
+              <div className="floor-header">
+                <h3 style={{ marginLeft: '10px', color: 'lightslategray' }}>
+                  {floor.floorNum}F
+                  <FaMinus
+                    onClick={() => removeFloor(floor.floorNum)}
+                    className="remove-icon"
+                    title={language === 'kor' ? '객실 층 삭제' : 'Delete Floor'}
+                    aria-label={language === 'kor' ? `층 ${floor.floorNum} 삭제` : `Delete Floor ${floor.floorNum}`}
+                  />
+                </h3>
+              </div>
+              <div className="containers">
+                {floor.containers.map((cont, index) => (
+                  <div
+                    key={cont.containerId}
+                    className="container-box"
+                    style={{ backgroundColor: getColorForRoomType(cont.roomInfo) }}
+                  >
+                    <select
+                      value={cont.roomInfo || ''}
+                      onChange={(e) =>
+                        updateContainer(floor.floorNum, cont.containerId, 'roomInfo', e.target.value)
+                      }
+                      aria-label={language === 'kor' ? `객실 유형 선택 ${index + 1}` : `Room Type Selection ${index + 1}`}
                     >
-                      <select
-                        value={cont.roomInfo || ''}
-                        onChange={(e) =>
-                          updateContainer(floor.floorNum, cont.containerId, 'roomInfo', e.target.value)
-                        }
-                        aria-label={language === 'kor' ? `객실 유형 선택 ${index + 1}` : `Room Type Selection ${index + 1}`}
-                      >
-                        <option value="" disabled>
-                          {language === 'kor' ? '유형 선택' : 'Select Type'}
+                      <option value="" disabled>
+                        {language === 'kor' ? '유형 선택' : 'Select Type'}
+                      </option>
+                      {roomTypes.map((rt) => (
+                        <option key={rt.id || rt.roomInfo} value={rt.roomInfo}>
+                          {language === 'kor' ? rt.nameKor || rt.roomInfo : rt.nameEng || rt.roomInfo}
                         </option>
-                        {roomTypes.map((rt) => (
-                          <option key={rt.id || rt.roomInfo} value={rt.roomInfo}>
-                            {language === 'kor' ? rt.nameKor || rt.roomInfo : rt.nameEng || rt.roomInfo}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={cont.roomNumber || ''}
-                        onChange={(e) =>
-                          updateContainer(floor.floorNum, cont.containerId, 'roomNumber', e.target.value)
-                        }
-                        placeholder={language === 'kor' ? '객실 번호' : 'Room Number'}
-                        aria-label={language === 'kor' ? '객실 번호 입력' : 'Room Number Input'}
-                      />
-                      <div className="price-row">
-                        <div className="price-input-container">
-                          <input
-                            type="number"
-                            value={cont.price || 0}
-                            onChange={(e) =>
-                              updateContainer(floor.floorNum, cont.containerId, 'price', e.target.value)
-                            }
-                            placeholder={language === 'kor' ? '가격' : 'Price'}
-                            style={{ width: '100px', paddingRight: '0', border: 'none', borderRadius: '0' }}
-                            aria-label={language === 'kor' ? '가격 입력' : 'Price Input'}
-                          />
-                          <div className="price-buttons">
-                            <button
-                              className="hotel-settings-btn price-btn increment"
-                              onClick={() => incrementContainerPrice(floor.floorNum, cont.containerId)}
-                              aria-label={language === 'kor' ? '가격 증가' : 'Increase Price'}
-                            >
-                              <FaPlus />
-                            </button>
-                            <button
-                              className="hotel-settings-btn price-btn decrement"
-                              onClick={() => decrementContainerPrice(floor.floorNum, cont.containerId)}
-                              aria-label={language === 'kor' ? '가격 감소' : 'Decrease Price'}
-                            >
-                              <FaMinus />
-                            </button>
-                          </div>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={cont.roomNumber || ''}
+                      onChange={(e) =>
+                        updateContainer(floor.floorNum, cont.containerId, 'roomNumber', e.target.value)
+                      }
+                      placeholder={language === 'kor' ? '객실 번호' : 'Room Number'}
+                      aria-label={language === 'kor' ? '객실 번호 입력' : 'Room Number Input'}
+                    />
+                    <div className="price-row">
+                      <div className="price-input-container">
+                        <input
+                          type="number"
+                          value={cont.price || 0}
+                          onChange={(e) =>
+                            updateContainer(floor.floorNum, cont.containerId, 'price', e.target.value)
+                          }
+                          placeholder={language === 'kor' ? '가격' : 'Price'}
+                          style={{ width: '100px', paddingRight: '0', border: 'none', borderRadius: '0' }}
+                          aria-label={language === 'kor' ? '가격 입력' : 'Price Input'}
+                        />
+                        <div className="price-buttons">
+                          <button
+                            className="hotel-settings-btn price-btn increment"
+                            onClick={() => incrementContainerPrice(floor.floorNum, cont.containerId)}
+                            aria-label={language === 'kor' ? '가격 증가' : 'Increase Price'}
+                          >
+                            <FaPlus />
+                          </button>
+                          <button
+                            className="hotel-settings-btn price-btn decrement"
+                            onClick={() => decrementContainerPrice(floor.floorNum, cont.containerId)}
+                            aria-label={language === 'kor' ? '가격 감소' : 'Decrease Price'}
+                          >
+                            <FaMinus />
+                          </button>
                         </div>
                       </div>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={cont.isActive}
-                          onChange={(e) =>
-                            updateContainer(floor.floorNum, cont.containerId, 'isActive', e.target.checked)
-                          }
-                        />
-                        {language === 'kor' ? '활성화' : 'Active'}
-                      </label>
-                      <button
-                        className="hotel-settings-layout-btn delete-btn"
-                        onClick={() => removeContainer(floor.floorNum, cont.containerId)}
-                        aria-label={language === 'kor' ? `객실 ${cont.roomNumber} 삭제` : `Delete Room ${cont.roomNumber}`}
-                      >
-                        <FaTrash />
-                      </button>
                     </div>
-                  ))}
-                  <button
-                    className="hotel-settings-btn add-container-btn"
-                    onClick={() => addContainer(floor.floorNum)}
-                    disabled={isAdding || roomTypes.length === 0}
-                    aria-label={language === 'kor' ? `층 ${floor.floorNum}에 객실 추가` : `Add Room to Floor ${floor.floorNum}`}
-                  >
-                    <FaPlus /> {language === 'kor' ? '객실 추가' : 'Add Room'}
-                  </button>
-                </div>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={cont.isActive}
+                        onChange={(e) =>
+                          updateContainer(floor.floorNum, cont.containerId, 'isActive', e.target.checked)
+                        }
+                      />
+                      {language === 'kor' ? '활성화' : 'Active'}
+                    </label>
+                    <button
+                      className="hotel-settings-layout-btn delete-btn"
+                      onClick={() => removeContainer(floor.floorNum, cont.containerId)}
+                      aria-label={language === 'kor' ? `객실 ${cont.roomNumber} 삭제` : `Delete Room ${cont.roomNumber}`}
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="hotel-settings-btn add-container-btn"
+                  onClick={() => addContainer(floor.floorNum)}
+                  disabled={isAdding || roomTypes.length === 0}
+                  aria-label={language === 'kor' ? `층 ${floor.floorNum}에 객실 추가` : `Add Room to Floor ${floor.floorNum}`}
+                >
+                  <FaPlus /> {language === 'kor' ? '객실 추가' : 'Add Room'}
+                </button>
               </div>
-            ))}
-        </div>
-        <div className="tab-actions">
-          <button
-            className="hotel-settings-btn save-btn"
-            onClick={onSave}
-            aria-label={language === 'kor' ? '레이아웃 저장' : 'Save Layout'}
-          >
-            {language === 'kor' ? '저장' : 'Save'}
-          </button>
-        </div>
-      </section>
-    </DndProvider>
+            </div>
+          ))}
+      </div>
+      <div className="tab-actions">
+        <button
+          className="hotel-settings-btn save-btn"
+          onClick={onSave}
+          aria-label={language === 'kor' ? '레이아웃 저장' : 'Save Layout'}
+        >
+          {language === 'kor' ? '저장' : 'Save'}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -5923,17 +5908,23 @@ export default function HotelSettingsPage() {
                 isActive: false,
               }));
             } else {
-              roomAmenities = rt.roomAmenities.map((amenity) => ({
-                nameKor: amenity.nameKor || '',
-                nameEng: amenity.nameEng || '',
-                icon: amenity.icon || '',
-                type: 'in-room',
-                isActive: amenity.isActive ?? false,
-              }));
+              roomAmenities = DEFAULT_AMENITIES.filter((a) => a.type === 'in-room').map((defaultAmenity) => {
+                const existingAmenity = rt.roomAmenities.find(
+                  (amenity) => amenity.nameKor === defaultAmenity.nameKor
+                );
+                return {
+                  nameKor: defaultAmenity.nameKor,
+                  nameEng: defaultAmenity.nameEng,
+                  icon: defaultAmenity.icon,
+                  type: 'in-room',
+                  isActive: existingAmenity?.isActive ?? false,
+                };
+              });
             }
-
+          
             return {
               ...rt,
+              id: rt.id || uuidv4(),
               isBaseRoom: rt.isBaseRoom || false,
               roomAmenities,
               photos: rt.photos || [],
@@ -6155,11 +6146,20 @@ export default function HotelSettingsPage() {
   const handleSaveRoomTypes = async () => {
     if (!hotelId) {
       alert(
-        language === 'kor' ? '호텔 ID는 필수입니다.' : 'Hotel ID is required.'
+        language === 'kor'
+          ? '호텔 ID는 필수입니다.'
+          : 'Hotel ID is required.'
       );
       return;
     }
-
+  
+    // 1) 로컬에서도 totalRooms 계산
+    const calculatedTotalRooms = syncedRoomTypes.reduce(
+      (acc, rt) => acc + (rt.stock || 0),
+      0
+    );
+  
+    // 2) payload 구성
     const payload = {
       hotelId,
       roomTypes: syncedRoomTypes.map((rt) => ({
@@ -6175,25 +6175,27 @@ export default function HotelSettingsPage() {
           isActive: amenity.isActive,
         })),
       })),
-      totalRooms: syncedRoomTypes.reduce(
-        (sum, rt) => sum + (rt.roomNumbers?.length || 0),
-        0
-      ),
+      totalRooms: calculatedTotalRooms,
     };
-
+  
     try {
+      // 3) API 호출
       await updateHotelSettings(hotelId, payload);
+  
+      // 4) 성공 알림 및 로컬 상태 업데이트
       alert(
         language === 'kor'
           ? '객실 타입 정보가 저장되었습니다.'
           : 'Room types information saved.'
       );
-      setTotalRooms(payload.totalRooms);
+      setTotalRooms(calculatedTotalRooms);
     } catch (err) {
+      // 5) 에러 핸들링
+      const msg = err.response?.data?.message || err.message;
       alert(
         language === 'kor'
-          ? `저장 실패: ${err.response?.data?.message || err.message}`
-          : `Save failed: ${err.response?.data?.message || err.message}`
+          ? `저장 실패: ${msg}`
+          : `Save failed: ${msg}`
       );
     }
   };
@@ -6205,7 +6207,7 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-
+  
     if (!isExisting && roomTypes.length === 0) {
       alert(
         language === 'kor'
@@ -6214,17 +6216,17 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-
+  
     // 검증 수행 (LayoutEditor의 validateFloors와 동일한 로직)
     const errors = [];
     floors.forEach((floor) => {
       const floorNum = floor.floorNum;
       const floorPrefix = String(floorNum);
       const roomNumbersInFloor = new Set();
-
+  
       floor.containers.forEach((cont) => {
         const roomNumber = cont.roomNumber;
-
+  
         if (!roomNumber || roomNumber.trim() === '') {
           errors.push(
             language === 'kor'
@@ -6233,7 +6235,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-
+  
         if (!/^\d+$/.test(roomNumber)) {
           errors.push(
             language === 'kor'
@@ -6242,7 +6244,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-
+  
         if (roomNumber.length < 3) {
           errors.push(
             language === 'kor'
@@ -6251,7 +6253,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-
+  
         const roomPrefix = roomNumber.slice(0, floorPrefix.length);
         if (roomPrefix !== floorPrefix) {
           errors.push(
@@ -6261,21 +6263,21 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-
+  
         const extractedFloorNum = parseInt(roomPrefix);
         if (
           isNaN(extractedFloorNum) ||
-          extractedFloorNum < 2 ||
+          extractedFloorNum < 1 || // 1층부터 허용
           extractedFloorNum > 15
         ) {
           errors.push(
             language === 'kor'
-              ? `${floorNum}층, 객실 번호 ${roomNumber}: 층 번호는 2에서 15 사이여야 합니다.`
-              : `Floor ${floorNum}F, Room ${roomNumber}: Floor number must be between 2 and 15.`
+              ? `${floorNum}층, 객실 번호 ${roomNumber}: 층 번호는 1에서 15 사이여야 합니다.`
+              : `Floor ${floorNum}F, Room ${roomNumber}: Floor number must be between 1 and 15.`
           );
           return;
         }
-
+  
         if (roomNumbersInFloor.has(roomNumber)) {
           errors.push(
             language === 'kor'
@@ -6287,7 +6289,7 @@ export default function HotelSettingsPage() {
         }
       });
     });
-
+  
     if (errors.length > 0) {
       alert(
         language === 'kor'
@@ -6300,10 +6302,14 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-
+  
+    // 저장 직전 1~15층 모두 포함 보장
+    const allFloors = Array.from({ length: 15 }, (_, i) => i + 1)
+      .map(floorNum => floors.find(f => f.floorNum === floorNum) || { floorNum, containers: [] });
+  
     const payload = {
       hotelId,
-      gridSettings: { floors },
+      gridSettings: { floors: allFloors },
       roomTypes: roomTypes.map((rt) => ({
         ...rt,
         stock: rt.roomNumbers?.length || 0,
@@ -6313,7 +6319,7 @@ export default function HotelSettingsPage() {
         0
       ),
     };
-
+  
     try {
       await updateHotelSettings(hotelId, payload);
       alert(
@@ -6914,43 +6920,43 @@ export default function HotelSettingsPage() {
           {language === 'kor' ? '쿠폰 발행' : 'Coupon Issuance'}
         </button>
       </nav>
-      <div className="tab-content">
-        {activeTab === 'info' && (
-          <HotelInfoSection
-            hotelId={hotelId}
-            setHotelId={setHotelId}
-            isExisting={isExisting}
-            hotelName={hotelName}
-            setHotelName={setHotelName}
-            totalRooms={totalRooms}
-            hotelAddress={hotelAddress}
-            setHotelAddress={setHotelAddress}
-            email={email}
-            setEmail={setEmail}
-            phoneNumber={phoneNumber}
-            setPhoneNumber={setPhoneNumber}
-            checkInTime={checkInTime}
-            setCheckInTime={setCheckInTime}
-            checkOutTime={checkOutTime}
-            setCheckOutTime={setCheckOutTime}
-            onCoordinatesUpdate={handleCoordinatesUpdate}
-            initialCoordinates={coordinates}
-            language={language}
-          />
-        )}
-        {activeTab === 'roomTypes' && (
-          <RoomTypeEditor
-            hotelId={hotelId}
-            roomTypes={syncedRoomTypes}
-            setRoomTypes={setRoomTypes}
-            floors={floors}
-            setFloors={setFloors}
-            amenities={amenities}
-            language={language}
-          />
-        )}
-        {activeTab === 'layout' && (
-          <DndProvider backend={HTML5Backend}>
+      <DndProvider backend={HTML5Backend}>
+        <div className="tab-content">
+          {activeTab === 'info' && (
+            <HotelInfoSection
+              hotelId={hotelId}
+              setHotelId={setHotelId}
+              isExisting={isExisting}
+              hotelName={hotelName}
+              setHotelName={setHotelName}
+              totalRooms={totalRooms}
+              hotelAddress={hotelAddress}
+              setHotelAddress={setHotelAddress}
+              email={email}
+              setEmail={setEmail}
+              phoneNumber={phoneNumber}
+              setPhoneNumber={setPhoneNumber}
+              checkInTime={checkInTime}
+              setCheckInTime={setCheckInTime}
+              checkOutTime={checkOutTime}
+              setCheckOutTime={setCheckOutTime}
+              onCoordinatesUpdate={handleCoordinatesUpdate}
+              initialCoordinates={coordinates}
+              language={language}
+            />
+          )}
+          {activeTab === 'roomTypes' && (
+            <RoomTypeEditor
+              hotelId={hotelId}
+              roomTypes={syncedRoomTypes}
+              setRoomTypes={setRoomTypes}
+              floors={floors}
+              setFloors={setFloors}
+              amenities={amenities}
+              language={language}
+            />
+          )}
+          {activeTab === 'layout' && (
             <LayoutEditor
               hotelId={hotelId}
               roomTypes={syncedRoomTypes}
@@ -6959,45 +6965,45 @@ export default function HotelSettingsPage() {
               setFloors={setFloors}
               language={language}
             />
-          </DndProvider>
-        )}
-        {activeTab === 'amenities' && (
-          <AmenitiesSection
-            amenities={amenities}
-            setAmenities={setAmenities}
-            roomTypes={syncedRoomTypes}
-            setRoomTypes={setRoomTypes}
-            language={language}
-          />
-        )}
-        {activeTab === 'photos' && (
-          <PhotoUploadSection
-            hotelId={hotelId}
-            roomTypes={syncedRoomTypes}
-            hotelInfo={hotelInfo}
-            language={language}
-          />
-        )}
-        {activeTab === 'events' && (
-          <EventSettingsSection
-            language={language}
-            events={events}
-            setEvents={setEvents}
-            roomTypes={syncedRoomTypes}
-            onEventsChange={handleSaveEvents}
-          />
-        )}
-        {activeTab === 'coupons' && (
-          <CouponSettingsSection
-            language={language}
-            coupons={coupons}
-            setCoupons={setCoupons}
-            roomTypes={syncedRoomTypes}
-            onCouponsChange={handleSaveCoupons}
-            hotelId={hotelId}
-          />
-        )}
-      </div>
+          )}
+          {activeTab === 'amenities' && (
+            <AmenitiesSection
+              amenities={amenities}
+              setAmenities={setAmenities}
+              roomTypes={syncedRoomTypes}
+              setRoomTypes={setRoomTypes}
+              language={language}
+            />
+          )}
+          {activeTab === 'photos' && (
+            <PhotoUploadSection
+              hotelId={hotelId}
+              roomTypes={syncedRoomTypes}
+              hotelInfo={hotelInfo}
+              language={language}
+            />
+          )}
+          {activeTab === 'events' && (
+            <EventSettingsSection
+              language={language}
+              events={events}
+              setEvents={setEvents}
+              roomTypes={syncedRoomTypes}
+              onEventsChange={handleSaveEvents}
+            />
+          )}
+          {activeTab === 'coupons' && (
+            <CouponSettingsSection
+              language={language}
+              coupons={coupons}
+              setCoupons={setCoupons}
+              roomTypes={syncedRoomTypes}
+              onCouponsChange={handleSaveCoupons}
+              hotelId={hotelId}
+            />
+          )}
+        </div>
+      </DndProvider>
 
       <div className="save-section">
         {activeTab === 'info' && (
