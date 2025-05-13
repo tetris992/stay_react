@@ -616,7 +616,7 @@ function RoomTypeEditor({
             type: 'in-room',
             isActive: false, // 기본값으로 초기화
           }));
-  
+
     setRoomTypes((prev) => [
       ...prev,
       {
@@ -642,7 +642,7 @@ function RoomTypeEditor({
         fixedDiscount: 0,
       },
     ]);
-  
+
     // 공통 시설은 초기화하지 않음 (기존 상태 유지)
     // 사용자 알림 제거
   };
@@ -654,7 +654,11 @@ function RoomTypeEditor({
       if (field === 'price') {
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
-          alert(language === 'kor' ? '유효한 가격을 입력해주세요.' : 'Please enter a valid price.');
+          alert(
+            language === 'kor'
+              ? '유효한 가격을 입력해주세요.'
+              : 'Please enter a valid price.'
+          );
           return prev;
         }
         room.price = numValue || 0;
@@ -695,16 +699,28 @@ function RoomTypeEditor({
   };
 
   return (
-    <section className="room-types-section" aria-label={language === 'kor' ? '객실 타입 설정 섹션' : 'Room Types Settings Section'}>
+    <section
+      className="room-types-section"
+      aria-label={
+        language === 'kor'
+          ? '객실 타입 설정 섹션'
+          : 'Room Types Settings Section'
+      }
+    >
       <h2>{language === 'kor' ? '◉ 공통 시설' : '◉ Common Facilities'}</h2>
       <div className="common-amenities-section">
         <div className="common-amenities-container">
           {amenities
             .filter((amenity) => amenity.type === 'on-site' && amenity.isActive)
             .map((amenity, idx) => (
-              <span key={`common-amenity-${idx}`} className="common-amenity-item">
+              <span
+                key={`common-amenity-${idx}`}
+                className="common-amenity-item"
+              >
                 {iconMap[amenity.icon] || <span>❓</span>}
-                <span title={amenity.nameEng}>{language === 'kor' ? amenity.nameKor : amenity.nameEng}</span>
+                <span title={amenity.nameEng}>
+                  {language === 'kor' ? amenity.nameKor : amenity.nameEng}
+                </span>
               </span>
             ))}
         </div>
@@ -715,11 +731,18 @@ function RoomTypeEditor({
         {roomTypes.map((rt, idx) => (
           <div key={rt.id || idx} className="room-type-item">
             <div className="room-type-header">
-              <FaBed /> {language === 'kor' ? `객실 타입 ${idx + 1}` : `Room Type ${idx + 1}`}
+              <FaBed />{' '}
+              {language === 'kor'
+                ? `객실 타입 ${idx + 1}`
+                : `Room Type ${idx + 1}`}
               <button
                 className="remove-btn"
                 onClick={() => removeRoomType(idx)}
-                aria-label={language === 'kor' ? `객실 타입 ${idx + 1} 삭제` : `Delete Room Type ${idx + 1}`}
+                aria-label={
+                  language === 'kor'
+                    ? `객실 타입 ${idx + 1} 삭제`
+                    : `Delete Room Type ${idx + 1}`
+                }
               >
                 <FaTrash />
               </button>
@@ -731,16 +754,26 @@ function RoomTypeEditor({
                   type="text"
                   placeholder={language === 'kor' ? '한글 이름' : 'Korean Name'}
                   value={rt.nameKor || ''}
-                  onChange={(e) => updateRoomType(idx, 'nameKor', e.target.value)}
-                  aria-label={language === 'kor' ? '한글 이름 입력' : 'Korean Name Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'nameKor', e.target.value)
+                  }
+                  aria-label={
+                    language === 'kor' ? '한글 이름 입력' : 'Korean Name Input'
+                  }
                 />
                 <input
                   className="name-eng"
                   type="text"
-                  placeholder={language === 'kor' ? '영어 이름' : 'English Name'}
+                  placeholder={
+                    language === 'kor' ? '영어 이름' : 'English Name'
+                  }
                   value={rt.nameEng || ''}
-                  onChange={(e) => updateRoomType(idx, 'nameEng', e.target.value)}
-                  aria-label={language === 'kor' ? '영어 이름 입력' : 'English Name Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'nameEng', e.target.value)
+                  }
+                  aria-label={
+                    language === 'kor' ? '영어 이름 입력' : 'English Name Input'
+                  }
                 />
               </div>
               <div className="field-row price-row">
@@ -750,22 +783,35 @@ function RoomTypeEditor({
                     type="number"
                     placeholder={language === 'kor' ? '가격' : 'Price'}
                     value={rt.price || 0}
-                    onChange={(e) => updateRoomType(idx, 'price', e.target.value)}
-                    style={{ width: '100px', paddingRight: '0', border: 'none', borderRadius: '0' }}
-                    aria-label={language === 'kor' ? '가격 입력' : 'Price Input'}
+                    onChange={(e) =>
+                      updateRoomType(idx, 'price', e.target.value)
+                    }
+                    style={{
+                      width: '100px',
+                      paddingRight: '0',
+                      border: 'none',
+                      borderRadius: '0',
+                    }}
+                    aria-label={
+                      language === 'kor' ? '가격 입력' : 'Price Input'
+                    }
                   />
                   <div className="price-buttons">
                     <button
                       className="price-btn increment"
                       onClick={() => incrementPrice(idx)}
-                      aria-label={language === 'kor' ? '가격 증가' : 'Increase Price'}
+                      aria-label={
+                        language === 'kor' ? '가격 증가' : 'Increase Price'
+                      }
                     >
                       <FaPlus />
                     </button>
                     <button
                       className="price-btn decrement"
                       onClick={() => decrementPrice(idx)}
-                      aria-label={language === 'kor' ? '가격 감소' : 'Decrease Price'}
+                      aria-label={
+                        language === 'kor' ? '가격 감소' : 'Decrease Price'
+                      }
                     >
                       <FaMinus />
                     </button>
@@ -782,21 +828,34 @@ function RoomTypeEditor({
                 />
               </div>
             </div>
-            <div className="room-type-aliases" aria-label={language === 'kor' ? '별칭 입력 섹션' : 'Alias Input Section'}>
+            <div
+              className="room-type-aliases"
+              aria-label={
+                language === 'kor' ? '별칭 입력 섹션' : 'Alias Input Section'
+              }
+            >
               <div className="field-row">
                 <input
                   type="text"
                   placeholder={language === 'kor' ? '별칭 1' : 'Alias 1'}
                   value={rt.aliases[0] || ''}
-                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 0)}
-                  aria-label={language === 'kor' ? '별칭 1 입력' : 'Alias 1 Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'aliases', e.target.value, 0)
+                  }
+                  aria-label={
+                    language === 'kor' ? '별칭 1 입력' : 'Alias 1 Input'
+                  }
                 />
                 <input
                   type="text"
                   placeholder={language === 'kor' ? '별칭 2' : 'Alias 2'}
                   value={rt.aliases[1] || ''}
-                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 1)}
-                  aria-label={language === 'kor' ? '별칭 2 입력' : 'Alias 2 Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'aliases', e.target.value, 1)
+                  }
+                  aria-label={
+                    language === 'kor' ? '별칭 2 입력' : 'Alias 2 Input'
+                  }
                 />
               </div>
               <div className="field-row">
@@ -804,46 +863,83 @@ function RoomTypeEditor({
                   type="text"
                   placeholder={language === 'kor' ? '별칭 3' : 'Alias 3'}
                   value={rt.aliases[2] || ''}
-                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 2)}
-                  aria-label={language === 'kor' ? '별칭 3 입력' : 'Alias 3 Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'aliases', e.target.value, 2)
+                  }
+                  aria-label={
+                    language === 'kor' ? '별칭 3 입력' : 'Alias 3 Input'
+                  }
                 />
                 <input
                   type="text"
                   placeholder={language === 'kor' ? '별칭 4' : 'Alias 4'}
                   value={rt.aliases[3] || ''}
-                  onChange={(e) => updateRoomType(idx, 'aliases', e.target.value, 3)}
-                  aria-label={language === 'kor' ? '별칭 4 입력' : 'Alias 4 Input'}
+                  onChange={(e) =>
+                    updateRoomType(idx, 'aliases', e.target.value, 3)
+                  }
+                  aria-label={
+                    language === 'kor' ? '별칭 4 입력' : 'Alias 4 Input'
+                  }
                 />
               </div>
             </div>
-            <div className="room-numbers" aria-label={language === 'kor' ? '객실 번호 목록' : 'Room Numbers List'}>
-              <h4>{language === 'kor' ? '객실 번호 배열' : 'Room Numbers Array'}</h4>
+            <div
+              className="room-numbers"
+              aria-label={
+                language === 'kor' ? '객실 번호 목록' : 'Room Numbers List'
+              }
+            >
+              <h4>
+                {language === 'kor' ? '객실 번호 배열' : 'Room Numbers Array'}
+              </h4>
               <div>
                 {rt.roomNumbers?.length > 0
                   ? rt.roomNumbers.join(', ')
-                  : language === 'kor' ? '아직 생성되지 않음' : 'Not yet generated'}
+                  : language === 'kor'
+                  ? '아직 생성되지 않음'
+                  : 'Not yet generated'}
               </div>
             </div>
-            <div className="room-amenities-display" aria-label={language === 'kor' ? '활성화된 객실 시설' : 'Activated Room Amenities'}>
-              <h4>{language === 'kor' ? '활성화된 객실 시설' : 'Activated Room Amenities'}</h4>
+            <div
+              className="room-amenities-display"
+              aria-label={
+                language === 'kor'
+                  ? '활성화된 객실 시설'
+                  : 'Activated Room Amenities'
+              }
+            >
+              <h4>
+                {language === 'kor'
+                  ? '활성화된 객실 시설'
+                  : 'Activated Room Amenities'}
+              </h4>
               <div className="amenities-list">
                 {rt.roomAmenities
                   .filter((amenity) => amenity.isActive)
                   .map((amenity, aIdx) => (
                     <span key={aIdx} className="amenity-item">
                       {iconMap[amenity.icon] || <span>❓</span>}
-                      <span title={amenity.nameEng}>{language === 'kor' ? amenity.nameKor : amenity.nameEng}</span>
+                      <span title={amenity.nameEng}>
+                        {language === 'kor' ? amenity.nameKor : amenity.nameEng}
+                      </span>
                     </span>
                   ))}
                 {rt.roomAmenities.every((amenity) => !amenity.isActive) && (
-                  <span>{language === 'kor' ? '활성화된 시설이 없습니다.' : 'No amenities activated.'}</span>
+                  <span>
+                    {language === 'kor'
+                      ? '활성화된 시설이 없습니다.'
+                      : 'No amenities activated.'}
+                  </span>
                 )}
               </div>
             </div>
           </div>
         ))}
       </div>
-      <div className="room-type-actions" style={{ textAlign: 'right', marginTop: '1rem' }}>
+      <div
+        className="room-type-actions"
+        style={{ textAlign: 'right', marginTop: '1rem' }}
+      >
         <button
           className="hotel-settings-room-add-btn"
           onClick={addRoomType}
@@ -882,10 +978,15 @@ function LayoutEditor({
     if (isAdding) return;
     setIsAdding(true);
     try {
-      const maxFloorNum = floors.length > 0 ? Math.max(...floors.map((f) => f.floorNum)) : 0;
+      const maxFloorNum =
+        floors.length > 0 ? Math.max(...floors.map((f) => f.floorNum)) : 0;
       const newFloorNum = maxFloorNum + 1;
       if (newFloorNum < 1) {
-        alert(language === 'kor' ? '층 번호는 1 이상이어야 합니다.' : 'Floor number must be 1 or greater.');
+        alert(
+          language === 'kor'
+            ? '층 번호는 1 이상이어야 합니다.'
+            : 'Floor number must be 1 or greater.'
+        );
         return;
       }
       setFloors((prev) => {
@@ -895,7 +996,11 @@ function LayoutEditor({
       });
     } catch (error) {
       console.error('[LayoutEditor] Error adding floor:', error);
-      alert(language === 'kor' ? '층 추가 중 오류가 발생했습니다.' : 'Error adding floor.');
+      alert(
+        language === 'kor'
+          ? '층 추가 중 오류가 발생했습니다.'
+          : 'Error adding floor.'
+      );
     } finally {
       setIsAdding(false);
     }
@@ -909,9 +1014,15 @@ function LayoutEditor({
       setRoomTypes((prevTypes) =>
         prevTypes.map((rt) => ({
           ...rt,
-          roomNumbers: rt.roomNumbers.filter((num) => !num.startsWith(String(floorNum))),
-          stock: rt.roomNumbers.filter((num) => !num.startsWith(String(floorNum))).length,
-          roomNumbersBackup: rt.roomNumbers.filter((num) => !num.startsWith(String(floorNum))),
+          roomNumbers: rt.roomNumbers.filter(
+            (num) => !num.startsWith(String(floorNum))
+          ),
+          stock: rt.roomNumbers.filter(
+            (num) => !num.startsWith(String(floorNum))
+          ).length,
+          roomNumbersBackup: rt.roomNumbers.filter(
+            (num) => !num.startsWith(String(floorNum))
+          ),
         }))
       );
       console.log('[LayoutEditor] Removed floor:', updated);
@@ -923,15 +1034,25 @@ function LayoutEditor({
     if (previousFloorsRef.current.length > 0) {
       setFloors([...previousFloorsRef.current]);
       previousFloorsRef.current = [];
-      alert(language === 'kor' ? '층 삭제가 취소되었습니다.' : 'Floor deletion undone.');
+      alert(
+        language === 'kor'
+          ? '층 삭제가 취소되었습니다.'
+          : 'Floor deletion undone.'
+      );
     } else {
-      alert(language === 'kor' ? '되돌릴 삭제가 없습니다.' : 'No deletion to undo.');
+      alert(
+        language === 'kor' ? '되돌릴 삭제가 없습니다.' : 'No deletion to undo.'
+      );
     }
   };
 
   const addContainer = (floorNum) => {
     if (isAdding || roomTypes.length === 0) {
-      alert(language === 'kor' ? '먼저 객실 타입을 추가해주세요.' : 'Please add a room type first.');
+      alert(
+        language === 'kor'
+          ? '먼저 객실 타입을 추가해주세요.'
+          : 'Please add a room type first.'
+      );
       return;
     }
     setIsAdding(true);
@@ -942,25 +1063,43 @@ function LayoutEditor({
         const updated = [...prev];
         const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
         if (floorIdx === -1) return prev;
-        const activeRooms = updated[floorIdx].containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive);
-        const allRooms = updated.flatMap((f) => f.containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive));
+        const activeRooms = updated[floorIdx].containers.filter(
+          (c) => c.roomInfo && c.roomNumber && c.isActive
+        );
+        const allRooms = updated.flatMap((f) =>
+          f.containers.filter((c) => c.roomInfo && c.roomNumber && c.isActive)
+        );
         const existingNumbers = new Set(allRooms.map((c) => c.roomNumber));
         let lastNum = parseInt(`${floorNum}01`, 10) - 1;
         if (activeRooms.length > 0) {
-          const floorRooms = allRooms.filter((c) => c.roomNumber.startsWith(floorNum.toString()));
+          const floorRooms = allRooms.filter((c) =>
+            c.roomNumber.startsWith(floorNum.toString())
+          );
           if (floorRooms.length > 0) {
-            lastNum = Math.max(...floorRooms.map((c) => parseInt(c.roomNumber, 10)));
+            lastNum = Math.max(
+              ...floorRooms.map((c) => parseInt(c.roomNumber, 10))
+            );
           }
         }
         let nextNum = lastNum + 1;
-        while (existingNumbers.has(`${floorNum}${(nextNum - floorNum * 100).toString().padStart(2, '0')}`)) {
+        while (
+          existingNumbers.has(
+            `${floorNum}${(nextNum - floorNum * 100)
+              .toString()
+              .padStart(2, '0')}`
+          )
+        ) {
           nextNum++;
         }
-        newRoomNumber = `${floorNum}${(nextNum - floorNum * 100).toString().padStart(2, '0')}`;
+        newRoomNumber = `${floorNum}${(nextNum - floorNum * 100)
+          .toString()
+          .padStart(2, '0')}`;
         const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
         const uniqueId = uuidv4();
         const newContainer = {
-          containerId: `${floorNum}-${defaultRoomType.roomInfo}-${newRoomNumber}-${kstNow.getTime()}-${uniqueId}`,
+          containerId: `${floorNum}-${
+            defaultRoomType.roomInfo
+          }-${newRoomNumber}-${kstNow.getTime()}-${uniqueId}`,
           roomInfo: defaultRoomType.roomInfo,
           roomNumber: newRoomNumber,
           price: defaultRoomType.price || 0,
@@ -968,25 +1107,43 @@ function LayoutEditor({
         };
         if (!existingNumbers.has(newRoomNumber)) {
           updated[floorIdx].containers.push(newContainer);
-          updated[floorIdx].containers.sort((a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10));
+          updated[floorIdx].containers.sort(
+            (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+          );
         }
         console.log('[LayoutEditor] Added container:', updated);
         return updated;
       });
       setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
-        const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === defaultRoomType.roomInfo);
-        if (typeIdx !== -1 && !updatedTypes[typeIdx].roomNumbers.includes(newRoomNumber)) {
-          updatedTypes[typeIdx].roomNumbers = (updatedTypes[typeIdx].roomNumbers || []).concat([newRoomNumber]);
-          updatedTypes[typeIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-          updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
-          updatedTypes[typeIdx].roomNumbersBackup = [...updatedTypes[typeIdx].roomNumbers];
+        const typeIdx = updatedTypes.findIndex(
+          (rt) => rt.roomInfo === defaultRoomType.roomInfo
+        );
+        if (
+          typeIdx !== -1 &&
+          !updatedTypes[typeIdx].roomNumbers.includes(newRoomNumber)
+        ) {
+          updatedTypes[typeIdx].roomNumbers = (
+            updatedTypes[typeIdx].roomNumbers || []
+          ).concat([newRoomNumber]);
+          updatedTypes[typeIdx].roomNumbers.sort(
+            (a, b) => parseInt(a, 10) - parseInt(b, 10)
+          );
+          updatedTypes[typeIdx].stock =
+            updatedTypes[typeIdx].roomNumbers.length;
+          updatedTypes[typeIdx].roomNumbersBackup = [
+            ...updatedTypes[typeIdx].roomNumbers,
+          ];
         }
         return updatedTypes;
       });
     } catch (error) {
       console.error('[LayoutEditor] Error adding room:', error);
-      alert(language === 'kor' ? '객실 추가 중 오류가 발생했습니다.' : 'Error adding room.');
+      alert(
+        language === 'kor'
+          ? '객실 추가 중 오류가 발생했습니다.'
+          : 'Error adding room.'
+      );
     } finally {
       setIsAdding(false);
     }
@@ -1000,7 +1157,9 @@ function LayoutEditor({
         console.log(`[updateContainer] Floor ${floorNum} not found`);
         return prev;
       }
-      const containerIdx = updated[floorIdx].containers.findIndex((c) => c.containerId === containerId);
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) {
         console.log(`[updateContainer] Container ${containerId} not found`);
         return prev;
@@ -1011,13 +1170,21 @@ function LayoutEditor({
       if (field === 'price') {
         const numValue = Number(value);
         if (isNaN(numValue) && value !== '') {
-          alert(language === 'kor' ? '유효한 가격을 입력해주세요.' : 'Please enter a valid price.');
+          alert(
+            language === 'kor'
+              ? '유효한 가격을 입력해주세요.'
+              : 'Please enter a valid price.'
+          );
           return prev;
         }
         container[field] = numValue || 0;
       } else if (field === 'roomInfo') {
         if (!value) {
-          alert(language === 'kor' ? '객실 타입을 선택해주세요.' : 'Please select a room type.');
+          alert(
+            language === 'kor'
+              ? '객실 타입을 선택해주세요.'
+              : 'Please select a room type.'
+          );
           return prev;
         }
         container[field] = value;
@@ -1026,37 +1193,64 @@ function LayoutEditor({
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
           if (oldRoomInfo && oldRoomNumber) {
-            const oldIdx = updatedTypes.findIndex((rt) => rt.roomInfo === oldRoomInfo);
+            const oldIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === oldRoomInfo
+            );
             if (oldIdx !== -1) {
-              updatedTypes[oldIdx].roomNumbers = updatedTypes[oldIdx].roomNumbers.filter(
-                (num) => num !== oldRoomNumber
-              );
-              updatedTypes[oldIdx].stock = updatedTypes[oldIdx].roomNumbers.length;
-              updatedTypes[oldIdx].roomNumbersBackup = [...updatedTypes[oldIdx].roomNumbers];
+              updatedTypes[oldIdx].roomNumbers = updatedTypes[
+                oldIdx
+              ].roomNumbers.filter((num) => num !== oldRoomNumber);
+              updatedTypes[oldIdx].stock =
+                updatedTypes[oldIdx].roomNumbers.length;
+              updatedTypes[oldIdx].roomNumbersBackup = [
+                ...updatedTypes[oldIdx].roomNumbers,
+              ];
             }
           }
           if (oldRoomNumber) {
-            const newIdx = updatedTypes.findIndex((rt) => rt.roomInfo === value);
-            if (newIdx !== -1 && !updatedTypes[newIdx].roomNumbers.includes(oldRoomNumber)) {
+            const newIdx = updatedTypes.findIndex(
+              (rt) => rt.roomInfo === value
+            );
+            if (
+              newIdx !== -1 &&
+              !updatedTypes[newIdx].roomNumbers.includes(oldRoomNumber)
+            ) {
               updatedTypes[newIdx].roomNumbers.push(oldRoomNumber);
-              updatedTypes[newIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-              updatedTypes[newIdx].stock = updatedTypes[newIdx].roomNumbers.length;
-              updatedTypes[newIdx].roomNumbersBackup = [...updatedTypes[newIdx].roomNumbers];
+              updatedTypes[newIdx].roomNumbers.sort(
+                (a, b) => parseInt(a, 10) - parseInt(b, 10)
+              );
+              updatedTypes[newIdx].stock =
+                updatedTypes[newIdx].roomNumbers.length;
+              updatedTypes[newIdx].roomNumbersBackup = [
+                ...updatedTypes[newIdx].roomNumbers,
+              ];
             }
           }
           return updatedTypes;
         });
       } else if (field === 'roomNumber') {
         if (!value || value.trim() === '') {
-          alert(language === 'kor' ? '객실 번호를 입력해주세요.' : 'Please enter a room number.');
+          alert(
+            language === 'kor'
+              ? '객실 번호를 입력해주세요.'
+              : 'Please enter a room number.'
+          );
           return prev;
         }
         if (!/^\d+$/.test(value)) {
-          alert(language === 'kor' ? '객실 번호는 숫자만 입력해주세요.' : 'Room number must be numeric.');
+          alert(
+            language === 'kor'
+              ? '객실 번호는 숫자만 입력해주세요.'
+              : 'Room number must be numeric.'
+          );
           return prev;
         }
         if (value.length < 3) {
-          alert(language === 'kor' ? '객실 번호는 최소 3자리여야 합니다.' : 'Room number must be at least 3 digits.');
+          alert(
+            language === 'kor'
+              ? '객실 번호는 최소 3자리여야 합니다.'
+              : 'Room number must be at least 3 digits.'
+          );
           return prev;
         }
         const floorPrefix = String(floorNum);
@@ -1072,19 +1266,28 @@ function LayoutEditor({
           .filter((c, idx) => idx !== containerIdx)
           .map((c) => c.roomNumber);
         if (existingNumbers.includes(value)) {
-          alert(language === 'kor' ? '객실 번호가 중복되었습니다.' : 'Room number is duplicated.');
+          alert(
+            language === 'kor'
+              ? '객실 번호가 중복되었습니다.'
+              : 'Room number is duplicated.'
+          );
           return prev;
         }
         container[field] = value;
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
-          const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === container.roomInfo);
+          const typeIdx = updatedTypes.findIndex(
+            (rt) => rt.roomInfo === container.roomInfo
+          );
           if (typeIdx !== -1) {
-            updatedTypes[typeIdx].roomNumbers = updatedTypes[typeIdx].roomNumbers.map((num) =>
-              num === oldRoomNumber ? value : num
-            );
-            updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
-            updatedTypes[typeIdx].roomNumbersBackup = [...updatedTypes[typeIdx].roomNumbers];
+            updatedTypes[typeIdx].roomNumbers = updatedTypes[
+              typeIdx
+            ].roomNumbers.map((num) => (num === oldRoomNumber ? value : num));
+            updatedTypes[typeIdx].stock =
+              updatedTypes[typeIdx].roomNumbers.length;
+            updatedTypes[typeIdx].roomNumbersBackup = [
+              ...updatedTypes[typeIdx].roomNumbers,
+            ];
           }
           return updatedTypes;
         });
@@ -1092,23 +1295,34 @@ function LayoutEditor({
         container[field] = value;
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
-          const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === container.roomInfo);
+          const typeIdx = updatedTypes.findIndex(
+            (rt) => rt.roomInfo === container.roomInfo
+          );
           if (typeIdx !== -1 && oldRoomNumber) {
             if (!value) {
-              updatedTypes[typeIdx].roomNumbers = updatedTypes[typeIdx].roomNumbers.filter(
-                (num) => num !== oldRoomNumber
-              );
-            } else if (!updatedTypes[typeIdx].roomNumbers.includes(oldRoomNumber)) {
+              updatedTypes[typeIdx].roomNumbers = updatedTypes[
+                typeIdx
+              ].roomNumbers.filter((num) => num !== oldRoomNumber);
+            } else if (
+              !updatedTypes[typeIdx].roomNumbers.includes(oldRoomNumber)
+            ) {
               updatedTypes[typeIdx].roomNumbers.push(oldRoomNumber);
-              updatedTypes[typeIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+              updatedTypes[typeIdx].roomNumbers.sort(
+                (a, b) => parseInt(a, 10) - parseInt(b, 10)
+              );
             }
-            updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
-            updatedTypes[typeIdx].roomNumbersBackup = [...updatedTypes[typeIdx].roomNumbers];
+            updatedTypes[typeIdx].stock =
+              updatedTypes[typeIdx].roomNumbers.length;
+            updatedTypes[typeIdx].roomNumbersBackup = [
+              ...updatedTypes[typeIdx].roomNumbers,
+            ];
           }
           return updatedTypes;
         });
       }
-      updated[floorIdx].containers.sort((a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10));
+      updated[floorIdx].containers.sort(
+        (a, b) => parseInt(a.roomNumber, 10) - parseInt(b.roomNumber, 10)
+      );
       console.log('[LayoutEditor] Updated container:', updated);
       return updated;
     });
@@ -1119,7 +1333,9 @@ function LayoutEditor({
       const updated = [...prev];
       const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
-      const containerIdx = updated[floorIdx].containers.findIndex((c) => c.containerId === containerId);
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) return prev;
       updated[floorIdx].containers[containerIdx].price =
         (updated[floorIdx].containers[containerIdx].price || 0) + 1000;
@@ -1133,7 +1349,9 @@ function LayoutEditor({
       const updated = [...prev];
       const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
-      const containerIdx = updated[floorIdx].containers.findIndex((c) => c.containerId === containerId);
+      const containerIdx = updated[floorIdx].containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) return prev;
       updated[floorIdx].containers[containerIdx].price = Math.max(
         0,
@@ -1150,22 +1368,33 @@ function LayoutEditor({
       const floorIdx = updated.findIndex((f) => f.floorNum === floorNum);
       if (floorIdx === -1) return prev;
       const containers = updated[floorIdx].containers;
-      const containerIdx = containers.findIndex((c) => c.containerId === containerId);
+      const containerIdx = containers.findIndex(
+        (c) => c.containerId === containerId
+      );
       if (containerIdx === -1) return prev;
       const removed = containers[containerIdx];
       containers.splice(containerIdx, 1);
       if (removed.roomInfo && removed.roomNumber) {
         setRoomTypes((prevTypes) => {
           const updatedTypes = [...prevTypes];
-          const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === removed.roomInfo);
+          const typeIdx = updatedTypes.findIndex(
+            (rt) => rt.roomInfo === removed.roomInfo
+          );
           if (typeIdx !== -1) {
-            updatedTypes[typeIdx].roomNumbers = updatedTypes[typeIdx].roomNumbers.filter(
-              (num) => num !== removed.roomNumber
+            updatedTypes[typeIdx].roomNumbers = updatedTypes[
+              typeIdx
+            ].roomNumbers.filter((num) => num !== removed.roomNumber);
+            updatedTypes[typeIdx].roomNumbers = [
+              ...new Set(updatedTypes[typeIdx].roomNumbers),
+            ];
+            updatedTypes[typeIdx].roomNumbers.sort(
+              (a, b) => parseInt(a, 10) - parseInt(b, 10)
             );
-            updatedTypes[typeIdx].roomNumbers = [...new Set(updatedTypes[typeIdx].roomNumbers)];
-            updatedTypes[typeIdx].roomNumbers.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-            updatedTypes[typeIdx].stock = updatedTypes[typeIdx].roomNumbers.length;
-            updatedTypes[typeIdx].roomNumbersBackup = [...updatedTypes[typeIdx].roomNumbers];
+            updatedTypes[typeIdx].stock =
+              updatedTypes[typeIdx].roomNumbers.length;
+            updatedTypes[typeIdx].roomNumbersBackup = [
+              ...updatedTypes[typeIdx].roomNumbers,
+            ];
           }
           return updatedTypes;
         });
@@ -1177,7 +1406,11 @@ function LayoutEditor({
 
   const generateLayout = () => {
     if (isGenerating || roomTypes.length === 0) {
-      alert(language === 'kor' ? '먼저 객실 타입을 추가해주세요.' : 'Please add a room type first.');
+      alert(
+        language === 'kor'
+          ? '먼저 객실 타입을 추가해주세요.'
+          : 'Please add a room type first.'
+      );
       return;
     }
     // 중첩 제거: 기존 floors 완전 초기화
@@ -1191,7 +1424,9 @@ function LayoutEditor({
           const roomNumber = `${floorNum}${String(j + 1).padStart(2, '0')}`;
           const kstNow = toZonedTime(new Date(), 'Asia/Seoul');
           return {
-            containerId: `${floorNum}-${defaultRoomType.roomInfo}-${roomNumber}-${kstNow.getTime()}-${uuidv4()}`,
+            containerId: `${floorNum}-${
+              defaultRoomType.roomInfo
+            }-${roomNumber}-${kstNow.getTime()}-${uuidv4()}`,
             roomInfo: defaultRoomType.roomInfo,
             roomNumber,
             price: defaultRoomType.price || 0,
@@ -1204,7 +1439,9 @@ function LayoutEditor({
       setFloors(newFloors);
       setRoomTypes((prevTypes) => {
         const updatedTypes = [...prevTypes];
-        const typeIdx = updatedTypes.findIndex((rt) => rt.roomInfo === defaultRoomType.roomInfo);
+        const typeIdx = updatedTypes.findIndex(
+          (rt) => rt.roomInfo === defaultRoomType.roomInfo
+        );
         if (typeIdx !== -1) {
           const allRoomNumbers = newFloors
             .flatMap((floor) => floor.containers.map((c) => c.roomNumber))
@@ -1216,27 +1453,54 @@ function LayoutEditor({
         return updatedTypes;
       });
       console.log('[LayoutEditor] Generated layout:', newFloors);
-      alert(language === 'kor' ? '초기 레이아웃이 생성되었습니다: 1층부터 15층까지, 각 층에 6개의 객실.' : 'Initial layout generated: Floors 1 to 15, each with 6 rooms.');
+      alert(
+        language === 'kor'
+          ? '초기 레이아웃이 생성되었습니다: 1층부터 15층까지, 각 층에 6개의 객실.'
+          : 'Initial layout generated: Floors 1 to 15, each with 6 rooms.'
+      );
     } catch (error) {
       console.error('[LayoutEditor] Error generating layout:', error);
-      alert(language === 'kor' ? '레이아웃 생성 중 오류가 발생했습니다.' : 'Error generating layout.');
+      alert(
+        language === 'kor'
+          ? '레이아웃 생성 중 오류가 발생했습니다.'
+          : 'Error generating layout.'
+      );
     } finally {
       setIsGenerating(false);
     }
   };
 
   return (
-    <section className="layout-editor-section" aria-label={language === 'kor' ? '객실 레이아웃 편집 섹션' : 'Room Layout Editor Section'}>
+    <section
+      className="layout-editor-section"
+      aria-label={
+        language === 'kor'
+          ? '객실 레이아웃 편집 섹션'
+          : 'Room Layout Editor Section'
+      }
+    >
       <div className="layout-header">
-        <h2>{language === 'kor' ? '◉ 객실 레이아웃 편집' : '◉ Room Layout Editor'}</h2>
+        <h2>
+          {language === 'kor' ? '◉ 객실 레이아웃 편집' : '◉ Room Layout Editor'}
+        </h2>
         <button
           className="hotel-settings-btn generate-btn"
           onClick={generateLayout}
           disabled={isGenerating}
-          title={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
-          aria-label={language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
+          title={
+            language === 'kor'
+              ? '초기 레이아웃 생성'
+              : 'Generate Initial Layout'
+          }
+          aria-label={
+            language === 'kor'
+              ? '초기 레이아웃 생성'
+              : 'Generate Initial Layout'
+          }
         >
-          {language === 'kor' ? '초기 레이아웃 생성' : 'Generate Initial Layout'}
+          {language === 'kor'
+            ? '초기 레이아웃 생성'
+            : 'Generate Initial Layout'}
         </button>
         <button
           className="hotel-settings-btn undo-btn"
@@ -1269,7 +1533,11 @@ function LayoutEditor({
                     onClick={() => removeFloor(floor.floorNum)}
                     className="remove-icon"
                     title={language === 'kor' ? '객실 층 삭제' : 'Delete Floor'}
-                    aria-label={language === 'kor' ? `층 ${floor.floorNum} 삭제` : `Delete Floor ${floor.floorNum}`}
+                    aria-label={
+                      language === 'kor'
+                        ? `층 ${floor.floorNum} 삭제`
+                        : `Delete Floor ${floor.floorNum}`
+                    }
                   />
                 </h3>
               </div>
@@ -1278,21 +1546,34 @@ function LayoutEditor({
                   <div
                     key={cont.containerId}
                     className="container-box"
-                    style={{ backgroundColor: getColorForRoomType(cont.roomInfo) }}
+                    style={{
+                      backgroundColor: getColorForRoomType(cont.roomInfo),
+                    }}
                   >
                     <select
                       value={cont.roomInfo || ''}
                       onChange={(e) =>
-                        updateContainer(floor.floorNum, cont.containerId, 'roomInfo', e.target.value)
+                        updateContainer(
+                          floor.floorNum,
+                          cont.containerId,
+                          'roomInfo',
+                          e.target.value
+                        )
                       }
-                      aria-label={language === 'kor' ? `객실 유형 선택 ${index + 1}` : `Room Type Selection ${index + 1}`}
+                      aria-label={
+                        language === 'kor'
+                          ? `객실 유형 선택 ${index + 1}`
+                          : `Room Type Selection ${index + 1}`
+                      }
                     >
                       <option value="" disabled>
                         {language === 'kor' ? '유형 선택' : 'Select Type'}
                       </option>
                       {roomTypes.map((rt) => (
                         <option key={rt.id || rt.roomInfo} value={rt.roomInfo}>
-                          {language === 'kor' ? rt.nameKor || rt.roomInfo : rt.nameEng || rt.roomInfo}
+                          {language === 'kor'
+                            ? rt.nameKor || rt.roomInfo
+                            : rt.nameEng || rt.roomInfo}
                         </option>
                       ))}
                     </select>
@@ -1300,10 +1581,21 @@ function LayoutEditor({
                       type="text"
                       value={cont.roomNumber || ''}
                       onChange={(e) =>
-                        updateContainer(floor.floorNum, cont.containerId, 'roomNumber', e.target.value)
+                        updateContainer(
+                          floor.floorNum,
+                          cont.containerId,
+                          'roomNumber',
+                          e.target.value
+                        )
                       }
-                      placeholder={language === 'kor' ? '객실 번호' : 'Room Number'}
-                      aria-label={language === 'kor' ? '객실 번호 입력' : 'Room Number Input'}
+                      placeholder={
+                        language === 'kor' ? '객실 번호' : 'Room Number'
+                      }
+                      aria-label={
+                        language === 'kor'
+                          ? '객실 번호 입력'
+                          : 'Room Number Input'
+                      }
                     />
                     <div className="price-row">
                       <div className="price-input-container">
@@ -1311,24 +1603,54 @@ function LayoutEditor({
                           type="number"
                           value={cont.price || 0}
                           onChange={(e) =>
-                            updateContainer(floor.floorNum, cont.containerId, 'price', e.target.value)
+                            updateContainer(
+                              floor.floorNum,
+                              cont.containerId,
+                              'price',
+                              e.target.value
+                            )
                           }
                           placeholder={language === 'kor' ? '가격' : 'Price'}
-                          style={{ width: '100px', paddingRight: '0', border: 'none', borderRadius: '0' }}
-                          aria-label={language === 'kor' ? '가격 입력' : 'Price Input'}
+                          style={{
+                            width: '100px',
+                            paddingRight: '0',
+                            border: 'none',
+                            borderRadius: '0',
+                          }}
+                          aria-label={
+                            language === 'kor' ? '가격 입력' : 'Price Input'
+                          }
                         />
                         <div className="price-buttons">
                           <button
                             className="hotel-settings-btn price-btn increment"
-                            onClick={() => incrementContainerPrice(floor.floorNum, cont.containerId)}
-                            aria-label={language === 'kor' ? '가격 증가' : 'Increase Price'}
+                            onClick={() =>
+                              incrementContainerPrice(
+                                floor.floorNum,
+                                cont.containerId
+                              )
+                            }
+                            aria-label={
+                              language === 'kor'
+                                ? '가격 증가'
+                                : 'Increase Price'
+                            }
                           >
                             <FaPlus />
                           </button>
                           <button
                             className="hotel-settings-btn price-btn decrement"
-                            onClick={() => decrementContainerPrice(floor.floorNum, cont.containerId)}
-                            aria-label={language === 'kor' ? '가격 감소' : 'Decrease Price'}
+                            onClick={() =>
+                              decrementContainerPrice(
+                                floor.floorNum,
+                                cont.containerId
+                              )
+                            }
+                            aria-label={
+                              language === 'kor'
+                                ? '가격 감소'
+                                : 'Decrease Price'
+                            }
                           >
                             <FaMinus />
                           </button>
@@ -1340,15 +1662,26 @@ function LayoutEditor({
                         type="checkbox"
                         checked={cont.isActive}
                         onChange={(e) =>
-                          updateContainer(floor.floorNum, cont.containerId, 'isActive', e.target.checked)
+                          updateContainer(
+                            floor.floorNum,
+                            cont.containerId,
+                            'isActive',
+                            e.target.checked
+                          )
                         }
                       />
                       {language === 'kor' ? '활성화' : 'Active'}
                     </label>
                     <button
                       className="hotel-settings-layout-btn delete-btn"
-                      onClick={() => removeContainer(floor.floorNum, cont.containerId)}
-                      aria-label={language === 'kor' ? `객실 ${cont.roomNumber} 삭제` : `Delete Room ${cont.roomNumber}`}
+                      onClick={() =>
+                        removeContainer(floor.floorNum, cont.containerId)
+                      }
+                      aria-label={
+                        language === 'kor'
+                          ? `객실 ${cont.roomNumber} 삭제`
+                          : `Delete Room ${cont.roomNumber}`
+                      }
                     >
                       <FaTrash />
                     </button>
@@ -1358,7 +1691,11 @@ function LayoutEditor({
                   className="hotel-settings-btn add-container-btn"
                   onClick={() => addContainer(floor.floorNum)}
                   disabled={isAdding || roomTypes.length === 0}
-                  aria-label={language === 'kor' ? `층 ${floor.floorNum}에 객실 추가` : `Add Room to Floor ${floor.floorNum}`}
+                  aria-label={
+                    language === 'kor'
+                      ? `층 ${floor.floorNum}에 객실 추가`
+                      : `Add Room to Floor ${floor.floorNum}`
+                  }
                 >
                   <FaPlus /> {language === 'kor' ? '객실 추가' : 'Add Room'}
                 </button>
@@ -5908,7 +6245,9 @@ export default function HotelSettingsPage() {
                 isActive: false,
               }));
             } else {
-              roomAmenities = DEFAULT_AMENITIES.filter((a) => a.type === 'in-room').map((defaultAmenity) => {
+              roomAmenities = DEFAULT_AMENITIES.filter(
+                (a) => a.type === 'in-room'
+              ).map((defaultAmenity) => {
                 const existingAmenity = rt.roomAmenities.find(
                   (amenity) => amenity.nameKor === defaultAmenity.nameKor
                 );
@@ -5921,7 +6260,7 @@ export default function HotelSettingsPage() {
                 };
               });
             }
-          
+
             return {
               ...rt,
               id: rt.id || uuidv4(),
@@ -6146,20 +6485,18 @@ export default function HotelSettingsPage() {
   const handleSaveRoomTypes = async () => {
     if (!hotelId) {
       alert(
-        language === 'kor'
-          ? '호텔 ID는 필수입니다.'
-          : 'Hotel ID is required.'
+        language === 'kor' ? '호텔 ID는 필수입니다.' : 'Hotel ID is required.'
       );
       return;
     }
-  
-    // 1) 로컬에서도 totalRooms 계산
+
+    // 실제 저장할 총 객실 수를, syncedRoomTypes의 stock 합으로 계산
     const calculatedTotalRooms = syncedRoomTypes.reduce(
       (acc, rt) => acc + (rt.stock || 0),
       0
     );
-  
-    // 2) payload 구성
+
+    // payload 생성
     const payload = {
       hotelId,
       roomTypes: syncedRoomTypes.map((rt) => ({
@@ -6177,25 +6514,21 @@ export default function HotelSettingsPage() {
       })),
       totalRooms: calculatedTotalRooms,
     };
-  
+
     try {
-      // 3) API 호출
       await updateHotelSettings(hotelId, payload);
-  
-      // 4) 성공 알림 및 로컬 상태 업데이트
       alert(
         language === 'kor'
           ? '객실 타입 정보가 저장되었습니다.'
           : 'Room types information saved.'
       );
+      // 상단 상태에도 반영
       setTotalRooms(calculatedTotalRooms);
     } catch (err) {
-      // 5) 에러 핸들링
-      const msg = err.response?.data?.message || err.message;
       alert(
         language === 'kor'
-          ? `저장 실패: ${msg}`
-          : `Save failed: ${msg}`
+          ? `저장 실패: ${err.response?.data?.message || err.message}`
+          : `Save failed: ${err.response?.data?.message || err.message}`
       );
     }
   };
@@ -6207,7 +6540,7 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-  
+
     if (!isExisting && roomTypes.length === 0) {
       alert(
         language === 'kor'
@@ -6216,17 +6549,17 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-  
+
     // 검증 수행 (LayoutEditor의 validateFloors와 동일한 로직)
     const errors = [];
     floors.forEach((floor) => {
       const floorNum = floor.floorNum;
       const floorPrefix = String(floorNum);
       const roomNumbersInFloor = new Set();
-  
+
       floor.containers.forEach((cont) => {
         const roomNumber = cont.roomNumber;
-  
+
         if (!roomNumber || roomNumber.trim() === '') {
           errors.push(
             language === 'kor'
@@ -6235,7 +6568,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-  
+
         if (!/^\d+$/.test(roomNumber)) {
           errors.push(
             language === 'kor'
@@ -6244,7 +6577,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-  
+
         if (roomNumber.length < 3) {
           errors.push(
             language === 'kor'
@@ -6253,7 +6586,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-  
+
         const roomPrefix = roomNumber.slice(0, floorPrefix.length);
         if (roomPrefix !== floorPrefix) {
           errors.push(
@@ -6263,7 +6596,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-  
+
         const extractedFloorNum = parseInt(roomPrefix);
         if (
           isNaN(extractedFloorNum) ||
@@ -6277,7 +6610,7 @@ export default function HotelSettingsPage() {
           );
           return;
         }
-  
+
         if (roomNumbersInFloor.has(roomNumber)) {
           errors.push(
             language === 'kor'
@@ -6289,7 +6622,7 @@ export default function HotelSettingsPage() {
         }
       });
     });
-  
+
     if (errors.length > 0) {
       alert(
         language === 'kor'
@@ -6302,11 +6635,16 @@ export default function HotelSettingsPage() {
       );
       return;
     }
-  
+
     // 저장 직전 1~15층 모두 포함 보장
-    const allFloors = Array.from({ length: 15 }, (_, i) => i + 1)
-      .map(floorNum => floors.find(f => f.floorNum === floorNum) || { floorNum, containers: [] });
-  
+    const allFloors = Array.from({ length: 15 }, (_, i) => i + 1).map(
+      (floorNum) =>
+        floors.find((f) => f.floorNum === floorNum) || {
+          floorNum,
+          containers: [],
+        }
+    );
+
     const payload = {
       hotelId,
       gridSettings: { floors: allFloors },
@@ -6319,7 +6657,7 @@ export default function HotelSettingsPage() {
         0
       ),
     };
-  
+
     try {
       await updateHotelSettings(hotelId, payload);
       alert(
