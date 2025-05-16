@@ -473,16 +473,7 @@
   font-weight: bold !important;
 }
 
-@keyframes danjamHighlight {
-  0% {
-    background-color: rgba(144, 238, 144, 0.9);
-  }
-  100% {
-    background-color: transparent;
-  }
-}
 
-/* 카드 전체에 효과를 줄 수도 있고, front-face 에만 줄 수도 있습니다 */
-.room-card.danjam-highlight {
-  animation: danjamHighlight 20s ease-out forwards;
-}
+/* ==========================================================================
+   [Flip Effect & Other Card Styles]
+========================================================================== */

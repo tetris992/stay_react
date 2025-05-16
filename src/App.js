@@ -2249,7 +2249,6 @@ const App = () => {
         JSON.stringify(data, null, 2)
       );
 
-      // 이벤트 데이터가 { reservation } 형태로 오므로 구조 조정
       const payload = data?.reservation ?? data;
       if (
         !payload._id ||
@@ -2263,11 +2262,6 @@ const App = () => {
         );
         return callback?.({ success: false, error: 'Missing required fields' });
       }
-
-      console.log(
-        '[handleReservationCreated] Room number in reservation:',
-        payload.roomNumber
-      );
 
       const eventId =
         payload._id ||
@@ -2327,7 +2321,6 @@ const App = () => {
           return prev;
         }
 
-        // selectedDate를 checkIn 날짜로 동기화
         setSelectedDate(incomingCheckIn);
         filterReservationsByDate(updated, incomingCheckIn);
         console.log(
@@ -2337,9 +2330,10 @@ const App = () => {
 
         setNewlyCreatedId(newRes._id);
         setTimeout(() => setNewlyCreatedId(null), 10000);
-        handleCardFlip(newRes._id);
+        // handleCardFlip(newRes._id);
 
-        setTimeout(() => {
+        // 카드 하이라이트 재시도 로직
+        const attemptHighlight = (attemptsLeft = 5, delay = 200) => {
           const card = document.querySelector(
             `.room-card[data-id="${newRes._id}"]`
           );
@@ -2349,13 +2343,24 @@ const App = () => {
             );
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
             card.classList.add('danjam-highlight');
-            setTimeout(() => card.classList.remove('danjam-highlight'), 10000);
-          } else {
+            setTimeout(() => {
+              card.classList.remove('danjam-highlight');
+              console.log(
+                `[handleReservationCreated] Removed danjam-highlight for ${newRes._id}`
+              );
+            }, 10000);
+          } else if (attemptsLeft > 0) {
             console.warn(
-              `[handleReservationCreated] Card not found for ${newRes._id}`
+              `[handleReservationCreated] Card not found for ${newRes._id}, retrying (${attemptsLeft} attempts left)`
+            );
+            setTimeout(() => attemptHighlight(attemptsLeft - 1, delay), delay);
+          } else {
+            console.error(
+              `[handleReservationCreated] Failed to find card for ${newRes._id} after retries`
             );
           }
-        }, 200);
+        };
+        setTimeout(() => attemptHighlight(), 200);
 
         const { customerName, phoneNumber, checkIn, checkOut } = newRes;
         logMessage(
@@ -2373,14 +2378,14 @@ const App = () => {
         return updated;
       });
     },
+    // eslint-disable-next-line
     [
       processReservation,
       filterReservationsByDate,
       setSelectedDate,
-      handleCardFlip,
       logMessage,
       selectedDate,
-    ]
+    ] // handleCardFlip 제거
   );
 
   const handleReservationDeleted = useCallback(
@@ -2389,9 +2394,10 @@ const App = () => {
         `WS → reservationDeleted, immediate update:`,
         data.reservationId
       );
+
       if (!isJoinedHotel) {
         console.warn(
-          '[handleReservationDeleted] Skipped event processing, isJoinedHotel is false'
+          '[handleReservationDeleted] Skipped: isJoinedHotel is false'
         );
         callback?.({ success: false, error: 'Not joined to hotel room' });
         return;
@@ -2400,38 +2406,33 @@ const App = () => {
       const reservationId = data.reservationId;
       if (!reservationId) {
         console.warn(
-          'Invalid reservationId in reservationDeleted event:',
+          'Invalid reservationDeleted event, missing reservationId:',
           data
         );
         callback?.({ success: false, error: 'Invalid reservationId' });
         return;
       }
 
-      setAllReservations((prev) => {
-        const reservationToDelete = prev.find(
-          (res) => res._id === reservationId
-        );
-        if (!reservationToDelete) {
-          console.warn(
-            `Reservation ${reservationId} not found in allReservations`
-          );
-          callback?.({ success: true });
-          return prev;
-        }
+      setAllReservations(prev => {
+        // 1) 상태에서 제거
+        const updated = prev.filter(res => res._id !== reservationId);
 
-        const updated = prev.filter((res) => res._id !== reservationId);
+        // 2) RoomGrid에 뿌려질 activeReservations도 갱신
         filterReservationsByDate(updated, selectedDate);
 
+        console.log(
+          `[handleReservationDeleted] Removed reservation ${reservationId} from UI`
+        );
+
+        // 3) 로그 남기기
         const { customerName, phoneNumber, checkIn, checkOut, siteName } =
           data.reservation || {};
-        const formattedCheckIn =
-          checkIn && checkIn !== '정보 없음'
-            ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm')
-            : '정보 없음';
-        const formattedCheckOut =
-          checkOut && checkOut !== '정보 없음'
-            ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm')
-            : '정보 없음';
+        const formattedCheckIn = checkIn
+          ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm')
+          : '정보 없음';
+        const formattedCheckOut = checkOut
+          ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm')
+          : '정보 없음';
         logMessage(
           `[handleReservationDeleted] Deleted reservation ${
             siteName === '현장예약' ? '현장예약' : '단잠'
@@ -2443,12 +2444,23 @@ const App = () => {
           'delete'
         );
 
+        // 4) 콜백 호출
         callback?.({ success: true });
+
         return updated;
       });
     },
     [isJoinedHotel, filterReservationsByDate, selectedDate, logMessage]
   );
+
+  useEffect(() => {
+    if (!socketRef.current || !isJoinedHotel) return;
+
+    socketRef.current.on('reservationDeleted', handleReservationDeleted);
+    return () => {
+      socketRef.current.off('reservationDeleted', handleReservationDeleted);
+    };
+  }, [socketRef, isJoinedHotel, handleReservationDeleted]);
 
   const handleReservationUpdated = useCallback(
     (data, callback) => {
@@ -2549,158 +2561,202 @@ const App = () => {
     [navigate]
   );
 
-useEffect(() => {
-  let socketCleanup = () => {};
+  useEffect(() => {
+    let socketCleanup = () => {};
 
-  const checkServerStatus = async () => {
-    try {
-      const response = await fetch(`${BASE_URL}`, { method: 'GET' }); // 임시로 '/' 사용
-      console.log('[WebSocket] Server health check:', response.status, response.statusText);
-      return response.ok;
-    } catch (error) {
-      console.error('[WebSocket] Server health check failed:', error.message, error);
-      return false;
-    }
-  };
-
-  const initializeAndManageSocket = async () => {
-    if (!isAuthenticated || !hotelId) {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        setIsJoinedHotel(false);
-        setIsConnecting(false);
-        console.log('[WebSocket] Disconnected: missing auth or hotelId', { isAuthenticated, hotelId });
+    const checkServerStatus = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}`, { method: 'GET' }); // 임시로 '/' 사용
+        console.log(
+          '[WebSocket] Server health check:',
+          response.status,
+          response.statusText
+        );
+        return response.ok;
+      } catch (error) {
+        console.error(
+          '[WebSocket] Server health check failed:',
+          error.message,
+          error
+        );
+        return false;
       }
-      return;
-    }
-
-    // 서버 상태 확인
-    const isServerAlive = await checkServerStatus();
-    if (!isServerAlive) {
-      console.error('[WebSocket] Server is not responding, attempting fallback load');
-      loadReservations().catch((err) => {
-        console.error('[WebSocket] Initial loadReservations failed:', err);
-      });
-      return;
-    }
-
-    if (!socketRef.current) {
-      console.log('[WebSocket] Initializing socket with BASE_URL:', BASE_URL);
-      const accessToken = getAccessToken();
-      console.log('[WebSocket] Access token:', accessToken ? '[REDACTED]' : 'null');
-      console.log('[WebSocket] Hotel ID:', hotelId);
-      socketRef.current = io(BASE_URL, {
-        withCredentials: true,
-        query: { hotelId, accessToken },
-        reconnection: true,
-        reconnectionAttempts: 30,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 15000,
-        randomizationFactor: 0.5,
-        timeout: 40000,
-        autoConnect: true,
-        transports: ['websocket', 'polling'],
-        path: '/socket.io',
-        forceNew: true,
-      });
-      console.log('[WebSocket] Initialized socket:', {
-        hotelId,
-        accessToken: accessToken ? '[REDACTED]' : 'null',
-        transports: socketRef.current.io.opts.transports,
-        path: socketRef.current.io.opts.path,
-        query: socketRef.current.io.opts.query,
-      });
-    }
-
-    const manageConnection = () => {
-      setIsConnecting(true);
-      console.log('[WebSocket] Initiating connection for hotelId:', hotelId);
-
-      const handleConnect = () => {
-        console.log('[WebSocket] Connected to server:', new Date().toISOString());
-        setIsConnecting(false);
-        setIsJoinedHotel(false);
-        console.log('[WebSocket] Emitting joinHotel for hotelId:', hotelId);
-        socketRef.current.emit('joinHotel', hotelId, (ack) => {
-          console.log('[WebSocket] Join hotel response:', JSON.stringify(ack, null, 2));
-          if (ack && ack.success) {
-            console.log(`[WebSocket] Successfully joined hotel room: ${hotelId}`);
-            setIsJoinedHotel(true);
-            socketRef.current.on('reservationCreated', (data, callback) => {
-              console.log('[WebSocket] reservationCreated event received:', JSON.stringify(data, null, 2));
-              handleReservationCreated(data, callback);
-            });
-            socketRef.current.on('reservationUpdated', handleReservationUpdated);
-            socketRef.current.on('reservationDeleted', handleReservationDeleted);
-            socketRef.current.on('forceLogout', handleForceLogout);
-            loadReservations().catch((error) => {
-              console.error('[WebSocket] Failed to reload reservations:', error);
-            });
-          } else {
-            console.error('[WebSocket] Failed to join hotel room:', ack?.error || 'No ack');
-            setIsJoinedHotel(false);
-          }
-        });
-      };
-
-      const handleConnectError = (error) => {
-        console.error('[WebSocket] Connection error:', error.message, error);
-        setIsConnecting(false);
-        setIsJoinedHotel(false);
-        console.log('[WebSocket] Socket state:', {
-          connected: socketRef.current?.connected,
-          active: socketRef.current?.active,
-          transport: socketRef.current?.io?.engine?.transport?.name,
-          query: socketRef.current?.io?.opts?.query,
-        });
-        loadReservations().catch((err) => {
-          console.error('[WebSocket] Fallback polling failed:', err);
-        });
-      };
-
-      const handleDisconnect = (reason) => {
-        console.log('[WebSocket] Disconnected:', reason, 'at:', new Date().toISOString());
-        setIsJoinedHotel(false);
-        setIsConnecting(false);
-      };
-
-      socketRef.current.on('connect', handleConnect);
-      socketRef.current.on('connect_error', handleConnectError);
-      socketRef.current.on('disconnect', handleDisconnect);
-      socketRef.current.on('reconnect_attempt', (attempt) => {
-        console.log('[WebSocket] Reconnection attempt:', attempt);
-      });
-      socketRef.current.on('reconnect_failed', () => {
-        console.error('[WebSocket] Reconnection failed');
-        setIsConnecting(false);
-        setIsJoinedHotel(false);
-        loadReservations().catch((error) => {
-          console.error('[WebSocket] Fallback load failed:', error);
-        });
-      });
     };
 
-    manageConnection();
+    const initializeAndManageSocket = async () => {
+      if (!isAuthenticated || !hotelId) {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          setIsJoinedHotel(false);
+          setIsConnecting(false);
+          console.log('[WebSocket] Disconnected: missing auth or hotelId', {
+            isAuthenticated,
+            hotelId,
+          });
+        }
+        return;
+      }
+
+      // 서버 상태 확인
+      const isServerAlive = await checkServerStatus();
+      if (!isServerAlive) {
+        console.error(
+          '[WebSocket] Server is not responding, attempting fallback load'
+        );
+        loadReservations().catch((err) => {
+          console.error('[WebSocket] Initial loadReservations failed:', err);
+        });
+        return;
+      }
+
+      if (!socketRef.current) {
+        console.log('[WebSocket] Initializing socket with BASE_URL:', BASE_URL);
+        const accessToken = getAccessToken();
+        console.log(
+          '[WebSocket] Access token:',
+          accessToken ? '[REDACTED]' : 'null'
+        );
+        console.log('[WebSocket] Hotel ID:', hotelId);
+        socketRef.current = io(BASE_URL, {
+          withCredentials: true,
+          query: { hotelId, accessToken },
+          reconnection: true,
+          reconnectionAttempts: 30,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 15000,
+          randomizationFactor: 0.5,
+          timeout: 40000,
+          autoConnect: true,
+          transports: ['websocket', 'polling'],
+          path: '/socket.io',
+          forceNew: true,
+        });
+        console.log('[WebSocket] Initialized socket:', {
+          hotelId,
+          accessToken: accessToken ? '[REDACTED]' : 'null',
+          transports: socketRef.current.io.opts.transports,
+          path: socketRef.current.io.opts.path,
+          query: socketRef.current.io.opts.query,
+        });
+      }
+
+      const manageConnection = () => {
+        setIsConnecting(true);
+        console.log('[WebSocket] Initiating connection for hotelId:', hotelId);
+
+        const handleConnect = () => {
+          console.log(
+            '[WebSocket] Connected to server:',
+            new Date().toISOString()
+          );
+          setIsConnecting(false);
+          setIsJoinedHotel(false);
+          console.log('[WebSocket] Emitting joinHotel for hotelId:', hotelId);
+          socketRef.current.emit('joinHotel', hotelId, (ack) => {
+            console.log(
+              '[WebSocket] Join hotel response:',
+              JSON.stringify(ack, null, 2)
+            );
+            if (ack && ack.success) {
+              console.log(
+                `[WebSocket] Successfully joined hotel room: ${hotelId}`
+              );
+              setIsJoinedHotel(true);
+              socketRef.current.on('reservationCreated', (data, callback) => {
+                console.log(
+                  '[WebSocket] reservationCreated event received:',
+                  JSON.stringify(data, null, 2)
+                );
+                handleReservationCreated(data, callback);
+              });
+              socketRef.current.on(
+                'reservationUpdated',
+                handleReservationUpdated
+              );
+              socketRef.current.on(
+                'reservationDeleted',
+                handleReservationDeleted
+              );
+              socketRef.current.on('forceLogout', handleForceLogout);
+              loadReservations().catch((error) => {
+                console.error(
+                  '[WebSocket] Failed to reload reservations:',
+                  error
+                );
+              });
+            } else {
+              console.error(
+                '[WebSocket] Failed to join hotel room:',
+                ack?.error || 'No ack'
+              );
+              setIsJoinedHotel(false);
+            }
+          });
+        };
+
+        const handleConnectError = (error) => {
+          console.error('[WebSocket] Connection error:', error.message, error);
+          setIsConnecting(false);
+          setIsJoinedHotel(false);
+          console.log('[WebSocket] Socket state:', {
+            connected: socketRef.current?.connected,
+            active: socketRef.current?.active,
+            transport: socketRef.current?.io?.engine?.transport?.name,
+            query: socketRef.current?.io?.opts?.query,
+          });
+          loadReservations().catch((err) => {
+            console.error('[WebSocket] Fallback polling failed:', err);
+          });
+        };
+
+        const handleDisconnect = (reason) => {
+          console.log(
+            '[WebSocket] Disconnected:',
+            reason,
+            'at:',
+            new Date().toISOString()
+          );
+          setIsJoinedHotel(false);
+          setIsConnecting(false);
+        };
+
+        socketRef.current.on('connect', handleConnect);
+        socketRef.current.on('connect_error', handleConnectError);
+        socketRef.current.on('disconnect', handleDisconnect);
+        socketRef.current.on('reconnect_attempt', (attempt) => {
+          console.log('[WebSocket] Reconnection attempt:', attempt);
+        });
+        socketRef.current.on('reconnect_failed', () => {
+          console.error('[WebSocket] Reconnection failed');
+          setIsConnecting(false);
+          setIsJoinedHotel(false);
+          loadReservations().catch((error) => {
+            console.error('[WebSocket] Fallback load failed:', error);
+          });
+        });
+      };
+
+      manageConnection();
+      return socketCleanup;
+    };
+
+    initializeAndManageSocket();
+
     return socketCleanup;
-  };
-
-  initializeAndManageSocket();
-
-  return socketCleanup;
-}, [
-  isAuthenticated,
-  hotelId,
-  navigate,
-  loadReservations,
-  handleReservationCreated,
-  handleReservationUpdated,
-  handleReservationDeleted,
-  handleForceLogout,
-  isConnecting,
-  filterReservationsByDate,
-  processReservation,
-  selectedDate,
-]);
+  }, [
+    isAuthenticated,
+    hotelId,
+    navigate,
+    loadReservations,
+    handleReservationCreated,
+    handleReservationUpdated,
+    handleReservationDeleted,
+    handleForceLogout,
+    isConnecting,
+    filterReservationsByDate,
+    processReservation,
+    selectedDate,
+  ]);
 
   const handlePrevDay = useCallback(() => {
     setSelectedDate((prevDate) => {

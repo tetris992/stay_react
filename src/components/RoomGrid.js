@@ -705,21 +705,18 @@ const floorReservations = useMemo(() => {
   }, [fullReservations, selectedDate]);
 
   // 새 예약이 추가될 때 해당 카드로 스크롤
-  useEffect(() => {
-    if (newlyCreatedId) {
-      console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
-      const card = document.querySelector(
-        `.room-card[data-id="${newlyCreatedId}"]`
-      );
-      if (card) {
-        console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        card.classList.add('danjam-highlight');
-      } else {
-        console.warn(`[RoomGrid] Card with ID ${newlyCreatedId} not found`);
-      }
+useEffect(() => {
+  if (newlyCreatedId) {
+    console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
+    const card = document.querySelector(`.room-card[data-id="${newlyCreatedId}"]`);
+    if (card) {
+      console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      console.warn(`[RoomGrid] Card with ID ${newlyCreatedId} not found`);
     }
-  }, [newlyCreatedId]);
+  }
+}, [newlyCreatedId]);
 
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;

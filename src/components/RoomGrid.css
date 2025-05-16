@@ -121,22 +121,23 @@
 /* 이부분이 룸그리드 배경을 관여하는 코드임  */
 .room-card-front {
   z-index: 2;
-  /* background-color: lightgreen; */
+  background-color: rgb(229, 229, 229);
   transform: rotateY(0deg);
 }
 
-@keyframes danjamHighlight {
-  0% {
-    background-color: rgba(144, 238, 144, 0.9); /* 연한 녹색 */
+/* ——— 맥박처럼 깜빡이는 애니메이션 정의 ——— */
+@keyframes danjamPulse {
+  0%, 100% {
+    background-color: rgb(251, 204, 132);  /* 기본 회색 */
   }
-  100% {
-    background-color: transparent;
+  50% {
+    background-color: rgba(76, 175, 80, 0.3); /* 연한 초록 */
   }
 }
 
-/* front-face 에 직접 붙일 수도 있고, wrapper 클래스에 붙여도 됩니다 */
+/* 1초마다 한 번씩 깜빡이고, 무한 반복(infinite) */
 .room-card-front.danjam-highlight {
-  animation: danjamHighlight 20s ease-out forwards;
+  animation: danjamPulse 1s ease-in-out infinite alternate;
 }
 
 .room-card-back {

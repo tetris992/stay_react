@@ -1254,11 +1254,11 @@ const DraggableReservationCard = ({
           perspective: '1000px',
         }}
       >
-        <div className="room-card-inner" style={{ backgroundColor: '#f0f0f0' }}>
-          <div
-            className="room-card-front"
-            style={{ backfaceVisibility: 'hidden' }}
-          >
+ <div className="room-card-inner">
+   <div
+     className={`room-card-front${isDanjamNewlyCreated ? ' danjam-highlight' : ''}`}
+     style={{ backfaceVisibility: 'hidden' }}
+   >
             {isSoldOut ? renderSoldOutFront() : renderNormalFront()}
           </div>
           {isFlipped && (
