@@ -587,8 +587,6 @@ function RoomGrid({
   const [error, setError] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isNewlyCreatedHighlighted, setIsNewlyCreatedHighlighted] =
-    useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
 
   // 재고 0이면 자동 단축 모드
@@ -604,7 +602,7 @@ function RoomGrid({
   const floors = useMemo(() => {
     const loadedFloors = hotelSettings?.gridSettings?.floors || [];
     return loadedFloors
-      .filter((floor) => (floor.containers || []).length > 0) // ← 빈 층 제거
+      .filter((floor) => (floor.containers || []).length > 0)
       .map((floor) => ({
         ...floor,
         containers: sortContainers([...(floor.containers || [])]),
@@ -645,45 +643,45 @@ function RoomGrid({
     }));
   }, []);
 
-  const filteredReservations = useMemo(() => {
-    const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
-    return (reservations || [])
-      .filter((r) => r && r._id)
-      .filter((r) => {
-        const ci = new Date(r.checkIn);
-        const co = new Date(r.checkOut);
-        if (isNaN(ci) || isNaN(co)) return false;
-        return true;
-      })
-      .filter((r) => {
-        if (r.type === 'dayUse' && r.manuallyCheckedOut) {
-          return false;
-        }
-        const ciOnly = startOfDay(new Date(r.checkIn));
-        const coOnly = startOfDay(new Date(r.checkOut));
-        const isIncluded =
-          selectedDateString >= format(ciOnly, 'yyyy-MM-dd') &&
-          selectedDateString < format(coOnly, 'yyyy-MM-dd');
-        const isSameDayStay =
-          format(ciOnly, 'yyyy-MM-dd') === format(coOnly, 'yyyy-MM-dd') &&
-          selectedDateString === format(ciOnly, 'yyyy-MM-dd');
-        return isIncluded || isSameDayStay;
-      });
-  }, [reservations, selectedDate]);
-
-  const floorReservations = useMemo(() => {
-    const map = {};
-    floors.forEach((floor) => {
-      floor.containers
-        .filter((cont) => cont.roomInfo !== 'none')
-        .forEach((cont) => {
-          map[cont.containerId] = filteredReservations.filter(
-            (res) => res.roomNumber === cont.roomNumber
-          );
-        });
+const filteredReservations = useMemo(() => {
+  const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
+  return (reservations || [])
+    .filter((r) => r && r._id)
+    .filter((r) => {
+      const ci = new Date(r.checkIn);
+      const co = new Date(r.checkOut);
+      if (isNaN(ci) || isNaN(co)) return false;
+      return true;
+    })
+    .filter((r) => {
+      if (r.type === 'dayUse' && r.manuallyCheckedOut) {
+        return false;
+      }
+      const ciOnly = startOfDay(new Date(r.checkIn));
+      const coOnly = startOfDay(new Date(r.checkOut));
+      const isIncluded =
+        selectedDateString >= format(ciOnly, 'yyyy-MM-dd') &&
+        selectedDateString < format(coOnly, 'yyyy-MM-dd');
+      const isSameDayStay =
+        format(ciOnly, 'yyyy-MM-dd') === format(coOnly, 'yyyy-MM-dd') &&
+        selectedDateString === format(ciOnly, 'yyyy-MM-dd');
+      return (isIncluded || isSameDayStay);
     });
-    return map;
-  }, [floors, filteredReservations]);
+}, [reservations, selectedDate]);
+
+const floorReservations = useMemo(() => {
+  const map = {};
+  floors.forEach((floor) => {
+    floor.containers
+      .filter((cont) => cont.roomInfo !== 'none')
+      .forEach((cont) => {
+        map[cont.containerId] = filteredReservations.filter(
+          (res) => res.roomNumber === cont.roomNumber
+        );
+      });
+  });
+  return map;
+}, [floors, filteredReservations]);
 
   const filteredUnassignedReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
@@ -705,6 +703,23 @@ function RoomGrid({
         return isIncluded || isSameDayStay;
       });
   }, [fullReservations, selectedDate]);
+
+  // 새 예약이 추가될 때 해당 카드로 스크롤
+  useEffect(() => {
+    if (newlyCreatedId) {
+      console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
+      const card = document.querySelector(
+        `.room-card[data-id="${newlyCreatedId}"]`
+      );
+      if (card) {
+        console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('danjam-highlight');
+      } else {
+        console.warn(`[RoomGrid] Card with ID ${newlyCreatedId} not found`);
+      }
+    }
+  }, [newlyCreatedId]);
 
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -751,7 +766,6 @@ function RoomGrid({
           )
         );
         filterReservationsByDate(reservations, selectedDate);
-        setIsNewlyCreatedHighlighted(false);
         if (typeof onComplete === 'function') {
           onComplete();
         }
@@ -913,9 +927,10 @@ function RoomGrid({
                           renderActionButtons={renderActionButtons}
                           loadedReservations={loadedReservations || []}
                           newlyCreatedId={newlyCreatedId}
-                          isNewlyCreatedHighlighted={isNewlyCreatedHighlighted}
+                          isNewlyCreatedHighlighted={
+                            newlyCreatedId === res._id
+                          }
                           updatedReservationId={updatedReservationId}
-                          // isUpdatedHighlighted={isUpdatedHighlighted}
                           onPartialUpdate={onPartialUpdate}
                           roomTypes={roomTypes}
                           isUnassigned={true}
@@ -1035,10 +1050,9 @@ function RoomGrid({
                                     loadedReservations={loadedReservations}
                                     newlyCreatedId={newlyCreatedId}
                                     isNewlyCreatedHighlighted={
-                                      isNewlyCreatedHighlighted
+                                      newlyCreatedId === rsv._id
                                     }
                                     updatedReservationId={updatedReservationId}
-                                    // isUpdatedHighlighted={isUpdatedHighlighted}
                                     onPartialUpdate={onPartialUpdate}
                                     onEdit={(reservationId, initialData) => {
                                       if (typeof onEdit === 'function') {
@@ -1101,8 +1115,6 @@ function RoomGrid({
   );
 }
 
-// RoomGrid.js
-
 RoomGrid.propTypes = {
   reservations: PropTypes.array.isRequired,
   onDelete: PropTypes.func.isRequired,
@@ -1156,7 +1168,7 @@ RoomGrid.propTypes = {
     phoneNumber: PropTypes.string,
     email: PropTypes.string,
     hotelName: PropTypes.string,
-  }), // 필수 항목 아님
+  }),
   roomTypes: PropTypes.array.isRequired,
   highlightedReservationIds: PropTypes.arrayOf(PropTypes.string),
   isSearching: PropTypes.bool,

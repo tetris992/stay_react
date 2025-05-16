@@ -16,16 +16,12 @@ import api, {
   deleteExpiredCoupons,
   fetchLoyaltyCoupons,
   saveLoyaltyCoupons,
-  fetchFirstVisitCoupons,
-  saveFirstVisitCoupons,
-  getAccessToken,
   uploadHotelPhotos,
 } from '../api/api';
 import DEFAULT_AMENITIES from '../config/defaultAmenities';
 import iconMap from '../config/iconMap';
 import { getColorForRoomType } from '../utils/getColorForRoomType';
 import extractCoordinates from './extractCoordinates';
-import io from 'socket.io-client';
 import { format, addDays, subMonths } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { parseDate, formatDate } from '../utils/dateParser';
@@ -1522,6 +1518,7 @@ function LayoutEditor({
       </div>
       <div className="floor-grid">
         {floors
+        // .filter((floor) => floor.containers && floor.containers.length > 0)
           .slice()
           .sort((a, b) => b.floorNum - a.floorNum)
           .map((floor) => (
@@ -2467,6 +2464,16 @@ function EventSettingsSection({
   const [editingEvent, setEditingEvent] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const getEventMaxDiscount = (applicableRoomTypes) => {
+    return applicableRoomTypes.reduce(
+      (acc, roomTypeId) => {
+        const m = getMaxDiscount(roomTypeId, new Date());
+        return m.value > acc.value ? m : acc;
+      },
+      { value: 0, type: 'percentage' }
+    );
+  };
+
   // 이벤트 검증 함수
   const validateEvent = (event, existingEvents = [], editingUuid = null) => {
     console.log('[validateEvent] Validating event:', event);
@@ -3322,10 +3329,7 @@ function EventSettingsSection({
           </p>
         )}
         {events.map((event) => {
-          const maxDiscount = getMaxDiscount(
-            event.applicableRoomTypes[0],
-            new Date()
-          );
+          const maxDiscount = getEventMaxDiscount(event.applicableRoomTypes);
           return (
             <div key={event.uuid} className="hotel-settings-event-item">
               <div className="hotel-settings-event-item-header">
@@ -3379,8 +3383,7 @@ function EventSettingsSection({
                   {event.discountType === 'percentage' ? '%' : '원'}
                   {maxDiscount.value > event.discountValue && (
                     <span style={{ color: 'red', marginLeft: '8px' }}>
-                      ({language === 'kor' ? '최대 적용' : 'Max applied'}:{' '}
-                      {maxDiscount.value}
+                      (최대 적용: {maxDiscount.value}
                       {maxDiscount.type === 'fixed' ? '원' : '%'})
                     </span>
                   )}
@@ -3499,12 +3502,7 @@ function CouponSettingsSection({
   const [loyaltySettings, setLoyaltySettings] = useState({
     customCoupons: [],
   });
-  const [firstVisitSettings, setFirstVisitSettings] = useState({
-    discountType: 'percentage',
-    discountValue: 10,
-    couponCount: 1,
-    isActive: true,
-  });
+
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCustomers, setSelectedCustomers] = useState([]);
@@ -3542,55 +3540,6 @@ function CouponSettingsSection({
     setTimeout(() => setMessage(''), duration);
   };
 
-  // 변경
-  useEffect(() => {
-    const fetchFirstVisitSettings = async () => {
-      try {
-        const firstVisitCoupons = await fetchFirstVisitCoupons(hotelId);
-        if (firstVisitCoupons) {
-          setFirstVisitSettings({
-            discountType: firstVisitCoupons.discountType || 'percentage',
-            discountValue: firstVisitCoupons.discountValue || 10,
-            couponCount: firstVisitCoupons.couponCount || 1,
-            isActive: firstVisitCoupons.isActive ?? true, // isActive 반영, 없으면 기본값 true
-          });
-        }
-      } catch (err) {
-        console.error('[fetchFirstVisitSettings] Error:', err);
-        setError(
-          language === 'kor'
-            ? '최초 방문 쿠폰 설정을 불러오지 못했습니다.'
-            : 'Failed to load first visit coupon settings.'
-        );
-      }
-    };
-    fetchFirstVisitSettings();
-  }, [hotelId, language]);
-
-  // 최초 방문 쿠폰 설정 로드
-  useEffect(() => {
-    const fetchFirstVisitSettings = async () => {
-      try {
-        const firstVisitCoupons = await fetchFirstVisitCoupons(hotelId);
-        if (firstVisitCoupons) {
-          setFirstVisitSettings({
-            discountType: firstVisitCoupons.discountType || 'percentage',
-            discountValue: firstVisitCoupons.discountValue || 10,
-            couponCount: firstVisitCoupons.couponCount || 1,
-          });
-        }
-      } catch (err) {
-        console.error('[fetchFirstVisitSettings] Error:', err);
-        setError(
-          language === 'kor'
-            ? '최초 방문 쿠폰 설정을 불러오지 못했습니다.'
-            : 'Failed to load first visit coupon settings.'
-        );
-      }
-    };
-    fetchFirstVisitSettings();
-  }, [hotelId, language]);
-
   useEffect(() => {
     const fetchUsedCouponsData = async () => {
       setIsUsedCouponsLoading(true);
@@ -3599,116 +3548,25 @@ function CouponSettingsSection({
         setUsedCoupons(usedCouponsData);
         setUsedCouponsError(null);
       } catch (err) {
-        console.error('[fetchUsedCouponsData] Error:', err);
+        console.error('[fetchUsedCouponsData] Error:', err.message);
         setUsedCouponsError(
           language === 'kor'
-            ? '사용된 쿠폰 목록을 불러오지 못했습니다.'
+            ? '사용된 쿠폰 목록 로드 실패.'
             : 'Failed to load used coupons.'
         );
       } finally {
         setIsUsedCouponsLoading(false);
       }
     };
-
+  
     fetchUsedCouponsData();
-
-    const token = getAccessToken();
-    if (!token || !hotelId) {
-      console.warn(
-        '[WebSocket] Missing token or hotelId, skipping connection.'
-      );
-      setUsedCouponsError(
-        language === 'kor'
-          ? 'WebSocket 인증 오류: 토큰 또는 호텔 ID가 없습니다.'
-          : 'WebSocket authentication error: Missing token or hotel ID.'
-      );
-      return;
-    }
-
-    const socket = io.connect(
-      process.env.REACT_APP_API_BASE_URL || 'http://localhost:3004',
-      {
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        auth: {
-          accessToken: token,
-          hotelId,
-        },
-      }
-    );
-
-    socket.on('connect', () => {
-      socket.emit('joinHotel', `hotel_${hotelId}`);
-      console.log(`[WebSocket] Joined room: hotel_${hotelId}`);
-    });
-
-    socket.on('couponUsed', (data) => {
-      console.log('[WebSocket] Coupon used event received:', data);
-      if (data.hotelId === hotelId) {
-        setCoupons((prev) =>
-          prev.map((coupon) =>
-            coupon.uuid === data.usedCoupon.couponUuid
-              ? {
-                  ...coupon,
-                  usedCount: (coupon.usedCount || 0) + 1,
-                  usedAt: data.usedCoupon.usedAt,
-                }
-              : coupon
-          )
-        );
-        setUsedCoupons((prev) => {
-          const exists = prev.some(
-            (c) => c.couponUuid === data.usedCoupon.couponUuid
-          );
-          if (exists) return prev;
-          return [...prev, data.usedCoupon];
-        });
-      }
-    });
-
-    socket.on('couponCanceled', (data) => {
-      console.log('[WebSocket] Coupon canceled event received:', data);
-      if (data.hotelId === hotelId) {
-        setCoupons((prev) =>
-          prev.map((coupon) =>
-            coupon.uuid === data.couponUuid
-              ? {
-                  ...coupon,
-                  usedCount: Math.max((coupon.usedCount || 0) - 1, 0),
-                  usedAt: null,
-                }
-              : coupon
-          )
-        );
-        setUsedCoupons((prev) =>
-          prev.filter((c) => c.couponUuid !== data.couponUuid)
-        );
-        // 상태 강제 새로고침
-        fetchUsedCouponsData();
-      }
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('[WebSocket] Connection error:', err.message);
-      setUsedCouponsError(
-        language === 'kor'
-          ? '실시간 업데이트에 문제가 발생했습니다. 페이지를 새로고침해주세요.'
-          : 'Issue with real-time updates. Please refresh the page.'
-      );
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [hotelId, language, setCoupons]);
+  }, [hotelId, language]);
 
   useEffect(() => {
     const calculateMonthlyStats = () => {
       const stats = {};
       const today = new Date();
 
-      // 생성된 쿠폰 (삭제 여부와 관계없이 통계 계산)
       coupons.forEach((coupon) => {
         const issuedAt = parseDate(coupon.issuedAt);
         if (!issuedAt || isNaN(issuedAt.getTime())) return;
@@ -3719,7 +3577,6 @@ function CouponSettingsSection({
         stats[monthKey].issued += 1;
       });
 
-      // 사용된 쿠폰 (삭제 여부와 관계없이 통계 계산)
       usedCoupons.forEach((coupon) => {
         const usedAt = parseDate(coupon.usedAt);
         if (!usedAt || isNaN(usedAt.getTime())) return;
@@ -3729,7 +3586,6 @@ function CouponSettingsSection({
         }
         stats[monthKey].used += 1;
 
-        // 사용 후 1개월 지난 쿠폰 체크
         const oneMonthAgo = subMonths(today, 1);
         if (usedAt < oneMonthAgo) {
           stats[monthKey].deleted += 1;
@@ -3815,7 +3671,7 @@ function CouponSettingsSection({
           `/api/hotel-settings/${hotelId}/coupons`
         );
         const latestCoupons = response.data.coupons
-          .filter((coupon) => !coupon.isDeleted) // 삭제된 쿠폰 필터링
+          .filter((coupon) => !coupon.isDeleted)
           .map((coupon) => ({
             ...coupon,
             startDate: coupon.startDate
@@ -3837,12 +3693,12 @@ function CouponSettingsSection({
             await onCouponsChange(latestCoupons);
           }
         }
-
+  
         const usedCouponsData = await fetchUsedCoupons(hotelId);
         if (JSON.stringify(usedCouponsData) !== JSON.stringify(usedCoupons)) {
           setUsedCoupons(usedCouponsData);
         }
-
+  
         await deleteExpiredCoupons(hotelId);
       } catch (err) {
         console.error('[pollCoupons] Error:', err);
@@ -3853,7 +3709,7 @@ function CouponSettingsSection({
         );
       }
     }, 10_000);
-
+  
     return () => clearInterval(intervalId);
   }, [hotelId, onCouponsChange, coupons, usedCoupons, language, setCoupons]);
 
@@ -4174,79 +4030,6 @@ function CouponSettingsSection({
     }
   };
 
-  const handleFirstVisitChange = (field, value) => {
-    if (!isAdminAuthenticated) {
-      setPendingAction(() => () => handleFirstVisitChange(field, value));
-      setShowPasswordModal(true);
-      return;
-    }
-    const parsedValue =
-      field === 'discountValue' || field === 'couponCount'
-        ? parseFloat(value) || 0
-        : field === 'isActive'
-        ? value === 'true' || value === true
-        : value;
-    setFirstVisitSettings((prev) => ({ ...prev, [field]: parsedValue }));
-  };
-
-  const saveFirstVisitSettings = async () => {
-    if (!isAdminAuthenticated) {
-      setPendingAction(() => saveFirstVisitSettings);
-      setShowPasswordModal(true);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { discountType, discountValue, couponCount, isActive } =
-        firstVisitSettings;
-      console.log('[saveFirstVisitSettings] Sending payload:', {
-        discountType,
-        discountValue,
-        couponCount,
-        isActive,
-        hotelId,
-      });
-      if (
-        discountValue < 0 ||
-        (discountType === 'percentage' && discountValue > 100)
-      ) {
-        throw new Error(
-          language === 'kor'
-            ? '할인 값이 유효하지 않습니다. (0 이상, 정률의 경우 100 이하)'
-            : 'Discount value is invalid. (0 or more, percentage <= 100)'
-        );
-      }
-      if (couponCount < 1) {
-        throw new Error(
-          language === 'kor'
-            ? '발행 개수는 1 이상이어야 합니다.'
-            : 'Coupon count must be at least 1.'
-        );
-      }
-      const updatedSettings = await saveFirstVisitCoupons(hotelId, {
-        discountType,
-        discountValue,
-        couponCount,
-        isActive,
-        hotelId,
-      });
-      setFirstVisitSettings(updatedSettings);
-      showMessage(
-        language === 'kor'
-          ? '최초 방문 쿠폰 설정이 저장되었습니다.'
-          : 'First visit coupon settings have been saved.'
-      );
-    } catch (err) {
-      console.error('[saveFirstVisitSettings] Error:', err);
-      setError(
-        language === 'kor'
-          ? `최초 방문 쿠폰 설정 저장에 실패했습니다: ${err.message}`
-          : `Failed to save first visit coupon settings: ${err.message}`
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleCustomerSearch = async () => {
     if (
@@ -4524,7 +4307,6 @@ function CouponSettingsSection({
     }
   };
 
-  // 적용된 쿠폰 활성화/비활성화 토글
   const toggleAppliedCoupon = async (index) => {
     setIsLoading(true);
     try {
@@ -5053,107 +4835,6 @@ function CouponSettingsSection({
               ))}
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="coupon-first-visit-settings coupon-section-block">
-        <h4>
-          {language === 'kor'
-            ? '최초 방문 쿠폰 설정'
-            : 'First Visit Coupon Settings'}
-        </h4>
-        <div className="coupon-first-visit-form">
-          <div className="coupon-first-visit-form-row">
-            <div className="coupon-first-visit-form-group">
-              <div className="coupon-first-visit-form-cell">
-                <label>
-                  {language === 'kor' ? '할인 유형' : 'Discount Type'}
-                </label>
-                <select
-                  value={firstVisitSettings.discountType}
-                  onChange={(e) =>
-                    handleFirstVisitChange('discountType', e.target.value)
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  <option value="percentage">
-                    {language === 'kor' ? '정률 (%)' : 'Percentage (%)'}
-                  </option>
-                  <option value="fixed">
-                    {language === 'kor' ? '정액 (원)' : 'Fixed (₩)'}
-                  </option>
-                </select>
-              </div>
-              <div className="coupon-first-visit-form-cell">
-                <label>
-                  {language === 'kor' ? '할인 값' : 'Discount Value'}
-                </label>
-                <input
-                  type="number"
-                  value={firstVisitSettings.discountValue}
-                  onChange={(e) =>
-                    handleFirstVisitChange('discountValue', e.target.value)
-                  }
-                  min="0"
-                  max={
-                    firstVisitSettings.discountType === 'percentage'
-                      ? 100
-                      : undefined
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-              <div className="coupon-first-visit-form-cell">
-                <label>
-                  {language === 'kor' ? '발행 개수' : 'Coupon Count'}
-                </label>
-                <input
-                  type="number"
-                  value={firstVisitSettings.couponCount}
-                  onChange={(e) =>
-                    handleFirstVisitChange('couponCount', e.target.value)
-                  }
-                  min="1"
-                  disabled={isLoading || !isAdminAuthenticated}
-                />
-              </div>
-            </div>
-            <div className="coupon-first-visit-form-actions">
-              <div className="coupon-first-visit-form-cell coupon-status-cell">
-                <button
-                  className={`coupon-btn coupon-toggle ${
-                    firstVisitSettings.isActive
-                      ? 'coupon-active'
-                      : 'coupon-inactive'
-                  }`}
-                  onClick={() =>
-                    handleFirstVisitChange(
-                      'isActive',
-                      !firstVisitSettings.isActive
-                    )
-                  }
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  {firstVisitSettings.isActive
-                    ? language === 'kor'
-                      ? '활성화'
-                      : 'Active'
-                    : language === 'kor'
-                    ? '비활성화'
-                    : 'Inactive'}
-                </button>
-              </div>
-              <div className="coupon-first-visit-form-cell">
-                <button
-                  className="coupon-btn coupon-save"
-                  onClick={saveFirstVisitSettings}
-                  disabled={isLoading || !isAdminAuthenticated}
-                >
-                  {language === 'kor' ? '저장' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -6830,15 +6511,25 @@ export default function HotelSettingsPage() {
         })),
       });
 
-      const updatedSettings = await updateHotelSettings(hotelId, payload);
+      // 1) axios 를 쓰고 있다면 .data.data 안에 실제 payload 가 들어옵니다.
+      const response = await updateHotelSettings(hotelId, payload);
+      // wrapper 에 따라 response.data.data 혹은 response.data 혹은 response
+      const updatedSettings =
+        // axios 형태
+        response.data?.data ||
+        // fetch 형태
+        response.data ||
+        // 혹시 미리 래핑해놨다면
+        response;
       console.log('[handleSaveEvents] Updated Settings:', updatedSettings);
 
-      if (!updatedSettings || !updatedSettings.roomTypes) {
-        throw new Error(
-          language === 'kor'
-            ? '서버 응답에서 호텔 설정 데이터를 찾을 수 없습니다.'
-            : 'Hotel settings data not found in server response.'
+      // 이제 방어 코드도 수정: roomTypes 없으면 그냥 리턴
+      if (!updatedSettings?.roomTypes) {
+        console.warn(
+          '[handleSaveEvents] roomTypes가 응답에 없습니다.',
+          updatedSettings
         );
+        return;
       }
 
       setRoomTypes(updatedSettings.roomTypes);

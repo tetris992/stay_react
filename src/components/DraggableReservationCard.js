@@ -797,8 +797,10 @@ const DraggableReservationCard = ({
   const isHighlighted =
     highlightedReservationIds.includes(normalizedReservation._id) &&
     isSearching;
-  const isNewlyCreated =
-    normalizedReservation._id === newlyCreatedId && isNewlyCreatedHighlighted;
+  // “단잠” 예약 중, WS / on-site 에서 새로 들어온 것만 하이라이트
+  const isDanjamNewlyCreated =
+    normalizedReservation.siteName === '단잠' &&
+    normalizedReservation._id === newlyCreatedId;
   const isUpdated =
     normalizedReservation._id === updatedReservationId && isUpdatedHighlighted;
   const isCancelled =
@@ -844,7 +846,8 @@ const DraggableReservationCard = ({
     isCancelled ? 'cancelled' : '',
     isUnassigned ? 'unassigned-card' : '',
     isHighlighted ? 'highlighted' : '',
-    isNewlyCreated || isUpdated ? 'onsite-created' : '',
+    isUpdated ? 'onsite-created' : '',
+    isDanjamNewlyCreated ? 'danjam-highlight' : '',
     !canDragMemo ? 'draggable-false' : '',
     normalizedReservation.isCheckedOut ? 'checked-out' : '',
     isDayUseExpired ? 'expired-blink' : '', // 깜빡임 클래스 추가
@@ -1080,99 +1083,98 @@ const DraggableReservationCard = ({
       </div>
     );
   };
-// 정상 예약 UI
-const renderNormalFront = () => {
-  // couponInfo 포맷팅 함수
-  const formatCouponInfo = (couponInfo) => {
-    if (!couponInfo || !couponInfo.name) return '없음';
-  
-    // "호텔명 - 실제쿠폰이름" 에서 실제쿠폰이름만 추출
-    const parts = couponInfo.name.split('-');
-    const cleanName = parts.length > 1
-      ? parts.slice(1).join('-').trim()
-      : couponInfo.name;
-  
-    // 할인 텍스트
-    const discountText =
-      couponInfo.discountType === 'percentage'
-        ? `${couponInfo.discountValue}% 할인`
-        : `${couponInfo.discountValue.toLocaleString()}원 할인`;
-  
-    return `${cleanName} (${discountText})`;
-  };
+  // 정상 예약 UI
+  const renderNormalFront = () => {
+    // couponInfo 포맷팅 함수
+    const formatCouponInfo = (couponInfo) => {
+      if (!couponInfo || !couponInfo.name) return '없음';
 
-  return (
-    <div className="content-footer-wrapper">
-      <div className="card-content">
-        <div className="card-header">
-          <h3 className="no-break">
-            <span className="stay-label">{stayLabel}</span>
-            {normalizedReservation.type === 'dayUse'
-              ? renderDayUseButtons
-              : buttonGroup}
-          </h3>
-        </div>
-        <p className="reservation-no">{truncatedReservationNo}</p>
-        <p style={textStyleIfSoldOut}>
-          예약자: {normalizedReservation.customerName || '정보 없음'}{' '}
-          {normalizedReservation.type === 'dayUse' && (
-            <CountdownTimer
-              checkOutDate={checkOutDate}
-              reservationId={normalizedReservation._id}
-              newlyCreatedId={newlyCreatedId}
-              isCheckedIn={normalizedReservation.isCheckedIn}
-              duration={normalizedReservation.duration}
-            />
-          )}
-        </p>
-        <p className={isSoldOut ? 'sold-out-date' : ''}>
-          체크인: {displayCheckIn}
-        </p>
-        <p className={isSoldOut ? 'sold-out-date' : ''}>
-          체크아웃: {displayCheckOut}
-        </p>
-        <p style={textStyleIfSoldOut}>
-          가격: {displayPrice}
-          {normalizedReservation.paymentMethod?.includes('PerNight') &&
-            normalizedReservation.remainingBalance > 0 && (
-              <span style={{ color: 'red' }}>
-                (잔여: {normalizedReservation.remainingBalance.toLocaleString()})
-              </span>
+      // "호텔명 - 실제쿠폰이름" 에서 실제쿠폰이름만 추출
+      const parts = couponInfo.name.split('-');
+      const cleanName =
+        parts.length > 1 ? parts.slice(1).join('-').trim() : couponInfo.name;
+
+      // 할인 텍스트
+      const discountText =
+        couponInfo.discountType === 'percentage'
+          ? `${couponInfo.discountValue}% 할인`
+          : `${couponInfo.discountValue.toLocaleString()}원 할인`;
+
+      return `${cleanName} (${discountText})`;
+    };
+
+    return (
+      <div className="content-footer-wrapper">
+        <div className="card-content">
+          <div className="card-header">
+            <h3 className="no-break">
+              <span className="stay-label">{stayLabel}</span>
+              {normalizedReservation.type === 'dayUse'
+                ? renderDayUseButtons
+                : buttonGroup}
+            </h3>
+          </div>
+          <p className="reservation-no">{truncatedReservationNo}</p>
+          <p style={textStyleIfSoldOut}>
+            예약자: {normalizedReservation.customerName || '정보 없음'}{' '}
+            {normalizedReservation.type === 'dayUse' && (
+              <CountdownTimer
+                checkOutDate={checkOutDate}
+                reservationId={normalizedReservation._id}
+                newlyCreatedId={newlyCreatedId}
+                isCheckedIn={normalizedReservation.isCheckedIn}
+                duration={normalizedReservation.duration}
+              />
             )}
-        </p>
-        {/* couponInfo 표시 추가 */}
-        <p>
-          할인 정보:{' '}
-          <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
-            {formatCouponInfo(normalizedReservation.couponInfo)}
-          </span>
-        </p>
-        <p>
-          객실 정보:{' '}
-          {normalizedReservation.roomInfo &&
-          normalizedReservation.roomInfo.length > 30
-            ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
-            : normalizedReservation.roomInfo || '정보 없음'}
-        </p>
-        <p>예약일: {displayReservationDate}</p>
-        {normalizedReservation.phoneNumber && (
-          <p>전화번호: {normalizedReservation.phoneNumber}</p>
-        )}
-        <p className="payment-method">
-          결제방법:{' '}
-          {paymentMethodInfo.icon && (
-            <>
-              {paymentMethodInfo.icon} {paymentMethodInfo.text}
-            </>
+          </p>
+          <p className={isSoldOut ? 'sold-out-date' : ''}>
+            체크인: {displayCheckIn}
+          </p>
+          <p className={isSoldOut ? 'sold-out-date' : ''}>
+            체크아웃: {displayCheckOut}
+          </p>
+          <p style={textStyleIfSoldOut}>
+            가격: {displayPrice}
+            {normalizedReservation.paymentMethod?.includes('PerNight') &&
+              normalizedReservation.remainingBalance > 0 && (
+                <span style={{ color: 'red' }}>
+                  (잔여:{' '}
+                  {normalizedReservation.remainingBalance.toLocaleString()})
+                </span>
+              )}
+          </p>
+          {/* couponInfo 표시 추가 */}
+          <p>
+            할인 정보:{' '}
+            <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+              {formatCouponInfo(normalizedReservation.couponInfo)}
+            </span>
+          </p>
+          <p>
+            객실 정보:{' '}
+            {normalizedReservation.roomInfo &&
+            normalizedReservation.roomInfo.length > 30
+              ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
+              : normalizedReservation.roomInfo || '정보 없음'}
+          </p>
+          <p>예약일: {displayReservationDate}</p>
+          {normalizedReservation.phoneNumber && (
+            <p>전화번호: {normalizedReservation.phoneNumber}</p>
           )}
-        </p>
-        <p>고객요청: {normalizedReservation.specialRequests || '없음'}</p>
-        
+          <p className="payment-method">
+            결제방법:{' '}
+            {paymentMethodInfo.icon && (
+              <>
+                {paymentMethodInfo.icon} {paymentMethodInfo.text}
+              </>
+            )}
+          </p>
+          <p>고객요청: {normalizedReservation.specialRequests || '없음'}</p>
+        </div>
+        {renderSiteInfoFooter()}
       </div>
-      {renderSiteInfoFooter()}
-    </div>
-  );
-};
+    );
+  };
 
   // 공통 site-info-footer UI
   const renderSiteInfoFooter = () => {

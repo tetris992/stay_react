@@ -118,9 +118,25 @@
   height: 100%;
 }
 
+/* 이부분이 룸그리드 배경을 관여하는 코드임  */
 .room-card-front {
   z-index: 2;
+  /* background-color: lightgreen; */
   transform: rotateY(0deg);
+}
+
+@keyframes danjamHighlight {
+  0% {
+    background-color: rgba(144, 238, 144, 0.9); /* 연한 녹색 */
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* front-face 에 직접 붙일 수도 있고, wrapper 클래스에 붙여도 됩니다 */
+.room-card-front.danjam-highlight {
+  animation: danjamHighlight 20s ease-out forwards;
 }
 
 .room-card-back {
