@@ -2388,67 +2388,67 @@ const App = () => {
     ] // handleCardFlip 제거
   );
 
-  const handleReservationDeleted = useCallback(
+ const handleReservationDeleted = useCallback(
     (data, callback) => {
-      console.log(
-        `WS → reservationDeleted, immediate update:`,
-        data.reservationId
-      );
-
+      console.log(`[handleReservationDeleted] Received event:`, data);
+      console.log(`[handleReservationDeleted] isJoinedHotel: ${isJoinedHotel}`);
       if (!isJoinedHotel) {
-        console.warn(
-          '[handleReservationDeleted] Skipped: isJoinedHotel is false'
-        );
+        console.warn('[handleReservationDeleted] Skipped: isJoinedHotel is false');
         callback?.({ success: false, error: 'Not joined to hotel room' });
         return;
       }
 
       const reservationId = data.reservationId;
       if (!reservationId) {
-        console.warn(
-          'Invalid reservationDeleted event, missing reservationId:',
-          data
-        );
+        console.warn('[handleReservationDeleted] Invalid reservationId:', data);
         callback?.({ success: false, error: 'Invalid reservationId' });
         return;
       }
 
-      setAllReservations(prev => {
-        // 1) 상태에서 제거
-        const updated = prev.filter(res => res._id !== reservationId);
+      // 상태 업데이트 및 DOM 제거 재시도
+      const attemptRemove = (attemptsLeft = 5, delay = 100) => {
+        setAllReservations((prev) => {
+          const reservationToDelete = prev.find((res) => res._id === reservationId);
+          if (!reservationToDelete) {
+            console.warn(`[handleReservationDeleted] Reservation ${reservationId} not found`);
+            callback?.({ success: true });
+            return prev;
+          }
 
-        // 2) RoomGrid에 뿌려질 activeReservations도 갱신
-        filterReservationsByDate(updated, selectedDate);
+          const updated = prev.filter((res) => res._id !== reservationId);
+          filterReservationsByDate(updated, selectedDate);
+          console.log(`[handleReservationDeleted] Removed reservation ${reservationId} from state`);
 
-        console.log(
-          `[handleReservationDeleted] Removed reservation ${reservationId} from UI`
-        );
+          // DOM 제거 확인
+          setTimeout(() => {
+            const card = document.querySelector(`.room-card[data-id="${reservationId}"]`);
+            if (card) {
+              card.classList.add('remove');
+              console.warn(`[handleReservationDeleted] Card still exists for ${reservationId}, retrying (${attemptsLeft} attempts left)`);
+              if (attemptsLeft > 0) {
+                setTimeout(() => attemptRemove(attemptsLeft - 1, delay), delay);
+              } else {
+                console.error(`[handleReservationDeleted] Failed to remove card ${reservationId}`);
+              }
+            } else {
+              console.log(`[handleReservationDeleted] Card ${reservationId} successfully removed`);
+            }
+          }, 50);
 
-        // 3) 로그 남기기
-        const { customerName, phoneNumber, checkIn, checkOut, siteName } =
-          data.reservation || {};
-        const formattedCheckIn = checkIn
-          ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm')
-          : '정보 없음';
-        const formattedCheckOut = checkOut
-          ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm')
-          : '정보 없음';
-        logMessage(
-          `[handleReservationDeleted] Deleted reservation ${
-            siteName === '현장예약' ? '현장예약' : '단잠'
-          } (사이트: ${siteName || '알 수 없음'}) - 예약자: ${
-            customerName || '정보 없음'
-          }, 전화번호: ${
-            phoneNumber || '정보 없음'
-          }, 체크인: ${formattedCheckIn}, 체크아웃: ${formattedCheckOut}`,
-          'delete'
-        );
+          const { customerName, phoneNumber, checkIn, checkOut, siteName } = data.reservation || {};
+          const formattedCheckIn = checkIn ? format(new Date(checkIn), 'yyyy-MM-dd HH:mm') : '정보 없음';
+          const formattedCheckOut = checkOut ? format(new Date(checkOut), 'yyyy-MM-dd HH:mm') : '정보 없음';
+          logMessage(
+            `[handleReservationDeleted] Deleted reservation ${siteName === '현장예약' ? '현장예약' : '단잠'} (사이트: ${siteName || '알 수 없음'}) - 예약자: ${customerName || '정보 없음'}, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${formattedCheckIn}, 체크아웃: ${formattedCheckOut}`,
+            'delete'
+          );
 
-        // 4) 콜백 호출
-        callback?.({ success: true });
+          callback?.({ success: true });
+          return updated;
+        });
+      };
 
-        return updated;
-      });
+      attemptRemove();
     },
     [isJoinedHotel, filterReservationsByDate, selectedDate, logMessage]
   );
@@ -2457,10 +2457,13 @@ const App = () => {
     if (!socketRef.current || !isJoinedHotel) return;
 
     socketRef.current.on('reservationDeleted', handleReservationDeleted);
+
     return () => {
-      socketRef.current.off('reservationDeleted', handleReservationDeleted);
+      if (socketRef.current) {
+        socketRef.current.off('reservationDeleted', handleReservationDeleted);
+      }
     };
-  }, [socketRef, isJoinedHotel, handleReservationDeleted]);
+  }, [handleReservationDeleted, isJoinedHotel]);
 
   const handleReservationUpdated = useCallback(
     (data, callback) => {

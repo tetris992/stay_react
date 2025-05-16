@@ -123,23 +123,33 @@
   z-index: 2;
   background-color: rgb(229, 229, 229);
   transform: rotateY(0deg);
+  transition: opacity 0.2s ease;
 }
 
-/* ——— 맥박처럼 깜빡이는 애니메이션 정의 ——— */
+/* 맥박 애니메이션 */
 @keyframes danjamPulse {
   0%, 100% {
-    background-color: rgb(251, 204, 132);  /* 기본 회색 */
+    background-color: rgb(251, 204, 132);
   }
   50% {
-    background-color: rgba(76, 175, 80, 0.3); /* 연한 초록 */
+    background-color: rgba(76, 175, 80, 0.3);
   }
 }
 
-/* 1초마다 한 번씩 깜빡이고, 무한 반복(infinite) */
+/* 삭제 시 애니메이션 비활성화 */
 .room-card-front.danjam-highlight {
   animation: danjamPulse 1s ease-in-out infinite alternate;
 }
+/* .room-card-front.remove {
+  animation: none !important;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+} */
 
+/* 카드 제거 시 즉시 숨김 */
+.room-card.remove {
+  display: none;
+}
 .room-card-back {
   z-index: 1;
   transform: rotateY(180deg);
