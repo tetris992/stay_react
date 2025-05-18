@@ -1,4 +1,5 @@
-import { parse, isValid, format } from 'date-fns';
+import { parse, isValid } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { ko, enUS } from 'date-fns/locale';
 
 const parsedDateCache = {};
@@ -15,6 +16,7 @@ const cleanString = (str) => {
     .replace(/미리예약/g, '')
     .trim();
 };
+
 /**
  * 날짜 문자열을 파싱하여 Date 객체로 반환
  * @param {string} dateString - 파싱할 날짜 문자열
@@ -75,7 +77,6 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
   const defaultCheckInTime = '16:00';
   const defaultCheckOutTime = '11:00';
 
-  let parsedDate = null;
   for (let locale of locales) {
     for (let formatString of dateFormats) {
       const parsed = parse(cleanedDateString, formatString, new Date(), { locale });
@@ -88,16 +89,16 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
           const [hours, minutes] = time.split(':');
           parsed.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         }
-        parsedDate = parsed;
-        parsedDateCache[dateString] = parsedDate;
+        parsedDateCache[dateString] = parsed;
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
+          console.log(`Parsed Date: ${parsed.toISOString()}`);
         }
-        return parsedDate;
+        return parsed;
       }
     }
   }
 
+  // Fallback: 직접 파싱
   try {
     const directParsed = new Date(cleanedDateString);
     if (isValid(directParsed)) {
@@ -109,12 +110,11 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
         const [hours, minutes] = time.split(':');
         directParsed.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
       }
-      parsedDate = directParsed;
-      parsedDateCache[dateString] = parsedDate;
+      parsedDateCache[dateString] = directParsed;
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Direct Parsed Date: ${format(parsedDate, 'yyyy-MM-dd HH:mm:ss')}`);
+        console.log(`Direct Parsed Date: ${directParsed.toISOString()}`);
       }
-      return parsedDate;
+      return directParsed;
     }
   } catch (error) {
     console.error(`Failed to directly parse date: "${dateString}"`, error);
@@ -127,10 +127,16 @@ export const parseDate = (dateString, hotelSettings = null, isCheckIn = true) =>
   return null;
 };
 
+/**
+ * 날짜를 지정된 형식으로 포맷 (항상 KST 기준)
+ * @param {Date|string} date - 포맷할 날짜
+ * @param {string} formatString - 포맷 문자열
+ * @returns {string} - 포맷된 날짜 문자열
+ */
 export const formatDate = (date, formatString = 'yyyy-MM-dd HH:mm:ss') => {
   if (!date) return '정보 없음';
   try {
-    return format(date, formatString);
+    return formatInTimeZone(new Date(date), 'Asia/Seoul', formatString);
   } catch (error) {
     console.error(`Error formatting date: ${date}`, error);
     return '정보 없음';
