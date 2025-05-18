@@ -708,13 +708,23 @@ const floorReservations = useMemo(() => {
 useEffect(() => {
   if (newlyCreatedId) {
     console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
-    const card = document.querySelector(`.room-card[data-id="${newlyCreatedId}"]`);
-    if (card) {
-      console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      console.warn(`[RoomGrid] Card with ID ${newlyCreatedId} not found`);
-    }
+    const attemptScroll = (attemptsLeft = 5, delay = 200) => {
+      const card = document.querySelector(`.room-card[data-id="${newlyCreatedId}"]`);
+      if (card) {
+        console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (attemptsLeft > 0) {
+        console.warn(
+          `[RoomGrid] Card with ID ${newlyCreatedId} not found, retrying (${attemptsLeft} attempts left)`
+        );
+        setTimeout(() => attemptScroll(attemptsLeft - 1, delay), delay);
+      } else {
+        console.error(
+          `[RoomGrid] Failed to find card with ID ${newlyCreatedId} after retries`
+        );
+      }
+    };
+    attemptScroll();
   }
 }, [newlyCreatedId]);
 

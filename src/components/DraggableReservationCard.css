@@ -18,7 +18,7 @@
   --room-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   --button-gap: 8px;
 
-  /* 색상 변수 추가 */
+  /* 색상 변수 */
   --color-accent-coral: #ff6347; /* 산호색 (1박) */
   --color-primary-deep-blue: #2196f3; /* 진한 파란색 (2박 이상) */
   --color-primary-soft-green: #4caf50; /* 연한 초록색 (대실) */
@@ -87,10 +87,6 @@
   opacity: 0.7;
 }
 
-/* .room-card.editing {
-  border: 2px dashed #007bff;
-} */
-
 @keyframes highlightBlink {
   0% {
     box-shadow: 0 0 10px #ff0000;
@@ -134,7 +130,30 @@
   transform: rotateY(180deg);
 }
 
+.room-card-front,
 .room-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  background-color: var(--room-card-background-color);
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  height: 100%;
+}
+
+.room-card-front {
+  z-index: 2;
+  background-color: rgb(229, 229, 229);
+  transform: rotateY(0deg);
+  transition: opacity 0.2s ease;
+}
+
+.room-card-back {
+  z-index: 1;
   transform: rotateY(-180deg);
   padding: 0;
   box-sizing: border-box;
@@ -173,10 +192,44 @@
   transform: rotateY(180deg);
 }
 
+/* 맥박 애니메이션 */
+@keyframes danjamPulse {
+  0%, 100% {
+    background-color: rgb(251, 204, 132);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  }
+  50% {
+    background-color: rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+  }
+}
+
+@-webkit-keyframes danjamPulse {
+  0%, 100% {
+    background-color: rgb(251, 204, 132);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  }
+  50% {
+    background-color: rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+  }
+}
+
+/* room-card-front에 직접 danjam-highlight 클래스가 붙었을 때만 */
+.room-card-front.danjam-highlight {
+  -webkit-animation: danjamPulse 1s ease-in-out infinite alternate;
+  animation: danjamPulse 1s ease-in-out infinite alternate;
+}
+
+/* 카드 제거 시 즉시 숨김 */
+.room-card.remove {
+  display: none;
+}
+
 /* ==========================================================================
    [Card Content]
 ========================================================================== */
-/* .content-footer-wrapper {
+.content-footer-wrapper {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -285,7 +338,7 @@
   margin: 5px 0;
 }
 
-.countdown .expired {
+.countdown.expired {
   color: var(--expired-color);
   font-weight: bold;
 }
@@ -294,7 +347,7 @@
   cursor: not-allowed !important;
   opacity: 0.7;
   border: 3px dotted #5656a3;
-} 
+}
 
 /* ==========================================================================
    [Action Buttons - Icon Based, Embossed]
@@ -315,86 +368,86 @@
 .action-btn {
   font-size: 0.7rem;
   border: none;
-  cursor: pointer; /* 손 모양 커서 */
-  padding: 4px 8px; /* 텍스트 크기에 맞게 조정 */
+  cursor: pointer;
+  padding: 4px 8px;
   height: 28px;
   width: 40px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px; /* 둥근 모서리 */
+  border-radius: 4px;
   font-weight: 600;
   position: relative;
   overflow: visible;
   z-index: 2;
-  background-color: var(--button-bg-default); /* 기본 무채색 (희미한 회색) */
-  color: var(--button-text-default); /* 기본 텍스트 색상 (약간 어두운 회색) */
-  box-shadow: var(--button-shadow-default); /* 기본 그림자 */
+  background-color: var(--button-bg-default);
+  color: var(--button-text-default);
+  box-shadow: var(--button-shadow-default);
   transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
-  pointer-events: auto; /* 클릭 가능성을 명확히 */
+  pointer-events: auto;
 }
 
 .action-btn:hover {
-  background-color: var(--button-bg-hover); /* 호버 시 더 진한 회색 */
-  color: var(--button-text-hover); /* 호버 시 더 진한 텍스트 색상 */
-  box-shadow: var(--button-shadow-hover); /* 호버 시 그림자 강화 */
+  background-color: var(--button-bg-hover);
+  color: var(--button-text-hover);
+  box-shadow: var(--button-shadow-hover);
 }
 
 /* 특정 버튼 스타일 (기능별 약간의 색상 차이) */
 .action-btn.checkin-btn {
-  background-color: #d3d3d3; /* 더 밝은 회색 (입실 버튼) */
+  background-color: #d3d3d3;
   color: var(--button-text-default);
-  cursor: pointer; /* 손 모양 커서 */
+  cursor: pointer;
 }
 
 .action-btn.checkin-btn:hover {
-  background-color: #c3c3c3; /* 호버 시 약간 더 진한 회색 */
+  background-color: #c3c3c3;
   color: var(--button-text-hover);
 }
 
 .action-btn.checkout-btn {
-  background-color: #c9c9c9; /* 약간 어두운 회색 (퇴실 버튼) */
+  background-color: #c9c9c9;
   color: var(--button-text-default);
-  cursor: pointer; /* 손 모양 커서 */
+  cursor: pointer;
 }
 
 .action-btn.checkout-btn:hover {
-  background-color: #b9b9b9; /* 호버 시 더 진한 회색 */
+  background-color: #b9b9b9;
   color: var(--button-text-hover);
 }
 
 .action-btn.edit-btn {
-  background-color: #d6d6d6; /* 약간 더 밝은 회색 (수정 버튼) */
+  background-color: #d6d6d6;
   color: var(--button-text-default);
-  cursor: pointer; /* 손 모양 커서 */
+  cursor: pointer;
 }
 
 .action-btn.edit-btn:hover {
-  background-color: #c6c6c6; /* 호버 시 더 진한 회색 */
+  background-color: #c6c6c6;
   color: var(--button-text-hover);
 }
 
 .action-btn.delete-btn {
-  background-color: #cccccc; /* 중간 회색 (삭제 버튼) */
+  background-color: #cccccc;
   color: var(--button-text-default);
-  cursor: pointer; /* 손 모양 커서 */
+  cursor: pointer;
 }
 
 .action-btn.delete-btn:hover {
-  background-color: #bcbcbc; /* 호버 시 더 진한 회색 */
+  background-color: #bcbcbc;
   color: var(--button-text-hover);
 }
 
-/* 툴팁 스타일 (기존 유지, 색상 조정) */
+/* 툴팁 스타일 */
 .action-btn:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   top: -15px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.8); /* 툴팁 배경 색상 (검정 투명) */
-  color: #ffffff; /* 툴팁 텍스트 색상 */
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #ffffff;
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 0.6rem;
@@ -415,19 +468,19 @@
 .invoice-icon-button-back {
   background: transparent;
   border: none;
-  cursor: pointer; /* 손 모양 커서 */
-  color: var(--button-text-default); /* 무채색 텍스트 */
+  cursor: pointer;
+  color: var(--button-text-default);
   font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.3s ease, transform 0.2s ease;
-  pointer-events: auto; /* 클릭 가능성을 명확히 */
+  pointer-events: auto;
 }
 
 .invoice-icon-button-back:hover {
-  color: var(--button-text-hover); /* 호버 시 더 진한 회색 */
-  transform: scale(1.2); /* 약간 확대 */
+  color: var(--button-text-hover);
+  transform: scale(1.2);
 }
 
 /* ==========================================================================
@@ -460,20 +513,29 @@
 
 /* 판매중단객실 배경 */
 .room-card.sold-out {
-  background-color: #fa9f9f !important; /* 연한 회색 배경 */
+  background-color: #fa9f9f !important;
 }
 
 .sold-out-content {
-  color: #d32f2f !important; /* 붉은색 */
+  color: #d32f2f !important;
   font-weight: bold !important;
 }
 
 .sold-out-text {
-  color: #d32f2f !important; /* 붉은색 */
+  color: #d32f2f !important;
   font-weight: bold !important;
 }
 
+/* ===============================
+   [Unassigned Reservations Section]
+=============================== */
+.unassigned-card {
+  background-color: #eed142;
+  transform: scale(0.95);
+  transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
 
-/* ==========================================================================
-   [Flip Effect & Other Card Styles]
-========================================================================== */
+.unassigned-card:hover {
+  transform: scale(0.98);
+  background-color: #eed142;
+}

@@ -21,9 +21,9 @@ import { getBorderColor } from '../utils/roomGridUtils';
 import { getPriceForDisplay } from '../utils/getPriceForDisplay';
 import './DraggableReservationCard.css';
 import { getPaymentMethodIcon } from '../utils/roomGridUtils';
-import availableOTAs from '../config/availableOTAs'; // OTA 목록 추가
+import availableOTAs from '../config/availableOTAs';
 
-// CountdownTimer 컴포넌트
+// CountdownTimer 컴포넌트 (변경 없음)
 const CountdownTimer = React.memo(
   ({ checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration }) => {
     const [remainingMinutes, setRemainingMinutes] = useState(null);
@@ -68,7 +68,7 @@ const CountdownTimer = React.memo(
         const overdueMinutes = Math.abs(remainingMinutes);
         const hours = Math.floor(overdueMinutes / 60);
         const minutes = overdueMinutes % 60;
-        return `-${hours}시간 ${minutes}분`; // 만료 시 -시간 표시
+        return `-${hours}시간 ${minutes}분`;
       }
       const hours = Math.floor(remainingMinutes / 60);
       const minutes = remainingMinutes % 60;
@@ -90,8 +90,6 @@ CountdownTimer.propTypes = {
   isCheckedIn: PropTypes.bool.isRequired,
   duration: PropTypes.number,
 };
-
-// DraggableReservationCard.js (수정된 부분만 발췌)
 
 const DraggableReservationCard = ({
   isUnassigned = false,
@@ -121,6 +119,15 @@ const DraggableReservationCard = ({
 }) => {
   const [isEditingMemo, setIsEditingMemo] = useState(false);
   const [conflictDetails, setConflictDetails] = useState(null);
+  const [pausedHighlight, setPausedHighlight] = useState(false);
+  const [keepPulse, setKeepPulse] = useState(false);
+  // 하이라이트 중지 상태 추가
+
+  useEffect(() => {
+    if (reservation.siteName === '단잠' && reservation._id === newlyCreatedId) {
+      setKeepPulse(true);
+    }
+  }, [reservation._id, reservation.siteName, newlyCreatedId]);
 
   const normalizedReservation = useMemo(
     () => ({
@@ -133,12 +140,13 @@ const DraggableReservationCard = ({
     [reservation]
   );
 
-  // [중요] 판매중단 상태를 여러 문자열로 처리
   const isSoldOut =
     (reservation.customerName || '').replace(/\s/g, '') === '판매보류' ||
     (reservation.customerName || '').replace(/\s/g, '') === '판매중단' ||
     (reservation.customerName || '').replace(/\s/g, '') === '판매중지' ||
     (reservation.customerName || '').replace(/\s/g, '') === '판매금지';
+
+  const shouldPulse = keepPulse && !pausedHighlight;
 
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';
@@ -797,10 +805,6 @@ const DraggableReservationCard = ({
   const isHighlighted =
     highlightedReservationIds.includes(normalizedReservation._id) &&
     isSearching;
-  // “단잠” 예약 중, WS / on-site 에서 새로 들어온 것만 하이라이트
-  const isDanjamNewlyCreated =
-    normalizedReservation.siteName === '단잠' &&
-    normalizedReservation._id === newlyCreatedId;
   const isUpdated =
     normalizedReservation._id === updatedReservationId && isUpdatedHighlighted;
   const isCancelled =
@@ -814,11 +818,10 @@ const DraggableReservationCard = ({
       : normalizedReservation.reservationNo
     : '정보 없음';
 
-  // 추가 변수 정의
   const checkOutThreshold = useMemo(() => {
     if (!checkOutDate || normalizedReservation.type === 'dayUse') return null;
     const threshold = new Date(checkOutDate);
-    threshold.setHours(9, 0, 0, 0); // 체크아웃 당일 오전 9시
+    threshold.setHours(9, 0, 0, 0);
     return threshold;
   }, [checkOutDate, normalizedReservation.type]);
 
@@ -847,10 +850,9 @@ const DraggableReservationCard = ({
     isUnassigned ? 'unassigned-card' : '',
     isHighlighted ? 'highlighted' : '',
     isUpdated ? 'onsite-created' : '',
-    isDanjamNewlyCreated ? 'danjam-highlight' : '',
     !canDragMemo ? 'draggable-false' : '',
     normalizedReservation.isCheckedOut ? 'checked-out' : '',
-    isDayUseExpired ? 'expired-blink' : '', // 깜빡임 클래스 추가
+    isDayUseExpired ? 'expired-blink' : '',
     isSoldOut ? 'sold-out' : '',
   ]
     .filter(Boolean)
@@ -877,10 +879,15 @@ const DraggableReservationCard = ({
     if (e.target.closest('.memo-component')) return;
     if (isUnassigned) return;
     if (isDragging || isEditingMemo) return;
+
+    // 한번 clicked 하면 플래스 멈추기
+    if (keepPulse) {
+      setPausedHighlight(true);
+    }
+
     handleCardFlip(normalizedReservation._id);
   };
 
-  // "판매보류" 예약에 적용할 스타일 정의
   const textStyleIfSoldOut = useMemo(
     () => (isSoldOut ? { color: 'red', fontWeight: 'bold' } : {}),
     [isSoldOut]
@@ -971,7 +978,6 @@ const DraggableReservationCard = ({
     handleDelete,
   ]);
 
-  // 숙박 예약 버튼 그룹 정의
   const buttonGroup = useMemo(() => {
     if (
       normalizedReservation.type !== 'dayUse' &&
@@ -1016,9 +1022,7 @@ const DraggableReservationCard = ({
     handleDeleteClickHandler,
   ]);
 
-  // 판매중단 버튼
   const renderSoldOutButtons = useMemo(() => {
-    // 판매중단도 수정/삭제 가능
     return (
       <span className="button-group-wrapper">
         <button
@@ -1043,9 +1047,7 @@ const DraggableReservationCard = ({
     );
   }, [normalizedReservation._id, handleEditStart, handleDelete]);
 
-  // 판매중단 예약 UI
   const renderSoldOutFront = () => {
-    // 판매중단/보류/금지/중지 -> 헤더 라벨은 일괄 "(판매중단)" 으로 표시
     const stopReason = normalizedReservation.specialRequests || '사유 없음';
     const displayPeriod =
       !checkInDate || !checkOutDate
@@ -1083,23 +1085,17 @@ const DraggableReservationCard = ({
       </div>
     );
   };
-  // 정상 예약 UI
+
   const renderNormalFront = () => {
-    // couponInfo 포맷팅 함수
     const formatCouponInfo = (couponInfo) => {
       if (!couponInfo || !couponInfo.name) return '없음';
-
-      // "호텔명 - 실제쿠폰이름" 에서 실제쿠폰이름만 추출
       const parts = couponInfo.name.split('-');
       const cleanName =
         parts.length > 1 ? parts.slice(1).join('-').trim() : couponInfo.name;
-
-      // 할인 텍스트
       const discountText =
         couponInfo.discountType === 'percentage'
           ? `${couponInfo.discountValue}% 할인`
           : `${couponInfo.discountValue.toLocaleString()}원 할인`;
-
       return `${cleanName} (${discountText})`;
     };
 
@@ -1143,7 +1139,6 @@ const DraggableReservationCard = ({
                 </span>
               )}
           </p>
-          {/* couponInfo 표시 추가 */}
           <p>
             할인 정보:{' '}
             <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
@@ -1176,7 +1171,6 @@ const DraggableReservationCard = ({
     );
   };
 
-  // 공통 site-info-footer UI
   const renderSiteInfoFooter = () => {
     return (
       <div className="site-info-footer">
@@ -1254,11 +1248,14 @@ const DraggableReservationCard = ({
           perspective: '1000px',
         }}
       >
- <div className="room-card-inner">
-   <div
-     className={`room-card-front${isDanjamNewlyCreated ? ' danjam-highlight' : ''}`}
-     style={{ backfaceVisibility: 'hidden' }}
-   >
+        <div className="room-card-inner">
+          {/* shouldPulse가 true일 때만 danjam-highlight 클래스를 붙여 줍니다 */}
+          <div
+            className={`room-card-front${
+              shouldPulse ? ' danjam-highlight' : ''
+            }`}
+            style={{ backfaceVisibility: 'hidden' }}
+          >
             {isSoldOut ? renderSoldOutFront() : renderNormalFront()}
           </div>
           {isFlipped && (
