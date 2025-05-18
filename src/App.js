@@ -2377,7 +2377,13 @@ const App = () => {
         return updated;
       });
     },
-    [processReservation, filterReservationsByDate, setSelectedDate, logMessage, selectedDate]
+    [
+      processReservation,
+      filterReservationsByDate,
+      setSelectedDate,
+      logMessage,
+      selectedDate,
+    ]
   );
 
   const handleReservationDeleted = useCallback(
@@ -2398,33 +2404,44 @@ const App = () => {
         filterReservationsByDate(updated, selectedDate);
 
         // DOM 즉시 제거
-        const card = document.querySelector(`.room-card[data-id="${reservationId}"]`);
+        const card = document.querySelector(
+          `.room-card[data-id="${reservationId}"]`
+        );
         if (card) {
           card.classList.add('remove');
-          console.log(`[handleReservationDeleted] Applied .remove class to card ${reservationId}`);
+          console.log(
+            `[handleReservationDeleted] Applied .remove class to card ${reservationId}`
+          );
           setTimeout(() => {
-            if (document.querySelector(`.room-card[data-id="${reservationId}"]`)) {
-              console.warn(`[handleReservationDeleted] Card ${reservationId} still exists, forcing removal`);
+            if (
+              document.querySelector(`.room-card[data-id="${reservationId}"]`)
+            ) {
+              console.warn(
+                `[handleReservationDeleted] Card ${reservationId} still exists, forcing removal`
+              );
               card.remove();
             } else {
-              console.log(`[handleReservationDeleted] Card ${reservationId} successfully removed`);
+              console.log(
+                `[handleReservationDeleted] Card ${reservationId} successfully removed`
+              );
             }
           }, 100);
         } else {
-          console.log(`[handleReservationDeleted] Card ${reservationId} already removed`);
+          console.log(
+            `[handleReservationDeleted] Card ${reservationId} already removed`
+          );
         }
 
-        const {
-          customerName,
-          phoneNumber,
-          checkIn,
-          checkOut,
-          siteName,
-        } = reservation || {};
+        const { customerName, phoneNumber, checkIn, checkOut, siteName } =
+          reservation || {};
         const fmt = (d) =>
           d ? format(new Date(d), 'yyyy-MM-dd HH:mm') : '정보 없음';
         logMessage(
-          `[handleReservationDeleted] 예약 삭제됨 (${siteName || '알 수 없음'}): ${reservationId} - 예약자:${customerName || '정보 없음'}, 전화:${phoneNumber || '정보 없음'}, 체크인:${fmt(checkIn)}, 체크아웃:${fmt(checkOut)}`,
+          `[handleReservationDeleted] 예약 삭제됨 (${
+            siteName || '알 수 없음'
+          }): ${reservationId} - 예약자:${customerName || '정보 없음'}, 전화:${
+            phoneNumber || '정보 없음'
+          }, 체크인:${fmt(checkIn)}, 체크아웃:${fmt(checkOut)}`,
           'delete'
         );
 
@@ -2602,14 +2619,18 @@ const App = () => {
         socketRef.current = io(BASE_URL, {
           withCredentials: true,
           query: { hotelId, accessToken },
-          reconnection: true,
-          reconnectionAttempts: 30,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 15000,
-          randomizationFactor: 0.5,
-          timeout: 40000,
-          autoConnect: true,
-          transports: ['websocket', 'polling'],
+          transportOptions: {
+            websocket: {
+              // 필요 시 추가 옵션
+            },
+          },
+          transports: ['websocket'], // ★ 오직 WebSocket만 사용
+          reconnection: true, // 자동 재접속
+          reconnectionAttempts: 30, // 최대 재접속 시도 횟수
+          reconnectionDelay: 2000, // 첫 재접속 대기 시간 (ms)
+          reconnectionDelayMax: 10000, // 최대 재접속 대기 시간 (ms)
+          randomizationFactor: 0.2, // 재접속 딜레이 랜덤화 비율
+          timeout: 20000, // 연결 시도 타임아웃 (ms)
           path: '/socket.io',
           forceNew: true,
         });
