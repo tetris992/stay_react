@@ -8,7 +8,7 @@ console.log('[api.js] BASE_URL:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true,
+  withCredentials: true, // HttpOnly 쿠키를 사용하기 위해 필수
 });
 
 // 토큰 가져오기 함수
@@ -16,7 +16,7 @@ const getAccessToken = () => localStorage.getItem('accessToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
 const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
-// api.js 최상단 (axios 인스턴스 생성 직후)
+// GET 요청 캐싱 설정
 const GET_CACHE_TTL = 5_000; // 5초 TTL
 const MAX_CACHE_SIZE = 1000; // 최대 캐시 항목 수
 const getCache = new Map();
@@ -30,9 +30,9 @@ api.get = (url, config = {}) => {
     '/api/csrf-token',
     '/api/health',
     '/api/status/debugger',
-    '/api/reservations/canceled', // ← 추가
+    '/api/reservations',
+    '/api/reservations/canceled',
   ];
-  // 동적 데이터 경로 제외
   if (
     excludeUrls.includes(url) ||
     url.startsWith('/api/auth') ||
@@ -84,6 +84,7 @@ api.get = (url, config = {}) => {
   return p;
 };
 
+// 요청 인터셉터
 api.interceptors.request.use(
   async (config) => {
     const token = localStorage.getItem('accessToken');
@@ -124,6 +125,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// 응답 인터셉터
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -158,7 +160,6 @@ api.interceptors.response.use(
         localStorage.setItem('csrfTokenId', newCsrfTokenId);
         console.log('[api.js] Refreshed CSRF token:', newCsrfToken);
 
-        // 원래 요청에 새 CSRF 토큰 적용 후 재시도
         originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
         originalRequest.headers['X-CSRF-Token-Id'] = newCsrfTokenId;
         return api(originalRequest);
@@ -171,7 +172,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 401 에러 처리 (기존 코드 유지)
+    // 401 에러 처리 (토큰 갱신)
     if (
       error.response &&
       error.response.status === 401 &&
@@ -197,7 +198,7 @@ api.interceptors.response.use(
           '/api/auth/refresh-token',
           {},
           { timeout: 10000 }
-        );
+        ); // HttpOnly 쿠키로 처리
         const { accessToken } = data;
         localStorage.setItem('accessToken', accessToken);
         originalRequest.headers.Authorization = 'Bearer ' + accessToken;
@@ -209,6 +210,7 @@ api.interceptors.response.use(
         localStorage.removeItem('hotelId');
         localStorage.removeItem('csrfToken');
         localStorage.removeItem('csrfTokenId');
+        localStorage.removeItem('refreshToken'); // 추가: refreshToken 제거
         window.location.href = '/login';
         return Promise.reject(err);
       } finally {
@@ -220,16 +222,13 @@ api.interceptors.response.use(
   }
 );
 
-
-// loginUser
 export const loginUser = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
-    const { accessToken, refreshToken, isRegistered } = response.data; // refreshToken 추가
+    const { accessToken, isRegistered } = response.data;
     if (!accessToken) throw new ApiError(500, '로그인에 실패했습니다.');
 
     localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken); // 리프레시 토큰 저장
     localStorage.setItem('hotelId', credentials.hotelId);
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
@@ -284,12 +283,9 @@ export const loginUser = async (credentials) => {
 // refreshToken
 export const refreshToken = async () => {
   try {
-    const response = await api.post('/api/auth/refresh-token');
-    const { accessToken, refreshToken: newRefreshToken } = response.data; // 새로운 refreshToken 추출
+    const response = await api.post('/api/auth/refresh-token'); // HttpOnly 쿠키로 처리, 바디 없이 요청
+    const { accessToken } = response.data;
     localStorage.setItem('accessToken', accessToken);
-    if (newRefreshToken) {
-      localStorage.setItem('refreshToken', newRefreshToken); // 새로운 refreshToken 저장
-    }
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
@@ -353,9 +349,10 @@ export const logoutUser = async () => {
     return { error: error.message, redirect: '/login' };
   } finally {
     localStorage.removeItem('accessToken');
-    // localStorage.removeItem('hotelId') 제거: hotelId 유지
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
+    localStorage.removeItem('refreshToken'); // 추가: refreshToken 제거
+    // HttpOnly 쿠키는 서버에서 제거 처리 (예: Set-Cookie: refreshToken=; Expires=...)
   }
 };
 
@@ -394,7 +391,7 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
         hotelId,
       }
     );
-    // 캐시 무효화: api.get과 동일한 키 생성 로직 사용
+    // 캐시 무효화
     const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
     getCache.delete(cacheKey);
     console.log(`[api.js] Cache invalidated for ${cacheKey}`);
@@ -418,7 +415,7 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
   }
 };
 
-// ============== 호텔 설정 관련 API ==============
+// 호텔 설정 관련 API
 export const fetchHotelSettings = async (hotelId) => {
   try {
     const response = await api.get('/api/hotel-settings', {
@@ -438,8 +435,6 @@ export const updateHotelSettings = async (hotelId, settings) => {
       `/api/hotel-settings/${hotelId}`,
       settings
     );
-    // 백엔드가 { success, message, data: updatedSettings } 형식으로 반환하므로
-    // response.data.data 에 실제 HotelSettings 객체가 들어있습니다.
     return response.data.data;
   } catch (error) {
     console.error('호텔 설정 업데이트 실패:', error);
@@ -467,7 +462,7 @@ export const registerHotel = async (hotelData) => {
   }
 };
 
-// ============== 예약 관련 API ==============
+// 예약 관련 API
 export const fetchReservations = async (hotelId) => {
   try {
     const response = await api.get('/api/reservations', {
@@ -483,14 +478,12 @@ export const fetchReservations = async (hotelId) => {
   }
 };
 
-// deleteReservation
 export const deleteReservation = async (reservationId, hotelId, siteName) => {
   try {
     const response = await api.delete(
       `/api/reservations/${encodeURIComponent(reservationId)}`,
       { params: { hotelId, siteName } }
     );
-    // 캐시 무효화
     const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
     getCache.delete(cacheKey);
     console.log(`[api.js] Cache invalidated for ${cacheKey}`);
@@ -501,7 +494,6 @@ export const deleteReservation = async (reservationId, hotelId, siteName) => {
   }
 };
 
-// saveOnSiteReservation
 export const saveOnSiteReservation = async (reservationData) => {
   try {
     const response = await api.post('/api/reservations', {
@@ -509,7 +501,6 @@ export const saveOnSiteReservation = async (reservationData) => {
       customerName: reservationData.customerName,
       phoneNumber: reservationData.phoneNumber,
     });
-    // 캐시 무효화
     const cacheKey = `/api/reservations${JSON.stringify({
       hotelId: reservationData.hotelId,
     })}`;
@@ -522,7 +513,6 @@ export const saveOnSiteReservation = async (reservationData) => {
   }
 };
 
-// confirmReservation
 export const confirmReservation = async (reservationId, hotelId) => {
   try {
     const encodedReservationId = encodeURIComponent(reservationId);
@@ -531,7 +521,6 @@ export const confirmReservation = async (reservationId, hotelId) => {
       `/api/reservations/${encodedReservationId}/confirm`,
       { hotelId }
     );
-    // 캐시 무효화
     const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
     getCache.delete(cacheKey);
     console.log(`[api.js] Cache invalidated for ${cacheKey}`);
@@ -559,7 +548,7 @@ export const fetchCanceledReservations = async (hotelId) => {
   }
 };
 
-// ============== 사용자 정보 ==============
+// 사용자 정보
 export const fetchUserInfo = async (hotelId) => {
   try {
     const response = await api.get(`/api/auth/users/${hotelId}`);
@@ -580,7 +569,7 @@ export const updateUser = async (hotelId, userData) => {
   }
 };
 
-// ============== 그 외 유틸 API ==============
+// 그 외 유틸 API
 export const enqueueScrapeTasks = async (hotelId, otaNames) => {
   try {
     const response = await api.post('/api/scrape/instant', {
@@ -616,7 +605,7 @@ export const fetchOTAStatus = async (hotelId) => {
   }
 };
 
-// ============== 비밀번호 재설정 ==============
+// 비밀번호 재설정
 export const resetPasswordRequest = async (email) => {
   try {
     const response = await api.post('/api/auth/reset-password-request', {
@@ -657,10 +646,7 @@ export const setCsrfToken = (token) => {
   localStorage.setItem('csrfToken', token);
 };
 
-// 토큰 관리 함수 공개
-export { getAccessToken, getCsrfToken, getCsrfTokenId };
-
-// payPerNight API 함수 추가
+// 결제 관련 API
 export const payPerNight = async (reservationId, hotelId, amount, method) => {
   try {
     const response = await api.post(
@@ -687,7 +673,6 @@ export const payPerNight = async (reservationId, hotelId, amount, method) => {
   }
 };
 
-// 다중결제 방식을 처리하는 API
 export const payPartial = async (reservationId, hotelId, payments) => {
   try {
     if (!Array.isArray(payments) || payments.length === 0) {
@@ -716,6 +701,7 @@ export const payPartial = async (reservationId, hotelId, payments) => {
   }
 };
 
+// 고객 관련 API
 export const searchCustomers = async (
   hotelId,
   { query, minVisits, maxVisits, lastVisitDate, limit, skip }
@@ -728,7 +714,6 @@ export const searchCustomers = async (
     if (process.env.NODE_ENV !== 'production') {
       console.log('[searchCustomers] Response:', response.data);
     }
-    // customers, totalCount 둘 다 돌려줍니다
     return {
       customers: response.data.customers || [],
       totalCount: response.data.totalCount || 0,
@@ -741,7 +726,6 @@ export const searchCustomers = async (
   }
 };
 
-/** 고객 전용(타겟팅) 쿠폰 발행 */
 export const issueTargetedCoupon = async (
   hotelId,
   customerId,
@@ -804,7 +788,6 @@ export const fetchUsedCoupons = async (hotelId) => {
   }
 };
 
-// 만료된 쿠폰 삭제 API 호출
 export const deleteExpiredCoupons = async (hotelId) => {
   try {
     const response = await api.delete(
@@ -822,8 +805,7 @@ export const deleteExpiredCoupons = async (hotelId) => {
   }
 };
 
-// api.js (기존 코드 유지, 중복 제거 및 개선된 헬퍼 함수 추가)
-
+// 로열티 및 최초 방문 쿠폰 API
 export const fetchLoyaltyCoupons = async (hotelId) => {
   try {
     const { data } = await api.get(
@@ -885,12 +867,13 @@ export const fetchFirstVisitCoupons = async (hotelId) => {
   }
 };
 
+// 호텔 사진 업로드
 export const uploadHotelPhotos = async (formData) => {
-  // axios 가 FormData 넘겨받으면 자동으로 Content-Type: multipart/form-data; boundary=… 를 붙여줍니다.
   const response = await api.post('/api/hotel-settings/photos', formData);
-  return response.data; // { photos: [...] }
+  return response.data;
 };
 
+// 룸 컨테이너 추가
 export const addRoomContainer = async (
   hotelId,
   roomInfo,
@@ -911,5 +894,8 @@ export const addRoomContainer = async (
     throw error.response?.data || error;
   }
 };
+
+// 토큰 관리 함수 공개
+export { getAccessToken, getCsrfToken, getCsrfTokenId };
 
 export default api;

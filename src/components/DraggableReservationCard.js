@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useCallback,
   useRef,
@@ -123,11 +124,20 @@ const DraggableReservationCard = ({
   const [keepPulse, setKeepPulse] = useState(false);
   // 하이라이트 중지 상태 추가
 
-  useEffect(() => {
-    if (reservation.siteName === '단잠' && reservation._id === newlyCreatedId) {
+  // useEffect(() => {
+  //   if (reservation.siteName === '단잠' && reservation._id === newlyCreatedId) {
+  //     setKeepPulse(true);
+  //   }
+  // }, [reservation._id, reservation.siteName, newlyCreatedId]);
+
+  // 새로 생성된 카드일 때만 10초간 하이라이트
+  useLayoutEffect(() => {
+    if (reservation._id === newlyCreatedId) {
       setKeepPulse(true);
+      const timer = setTimeout(() => setKeepPulse(false), 10_000);
+      return () => clearTimeout(timer);
     }
-  }, [reservation._id, reservation.siteName, newlyCreatedId]);
+  }, [reservation._id, newlyCreatedId]);
 
   const normalizedReservation = useMemo(
     () => ({

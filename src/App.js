@@ -2027,7 +2027,7 @@ const App = () => {
         );
 
         setUpdatedReservationId(reservationId);
-        setTimeout(() => setUpdatedReservationId(null), 10000);
+        setTimeout(() => setUpdatedReservationId(null), 20000);
         setAllReservations((prev) => {
           const updated = prev.map((res) =>
             res._id === reservationId ? { ...res, ...updatedData } : res
