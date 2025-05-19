@@ -61,10 +61,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
     const initializeLoginAttempts = async () => {
       try {
-        const response = await loginUser({
-          hotelId: savedHotelId,
-          password: '',
-        }); // 두 번째 인자 제거
+        const response = await loginUser({ hotelId: savedHotelId, password: '' }); // 두 번째 인자 제거
         if (response.remainingAttempts !== undefined) {
           setLoginAttempts(5 - response.remainingAttempts);
         }
