@@ -16,6 +16,74 @@ const getAccessToken = () => localStorage.getItem('accessToken');
 const getCsrfToken = () => localStorage.getItem('csrfToken');
 const getCsrfTokenId = () => localStorage.getItem('csrfTokenId');
 
+// api.js 최상단 (axios 인스턴스 생성 직후)
+const GET_CACHE_TTL = 5_000; // 5초 TTL
+const MAX_CACHE_SIZE = 1000; // 최대 캐시 항목 수
+const getCache = new Map();
+
+// 원래 axios.get 참조
+const originalGet = api.get.bind(api);
+
+api.get = (url, config = {}) => {
+  // 캐싱 제외 요청
+  const excludeUrls = [
+    '/api/csrf-token',
+    '/api/health',
+    '/api/status/debugger',
+    '/api/reservations/canceled', // ← 추가
+  ];
+  // 동적 데이터 경로 제외
+  if (
+    excludeUrls.includes(url) ||
+    url.startsWith('/api/auth') ||
+    url.startsWith('/api/hotel-settings')
+  ) {
+    return originalGet(url, config);
+  }
+
+  const key = url + JSON.stringify(config.params || {});
+
+  if (getCache.size > MAX_CACHE_SIZE) {
+    getCache.clear();
+  }
+
+  const cached = getCache.get(key);
+
+  if (cached && Date.now() - cached.ts < GET_CACHE_TTL) {
+    console.log(`[api.js] Cache hit for GET ${url}`);
+    return Promise.resolve(cached.res);
+  }
+
+  if (cached && cached.promise) {
+    console.log(`[api.js] Deduplicated GET ${url}`);
+    return cached.promise;
+  }
+
+  const p = originalGet(url, config)
+    .then((res) => {
+      getCache.set(key, { res, ts: Date.now() });
+      return res;
+    })
+    .catch((err) => {
+      getCache.delete(key);
+      throw err;
+    })
+    .finally(() => {
+      const entry = getCache.get(key);
+      if (entry && entry.promise) {
+        delete entry.promise;
+        if (!entry.res) {
+          getCache.delete(key);
+        } else {
+          getCache.set(key, entry);
+        }
+      }
+    });
+
+  getCache.set(key, { promise: p, ts: Date.now() });
+  return p;
+};
+
 api.interceptors.request.use(
   async (config) => {
     const token = localStorage.getItem('accessToken');
@@ -152,14 +220,16 @@ api.interceptors.response.use(
   }
 );
 
+
 // loginUser
 export const loginUser = async (credentials) => {
   try {
     const response = await api.post('/api/auth/login', credentials);
-    const { accessToken, isRegistered } = response.data;
+    const { accessToken, refreshToken, isRegistered } = response.data; // refreshToken 추가
     if (!accessToken) throw new ApiError(500, '로그인에 실패했습니다.');
 
     localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken); // 리프레시 토큰 저장
     localStorage.setItem('hotelId', credentials.hotelId);
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
@@ -215,8 +285,11 @@ export const loginUser = async (credentials) => {
 export const refreshToken = async () => {
   try {
     const response = await api.post('/api/auth/refresh-token');
-    const { accessToken } = response.data;
+    const { accessToken, refreshToken: newRefreshToken } = response.data; // 새로운 refreshToken 추출
     localStorage.setItem('accessToken', accessToken);
+    if (newRefreshToken) {
+      localStorage.setItem('refreshToken', newRefreshToken); // 새로운 refreshToken 저장
+    }
 
     const csrfResponse = await api.get('/api/csrf-token', { skipCsrf: true });
     const csrfToken = csrfResponse.data.csrfToken;
@@ -280,7 +353,7 @@ export const logoutUser = async () => {
     return { error: error.message, redirect: '/login' };
   } finally {
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('hotelId');
+    // localStorage.removeItem('hotelId') 제거: hotelId 유지
     localStorage.removeItem('csrfToken');
     localStorage.removeItem('csrfTokenId');
   }
@@ -321,6 +394,10 @@ export const updateReservation = async (reservationId, updateData, hotelId) => {
         hotelId,
       }
     );
+    // 캐시 무효화: api.get과 동일한 키 생성 로직 사용
+    const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
+    getCache.delete(cacheKey);
+    console.log(`[api.js] Cache invalidated for ${cacheKey}`);
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 409) {
@@ -406,12 +483,17 @@ export const fetchReservations = async (hotelId) => {
   }
 };
 
+// deleteReservation
 export const deleteReservation = async (reservationId, hotelId, siteName) => {
   try {
     const response = await api.delete(
       `/api/reservations/${encodeURIComponent(reservationId)}`,
       { params: { hotelId, siteName } }
     );
+    // 캐시 무효화
+    const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
+    getCache.delete(cacheKey);
+    console.log(`[api.js] Cache invalidated for ${cacheKey}`);
     return response.data;
   } catch (error) {
     console.error(`예약 삭제 실패 (${reservationId}):`, error);
@@ -419,6 +501,28 @@ export const deleteReservation = async (reservationId, hotelId, siteName) => {
   }
 };
 
+// saveOnSiteReservation
+export const saveOnSiteReservation = async (reservationData) => {
+  try {
+    const response = await api.post('/api/reservations', {
+      ...reservationData,
+      customerName: reservationData.customerName,
+      phoneNumber: reservationData.phoneNumber,
+    });
+    // 캐시 무효화
+    const cacheKey = `/api/reservations${JSON.stringify({
+      hotelId: reservationData.hotelId,
+    })}`;
+    getCache.delete(cacheKey);
+    console.log(`[api.js] Cache invalidated for ${cacheKey}`);
+    return response.data;
+  } catch (error) {
+    console.error('현장 예약 저장 실패:', error);
+    throw error.response?.data || error;
+  }
+};
+
+// confirmReservation
 export const confirmReservation = async (reservationId, hotelId) => {
   try {
     const encodedReservationId = encodeURIComponent(reservationId);
@@ -427,26 +531,16 @@ export const confirmReservation = async (reservationId, hotelId) => {
       `/api/reservations/${encodedReservationId}/confirm`,
       { hotelId }
     );
+    // 캐시 무효화
+    const cacheKey = `/api/reservations${JSON.stringify({ hotelId })}`;
+    getCache.delete(cacheKey);
+    console.log(`[api.js] Cache invalidated for ${cacheKey}`);
     return response.data;
   } catch (error) {
     console.error(`예약 확정 실패 (${reservationId}):`, error);
     const errorMessage =
       error.response?.data?.message || '예약 확정에 실패했습니다.';
     console.log(errorMessage);
-    throw error.response?.data || error;
-  }
-};
-
-export const saveOnSiteReservation = async (reservationData) => {
-  try {
-    const response = await api.post('/api/reservations', {
-      ...reservationData,
-      customerName: reservationData.customerName,
-      phoneNumber: reservationData.phoneNumber,
-    });
-    return response.data;
-  } catch (error) {
-    console.error('현장 예약 저장 실패:', error);
     throw error.response?.data || error;
   }
 };

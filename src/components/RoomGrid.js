@@ -1024,6 +1024,7 @@ useEffect(() => {
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
+                                height: 'auto',
                                 gap: '5px',
                               }}
                             >

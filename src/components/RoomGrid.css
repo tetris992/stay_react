@@ -5,6 +5,7 @@
 /* ==========================================================================
    [Unassigned Reservations Section]
 =============================== */
+
 .unassigned-section {
   border: 1px solid #ddd;
   background-color: #f9f9f9;
@@ -59,6 +60,7 @@
 .unassigned-header-title-button:hover {
   background-color: #aaaaaa;
 }
+
 
 /* 미배정 예약 카드 리스트 */
 .unassigned-list {
@@ -137,9 +139,11 @@
   width: 100%;
   min-width: 330px;
   box-sizing: border-box;
-  min-height: 150px;
+  min-height: 480px;
+  max-height: 500px;
   padding: 10px;
   position: relative;
+
 }
 
 /* 컨테이너 라벨 너비 일정하게 유지 */

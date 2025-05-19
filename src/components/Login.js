@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { loginUser, fetchHotelSettings } from '../api/api';
+import { loginUser, fetchHotelSettings, refreshToken } from '../api/api';
 import ForgotPassword from './ForgotPassword';
 import HotelSettings from './HotelSettings';
 import { Link } from 'react-router-dom';
@@ -20,6 +20,32 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
 
+  // 자동 로그인 시도 (리프레시 토큰 사용)
+  useEffect(() => {
+    if (isLoggedIn) return; // 이미 로그인된 경우 중복 호출 방지
+
+    const tryAutoLogin = async () => {
+      try {
+        const data = await refreshToken();
+        if (data.accessToken) {
+          const savedHotelId = localStorage.getItem('hotelId');
+          if (savedHotelId) {
+            onLogin(data.accessToken, savedHotelId);
+            console.log('자동 로그인 성공:', data.accessToken, savedHotelId);
+          } else {
+            console.warn('자동 로그인 실패: hotelId 없음');
+          }
+        }
+      } catch (error) {
+        console.log('자동 로그인 실패:', error);
+        // 실패 시 로그인 폼 표시
+      }
+    };
+
+    tryAutoLogin();
+  }, [onLogin, isLoggedIn]); // isLoggedIn 추가
+
+  // 기존 초기화 로직 (비밀번호 로드 제거)
   useEffect(() => {
     const savedHotelId = localStorage.getItem('hotelId');
     const savedAttempts = localStorage.getItem('loginAttempts') || '0';
@@ -31,14 +57,14 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
     if (savedHotelId) {
       setHotelId(savedHotelId);
-      setPassword('');
     }
+
     const initializeLoginAttempts = async () => {
       try {
-        const response = await loginUser(
-          { hotelId: savedHotelId, password: '' },
-          true
-        );
+        const response = await loginUser({
+          hotelId: savedHotelId,
+          password: '',
+        }); // 두 번째 인자 제거
         if (response.remainingAttempts !== undefined) {
           setLoginAttempts(5 - response.remainingAttempts);
         }
@@ -47,6 +73,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         setLoginAttempts(parseInt(savedAttempts, 10) || 0);
       }
     };
+
     if (savedHotelId) initializeLoginAttempts();
   }, []);
 
@@ -70,7 +97,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
           setLoginAttempts(0);
           localStorage.setItem('hotelId', normalizedHotelId);
-          localStorage.setItem('password', password);
+          localStorage.removeItem('password'); // 비밀번호 저장 제거
           localStorage.setItem('loginAttempts', '0');
           setError('');
 
@@ -143,7 +170,6 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         )}
 
         <div className="login-login-block">
-          {/* 입력 필드와 플로팅 라벨: input 먼저, 그 다음 label */}
           <div className="login-input-group">
             <div className="login-input-wrapper">
               <input
@@ -169,8 +195,8 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
-                name="password"
-                autoComplete="off"
+                name="current-password" // name 변경
+                autoComplete="current-password"
                 placeholder=" "
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

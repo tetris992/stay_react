@@ -114,6 +114,7 @@
 .flip-container {
   perspective: 1000px;
   height: 100%;
+  
 }
 
 .room-card-inner {
@@ -150,6 +151,7 @@
   background-color: rgb(229, 229, 229);
   transform: rotateY(0deg);
   transition: opacity 0.2s ease;
+  height: auto
 }
 
 .room-card-back {
@@ -234,7 +236,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 410px;
+  min-height: 420px;
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -254,7 +256,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  min-height: 410px;
+  min-height: 420px;
   background-color: rgb(240, 240, 240);
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;

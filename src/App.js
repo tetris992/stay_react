@@ -1858,7 +1858,7 @@ const App = () => {
           selectedDate
         );
         setUpdatedReservationId(reservationId);
-        setTimeout(() => setUpdatedReservationId(null), 10000);
+        setTimeout(() => setUpdatedReservationId(null), 50000);
 
         const { customerName, phoneNumber, checkIn, checkOut } =
           currentReservation;
