@@ -2330,7 +2330,7 @@ const App = () => {
         );
 
         setNewlyCreatedId(newRes._id);
-        setTimeout(() => setNewlyCreatedId(null), 10000);
+        setTimeout(() => setNewlyCreatedId(null), 50000);
 
         const attemptHighlight = (attemptsLeft = 5, delay = 200) => {
           const card = document.querySelector(
