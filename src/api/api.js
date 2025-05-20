@@ -137,34 +137,28 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// ← 수정 후 →
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // CSRF 토큰 에러 처리 (403)
-    if (
-      error.response &&
-      error.response.status === 403 &&
-      !originalRequest._retryCsrf
-    ) {
+    // CSRF 토큰 에러 처리 (403 → 토큰 재발급 후 재요청)
+    if (error.response?.status === 403 && !originalRequest._retryCsrf) {
       originalRequest._retryCsrf = true;
       try {
         const { data } = await api.get('/api/csrf-token', {
           skipCsrf: true,
           timeout: 10000,
         });
-        const newCsrfToken = data.csrfToken;
-        const newCsrfTokenId = data.tokenId;
-        localStorage.setItem('csrfToken', newCsrfToken);
-        localStorage.setItem('csrfTokenId', newCsrfTokenId);
-        console.log('[api.js] Refreshed CSRF token:', newCsrfToken);
-
-        originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
-        originalRequest.headers['X-CSRF-Token-Id'] = newCsrfTokenId;
+        const { csrfToken, tokenId } = data;
+        localStorage.setItem('csrfToken', csrfToken);
+        localStorage.setItem('csrfTokenId', tokenId);
+        originalRequest.headers['X-CSRF-Token'] = csrfToken;
+        originalRequest.headers['X-CSRF-Token-Id'] = tokenId;
         return api(originalRequest);
       } catch (csrfError) {
-        console.error('[api.js] Failed to refresh CSRF token:', csrfError);
+        console.error('[api.js] CSRF 토큰 재발급 실패:', csrfError);
         throw new ApiError(
           403,
           'CSRF 토큰 갱신에 실패했습니다. 로그아웃 후 다시 로그인해주세요.'
@@ -172,47 +166,39 @@ api.interceptors.response.use(
       }
     }
 
-    // 401 에러 처리 (토큰 갱신)
+    // 401 에러 처리 (액세스 토큰 재발급 → 재요청)
     if (
-      error.response &&
-      error.response.status === 401 &&
-      originalRequest.url !== '/api/auth/login' &&
-      !originalRequest._retry
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url.endsWith('/login')
     ) {
       if (isRefreshing) {
-        try {
-          const token = await new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          });
-          originalRequest.headers.Authorization = 'Bearer ' + token;
-          return api(originalRequest);
-        } catch (err) {
-          return Promise.reject(err);
-        }
+        // 재발급 중인 다른 요청 큐에 보관
+        const token = await new Promise((res, rej) =>
+          failedQueue.push({ res, rej })
+        );
+        originalRequest.headers.Authorization = 'Bearer ' + token;
+        return api(originalRequest);
       }
+
       originalRequest._retry = true;
       isRefreshing = true;
-
       try {
         const { data } = await api.post(
           '/api/auth/refresh-token',
           {},
           { timeout: 10000 }
-        ); // HttpOnly 쿠키로 처리
+        );
         const { accessToken } = data;
         localStorage.setItem('accessToken', accessToken);
         originalRequest.headers.Authorization = 'Bearer ' + accessToken;
         processQueue(null, accessToken);
         return api(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('hotelId');
-        localStorage.removeItem('csrfToken');
-        localStorage.removeItem('csrfTokenId');
-        localStorage.removeItem('refreshToken'); // 추가: refreshToken 제거
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.clear();
         window.location.href = '/login';
-        return Promise.reject(err);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }

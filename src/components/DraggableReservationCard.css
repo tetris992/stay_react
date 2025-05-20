@@ -114,7 +114,6 @@
 .flip-container {
   perspective: 1000px;
   height: 100%;
-  
 }
 
 .room-card-inner {
@@ -151,7 +150,7 @@
   background-color: rgb(229, 229, 229);
   transform: rotateY(0deg);
   transition: opacity 0.2s ease;
-  height: auto
+  height: auto;
 }
 
 .room-card-back {
@@ -196,7 +195,8 @@
 
 /* 맥박 애니메이션 */
 @keyframes danjamPulse {
-  0%, 100% {
+  0%,
+  100% {
     background-color: rgb(251, 204, 132);
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
   }
@@ -208,6 +208,7 @@
 
 .room-card-front.danjam-highlight {
   animation: danjamPulse 1s ease-in-out infinite alternate !important;
+  overflow: visible;
   z-index: 1000 !important;
 }
 
