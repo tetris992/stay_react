@@ -214,8 +214,9 @@ export function calculateRoomAvailability(
         const assigned = Array.from(usage.assignedRooms);
         const checkedOut = Array.from(usage.checkedOutRooms);
         const totalStock = roomDataByType[typeKey]?.stock || 0;
+        // assignedRooms 만 빼고, checkedOutRooms 는 이제 팔 수 있는 방으로 다시 포함
         const leftoverRooms = allRooms.filter(
-          (rnum) => !assigned.includes(rnum) && !checkedOut.includes(rnum)
+          (rnum) => !assigned.includes(rnum)
         );
         const remain = Math.max(totalStock - usage.count, 0);
         availability[ds][typeKey] = {
