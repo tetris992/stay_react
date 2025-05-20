@@ -2,8 +2,10 @@
 
 /* ==========================================================================
    [Root Variables]
+   - 카드 크기, 색상, 버튼 스타일 등을 정의
 ========================================================================== */
 :root {
+  /* 카드 크기 */
   --card-width: 100%;
   --card-max-width: 320px;
   --card-height: 420px;
@@ -13,10 +15,19 @@
     var(--card-height) - var(--card-header-height) - var(--card-footer-height)
   );
 
+  /* 카드 스타일 */
   --room-card-background-color: #ffffff;
   --room-card-border: #e0e0e0;
   --room-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+  /* 버튼 스타일 */
   --button-gap: 8px;
+  --button-bg-default: #e0e0e0; /* 기본 버튼 배경색 (희미한 회색) */
+  --button-bg-hover: #d0d0d0; /* 호버 시 배경색 (약간 더 진한 회색) */
+  --button-text-default: #666; /* 기본 텍스트 색상 (약간 어두운 회색) */
+  --button-text-hover: #555; /* 호버 시 텍스트 색상 (더 진한 회색) */
+  --button-shadow-default: 0 2px 4px rgba(0, 0, 0, 0.1); /* 기본 그림자 */
+  --button-shadow-hover: 0 3px 6px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 */
 
   /* 색상 변수 */
   --color-accent-coral: #ff6347; /* 산호색 (1박) */
@@ -24,17 +35,12 @@
   --color-primary-soft-green: #4caf50; /* 연한 초록색 (대실) */
   --countdown-color: #2196f3; /* 카운트다운 색상 */
   --expired-color: #d32f2f; /* 만료된 카운트다운 색상 */
-
-  /* 버튼 색상 변수 (무채색 계열) */
-  --button-bg-default: #e0e0e0; /* 기본 버튼 배경색 (희미한 회색) */
-  --button-bg-hover: #d0d0d0; /* 호버 시 배경색 (약간 더 진한 회색) */
-  --button-text-default: #666; /* 기본 텍스트 색상 (약간 어두운 회색) */
-  --button-text-hover: #555; /* 호버 시 텍스트 색상 (더 진한 회색) */
-  --button-shadow-default: 0 2px 4px rgba(0, 0, 0, 0.1); /* 기본 그림자 */
-  --button-shadow-hover: 0 3px 6px rgba(0, 0, 0, 0.15); /* 호버 시 그림자 */
 }
 
-/* 테두리 색상 클래스 정의 */
+/* ==========================================================================
+   [Border Colors]
+   - 예약 유형에 따라 테두리 색상 정의
+========================================================================== */
 .border-primary-soft-green {
   border: 2px solid var(--color-primary-soft-green); /* 연한 초록색 (대실) */
 }
@@ -49,9 +55,11 @@
 
 /* ==========================================================================
    [Reservation Card]
+   - 기본 카드 스타일 정의
 ========================================================================== */
 .room-card {
   width: var(--card-width);
+  max-width: var(--card-max-width);
   height: var(--card-height);
   display: flex;
   flex-direction: column;
@@ -59,27 +67,16 @@
   background-color: var(--room-card-background-color);
   border-radius: 8px;
   box-shadow: var(--room-card-shadow);
-  overflow: hidden;
   margin: 2px;
   box-sizing: border-box;
   cursor: pointer;
-  width: auto;
   transition: opacity 0.2s ease-in-out, transform 0.3s ease-in-out;
 }
 
+/* 상태별 카드 스타일 */
 .room-card.cancelled {
   background-color: #ffebee;
   border-color: #ffcdd2;
-}
-
-.room-card.highlighted {
-  border: 3px solid #00ff2f;
-  animation: highlightBlink 1s infinite;
-}
-
-.room-card.onsite-created {
-  animation: highlightPulse 10s;
-  background-color: rgb(220, 249, 220);
 }
 
 .room-card.checked-out {
@@ -87,29 +84,49 @@
   opacity: 0.7;
 }
 
-@keyframes highlightBlink {
-  0% {
-    box-shadow: 0 0 10px #ff0000;
+.room-card.sold-out {
+  background-color: #fa9f9f !important;
+}
+
+.room-card.remove {
+  display: none; /* 카드 제거 시 즉시 숨김 */
+}
+
+/* 드래그 불가 상태 */
+.draggable-false {
+  cursor: not-allowed !important;
+  opacity: 0.7;
+  border: 3px dotted #5656a3;
+}
+
+/* ==========================================================================
+   [Highlight Effect]
+   - 통일된 하이라이트 효과 정의 (신규 예약, 검색 결과 등)
+========================================================================== */
+@keyframes highlightPulse {
+  0%, 100% {
+    background-color: rgb(252, 188, 92);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
   }
   50% {
-    box-shadow: 0 0 20px #ff0000;
-  }
-  100% {
-    box-shadow: 0 0 10px #ff0000;
+    background-color: rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
   }
 }
 
-@keyframes highlightPulse {
-  0% {
-    box-shadow: 0 0 50px #1b1b1b;
-  }
-  100% {
-    box-shadow: 0 0 0 #c4f4c3;
-  }
+/* 기존 highlight 정의 옆에 붙여주세요 */
+.room-card.highlight,
+.room-card.highlight .room-card-inner,
+.room-card.highlight .room-card-front,
+.room-card.highlight .room-card-back {
+  animation: highlightPulse 1s ease-in-out infinite alternate !important;
+  /* 배경색도 살짝 바꿔서 더 눈에 띄게 */
+  /* background-color: rgba(175, 158, 76, 0.2) !important; */
 }
 
 /* ==========================================================================
    [Flip Effect]
+   - 카드 앞/뒤 전환 애니메이션
 ========================================================================== */
 .flip-container {
   perspective: 1000px;
@@ -118,7 +135,7 @@
 
 .room-card-inner {
   min-width: 300px;
-  max-height: 420px;
+  max-height: var(--card-height);
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;
@@ -137,12 +154,10 @@
   height: 100%;
   backface-visibility: hidden;
   background-color: var(--room-card-background-color);
-  -webkit-backface-visibility: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  height: 100%;
 }
 
 .room-card-front {
@@ -150,7 +165,6 @@
   background-color: rgb(229, 229, 229);
   transform: rotateY(0deg);
   transition: opacity 0.2s ease;
-  height: auto;
 }
 
 .room-card-back {
@@ -158,16 +172,9 @@
   transform: rotateY(-180deg);
   padding: 0;
   box-sizing: border-box;
-  backface-visibility: hidden;
 }
 
-.room-card-back::before {
-  display: none;
-  backface-visibility: hidden;
-}
-
-.room-card.flipped:hover,
-.room-card.flipped:hover::before {
+.room-card.flipped:hover {
   transform: none !important;
   background-color: var(--room-card-background-color) !important;
   z-index: auto !important;
@@ -189,43 +196,16 @@
   }
 }
 
-.flipped .room-card-inner {
-  transform: rotateY(180deg);
-}
-
-/* 맥박 애니메이션 */
-@keyframes danjamPulse {
-  0%,
-  100% {
-    background-color: rgb(251, 204, 132);
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-  }
-  50% {
-    background-color: rgba(76, 175, 80, 0.3);
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
-  }
-}
-
-.room-card-front.danjam-highlight {
-  animation: danjamPulse 1s ease-in-out infinite alternate !important;
-  overflow: visible;
-  z-index: 1000 !important;
-}
-
-/* 카드 제거 시 즉시 숨김 */
-.room-card.remove {
-  display: none;
-}
-
 /* ==========================================================================
    [Card Content]
+   - 카드 내부 콘텐츠 스타일
 ========================================================================== */
 .content-footer-wrapper {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 420px;
+  min-height: var(--card-height);
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -245,7 +225,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  min-height: 420px;
+  min-height: var(--card-height);
   background-color: rgb(240, 240, 240);
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;
@@ -293,7 +273,7 @@
   width: auto;
   height: 30px;
   gap: 5px;
-  margin: 0px 5px;
+  margin: 0 5px;
 }
 
 .site-info-footer {
@@ -309,7 +289,7 @@
   justify-content: space-between;
   gap: 10px;
   width: 90%;
-  padding: 5px 5px;
+  padding: 5px;
   font-weight: 700;
   font-size: 1.1rem;
 }
@@ -334,14 +314,42 @@
   font-weight: bold;
 }
 
-.draggable-false {
-  cursor: not-allowed !important;
-  opacity: 0.7;
-  border: 3px dotted #5656a3;
+/* ==========================================================================
+   [Sold Out Styles]
+   - 판매 중단된 객실의 스타일
+========================================================================== */
+.sold-out-content,
+.sold-out-text {
+  color: #d32f2f !important;
+  font-weight: bold !important;
 }
 
 /* ==========================================================================
-   [Action Buttons - Icon Based, Embossed]
+   [Expired Blink Animation]
+   - 대실 시간 만료 시 깜빡임 효과
+========================================================================== */
+.expired-blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% {
+    border-color: #ff0000;
+    background-color: rgba(255, 0, 0, 0.1);
+  }
+  50% {
+    border-color: #ff6666;
+    background-color: rgba(255, 102, 102, 0.1);
+  }
+  100% {
+    border-color: #ff0000;
+    background-color: rgba(255, 0, 0, 0.1);
+  }
+}
+
+/* ==========================================================================
+   [Action Buttons]
+   - 카드 내 버튼 스타일 (입실, 퇴실, 수정, 삭제)
 ========================================================================== */
 .button-group {
   display: inline-flex;
@@ -385,52 +393,40 @@
   box-shadow: var(--button-shadow-hover);
 }
 
-/* 특정 버튼 스타일 (기능별 약간의 색상 차이) */
+/* 버튼 유형별 스타일 */
 .action-btn.checkin-btn {
   background-color: #d3d3d3;
-  color: var(--button-text-default);
-  cursor: pointer;
 }
 
 .action-btn.checkin-btn:hover {
   background-color: #c3c3c3;
-  color: var(--button-text-hover);
 }
 
 .action-btn.checkout-btn {
   background-color: #c9c9c9;
-  color: var(--button-text-default);
-  cursor: pointer;
 }
 
 .action-btn.checkout-btn:hover {
   background-color: #b9b9b9;
-  color: var(--button-text-hover);
 }
 
 .action-btn.edit-btn {
   background-color: #d6d6d6;
-  color: var(--button-text-default);
-  cursor: pointer;
 }
 
 .action-btn.edit-btn:hover {
   background-color: #c6c6c6;
-  color: var(--button-text-hover);
 }
 
 .action-btn.delete-btn {
   background-color: #cccccc;
-  color: var(--button-text-default);
-  cursor: pointer;
 }
 
 .action-btn.delete-btn:hover {
   background-color: #bcbcbc;
-  color: var(--button-text-hover);
 }
 
-/* 툴팁 스타일 */
+/* 버튼 툴팁 */
 .action-btn:hover::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -455,6 +451,7 @@
 
 /* ==========================================================================
    [Invoice Button]
+   - 인보이스 보기 버튼 스타일
 ========================================================================== */
 .invoice-icon-button-back {
   background: transparent;
@@ -475,7 +472,8 @@
 }
 
 /* ==========================================================================
-   [Memo Section inside Card Back]
+   [Memo Section]
+   - 카드 뒷면 메모 섹션 스타일
 ========================================================================== */
 .reservation-list {
   min-width: 310px;
@@ -483,43 +481,10 @@
   position: relative;
 }
 
-/* 대실시간만료 깜빡임 */
-.expired-blink {
-  animation: blink 1s infinite;
-}
-@keyframes blink {
-  0% {
-    border-color: #ff0000;
-    background-color: rgba(255, 0, 0, 0.1);
-  }
-  50% {
-    border-color: #ff6666;
-    background-color: rgba(255, 102, 102, 0.1);
-  }
-  100% {
-    border-color: #ff0000;
-    background-color: rgba(255, 0, 0, 0.1);
-  }
-}
-
-/* 판매중단객실 배경 */
-.room-card.sold-out {
-  background-color: #fa9f9f !important;
-}
-
-.sold-out-content {
-  color: #d32f2f !important;
-  font-weight: bold !important;
-}
-
-.sold-out-text {
-  color: #d32f2f !important;
-  font-weight: bold !important;
-}
-
-/* ===============================
-   [Unassigned Reservations Section]
-=============================== */
+/* ==========================================================================
+   [Unassigned Reservations]
+   - 미배정 예약 카드 스타일
+========================================================================== */
 .unassigned-card {
   background-color: #eed142;
   transform: scale(0.95);

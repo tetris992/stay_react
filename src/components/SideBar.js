@@ -138,7 +138,10 @@ function SideBar({
   const handleCloseGraphModal = () => setIsGraphModalOpen(false);
 
   const dailySales = { labels: labelsForOTA, values: [] };
-  const monthlySales = { labels: ['현재월'], values: [monthlyTotal?.total || 0] };
+  const monthlySales = {
+    labels: ['현재월'],
+    values: [monthlyTotal?.total || 0],
+  };
 
   const getDayClassName = (date) => {
     const dayOfWeek = date.getDay();
@@ -158,7 +161,15 @@ function SideBar({
   const selectedBreakdown =
     selectedDateIndex >= 0 && selectedDateIndex < monthlyDailyBreakdown.length
       ? monthlyDailyBreakdown[selectedDateIndex]
-      : { Total: 0, Cash: 0, Card: 0, OTA: 0, Pending: 0, 현장숙박: 0, 현장대실: 0 };
+      : {
+          Total: 0,
+          Cash: 0,
+          Card: 0,
+          OTA: 0,
+          Pending: 0,
+          현장숙박: 0,
+          현장대실: 0,
+        };
 
   console.log(
     `[SideBar] Selected Breakdown for ${format(selectedDate, 'yyyy-MM-dd')}:`,
@@ -323,7 +334,7 @@ function SideBar({
         isOpen={isGraphModalOpen}
         onRequestClose={handleCloseGraphModal}
         monthlySales={monthlySales}
-        monthlyDailyBreakdown={selectedBreakdown}
+        monthlyDailyBreakdown={monthlyDailyBreakdown}
         selectedDate={selectedDate}
         dailySales={dailySales}
         dailySalesByOTA={dailySalesByOTA}

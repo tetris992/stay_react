@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import {
@@ -26,7 +19,7 @@ import availableOTAs from '../config/availableOTAs';
 
 // CountdownTimer 컴포넌트 (변경 없음)
 const CountdownTimer = React.memo(
-  ({ checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration }) => {
+  ({ checkOutDate, reservationId, isCheckedIn, duration }) => {
     const [remainingMinutes, setRemainingMinutes] = useState(null);
     const [isExpired, setIsExpired] = useState(false);
     const timerRef = useRef(null);
@@ -59,7 +52,7 @@ const CountdownTimer = React.memo(
           timerRef.current = null;
         }
       };
-    }, [checkOutDate, reservationId, newlyCreatedId, isCheckedIn, duration]);
+    }, [checkOutDate, reservationId, isCheckedIn, duration]);
 
     const remainingTime = useMemo(() => {
       if (!isCheckedIn && !duration) return '00:00';
@@ -87,7 +80,6 @@ const CountdownTimer = React.memo(
 CountdownTimer.propTypes = {
   checkOutDate: PropTypes.instanceOf(Date),
   reservationId: PropTypes.string,
-  newlyCreatedId: PropTypes.string,
   isCheckedIn: PropTypes.bool.isRequired,
   duration: PropTypes.number,
 };
@@ -106,10 +98,6 @@ const DraggableReservationCard = ({
   phoneNumber,
   email,
   handleDeleteClickHandler,
-  newlyCreatedId,
-  isNewlyCreatedHighlighted, //이부분이 비활성화된 것도 연관있는지 확인해야함. 
-  updatedReservationId,
-  isUpdatedHighlighted,
   onPartialUpdate,
   onEdit,
   roomTypes,
@@ -120,27 +108,6 @@ const DraggableReservationCard = ({
 }) => {
   const [isEditingMemo, setIsEditingMemo] = useState(false);
   const [conflictDetails, setConflictDetails] = useState(null);
-  const [pausedHighlight, setPausedHighlight] = useState(false);
-  const [keepPulse, setKeepPulse] = useState(false);
-  // 하이라이트 중지 상태 추가
-
-useLayoutEffect(() => {
-  if (reservation._id === newlyCreatedId) {
-    setKeepPulse(true);
-    setPausedHighlight(false);
-    const timer = setTimeout(() => setKeepPulse(false), 50_000);
-    return () => clearTimeout(timer);
-  }
-}, [reservation._id, newlyCreatedId]);
-
-  // 새로 생성된 카드일 때만 10초간 하이라이트
-  // useLayoutEffect(() => {
-  //   if (reservation._id === newlyCreatedId) {
-  //     setKeepPulse(true);
-  //     const timer = setTimeout(() => setKeepPulse(false), 10_000);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [reservation._id, newlyCreatedId]);
 
   const normalizedReservation = useMemo(
     () => ({
@@ -158,8 +125,6 @@ useLayoutEffect(() => {
     (reservation.customerName || '').replace(/\s/g, '') === '판매중단' ||
     (reservation.customerName || '').replace(/\s/g, '') === '판매중지' ||
     (reservation.customerName || '').replace(/\s/g, '') === '판매금지';
-
-  const shouldPulse = keepPulse && !pausedHighlight;
 
   const checkInTime = hotelSettings?.checkInTime || '16:00';
   const checkOutTime = hotelSettings?.checkOutTime || '11:00';
@@ -815,15 +780,12 @@ useLayoutEffect(() => {
   };
 
   const isFlipped = flippedReservationIds.has(normalizedReservation._id);
-  const isHighlighted =
-    highlightedReservationIds.includes(normalizedReservation._id) &&
-    isSearching;
-  const isUpdated =
-    normalizedReservation._id === updatedReservationId && isUpdatedHighlighted;
+  const isHighlighted = highlightedReservationIds.includes(
+    normalizedReservation._id
+  );
   const isCancelled =
     normalizedReservation._id.includes('Canceled') ||
-    (normalizedReservation.reservationStatus || '').toLowerCase() ===
-      'cancelled';
+    (normalizedReservation.reservationStatus || '').toLowerCase() === 'cancelled';
 
   const truncatedReservationNo = normalizedReservation.reservationNo
     ? normalizedReservation.reservationNo.length > 20
@@ -861,8 +823,7 @@ useLayoutEffect(() => {
     getBorderColor(normalizedReservation),
     isCancelled ? 'cancelled' : '',
     isUnassigned ? 'unassigned-card' : '',
-    isHighlighted ? 'highlighted' : '',
-    isUpdated ? 'onsite-created' : '',
+    isHighlighted ? 'highlight' : '', // 통합된 하이라이트 클래스
     !canDragMemo ? 'draggable-false' : '',
     normalizedReservation.isCheckedOut ? 'checked-out' : '',
     isDayUseExpired ? 'expired-blink' : '',
@@ -892,11 +853,6 @@ useLayoutEffect(() => {
     if (e.target.closest('.memo-component')) return;
     if (isUnassigned) return;
     if (isDragging || isEditingMemo) return;
-
-    // 한번 clicked 하면 플래스 멈추기
-    if (keepPulse) {
-      setPausedHighlight(true);
-    }
 
     handleCardFlip(normalizedReservation._id);
   };
@@ -1130,7 +1086,6 @@ useLayoutEffect(() => {
               <CountdownTimer
                 checkOutDate={checkOutDate}
                 reservationId={normalizedReservation._id}
-                newlyCreatedId={newlyCreatedId}
                 isCheckedIn={normalizedReservation.isCheckedIn}
                 duration={normalizedReservation.duration}
               />
@@ -1262,11 +1217,8 @@ useLayoutEffect(() => {
         }}
       >
         <div className="room-card-inner">
-          {/* shouldPulse가 true일 때만 danjam-highlight 클래스를 붙여 줍니다 */}
           <div
-            className={`room-card-front${
-              shouldPulse ? ' danjam-highlight' : ''
-            }`}
+            className="room-card-front"
             style={{ backfaceVisibility: 'hidden' }}
           >
             {isSoldOut ? renderSoldOutFront() : renderNormalFront()}
@@ -1313,11 +1265,6 @@ DraggableReservationCard.propTypes = {
   phoneNumber: PropTypes.string,
   email: PropTypes.string,
   handleDeleteClickHandler: PropTypes.func.isRequired,
-  handleConfirmClickHandler: PropTypes.func.isRequired,
-  newlyCreatedId: PropTypes.string,
-  isNewlyCreatedHighlighted: PropTypes.bool,
-  updatedReservationId: PropTypes.string,
-  isUpdatedHighlighted: PropTypes.bool,
   onPartialUpdate: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   roomTypes: PropTypes.array.isRequired,
