@@ -206,21 +206,9 @@
   }
 }
 
-@-webkit-keyframes danjamPulse {
-  0%, 100% {
-    background-color: rgb(251, 204, 132);
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-  }
-  50% {
-    background-color: rgba(76, 175, 80, 0.3);
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
-  }
-}
-
-/* room-card-front에 직접 danjam-highlight 클래스가 붙었을 때만 */
 .room-card-front.danjam-highlight {
-  -webkit-animation: danjamPulse 1s ease-in-out infinite alternate;
-  animation: danjamPulse 1s ease-in-out infinite alternate;
+  animation: danjamPulse 1s ease-in-out infinite alternate !important;
+  z-index: 1000 !important;
 }
 
 /* 카드 제거 시 즉시 숨김 */

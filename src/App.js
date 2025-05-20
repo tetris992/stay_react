@@ -2332,34 +2332,34 @@ const App = () => {
         setNewlyCreatedId(newRes._id);
         setTimeout(() => setNewlyCreatedId(null), 10000);
 
-        const attemptHighlight = (attemptsLeft = 5, delay = 200) => {
-          const card = document.querySelector(
-            `.room-card[data-id="${newRes._id}"]`
-          );
-          if (card) {
-            console.log(
-              `[handleReservationCreated] Highlighting card for ${newRes._id}`
-            );
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            card.classList.add('danjam-highlight');
-            setTimeout(() => {
-              card.classList.remove('danjam-highlight');
-              console.log(
-                `[handleReservationCreated] Removed danjam-highlight for ${newRes._id}`
-              );
-            }, 10000);
-          } else if (attemptsLeft > 0) {
-            console.warn(
-              `[handleReservationCreated] Card not found for ${newRes._id}, retrying (${attemptsLeft} attempts left)`
-            );
-            setTimeout(() => attemptHighlight(attemptsLeft - 1, delay), delay);
-          } else {
-            console.error(
-              `[handleReservationCreated] Failed to find card for ${newRes._id} after retries`
-            );
-          }
-        };
-        setTimeout(() => attemptHighlight(), 200);
+        // const attemptHighlight = (attemptsLeft = 5, delay = 200) => {
+        //   const card = document.querySelector(
+        //     `.room-card[data-id="${newRes._id}"]`
+        //   );
+        //   if (card) {
+        //     console.log(
+        //       `[handleReservationCreated] Highlighting card for ${newRes._id}`
+        //     );
+        //     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        //     card.classList.add('danjam-highlight');
+        //     setTimeout(() => {
+        //       card.classList.remove('danjam-highlight');
+        //       console.log(
+        //         `[handleReservationCreated] Removed danjam-highlight for ${newRes._id}`
+        //       );
+        //     }, 10000);
+        //   } else if (attemptsLeft > 0) {
+        //     console.warn(
+        //       `[handleReservationCreated] Card not found for ${newRes._id}, retrying (${attemptsLeft} attempts left)`
+        //     );
+        //     setTimeout(() => attemptHighlight(attemptsLeft - 1, delay), delay);
+        //   } else {
+        //     console.error(
+        //       `[handleReservationCreated] Failed to find card for ${newRes._id} after retries`
+        //     );
+        //   }
+        // };
+        // setTimeout(() => attemptHighlight(), 1000);
 
         const { customerName, phoneNumber, checkIn, checkOut } = newRes;
         logMessage(
@@ -2619,20 +2619,14 @@ const App = () => {
         socketRef.current = io(BASE_URL, {
           withCredentials: true,
           query: { hotelId, accessToken },
-          transportOptions: {
-            websocket: {
-              // 필요 시 추가 옵션
-            },
-          },
-          transports: ['websocket'], // ★ 오직 WebSocket만 사용
-          reconnection: true, // 자동 재접속
-          reconnectionAttempts: 30, // 최대 재접속 시도 횟수
-          reconnectionDelay: 2000, // 첫 재접속 대기 시간 (ms)
-          reconnectionDelayMax: 10000, // 최대 재접속 대기 시간 (ms)
-          randomizationFactor: 0.2, // 재접속 딜레이 랜덤화 비율
-          timeout: 20000, // 연결 시도 타임아웃 (ms)
+          // allow polling as a fallback in case websocket handshake fails
+          transports: ['polling', 'websocket'],
+          reconnection: true,
+          reconnectionAttempts: 30,
+          reconnectionDelay: 2000,
+          reconnectionDelayMax: 10000,
+          timeout: 20000,
           path: '/socket.io',
-          forceNew: true,
         });
         console.log('[WebSocket] Initialized socket:', {
           hotelId,
