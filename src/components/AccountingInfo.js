@@ -122,14 +122,17 @@ function AccountingInfo({
           </li>
           {showDailyDetails && dailyBreakdown && dailyBreakdown.length > 0 && (
             <li>
-              <span>일매출 상세: </span>
-              <ul>
-                {dailyBreakdown.map((amount, index) => (
-                  <li key={index}>
-                    예약 {index + 1}: ₩{amount.toLocaleString()}
-                  </li>
-                ))}
-              </ul>
+             <span>일매출 상세: </span>
+             <ul>
+               {dailySalesReport
+                 .filter(item => item.reservationId !== 'totalSummary')
+                 .map((sale, idx) => (
+                   <li key={idx}>
+                     {sale.roomNumber} 호: ₩{sale.price.toLocaleString()}
+                   </li>
+                 ))
+               }
+             </ul>
             </li>
           )}
           <li>
