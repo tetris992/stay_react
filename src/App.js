@@ -814,8 +814,8 @@ const App = () => {
 
       // 한국 시간으로 타임스탬프 생성
       const now = new Date();
-      const koreaTime = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const timestamp = koreaTime.toISOString();
+      const timestamp = now.toISOString();
+
       const formattedDate = format(selectedDate, 'yyyy-MM-dd');
 
       // actionType 결정
@@ -1763,11 +1763,7 @@ const App = () => {
     },
     [loadReservations]
   );
-  
-  
-  
-  
-  
+
   const handleRoomChangeAndSync = useCallback(
     async (reservationId, newRoomNumber, newRoomInfo, currentPrice) => {
       try {
@@ -2242,136 +2238,135 @@ const App = () => {
   const [isJoinedHotel, setIsJoinedHotel] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false); // 연결 시도 상태 추가
 
-const handleReservationCreated = useCallback(
-  (data, callback) => {
-    console.log(
-      '[handleReservationCreated] Raw event received at:',
-      new Date().toISOString()
-    );
-    console.log(
-      '[handleReservationCreated] Received event data:',
-      JSON.stringify(data, null, 2)
-    );
-
-    const payload = data?.reservation ?? data;
-    if (
-      !payload._id ||
-      !payload.checkIn ||
-      !payload.checkOut ||
-      !payload.siteName
-    ) {
-      console.error(
-        '[handleReservationCreated] Invalid reservation data:',
-        payload
-      );
-      return callback?.({ success: false, error: 'Missing required fields' });
-    }
-
-    const eventId =
-      payload._id ||
-      `${payload.checkIn}-${payload.checkOut}-${payload.customerName}`;
-    if (eventCache.current.has(eventId)) {
+  const handleReservationCreated = useCallback(
+    (data, callback) => {
       console.log(
-        `[handleReservationCreated] Duplicate event ${eventId} ignored`
+        '[handleReservationCreated] Raw event received at:',
+        new Date().toISOString()
       );
-      return callback?.({ success: true });
-    }
-    eventCache.current.add(eventId);
-    if (eventCache.current.size > 1000) {
-      eventCache.current.clear();
       console.log(
-        '[handleReservationCreated] Cleared eventCache due to size limit'
+        '[handleReservationCreated] Received event data:',
+        JSON.stringify(data, null, 2)
       );
-    }
 
-    const newRes = processReservation(payload);
-    if (!newRes) {
-      console.warn(
-        '[handleReservationCreated] Invalid reservation payload after processing:',
-        payload
-      );
-      return callback?.({ success: false, error: 'Invalid payload' });
-    }
+      const payload = data?.reservation ?? data;
+      if (
+        !payload._id ||
+        !payload.checkIn ||
+        !payload.checkOut ||
+        !payload.siteName
+      ) {
+        console.error(
+          '[handleReservationCreated] Invalid reservation data:',
+          payload
+        );
+        return callback?.({ success: false, error: 'Missing required fields' });
+      }
 
-    setAllReservations((prev) => {
-      if (prev.some((r) => r._id === newRes._id)) {
+      const eventId =
+        payload._id ||
+        `${payload.checkIn}-${payload.checkOut}-${payload.customerName}`;
+      if (eventCache.current.has(eventId)) {
         console.log(
-          `[handleReservationCreated] Reservation ${newRes._id} already exists, updating`
+          `[handleReservationCreated] Duplicate event ${eventId} ignored`
         );
-        const updated = prev.map((r) =>
-          r._id === newRes._id ? { ...r, ...newRes } : r
+        return callback?.({ success: true });
+      }
+      eventCache.current.add(eventId);
+      if (eventCache.current.size > 1000) {
+        eventCache.current.clear();
+        console.log(
+          '[handleReservationCreated] Cleared eventCache due to size limit'
         );
-        filterReservationsByDate(updated, selectedDate);
+      }
+
+      const newRes = processReservation(payload);
+      if (!newRes) {
+        console.warn(
+          '[handleReservationCreated] Invalid reservation payload after processing:',
+          payload
+        );
+        return callback?.({ success: false, error: 'Invalid payload' });
+      }
+
+      setAllReservations((prev) => {
+        if (prev.some((r) => r._id === newRes._id)) {
+          console.log(
+            `[handleReservationCreated] Reservation ${newRes._id} already exists, updating`
+          );
+          const updated = prev.map((r) =>
+            r._id === newRes._id ? { ...r, ...newRes } : r
+          );
+          filterReservationsByDate(updated, selectedDate);
+          callback?.({ success: true });
+          return updated;
+        }
+
+        console.log(
+          '[handleReservationCreated] Adding new reservation:',
+          newRes._id
+        );
+        const updated = [...prev, newRes];
+
+        // 1) 선택 날짜 변경
+        const incomingCheckIn = new Date(newRes.checkIn);
+        if (isNaN(incomingCheckIn.getTime())) {
+          console.error(
+            '[handleReservationCreated] Invalid checkIn date:',
+            newRes.checkIn
+          );
+          callback?.({ success: false, error: 'Invalid checkIn date' });
+          return prev;
+        }
+        setSelectedDate(incomingCheckIn);
+        filterReservationsByDate(updated, incomingCheckIn);
+
+        // 2) 하이라이트 처리
+        setHighlightedReservationIds((ids) => [...ids, newRes._id]);
+        setTimeout(() => {
+          setHighlightedReservationIds((ids) =>
+            ids.filter((id) => id !== newRes._id)
+          );
+        }, 10000);
+
+        // 3) **스크롤 트리거용 state 세팅**
+        setNewlyCreatedId(newRes._id);
+        setTimeout(() => setNewlyCreatedId(null), 10000);
+
+        // (선택) 즉시 scrollIntoView 강제 실행
+        setTimeout(() => {
+          const card = document.querySelector(
+            `.room-card[data-id="${newRes._id}"]`
+          );
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+
+        const { customerName, phoneNumber, checkIn, checkOut } = newRes;
+        logMessage(
+          `[handleReservationCreated] 예약 생성됨 (${newRes.siteName}): ${
+            newRes._id
+          } - 예약자: ${customerName || '정보 없음'}, 전화번호: ${
+            phoneNumber || '정보 없음'
+          }, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${
+            checkOut || '정보 없음'
+          }`,
+          'create'
+        );
+
         callback?.({ success: true });
         return updated;
-      }
-
-      console.log(
-        '[handleReservationCreated] Adding new reservation:',
-        newRes._id
-      );
-      const updated = [...prev, newRes];
-
-      // 1) 선택 날짜 변경
-      const incomingCheckIn = new Date(newRes.checkIn);
-      if (isNaN(incomingCheckIn.getTime())) {
-        console.error(
-          '[handleReservationCreated] Invalid checkIn date:',
-          newRes.checkIn
-        );
-        callback?.({ success: false, error: 'Invalid checkIn date' });
-        return prev;
-      }
-      setSelectedDate(incomingCheckIn);
-      filterReservationsByDate(updated, incomingCheckIn);
-
-      // 2) 하이라이트 처리
-      setHighlightedReservationIds((ids) => [...ids, newRes._id]);
-      setTimeout(() => {
-        setHighlightedReservationIds((ids) =>
-          ids.filter((id) => id !== newRes._id)
-        );
-      }, 10000);
-
-      // 3) **스크롤 트리거용 state 세팅**
-      setNewlyCreatedId(newRes._id);
-      setTimeout(() => setNewlyCreatedId(null), 10000);
-
-      // (선택) 즉시 scrollIntoView 강제 실행
-      setTimeout(() => {
-        const card = document.querySelector(
-          `.room-card[data-id="${newRes._id}"]`
-        );
-        if (card) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-
-      const { customerName, phoneNumber, checkIn, checkOut } = newRes;
-      logMessage(
-        `[handleReservationCreated] 예약 생성됨 (${newRes.siteName}): ${
-          newRes._id
-        } - 예약자: ${customerName || '정보 없음'}, 전화번호: ${
-          phoneNumber || '정보 없음'
-        }, 체크인: ${checkIn || '정보 없음'}, 체크아웃: ${
-          checkOut || '정보 없음'
-        }`,
-        'create'
-      );
-
-      callback?.({ success: true });
-      return updated;
-    });
-  },
-  [
-    processReservation,
-    filterReservationsByDate,
-    setSelectedDate,
-    logMessage,
-    selectedDate,
-  ]
-);
-
+      });
+    },
+    [
+      processReservation,
+      filterReservationsByDate,
+      setSelectedDate,
+      logMessage,
+      selectedDate,
+    ]
+  );
 
   const handleReservationDeleted = useCallback(
     (data, callback) => {
@@ -2825,138 +2820,140 @@ const handleReservationCreated = useCallback(
     [hotelId]
   );
 
-const handleFormSave = async (reservationId, data) => {
-  console.log('[handleFormSave] Received data:', data);
-  let newReservationId = null;
+  const handleFormSave = async (reservationId, data) => {
+    console.log('[handleFormSave] Received data:', data);
+    let newReservationId = null;
 
-  try {
-    const reservationData = {
-      siteName: '현장예약',
-      reservations: [
-        {
-          ...data,
-          type: data.type || 'stay',
-          duration: data.type === 'dayUse' ? data.durationHours || 3 : undefined,
-          isCheckedIn: data.isCheckedIn || false,
-          isCheckedOut: data.isCheckedOut || false,
-          manuallyCheckedOut: data.manuallyCheckedOut || false,
-        },
-      ],
-      hotelId,
-      selectedDate: selectedDate.toISOString(),
-    };
+    try {
+      const reservationData = {
+        siteName: '현장예약',
+        reservations: [
+          {
+            ...data,
+            type: data.type || 'stay',
+            duration:
+              data.type === 'dayUse' ? data.durationHours || 3 : undefined,
+            isCheckedIn: data.isCheckedIn || false,
+            isCheckedOut: data.isCheckedOut || false,
+            manuallyCheckedOut: data.manuallyCheckedOut || false,
+          },
+        ],
+        hotelId,
+        selectedDate: selectedDate.toISOString(),
+      };
 
-    if (reservationId && data.siteName !== '현장예약') {
-      const existingReservation = allReservations.find(
-        (res) => res._id === reservationId
-      );
-      if (existingReservation && existingReservation.type === 'dayUse') {
-        reservationData.reservations[0].duration = existingReservation.duration;
-      }
-    }
-
-    if (reservationId) {
-      console.log(
-        '[handleFormSave] Updating reservation with data:',
-        reservationData.reservations[0]
-      );
-      await updateReservation(
-        reservationId,
-        {
-          ...reservationData.reservations[0],
-          hotelId,
-          selectedDate: reservationData.selectedDate,
-        },
-        hotelId
-      );
-      const { customerName, phoneNumber, checkIn, checkOut } =
-        reservationData.reservations[0];
-      logMessage(
-        `[handleFormSave] Updated reservation ${reservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
-        'update'
-      );
-    } else {
-      let response = await saveOnSiteReservation(reservationData);
-      console.log('[handleFormSave] API Response:', response);
-      if (!response) {
-        console.warn(
-          '[handleFormSave] No response from saveOnSiteReservation, assuming success.'
+      if (reservationId && data.siteName !== '현장예약') {
+        const existingReservation = allReservations.find(
+          (res) => res._id === reservationId
         );
-        response = {
-          createdReservationIds: [data.reservationNo || `${Date.now()}`],
-        };
+        if (existingReservation && existingReservation.type === 'dayUse') {
+          reservationData.reservations[0].duration =
+            existingReservation.duration;
+        }
       }
-      if (Array.isArray(response.createdReservationIds)) {
-        newReservationId = response.createdReservationIds[0];
-      } else if (
-        response.message &&
-        response.message.includes('successfully')
-      ) {
-        newReservationId = data.reservationNo || `${Date.now()}`;
-        console.warn('[handleFormSave] Using fallback ID:', newReservationId);
+
+      if (reservationId) {
+        console.log(
+          '[handleFormSave] Updating reservation with data:',
+          reservationData.reservations[0]
+        );
+        await updateReservation(
+          reservationId,
+          {
+            ...reservationData.reservations[0],
+            hotelId,
+            selectedDate: reservationData.selectedDate,
+          },
+          hotelId
+        );
+        const { customerName, phoneNumber, checkIn, checkOut } =
+          reservationData.reservations[0];
+        logMessage(
+          `[handleFormSave] Updated reservation ${reservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
+          'update'
+        );
       } else {
-        throw new Error('응답에서 createdReservationIds를 찾을 수 없습니다.');
+        let response = await saveOnSiteReservation(reservationData);
+        console.log('[handleFormSave] API Response:', response);
+        if (!response) {
+          console.warn(
+            '[handleFormSave] No response from saveOnSiteReservation, assuming success.'
+          );
+          response = {
+            createdReservationIds: [data.reservationNo || `${Date.now()}`],
+          };
+        }
+        if (Array.isArray(response.createdReservationIds)) {
+          newReservationId = response.createdReservationIds[0];
+        } else if (
+          response.message &&
+          response.message.includes('successfully')
+        ) {
+          newReservationId = data.reservationNo || `${Date.now()}`;
+          console.warn('[handleFormSave] Using fallback ID:', newReservationId);
+        } else {
+          throw new Error('응답에서 createdReservationIds를 찾을 수 없습니다.');
+        }
+
+        const processedReservation = processReservation({
+          _id: newReservationId,
+          ...reservationData.reservations[0],
+        });
+        setAllReservations((prev) => [...prev, processedReservation]);
+
+        // 하이라이트 상태 통합
+        setHighlightedReservationIds((prev) => [...prev, newReservationId]);
+        setTimeout(() => {
+          setHighlightedReservationIds((prev) =>
+            prev.filter((id) => id !== newReservationId)
+          );
+        }, 10000);
+
+        const { customerName, phoneNumber, checkIn, checkOut } =
+          reservationData.reservations[0];
+        logMessage(
+          `[handleFormSave] Created new reservation ${newReservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
+          'create'
+        );
+
+        if (data.checkIn) {
+          const parsedDate = parseDate(data.checkIn);
+          setSelectedDate(parsedDate);
+          filterReservationsByDate(
+            [...allReservations, processedReservation],
+            parsedDate
+          );
+        }
       }
 
-      const processedReservation = processReservation({
-        _id: newReservationId,
-        ...reservationData.reservations[0],
-      });
-      setAllReservations((prev) => [...prev, processedReservation]);
+      setShowGuestForm(false);
+      if (data.onComplete && typeof data.onComplete === 'function') {
+        data.onComplete();
+      }
 
-      // 하이라이트 상태 통합
-      setHighlightedReservationIds((prev) => [...prev, newReservationId]);
-      setTimeout(() => {
-        setHighlightedReservationIds((prev) =>
-          prev.filter((id) => id !== newReservationId)
-        );
-      }, 10000);
-
-      const { customerName, phoneNumber, checkIn, checkOut } =
-        reservationData.reservations[0];
-      logMessage(
-        `[handleFormSave] Created new reservation ${newReservationId} - 예약자: ${customerName}, 전화번호: ${phoneNumber}, 체크인: ${checkIn}, 체크아웃: ${checkOut}`,
-        'create'
+      const idToRemove = reservationId || newReservationId;
+      if (idToRemove) {
+        setLoadedReservations((prev) => prev.filter((id) => id !== idToRemove));
+      }
+      await loadReservations();
+    } catch (error) {
+      console.error('[handleFormSave] Error saving reservation:', error);
+      alert(
+        error.response?.status === 403
+          ? 'CSRF 오류: 새로고침 후 시도'
+          : error.message || '저장 실패'
       );
-
-      if (data.checkIn) {
-        const parsedDate = parseDate(data.checkIn);
-        setSelectedDate(parsedDate);
-        filterReservationsByDate(
-          [...allReservations, processedReservation],
-          parsedDate
+      setShowGuestForm(false);
+      if (data.onComplete && typeof data.onComplete === 'function') {
+        data.onComplete();
+      }
+      if (reservationId) {
+        setLoadedReservations((prev) =>
+          prev.filter((id) => id !== reservationId)
         );
       }
     }
-
-    setShowGuestForm(false);
-    if (data.onComplete && typeof data.onComplete === 'function') {
-      data.onComplete();
-    }
-
-    const idToRemove = reservationId || newReservationId;
-    if (idToRemove) {
-      setLoadedReservations((prev) => prev.filter((id) => id !== idToRemove));
-    }
-    await loadReservations();
-  } catch (error) {
-    console.error('[handleFormSave] Error saving reservation:', error);
-    alert(
-      error.response?.status === 403
-        ? 'CSRF 오류: 새로고침 후 시도'
-        : error.message || '저장 실패'
-    );
-    setShowGuestForm(false);
-    if (data.onComplete && typeof data.onComplete === 'function') {
-      data.onComplete();
-    }
-    if (reservationId) {
-      setLoadedReservations((prev) =>
-        prev.filter((id) => id !== reservationId)
-      );
-    }
-  }
-};
+  };
 
   const [searchCriteria, setSearchCriteria] = useState({
     name: '',
@@ -2972,62 +2969,62 @@ const handleFormSave = async (reservationId, data) => {
     }, 1000);
   };
 
-const executeSearch = useCallback(
-  (searchTerm, handleCardFlip) => {
-    const trimmedSearchTerm = searchTerm.trim();
-    if (trimmedSearchTerm.length < 2) {
-      alert('검색어는 최소 2자 이상 입력해야 합니다.');
-      return;
-    }
-    const lowerCaseSearchTerm = trimmedSearchTerm.toLowerCase();
-    const results = allReservations.filter((reservation) => {
-      const nameMatch = reservation.customerName
-        ?.toLowerCase()
-        .includes(lowerCaseSearchTerm);
-      const reservationNoMatch = reservation.reservationNo
-        ?.toLowerCase()
-        .includes(lowerCaseSearchTerm);
-      const memoText = memos[reservation._id]?.text || '';
-      const memoMatch = memoText.toLowerCase().includes(lowerCaseSearchTerm);
-      return nameMatch || reservationNoMatch || memoMatch;
-    });
-    if (results.length > 0) {
-      setIsSearching(true);
-      const limitedResults = results.slice(0, 5);
-      const reservationIds = limitedResults.map((res) => res._id);
-      setHighlightedReservationIds(reservationIds);
-      const firstResult = limitedResults[0];
-      const checkInDate = parseDate(firstResult.checkIn);
-      if (checkInDate) {
-        setSelectedDate(checkInDate);
-        filterReservationsByDate(allReservations, checkInDate);
+  const executeSearch = useCallback(
+    (searchTerm, handleCardFlip) => {
+      const trimmedSearchTerm = searchTerm.trim();
+      if (trimmedSearchTerm.length < 2) {
+        alert('검색어는 최소 2자 이상 입력해야 합니다.');
+        return;
       }
-      setTimeout(() => {
-        const card = document.querySelector(
-          `.room-card[data-id="${firstResult._id}"]`
-        );
-        if (card) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          if (handleCardFlip) {
-            handleCardFlip(firstResult._id);
-          }
+      const lowerCaseSearchTerm = trimmedSearchTerm.toLowerCase();
+      const results = allReservations.filter((reservation) => {
+        const nameMatch = reservation.customerName
+          ?.toLowerCase()
+          .includes(lowerCaseSearchTerm);
+        const reservationNoMatch = reservation.reservationNo
+          ?.toLowerCase()
+          .includes(lowerCaseSearchTerm);
+        const memoText = memos[reservation._id]?.text || '';
+        const memoMatch = memoText.toLowerCase().includes(lowerCaseSearchTerm);
+        return nameMatch || reservationNoMatch || memoMatch;
+      });
+      if (results.length > 0) {
+        setIsSearching(true);
+        const limitedResults = results.slice(0, 5);
+        const reservationIds = limitedResults.map((res) => res._id);
+        setHighlightedReservationIds(reservationIds);
+        const firstResult = limitedResults[0];
+        const checkInDate = parseDate(firstResult.checkIn);
+        if (checkInDate) {
+          setSelectedDate(checkInDate);
+          filterReservationsByDate(allReservations, checkInDate);
         }
-      }, 100);
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
-      }
-      highlightTimeoutRef.current = setTimeout(() => {
+        setTimeout(() => {
+          const card = document.querySelector(
+            `.room-card[data-id="${firstResult._id}"]`
+          );
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (handleCardFlip) {
+              handleCardFlip(firstResult._id);
+            }
+          }
+        }, 100);
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+        highlightTimeoutRef.current = setTimeout(() => {
+          setHighlightedReservationIds([]);
+          setIsSearching(false);
+        }, 5000);
+      } else {
+        alert('검색 결과가 없습니다.');
         setHighlightedReservationIds([]);
         setIsSearching(false);
-      }, 5000);
-    } else {
-      alert('검색 결과가 없습니다.');
-      setHighlightedReservationIds([]);
-      setIsSearching(false);
-    }
-  },
-  [allReservations, filterReservationsByDate, memos]
-);
+      }
+    },
+    [allReservations, filterReservationsByDate, memos]
+  );
 
   useEffect(() => {
     return () => {

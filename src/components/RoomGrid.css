@@ -374,11 +374,13 @@
 /* 그리드 셀 스타일 조정 */
 .grid-cell {
   width: 100%;
-  min-width: 330px;
+  min-width: 340px;
+  max-width: 500px;
   box-sizing: border-box;
   min-height: 500px;
   padding: 10px;
   position: relative;
+  gap: 20px;
 }
 
 /* 컨테이너 라벨 너비 일정하게 유지 */
