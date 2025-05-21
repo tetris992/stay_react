@@ -906,6 +906,7 @@ useEffect(() => {
                           flex: '0 0 320px',
                           width: '320px',
                           boxSizing: 'border-box',
+                          gap: '30px',
                         }}
                       >
                         <DraggableReservationCard

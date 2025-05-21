@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import PropTypes from 'prop-types';
 import { useDrag } from 'react-dnd';
 import {
@@ -108,7 +114,7 @@ const DraggableReservationCard = ({
 }) => {
   const [isEditingMemo, setIsEditingMemo] = useState(false);
   const [conflictDetails, setConflictDetails] = useState(null);
-
+  const [showOriginalInfo, setShowOriginalInfo] = useState(false);
   const normalizedReservation = useMemo(
     () => ({
       ...reservation,
@@ -331,51 +337,91 @@ const DraggableReservationCard = ({
     normalizedReservation.customerName,
   ]);
 
+  // OTA 사이트 여부
+  const isOTA = availableOTAs.includes(normalizedReservation.siteName);
+
+  // ▶ 체크인 표시 로직
   const displayCheckIn = useMemo(() => {
-    if (!normalizedReservation.checkIn || normalizedReservation.checkIn === '')
+    // 1) OTA 예약이면 " 00:00" 만 제거
+    if (isOTA && normalizedReservation.checkIn) {
+      return normalizedReservation.checkIn.replace(/\s00:00$/, '');
+    }
+    // 2) 빈 값 처리
+    if (
+      !normalizedReservation.checkIn ||
+      normalizedReservation.checkIn === ''
+    ) {
       return '미정';
-    if (!checkInDate) return '정보 없음';
+    }
+    // 3) 파싱 실패 처리
+    if (!checkInDate) {
+      return '정보 없음';
+    }
+    // 4) 기본 YYYY-MM-DD / HH:mm 분리
     const [datePart, timePart] = normalizedReservation.checkIn.split('T');
     const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
-    if (time === '00:00' && normalizedReservation.type === 'dayUse')
+    // 5) 대실 대기
+    if (time === '00:00' && normalizedReservation.type === 'dayUse') {
       return `${datePart} (입실 대기)`;
+    }
+    // 6) 현장예약 기준 시간
     if (
       normalizedReservation.siteName === '현장예약' &&
       normalizedReservation.type !== 'dayUse'
-    )
+    ) {
       return `${datePart} ${checkInTime}`;
+    }
+    // 7) 기본 출력
     return `${datePart} ${time}`;
   }, [
-    checkInDate,
-    checkInTime,
+    isOTA,
+    normalizedReservation.checkIn,
     normalizedReservation.siteName,
     normalizedReservation.type,
-    normalizedReservation.checkIn,
+    checkInDate,
+    checkInTime,
   ]);
 
+  // ▶ 체크아웃 표시 로직
   const displayCheckOut = useMemo(() => {
+    // 1) OTA 예약이면 " 00:00" 만 제거
+    if (isOTA && normalizedReservation.checkOut) {
+      return normalizedReservation.checkOut.replace(/\s00:00$/, '');
+    }
+    // 2) 빈 값 처리
     if (
       !normalizedReservation.checkOut ||
       normalizedReservation.checkOut === ''
-    )
+    ) {
       return '미정';
-    if (!checkOutDate) return '정보 없음';
+    }
+    // 3) 파싱 실패 처리
+    if (!checkOutDate) {
+      return '정보 없음';
+    }
+    // 4) 기본 YYYY-MM-DD / HH:mm 분리
     const [datePart, timePart] = normalizedReservation.checkOut.split('T');
     const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
-    if (time === '00:00' && normalizedReservation.type === 'dayUse')
+    // 5) 대실 대기
+    if (time === '00:00' && normalizedReservation.type === 'dayUse') {
       return `${datePart} (입실 대기)`;
+    }
+    // 6) 현장예약 기준 시간
     if (
       normalizedReservation.siteName === '현장예약' &&
       normalizedReservation.type !== 'dayUse'
-    )
+    ) {
       return `${datePart} ${checkOutTime}`;
+    }
+    // 7) 기본 출력
     return `${datePart} ${time}`;
   }, [
-    checkOutDate,
-    checkOutTime,
+    isOTA,
+    normalizedReservation.checkOut,
     normalizedReservation.siteName,
     normalizedReservation.type,
-    normalizedReservation.checkOut,
+    checkOutDate,
+    checkOutTime,
   ]);
 
   const displayReservationDate = useMemo(() => {
@@ -785,7 +831,8 @@ const DraggableReservationCard = ({
   );
   const isCancelled =
     normalizedReservation._id.includes('Canceled') ||
-    (normalizedReservation.reservationStatus || '').toLowerCase() === 'cancelled';
+    (normalizedReservation.reservationStatus || '').toLowerCase() ===
+      'cancelled';
 
   const truncatedReservationNo = normalizedReservation.reservationNo
     ? normalizedReservation.reservationNo.length > 20
@@ -800,7 +847,6 @@ const DraggableReservationCard = ({
     return threshold;
   }, [checkOutDate, normalizedReservation.type]);
 
-  const isOTA = availableOTAs.includes(normalizedReservation.siteName);
   const isAssigned =
     normalizedReservation.roomNumber &&
     normalizedReservation.roomNumber.trim() !== '';
@@ -1120,6 +1166,36 @@ const DraggableReservationCard = ({
               ? `${normalizedReservation.roomInfo.substring(0, 21)}...`
               : normalizedReservation.roomInfo || '정보 없음'}
           </p>
+          {normalizedReservation.originalRoomInfo && (
+            <div className="original-room-info-wrapper">
+              {!showOriginalInfo ? (
+                <button
+                  className="show-original-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowOriginalInfo(true);
+                  }}
+                >
+                  원본 객실 정보 더보기 ▼
+                </button>
+              ) : (
+                <div className="original-room-info">
+                  <p style={{ fontSize: '0.8rem', color: '#888' }}>
+                    원본 객실정보: {normalizedReservation.originalRoomInfo}
+                  </p>
+                  <button
+                    className="hide-original-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowOriginalInfo(false);
+                    }}
+                  >
+                    접기 ▲
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <p>예약일: {displayReservationDate}</p>
           {normalizedReservation.phoneNumber && (
             <p>전화번호: {normalizedReservation.phoneNumber}</p>
@@ -1133,6 +1209,49 @@ const DraggableReservationCard = ({
             )}
           </p>
           <p>고객요청: {normalizedReservation.specialRequests || '없음'}</p>
+        </div>
+        {renderSiteInfoFooter()}
+      </div>
+    );
+  };
+
+  // ▶ 미배정(reservation.roomNumber 없을 때) 전용 Front
+  const renderUnassignedFront = () => {
+    // formatCouponInfo는 renderNormalFront 안에서 쓰던 함수를 그대로 재사용해도 됩니다.
+    const formatCouponInfo = (couponInfo) => {
+      if (!couponInfo || !couponInfo.name) return '없음';
+      const parts = couponInfo.name.split('-');
+      const cleanName =
+        parts.length > 1 ? parts.slice(1).join('-').trim() : couponInfo.name;
+      const discountText =
+        couponInfo.discountType === 'percentage'
+          ? `${couponInfo.discountValue}% 할인`
+          : `${couponInfo.discountValue.toLocaleString()}원 할인`;
+      return `${cleanName} (${discountText})`;
+    };
+
+    return (
+      <div className="content-footer-wrapper">
+        <div className="card-content">
+          <div className="card-header">
+            <h3 className="no-break">
+              <span className="stay-label">{stayLabel}</span>
+              {buttonGroup}
+            </h3>
+          </div>
+          <p className="reservation-no">{truncatedReservationNo}</p>
+          <p>예약자: {normalizedReservation.customerName || '정보 없음'}</p>
+          <p>체크인: {displayCheckIn}</p>
+          <p>체크아웃: {displayCheckOut}</p>
+          <p>가격: {displayPrice}</p>
+          <p>
+            할인 정보:{' '}
+            <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+              {formatCouponInfo(normalizedReservation.couponInfo)}
+            </span>
+          </p>
+          {/* ← 여기에 원본 객실정보 없이 roomInfo 전체 노출 */}
+          <p>객실 정보: {normalizedReservation.roomInfo || '정보 없음'}</p>
         </div>
         {renderSiteInfoFooter()}
       </div>
@@ -1221,7 +1340,11 @@ const DraggableReservationCard = ({
             className="room-card-front"
             style={{ backfaceVisibility: 'hidden' }}
           >
-            {isSoldOut ? renderSoldOutFront() : renderNormalFront()}
+            {isUnassigned
+              ? renderUnassignedFront()
+              : isSoldOut
+              ? renderSoldOutFront()
+              : renderNormalFront()}
           </div>
           {isFlipped && (
             <div

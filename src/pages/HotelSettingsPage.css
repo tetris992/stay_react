@@ -5,7 +5,7 @@
 ========================================================================== */
 :root {
   --card-width: 330px;
-  --card-height: 420px;
+  --card-height: 440px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(

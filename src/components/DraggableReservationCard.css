@@ -6,7 +6,7 @@
 :root {
   --card-width: 100%;
   --card-max-width: 320px;
-  --card-height: 420px;
+  --card-height: 450px;
   --card-header-height: 40px;
   --card-footer-height: 30px;
   --card-body-height: calc(
@@ -114,6 +114,7 @@
 .flip-container {
   perspective: 1000px;
   height: 100%;
+  background-color: rgb(240, 240, 240);
 }
 
 .room-card-inner {
@@ -142,12 +143,12 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  height: 100%;
 }
 
 .room-card-front {
   z-index: 2;
-  background-color: rgb(229, 229, 229);
+  background-color: rgb(240, 240, 240);
+
   transform: rotateY(0deg);
   transition: opacity 0.2s ease;
 }
@@ -197,7 +198,8 @@
    - 통일된 하이라이트 효과 정의 (신규 예약, 검색 결과 등)
 ========================================================================== */
 @keyframes highlightPulse {
-  0%, 100% {
+  0%,
+  100% {
     background-color: rgb(251, 204, 132);
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
   }
@@ -217,7 +219,6 @@
   /* background-color: rgba(175, 158, 76, 0.2) !important; */
 }
 
-
 /* 카드 제거 시 즉시 숨김 */
 .room-card.remove {
   display: none;
@@ -231,7 +232,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 410px;
+  min-height: 440px;
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -484,7 +485,7 @@
    [Memo Section inside Card Back]
 ========================================================================== */
 .reservation-list {
-  min-width: 310px;
+  min-width: auto;
   height: auto;
   position: relative;
 }
