@@ -495,17 +495,17 @@ const ContainerCell = React.memo(
         )}
         <div
           className="container-label"
-          style={{
-            marginBottom: '5px',
-            borderBottom: '1px solid #ddd',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '4px 8px',
-            backgroundColor: hasSoldOutReservation ? '#f0f0f0' : '#f0f4f8',
-            borderRadius: '8px',
-            fontWeight: 'bold',
-          }}
+          // style={{
+          //   marginBottom: '5px',
+          //   borderBottom: '1px solid #ddd',
+          //   display: 'flex',
+          //   alignItems: 'center',
+          //   gap: '10px',
+          //   padding: '4px 8px',
+          //   backgroundColor: hasSoldOutReservation ? '#f0f0f0' : '#f0f4f8',
+          //   borderRadius: '8px',
+          //   fontWeight: 'bold',
+          // }}
         >
           <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
             {cont.roomNumber || '미설정'}

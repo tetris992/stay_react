@@ -1153,12 +1153,14 @@ const DraggableReservationCard = ({
                 </span>
               )}
           </p>
-          <p>
-            할인 정보:{' '}
-            <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
-              {formatCouponInfo(normalizedReservation.couponInfo)}
-            </span>
-          </p>
+          {normalizedReservation.couponInfo?.name && (
+            <p>
+              할인 정보:{' '}
+              <span style={{ color: '#2ecc71', fontWeight: 'bold' }}>
+                {formatCouponInfo(normalizedReservation.couponInfo)}
+              </span>
+            </p>
+          )}
           <p>
             객실 정보:{' '}
             {normalizedReservation.roomInfo &&
@@ -1208,7 +1210,11 @@ const DraggableReservationCard = ({
               </>
             )}
           </p>
-          <p>고객요청: {normalizedReservation.specialRequests || '없음'}</p>
+          
+          {/* 수정된 코드: specialRequests(고객요청)가 비어있지 않을 때만 렌더링 */}
+          {normalizedReservation.specialRequests?.trim() && (
+            <p>고객요청: {normalizedReservation.specialRequests}</p>
+          )}
         </div>
         {renderSiteInfoFooter()}
       </div>

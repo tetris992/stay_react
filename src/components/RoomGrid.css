@@ -88,7 +88,6 @@
 
 .room-card-inner {
   min-width: 320px;
-  max-height: 410px;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s ease-in-out;
@@ -115,7 +114,6 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch; /* 내부 요소가 가득 차도록 */
-  height: 100%;
 }
 
 .room-card-front {
@@ -287,10 +285,10 @@
 
 /* 미배정 예약 카드 */
 .unassigned-list .room-card {
-  flex: 1 1 330px; 
+  flex: 1 1 330px;
   min-width: 330px;
   box-sizing: border-box;
-  min-height: 350px;
+  min-height: 370px;
   height: 100%;
   margin: 0;
   padding: 0; /* 불필요한 여백 제거 */
@@ -377,14 +375,27 @@
   min-width: 340px;
   max-width: 500px;
   box-sizing: border-box;
-  min-height: 500px;
+  height: auto;
   padding: 10px;
   position: relative;
   gap: 20px;
+  min-height: 445px;
 }
 
 /* 컨테이너 라벨 너비 일정하게 유지 */
 .container-label {
+  /* 아래 값 중 하나를 사용하세요.
+     hasSoldOutReservation이 true일 때: #f0f0f0
+     그렇지 않을 때: #f0f4f8 */
+  background-color: #e0e0e0;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: bold;
   width: 100%;
   box-sizing: border-box;
 }

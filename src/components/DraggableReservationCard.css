@@ -119,7 +119,7 @@
 
 .room-card-inner {
   min-width: 300px;
-  max-height: 420px;
+  max-height: auto;
   box-sizing: border-box;
   height: 100%;
   transition: transform 0.6s;
@@ -198,16 +198,27 @@
    - 통일된 하이라이트 효과 정의 (신규 예약, 검색 결과 등)
 ========================================================================== */
 @keyframes highlightPulse {
-  0%,
-  100% {
-    background-color: rgb(251, 204, 132);
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  0% {
+    background-color: rgba(245, 157, 42, 0.2);   /* Blue  */
+    box-shadow:    0 0 10px rgba(41, 128, 185, 0.6);
   }
+
   50% {
-    background-color: rgba(76, 175, 80, 0.3);
-    box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+    background-color: rgba(39,  174, 96,  0.2);   /* Green */
+    box-shadow:    0 0 10px rgba(39,  174, 96,  0.6);
+  }
+
+  100% {
+    background-color: rgba(41, 128, 185, 0.2);   /* back to Blue */
+    box-shadow:    0 0 10px rgba(41, 128, 185, 0.6);
   }
 }
+
+/* 적용 예시 */
+.room-card.highlight {
+  animation: highlightPulse 2s ease-in-out infinite alternate !important;
+}
+
 
 /* 기존 highlight 정의 옆에 붙여주세요 */
 .room-card.highlight,
@@ -231,8 +242,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 440px;
+  height: auto;
   width: auto;
   gap: 10px;
   padding: 8px 8px 8px 10px;
@@ -251,8 +261,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  min-height: 410px;
+  height: auto;
   background-color: rgb(240, 240, 240);
   clip-path: circle(0% at 50% 50%);
   transition: clip-path 1.2s ease-out;

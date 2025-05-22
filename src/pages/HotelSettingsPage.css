@@ -118,7 +118,7 @@ html {
 
 .room-cell-header {
   flex: 0 0 40px;
-  background-color: #e9ecef;
+  background-color: #e6e9ed;
   border-bottom: 1px solid var(--cell-border);
   display: flex;
   align-items: center;

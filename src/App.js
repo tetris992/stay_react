@@ -2970,7 +2970,7 @@ const App = () => {
   };
 
   const executeSearch = useCallback(
-    (searchTerm, handleCardFlip) => {
+    (searchTerm) => {
       const trimmedSearchTerm = searchTerm.trim();
       if (trimmedSearchTerm.length < 2) {
         alert('검색어는 최소 2자 이상 입력해야 합니다.');
@@ -3005,9 +3005,6 @@ const App = () => {
           );
           if (card) {
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            if (handleCardFlip) {
-              handleCardFlip(firstResult._id);
-            }
           }
         }, 100);
         if (highlightTimeoutRef.current) {
@@ -3669,9 +3666,7 @@ const App = () => {
                           searchCriteria={searchCriteria}
                           setSearchCriteria={setSearchCriteria}
                           handleVoiceResult={handleVoiceResult}
-                          executeSearch={(term) =>
-                            executeSearch(term, handleCardFlip)
-                          }
+                          executeSearch={(term) => executeSearch(term)}
                           onShowCanceledModal={() => setShowCanceledModal(true)}
                           memos={memos}
                           setMemos={setMemos}
