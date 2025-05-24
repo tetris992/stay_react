@@ -1764,132 +1764,144 @@ const App = () => {
     [loadReservations]
   );
 
-  const handleRoomChangeAndSync = useCallback(
-    async (reservationId, newRoomNumber, newRoomInfo, currentPrice) => {
-      try {
-        const currentReservation = allReservations.find(
-          (res) => res._id === reservationId
-        );
-        if (!currentReservation) {
-          console.warn(`No reservation found for ID: ${reservationId}`);
-          return;
-        }
-        if (
-          currentReservation.roomNumber === newRoomNumber &&
-          currentReservation.roomInfo === newRoomInfo
-        ) {
-          console.log(`No change in room assignment for ${reservationId}`);
-          return;
-        }
-        const oldRoom = currentReservation.roomNumber || '미배정';
-        const isOTA = availableOTAs.includes(currentReservation.siteName);
-        const checkInTime = hotelSettings?.checkInTime || '16:00';
-        const checkOutTime = hotelSettings?.checkOutTime || '11:00';
-
-        const updatedData = {
-          roomNumber: newRoomNumber,
-          roomInfo: newRoomInfo,
-          price: currentPrice || currentReservation.totalPrice,
-          checkIn: isOTA
-            ? currentReservation.checkIn
-            : currentReservation.type === 'dayUse'
-            ? currentReservation.checkIn
-            : `${format(
-                new Date(currentReservation.checkIn),
-                'yyyy-MM-dd'
-              )}T${checkInTime}:00+09:00`,
-          checkOut: isOTA
-            ? currentReservation.checkOut
-            : currentReservation.type === 'dayUse'
-            ? currentReservation.checkOut
-            : `${format(
-                new Date(currentReservation.checkOut),
-                'yyyy-MM-dd'
-              )}T${checkOutTime}:00+09:00`,
-        };
-
-        let csrfToken = localStorage.getItem('csrfToken');
-        if (!csrfToken) {
-          console.warn('CSRF token not found in localStorage');
-          try {
-            const response = await api.get('/api/auth/csrf-token', {
-              withCredentials: true,
-            });
-            csrfToken = response.data.csrfToken;
-            localStorage.setItem('csrfToken', csrfToken);
-            console.log('New CSRF token fetched:', csrfToken);
-          } catch (csrfError) {
-            console.error('Failed to fetch new CSRF token:', csrfError);
-            throw new Error('CSRF 토큰을 가져오지 못했습니다.');
-          }
-        }
-
-        // 수정: API 응답에서 reservation 객체 언랩
-        const resp = await updateReservation(
-          reservationId,
-          updatedData,
-          hotelId
-        );
-        const updatedReservation = resp.reservation ?? resp; // reservation 필드가 없으면 원본 사용
-
-        // 유효성 검증
-        if (
-          !updatedReservation._id ||
-          !updatedReservation.checkIn ||
-          !updatedReservation.checkOut
-        ) {
-          console.error(
-            'Invalid updated reservation data:',
-            updatedReservation
-          );
-          throw new Error('유효하지 않은 예약 데이터');
-        }
-
-        setAllReservations((prev) =>
-          prev.map((r) =>
-            r._id === reservationId ? { ...r, ...updatedReservation } : r
-          )
-        );
-        filterReservationsByDate(
-          [
-            ...allReservations.filter((r) => r._id !== reservationId),
-            updatedReservation,
-          ],
-          selectedDate
-        );
-        setUpdatedReservationId(reservationId);
-        setTimeout(() => setUpdatedReservationId(null), 50000);
-
-        const { customerName, phoneNumber, checkIn, checkOut } =
-          currentReservation;
-        logMessage(
-          `[handleRoomChangeAndSync] Moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber} - 예약자: ${
-            customerName || '정보 없음'
-          }, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${
-            checkIn || '정보 없음'
-          }, 체크아웃: ${checkOut || '정보 없음'}`,
-          'move'
-        );
-      } catch (error) {
-        console.error('객실 이동 후 실시간 업데이트 실패:', error);
-        if (error.response?.status === 403) {
-          alert('CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.');
-        } else {
-          alert('객실 이동 후 업데이트에 실패했습니다.');
-        }
-        await loadReservations();
+const handleRoomChangeAndSync = useCallback(
+  async (reservationId, newRoomNumber, newRoomInfo, currentPrice, selectedDate) => {
+    try {
+      const currentReservation = allReservations.find(
+        (res) => res._id === reservationId
+      );
+      if (!currentReservation) {
+        console.warn(`No reservation found for ID: ${reservationId}`);
+        return;
       }
-    },
-    [
-      hotelId,
-      filterReservationsByDate,
-      loadReservations,
-      allReservations,
-      hotelSettings,
-      logMessage,
-      selectedDate,
-    ]
-  );
+      if (
+        currentReservation.roomNumber === newRoomNumber &&
+        currentReservation.roomInfo === newRoomInfo
+      ) {
+        console.log(`No change in room assignment for ${reservationId}`);
+        return;
+      }
+      const oldRoom = currentReservation.roomNumber || '미배정';
+      const isOTA = availableOTAs.includes(currentReservation.siteName);
+      const checkInTime = hotelSettings?.checkInTime || '16:00';
+      const checkOutTime = hotelSettings?.checkOutTime || '11:00';
+
+      const updatedData = {
+        roomNumber: newRoomNumber,
+        roomInfo: newRoomInfo,
+        price: currentPrice || currentReservation.totalPrice,
+        checkIn: isOTA
+          ? currentReservation.checkIn
+          : currentReservation.type === 'dayUse'
+          ? currentReservation.checkIn
+          : `${format(
+              new Date(currentReservation.checkIn),
+              'yyyy-MM-dd'
+            )}T${checkInTime}:00+09:00`,
+        checkOut: isOTA
+          ? currentReservation.checkOut
+          : currentReservation.type === 'dayUse'
+          ? currentReservation.checkOut
+          : `${format(
+              new Date(currentReservation.checkOut),
+              'yyyy-MM-dd'
+            )}T${checkOutTime}:00+09:00`,
+      };
+
+      let csrfToken = localStorage.getItem('csrfToken');
+      if (!csrfToken) {
+        console.warn('CSRF token not found in localStorage');
+        try {
+          const response = await api.get('/api/auth/csrf-token', {
+            withCredentials: true,
+          });
+          csrfToken = response.data.csrfToken;
+          localStorage.setItem('csrfToken', csrfToken);
+          console.log('New CSRF token fetched:', csrfToken);
+        } catch (csrfError) {
+          console.error('Failed to fetch new CSRF token:', csrfError);
+          throw new Error('CSRF 토큰을 가져오지 못했습니다.');
+        }
+      }
+
+      // API 호출
+      const resp = await updateReservation(
+        reservationId,
+        updatedData,
+        hotelId
+      );
+      const updatedReservation = resp.reservation ?? resp;
+
+      // 강화된 유효성 검증
+      if (
+        !updatedReservation._id ||
+        !updatedReservation.checkIn ||
+        !updatedReservation.checkOut ||
+        isNaN(new Date(updatedReservation.checkIn)) ||
+        isNaN(new Date(updatedReservation.checkOut))
+      ) {
+        console.error(
+          'Invalid updated reservation data:',
+          updatedReservation
+        );
+        throw new Error('유효하지 않은 예약 데이터');
+      }
+
+      // Diff 적용: 안전한 날짜 파싱
+      setAllReservations((prev) =>
+        prev.map((r) => {
+          if (r._id !== reservationId) return r;
+          const parsedCI = new Date(updatedReservation.checkIn);
+          const parsedCO = new Date(updatedReservation.checkOut);
+          return {
+            ...r,
+            ...updatedReservation,
+            parsedCheckInDate: isNaN(parsedCI) ? r.parsedCheckInDate : parsedCI,
+            parsedCheckOutDate: isNaN(parsedCO) ? r.parsedCheckOutDate : parsedCO,
+          };
+        })
+      );
+
+      // 예약 목록 업데이트
+      filterReservationsByDate(
+        [
+          ...allReservations.filter((r) => r._id !== reservationId),
+          updatedReservation,
+        ],
+        selectedDate
+      );
+      setUpdatedReservationId(reservationId);
+      setTimeout(() => setUpdatedReservationId(null), 50000);
+
+      const { customerName, phoneNumber, checkIn, checkOut } =
+        currentReservation;
+      logMessage(
+        `[handleRoomChangeAndSync] Moved reservation ${reservationId} from ${oldRoom} to ${newRoomNumber} - 예약자: ${
+          customerName || '정보 없음'
+        }, 전화번호: ${phoneNumber || '정보 없음'}, 체크인: ${
+          checkIn || '정보 없음'
+        }, 체크아웃: ${checkOut || '정보 없음'}`,
+        'move'
+      );
+    } catch (error) {
+      console.error('객실 이동 후 실시간 업데이트 실패:', error);
+      if (error.response?.status === 403) {
+        alert('CSRF 토큰 오류: 페이지를 새로고침 후 다시 시도해주세요.');
+      } else {
+        alert('객실 이동 후 업데이트에 실패했습니다.');
+      }
+      await loadReservations();
+    }
+  },
+  [
+    hotelId,
+    filterReservationsByDate,
+    loadReservations,
+    allReservations,
+    hotelSettings,
+    logMessage,
+  ]
+);
 
   const availabilityByDate = useMemo(() => {
     if (!allReservations || !finalRoomTypes) {
@@ -3314,41 +3326,37 @@ const App = () => {
     setShowGuestForm(true);
   };
 
-  const createDayUseReservation = () => {
-    const now = new Date();
-    const effectiveDate = selectedDate; // selectedDate를 직접 사용
+const createDayUseReservation = () => {
+  const now = new Date();
+  const dateStr = format(now, 'yyyy-MM-dd');
+  const timeStr = format(now, 'HH:mm:ss');      // "22:18:35"
+  const checkInTime = timeStr.slice(0, 5);      // "22:18"
+  const duration = 3;                           // 기본 3시간
+  const checkInISO = `${dateStr}T${checkInTime}:00+09:00`;
+  const checkOutDate = addHours(now, duration);
+  const checkOutISO = format(checkOutDate, "yyyy-MM-dd'T'HH:mm:ssxxx");
 
-    const checkInDateStr = format(effectiveDate, 'yyyy-MM-dd');
-    const customerName = `현장대실:${format(now, 'HH:mm:ss')}`;
-    const basePrice = finalRoomTypes[0]?.price || 0;
-    const price = Math.floor(basePrice * 0.5);
+  setGuestFormData({
+    _id: null,
+    reservationNo: uuidv4(),
+    customerName: `현장대실:${timeStr}`,        // 기존처럼
+    checkInDate:    dateStr,
+    checkInTime,                              // "22:18"
+    durationHours: duration,
+    checkOutDate:   format(checkOutDate, 'yyyy-MM-dd'),
+    checkOutTime:   format(checkOutDate, 'HH:mm'),
+    reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
+    roomInfo:       finalRoomTypes[0].roomInfo,
+    price:          String(Math.floor(finalRoomTypes[0].price * 0.5)),
+    paymentMethod:  'Cash',
+    specialRequests:'',
+    checkIn:        checkInISO,
+    checkOut:       checkOutISO,
+    type:           'dayUse',
+  });
 
-    const checkIn = `${checkInDateStr}T${format(now, 'HH:mm')}:00+09:00`;
-    const checkOut = format(
-      addHours(new Date(checkIn), 3), // 기본 3시간
-      "yyyy-MM-dd'T'HH:mm:ss+09:00"
-    );
-    const duration = 3; // 기본 3시간
-
-    setGuestFormData({
-      reservationNo: `${uuidv4()}`,
-      customerName,
-      checkInDate: checkInDateStr, // 명확히 설정
-      checkInTime: format(now, 'HH:mm'),
-      checkOutDate: format(new Date(checkOut), 'yyyy-MM-dd'),
-      checkOutTime: format(new Date(checkOut), 'HH:mm'),
-      reservationDate: format(now, 'yyyy-MM-dd HH:mm'),
-      roomInfo: finalRoomTypes[0]?.roomInfo || 'Standard',
-      price: price.toString(),
-      paymentMethod: 'Cash',
-      specialRequests: '',
-      checkIn,
-      checkOut,
-      type: 'dayUse',
-      durationHours: duration,
-    });
-    setShowGuestForm(true);
-  };
+  setShowGuestForm(true);
+};
 
   const onQuickCreate = (type) => {
     if (type === '대실') {

@@ -9,21 +9,6 @@ import {
   areIntervalsOverlapping,
 } from 'date-fns';
 
-/**
- * calculateRoomAvailability
- * - 일반 예약(숙박): 점유 구간은 [checkIn, startOfDay(checkOut)) (즉, 체크아웃 당일은 점유하지 않음)
- * - 대실(dayUse): 아직 체크아웃되지 않았다면 체크인 날만 점유
- *
- * 서버에서 취소 예약은 이미 필터링되었다고 가정합니다.
- */
-/**
- * calculateRoomAvailability
- * - 일반 예약(숙박): 점유 구간은 [checkIn, startOfDay(checkOut)) (즉, 체크아웃 당일은 점유하지 않음)
- * - 대실(dayUse): 아직 체크아웃되지 않았다면 체크인 날만 점유
- * - 계산 범위: fromDate로부터 3개월
- *
- * 서버에서 취소 예약은 이미 필터링되었다고 가정합니다.
- */
 export function calculateRoomAvailability(
   reservations,
   roomTypes,
@@ -95,6 +80,14 @@ export function calculateRoomAvailability(
 
   // 각 예약별 점유 계산
   reservations.forEach((res) => {
+    // 📌 과거 체크아웃 예약은 아예 점유 계산에서 제외
+    const today = startOfDay(new Date());
+    const checkoutDay = startOfDay(new Date(res.checkOut));
+    if (checkoutDay < today) {
+      console.info(`[calculateRoomAvailability] 과거 예약 건너뜀:`, res._id);
+      return;
+    }
+
     const ci = new Date(res.checkIn);
     const co = new Date(res.checkOut);
     if (
@@ -214,9 +207,8 @@ export function calculateRoomAvailability(
         const assigned = Array.from(usage.assignedRooms);
         const checkedOut = Array.from(usage.checkedOutRooms);
         const totalStock = roomDataByType[typeKey]?.stock || 0;
-        // assignedRooms 만 빼고, checkedOutRooms 는 이제 팔 수 있는 방으로 다시 포함
         const leftoverRooms = allRooms.filter(
-          (rnum) => !assigned.includes(rnum)
+          (rnum) => !assigned.includes(rnum) && !checkedOut.includes(rnum)
         );
         const remain = Math.max(totalStock - usage.count, 0);
         availability[ds][typeKey] = {
@@ -489,74 +481,3 @@ export function canMoveToRoom(
     conflictDays: [...result1.conflictDays, ...result2.conflictDays],
   };
 }
-
-/**
- * checkConflict
- * 드래그된 예약과 대상 객실의 기존 예약 간의 점유 충돌 여부를 판단합니다.
- * - 일반 예약: [checkIn, startOfDay(checkOut))
- * - 대실: [checkIn, checkIn]
- * - 과거 체크인 예약은 이동 불가
- */
-export const checkConflict = (
-  draggedReservation,
-  targetRoomNumber,
-  fullReservations
-) => {
-  const draggedCheckIn = new Date(draggedReservation.checkIn);
-  const draggedCheckOut = new Date(draggedReservation.checkOut);
-  const isDayUseDragged = draggedReservation.type === 'dayUse';
-  const currentDate = startOfDay(new Date());
-
-  if (startOfDay(draggedCheckIn) < currentDate) {
-    console.log(
-      `[checkConflict] 예약 ${draggedReservation._id}는 과거 체크인 예약으로 이동할 수 없습니다.`
-    );
-    return { isConflict: true, conflictReservation: draggedReservation };
-  }
-
-  const draggedInterval = {
-    start: draggedCheckIn,
-    end: isDayUseDragged
-      ? new Date(draggedCheckIn)
-      : startOfDay(draggedCheckOut),
-  };
-
-  for (const reservation of fullReservations) {
-    if (
-      reservation.roomNumber !== targetRoomNumber ||
-      reservation._id === draggedReservation._id
-    ) {
-      continue;
-    }
-
-    const resCheckIn = new Date(reservation.checkIn);
-    const resCheckOut = new Date(reservation.checkOut);
-    const isDayUseRes = reservation.type === 'dayUse';
-    const resInterval = {
-      start: resCheckIn,
-      end: isDayUseRes ? new Date(resCheckIn) : startOfDay(resCheckOut),
-    };
-
-    if (isDayUseDragged && isDayUseRes) {
-      if (
-        areIntervalsOverlapping(draggedInterval, resInterval, {
-          inclusive: false,
-        })
-      ) {
-        return { isConflict: true, conflictReservation: reservation };
-      }
-    } else {
-      const draggedCI = startOfDay(draggedCheckIn);
-      const draggedCO = startOfDay(draggedCheckOut);
-      const resCI = startOfDay(resCheckIn);
-      const resCO = startOfDay(resCheckOut);
-      if (draggedCI < resCO && draggedCO > resCI) {
-        console.log(
-          `[checkConflict] 충돌 발생: 예약 ${draggedReservation._id}와 ${reservation._id}`
-        );
-        return { isConflict: true, conflictReservation: reservation };
-      }
-    }
-  }
-  return { isConflict: false };
-};

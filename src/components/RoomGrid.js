@@ -56,13 +56,6 @@ const ContainerCell = React.memo(
       accept: 'RESERVATION',
       drop: async (item, monitor) => {
         if (!monitor.isOver({ shallow: true })) return;
-        if (
-          item.originalContainerId &&
-          item.originalContainerId === cont.containerId
-        ) {
-          clearConflict();
-          return;
-        }
 
         const {
           reservationId,
@@ -70,6 +63,64 @@ const ContainerCell = React.memo(
           originalRoomNumber,
           originalRoomInfo,
         } = item;
+
+        // 1) 미배정 예약인 경우 충돌 검사
+        if (
+          !draggedReservation.roomNumber ||
+          draggedReservation.roomNumber.trim() === ''
+        ) {
+          // 활성 상태인 예약 목록으로만 필터
+          const active = fullReservations.filter((r) => !r.manuallyCheckedOut);
+          const checkInDate = new Date(draggedReservation.checkIn);
+          const checkOutDate = new Date(draggedReservation.checkOut);
+          if (isNaN(checkInDate) || isNaN(checkOutDate)) {
+            console.error('Invalid date in dragged reservation');
+            clearConflict();
+            return;
+          }
+          const { isConflict, conflictReservation } = checkConflict(
+            {
+              ...draggedReservation,
+              checkIn: checkInDate,
+              checkOut: checkOutDate,
+            },
+            cont.roomNumber,
+            active,
+            selectedDate
+          );
+          if (isConflict) {
+            const msg = conflictReservation
+              ? `🚫 충돌 발생!\n객실(${
+                  cont.roomNumber
+                })에 이미 예약이 있습니다.\n충돌 예약자: ${
+                  conflictReservation.customerName || '정보 없음'
+                }`
+              : '🚫 과거 체크인 예약은 이동할 수 없습니다.';
+            setConflictMessage(msg);
+            timeoutRef.current = setTimeout(clearConflict, 3000);
+            return;
+          }
+
+          // 2) 충돌 없으면 바로 방 배정
+          await handleRoomChangeAndSync(
+            reservationId,
+            cont.roomNumber,
+            cont.roomInfo,
+            draggedReservation.totalPrice,
+            selectedDate
+          );
+          clearConflict();
+          return;
+        }
+
+        // 기존에 같은 방으로 드롭된 경우 무시
+        if (
+          item.originalContainerId &&
+          item.originalContainerId === cont.containerId
+        ) {
+          clearConflict();
+          return;
+        }
 
         if (conflictMessage) {
           console.warn('[drop] 충돌 상태, 이동 취소');
@@ -108,7 +159,8 @@ const ContainerCell = React.memo(
             checkOut: checkOutDate,
           },
           cont.roomNumber,
-          activeReservations
+          activeReservations,
+          selectedDate
         );
         if (isConflict) {
           const conflictMsg = conflictReservation
@@ -291,7 +343,8 @@ const ContainerCell = React.memo(
             checkOut: checkOutDate,
           },
           cont.roomNumber,
-          activeReservations
+          activeReservations,
+          selectedDate
         );
         if (isConflict && !isDraggingOver) {
           const conflictMsg = conflictReservation
@@ -643,45 +696,45 @@ function RoomGrid({
     }));
   }, []);
 
-const filteredReservations = useMemo(() => {
-  const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
-  return (reservations || [])
-    .filter((r) => r && r._id)
-    .filter((r) => {
-      const ci = new Date(r.checkIn);
-      const co = new Date(r.checkOut);
-      if (isNaN(ci) || isNaN(co)) return false;
-      return true;
-    })
-    .filter((r) => {
-      if (r.type === 'dayUse' && r.manuallyCheckedOut) {
-        return false;
-      }
-      const ciOnly = startOfDay(new Date(r.checkIn));
-      const coOnly = startOfDay(new Date(r.checkOut));
-      const isIncluded =
-        selectedDateString >= format(ciOnly, 'yyyy-MM-dd') &&
-        selectedDateString < format(coOnly, 'yyyy-MM-dd');
-      const isSameDayStay =
-        format(ciOnly, 'yyyy-MM-dd') === format(coOnly, 'yyyy-MM-dd') &&
-        selectedDateString === format(ciOnly, 'yyyy-MM-dd');
-      return (isIncluded || isSameDayStay);
-    });
-}, [reservations, selectedDate]);
-
-const floorReservations = useMemo(() => {
-  const map = {};
-  floors.forEach((floor) => {
-    floor.containers
-      .filter((cont) => cont.roomInfo !== 'none')
-      .forEach((cont) => {
-        map[cont.containerId] = filteredReservations.filter(
-          (res) => res.roomNumber === cont.roomNumber
-        );
+  const filteredReservations = useMemo(() => {
+    const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
+    return (reservations || [])
+      .filter((r) => r && r._id)
+      .filter((r) => {
+        const ci = new Date(r.checkIn);
+        const co = new Date(r.checkOut);
+        if (isNaN(ci) || isNaN(co)) return false;
+        return true;
+      })
+      .filter((r) => {
+        if (r.type === 'dayUse' && r.manuallyCheckedOut) {
+          return false;
+        }
+        const ciOnly = startOfDay(new Date(r.checkIn));
+        const coOnly = startOfDay(new Date(r.checkOut));
+        const isIncluded =
+          selectedDateString >= format(ciOnly, 'yyyy-MM-dd') &&
+          selectedDateString < format(coOnly, 'yyyy-MM-dd');
+        const isSameDayStay =
+          format(ciOnly, 'yyyy-MM-dd') === format(coOnly, 'yyyy-MM-dd') &&
+          selectedDateString === format(ciOnly, 'yyyy-MM-dd');
+        return isIncluded || isSameDayStay;
       });
-  });
-  return map;
-}, [floors, filteredReservations]);
+  }, [reservations, selectedDate]);
+
+  const floorReservations = useMemo(() => {
+    const map = {};
+    floors.forEach((floor) => {
+      floor.containers
+        .filter((cont) => cont.roomInfo !== 'none')
+        .forEach((cont) => {
+          map[cont.containerId] = filteredReservations.filter(
+            (res) => res.roomNumber === cont.roomNumber
+          );
+        });
+    });
+    return map;
+  }, [floors, filteredReservations]);
 
   const filteredUnassignedReservations = useMemo(() => {
     const selectedDateString = format(selectedDate, 'yyyy-MM-dd');
@@ -705,28 +758,30 @@ const floorReservations = useMemo(() => {
   }, [fullReservations, selectedDate]);
 
   // 새 예약이 추가될 때 해당 카드로 스크롤
-useEffect(() => {
-  if (newlyCreatedId) {
-    console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
-    const attemptScroll = (attemptsLeft = 5, delay = 200) => {
-      const card = document.querySelector(`.room-card[data-id="${newlyCreatedId}"]`);
-      if (card) {
-        console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else if (attemptsLeft > 0) {
-        console.warn(
-          `[RoomGrid] Card with ID ${newlyCreatedId} not found, retrying (${attemptsLeft} attempts left)`
+  useEffect(() => {
+    if (newlyCreatedId) {
+      console.log(`[RoomGrid] Newly created reservation ID: ${newlyCreatedId}`);
+      const attemptScroll = (attemptsLeft = 5, delay = 200) => {
+        const card = document.querySelector(
+          `.room-card[data-id="${newlyCreatedId}"]`
         );
-        setTimeout(() => attemptScroll(attemptsLeft - 1, delay), delay);
-      } else {
-        console.error(
-          `[RoomGrid] Failed to find card with ID ${newlyCreatedId} after retries`
-        );
-      }
-    };
-    attemptScroll();
-  }
-}, [newlyCreatedId]);
+        if (card) {
+          console.log(`[RoomGrid] Found new reservation card, scrolling to it`);
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (attemptsLeft > 0) {
+          console.warn(
+            `[RoomGrid] Card with ID ${newlyCreatedId} not found, retrying (${attemptsLeft} attempts left)`
+          );
+          setTimeout(() => attemptScroll(attemptsLeft - 1, delay), delay);
+        } else {
+          console.error(
+            `[RoomGrid] Failed to find card with ID ${newlyCreatedId} after retries`
+          );
+        }
+      };
+      attemptScroll();
+    }
+  }, [newlyCreatedId]);
 
   const handleDeleteClickHandler = async (resId, siteName) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
@@ -935,9 +990,7 @@ useEffect(() => {
                           renderActionButtons={renderActionButtons}
                           loadedReservations={loadedReservations || []}
                           newlyCreatedId={newlyCreatedId}
-                          isNewlyCreatedHighlighted={
-                            newlyCreatedId === res._id
-                          }
+                          isNewlyCreatedHighlighted={newlyCreatedId === res._id}
                           updatedReservationId={updatedReservationId}
                           onPartialUpdate={onPartialUpdate}
                           roomTypes={roomTypes}

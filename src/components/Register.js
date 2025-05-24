@@ -1,3 +1,4 @@
+// staysync/frontend/src/Register.js
 import React, { useState, useEffect } from 'react';
 import { registerUser } from '../api/api';
 import './Register.css';
@@ -30,7 +31,6 @@ const Register = () => {
   });
 
   useEffect(() => {
-    // 로컬 스토리지에서 관련 데이터 제거
     localStorage.removeItem('hotelId');
     localStorage.removeItem('hotelName');
     localStorage.removeItem('password');
@@ -95,7 +95,7 @@ const Register = () => {
         consentChecked: true,
       };
       await registerUser(userData);
-      alert('회원가입이 완료되었습니다.');
+      alert('회원가입 요청이 완료되었습니다. 개발사 관리자의 승인을 기다려주세요.');
       navigate('/login');
     } catch (error) {
       let message = '회원가입 중 오류가 발생했습니다.';
@@ -144,7 +144,6 @@ const Register = () => {
       <div className="reg-card">
         <h1 className="reg-brand">StaySync</h1>
         <form onSubmit={handleRegister} className="reg-form">
-          {/* 순서를 변경하여 input 뒤에 label이 오도록 수정 */}
           <div className="reg-form-group">
             <input
               id="hotelName"

@@ -302,8 +302,8 @@ const DayUseFormModal = ({
     const finalData = {
       ...formData,
       price: numericPrice,
-      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
-      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ss"),
+      checkIn: format(checkInDateTime, "yyyy-MM-dd'T'HH:mm:ssxxx"),
+      checkOut: format(checkOutDateTime, "yyyy-MM-dd'T'HH:mm:ssxxx"),
       roomNumber: String(selectedRoomNumber),
       siteName: initialData?.siteName || '현장예약',
       type: formData.type || 'dayUse',

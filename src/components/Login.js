@@ -1,3 +1,4 @@
+// staysync/frontend/src/Login.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { loginUser, fetchHotelSettings, refreshToken } from '../api/api';
 import ForgotPassword from './ForgotPassword';
@@ -20,9 +21,8 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
 
-  // 자동 로그인 시도 (리프레시 토큰 사용)
   useEffect(() => {
-    if (isLoggedIn) return; // 이미 로그인된 경우 중복 호출 방지
+    if (isLoggedIn) return;
 
     const tryAutoLogin = async () => {
       try {
@@ -38,14 +38,12 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         }
       } catch (error) {
         console.log('자동 로그인 실패:', error);
-        // 실패 시 로그인 폼 표시
       }
     };
 
     tryAutoLogin();
-  }, [onLogin, isLoggedIn]); // isLoggedIn 추가
+  }, [onLogin, isLoggedIn]);
 
-  // 기존 초기화 로직 (비밀번호 로드 제거)
   useEffect(() => {
     const savedHotelId = localStorage.getItem('hotelId');
     const savedAttempts = localStorage.getItem('loginAttempts') || '0';
@@ -61,7 +59,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
     const initializeLoginAttempts = async () => {
       try {
-        const response = await loginUser({ hotelId: savedHotelId, password: '' }); // 두 번째 인자 제거
+        const response = await loginUser({ hotelId: savedHotelId, password: '' });
         if (response.remainingAttempts !== undefined) {
           setLoginAttempts(5 - response.remainingAttempts);
         }
@@ -94,7 +92,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
 
           setLoginAttempts(0);
           localStorage.setItem('hotelId', normalizedHotelId);
-          localStorage.removeItem('password'); // 비밀번호 저장 제거
+          localStorage.removeItem('password');
           localStorage.setItem('loginAttempts', '0');
           setError('');
 
@@ -114,6 +112,10 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
         if (error.status === 401) {
           if (error.userNotFound) {
             setError(error.message);
+          } else if (error.message.includes('승인 대기')) {
+            setError(error.message); // '계정이 승인 대기 중입니다. 개발사의 승인을 기다려주세요.'
+          } else if (error.message.includes('비활성화')) {
+            setError(error.message); // '계정이 비활성화되었습니다. 개발사에 문의하세요.'
           } else {
             const newAttempts = (loginAttempts || 0) + 1;
             setLoginAttempts(newAttempts);
@@ -192,7 +194,7 @@ const Login = ({ onLogin, isLoggedIn, onLogout }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
-                name="current-password" // name 변경
+                name="current-password"
                 autoComplete="current-password"
                 placeholder=" "
                 value={password}

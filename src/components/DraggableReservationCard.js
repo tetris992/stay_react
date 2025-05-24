@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from 'react';
 import PropTypes from 'prop-types';
+import logger from '../utils/logger.js'
 import { useDrag } from 'react-dnd';
 import {
   differenceInSeconds,
@@ -215,12 +216,31 @@ const DraggableReservationCard = ({
     [ciDateOnly, coDateOnly]
   );
 
-  const canDragMemo = useMemo(() => {
+const canDragMemo = useMemo(() => {
+    // 미배정 예약 처리
     if (
       !normalizedReservation.roomNumber ||
       normalizedReservation.roomNumber.trim() === ''
-    )
+    ) {
+      // OTA 예약이면 날짜 제한 없이 드래그 가능
+      if (availableOTAs.includes(normalizedReservation.siteName)) {
+        return true;
+      }
+      // 비-OTA 미배정 예약은 체크인 날짜가 오늘 이후일 때만 드래그 가능
+      const checkInDay = checkInDate ? startOfDay(checkInDate) : null;
+      const currentDate = startOfDay(new Date());
+      if (!checkInDay || checkInDay < currentDate) {
+        logger.info(
+          `Reservation ${
+            normalizedReservation._id || 'unknown'
+          } is a non-OTA unassigned reservation with past check-in date.`
+        );
+        return false;
+      }
       return true;
+    }
+
+    // 배정된 예약 처리 (기존 로직 유지)
     if (
       !Array.isArray(roomTypes) ||
       !Array.isArray(allReservations) ||
@@ -340,89 +360,111 @@ const DraggableReservationCard = ({
   // OTA 사이트 여부
   const isOTA = availableOTAs.includes(normalizedReservation.siteName);
 
-  // ▶ 체크인 표시 로직
-  const displayCheckIn = useMemo(() => {
-    // 1) OTA 예약이면 " 00:00" 만 제거
-    if (isOTA && normalizedReservation.checkIn) {
-      return normalizedReservation.checkIn.replace(/\s00:00$/, '');
-    }
-    // 2) 빈 값 처리
-    if (
-      !normalizedReservation.checkIn ||
-      normalizedReservation.checkIn === ''
-    ) {
-      return '미정';
-    }
-    // 3) 파싱 실패 처리
-    if (!checkInDate) {
-      return '정보 없음';
-    }
-    // 4) 기본 YYYY-MM-DD / HH:mm 분리
-    const [datePart, timePart] = normalizedReservation.checkIn.split('T');
-    const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
-    // 5) 대실 대기
-    if (time === '00:00' && normalizedReservation.type === 'dayUse') {
-      return `${datePart} (입실 대기)`;
-    }
-    // 6) 현장예약 기준 시간
-    if (
-      normalizedReservation.siteName === '현장예약' &&
-      normalizedReservation.type !== 'dayUse'
-    ) {
-      return `${datePart} ${checkInTime}`;
-    }
-    // 7) 기본 출력
-    return `${datePart} ${time}`;
-  }, [
-    isOTA,
-    normalizedReservation.checkIn,
-    normalizedReservation.siteName,
-    normalizedReservation.type,
-    checkInDate,
-    checkInTime,
-  ]);
+// ▶ 체크인 표시 로직
+const displayCheckIn = useMemo(() => {
+  const ci = normalizedReservation.checkIn;
 
-  // ▶ 체크아웃 표시 로직
-  const displayCheckOut = useMemo(() => {
-    // 1) OTA 예약이면 " 00:00" 만 제거
-    if (isOTA && normalizedReservation.checkOut) {
-      return normalizedReservation.checkOut.replace(/\s00:00$/, '');
-    }
-    // 2) 빈 값 처리
-    if (
-      !normalizedReservation.checkOut ||
-      normalizedReservation.checkOut === ''
-    ) {
-      return '미정';
-    }
-    // 3) 파싱 실패 처리
-    if (!checkOutDate) {
-      return '정보 없음';
-    }
-    // 4) 기본 YYYY-MM-DD / HH:mm 분리
-    const [datePart, timePart] = normalizedReservation.checkOut.split('T');
-    const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
-    // 5) 대실 대기
-    if (time === '00:00' && normalizedReservation.type === 'dayUse') {
-      return `${datePart} (입실 대기)`;
-    }
-    // 6) 현장예약 기준 시간
-    if (
-      normalizedReservation.siteName === '현장예약' &&
-      normalizedReservation.type !== 'dayUse'
-    ) {
-      return `${datePart} ${checkOutTime}`;
-    }
-    // 7) 기본 출력
-    return `${datePart} ${time}`;
-  }, [
-    isOTA,
-    normalizedReservation.checkOut,
-    normalizedReservation.siteName,
-    normalizedReservation.type,
-    checkOutDate,
-    checkOutTime,
-  ]);
+  // 0) Date 객체로 넘어왔으면 포맷해서 문자열로
+  if (ci instanceof Date) {
+    return format(ci, 'yyyy-MM-dd HH:mm');
+  }
+
+  // 1) OTA 예약이면 " 00:00" 만 제거
+  if (isOTA && typeof ci === 'string') {
+    return ci.replace(/\s00:00$/, '');
+  }
+
+  // 2) 빈 값 처리
+  if (!ci || ci === '') {
+    return '미정';
+  }
+
+  // 3) 파싱 실패 처리
+  if (!checkInDate) {
+    return '정보 없음';
+  }
+
+  // 4) 기본 YYYY-MM-DD / HH:mm 분리
+  const [datePart, timePart] = ci.split('T');
+  const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
+
+  // 5) 대실 대기
+  if (time === '00:00' && normalizedReservation.type === 'dayUse') {
+    return `${datePart} (입실 대기)`;
+  }
+
+  // 6) 현장예약 기준 시간
+  if (
+    normalizedReservation.siteName === '현장예약' &&
+    normalizedReservation.type !== 'dayUse'
+  ) {
+    return `${datePart} ${checkInTime}`;
+  }
+
+  // 7) 기본 출력
+  return `${datePart} ${time}`;
+}, [
+  isOTA,
+  normalizedReservation.checkIn,
+  normalizedReservation.siteName,
+  normalizedReservation.type,
+  checkInDate,
+  checkInTime,
+]);
+
+
+// ▶ 체크아웃 표시 로직
+const displayCheckOut = useMemo(() => {
+  const co = normalizedReservation.checkOut;
+
+  // 0) Date 객체로 넘어왔으면 포맷해서 문자열로
+  if (co instanceof Date) {
+    return format(co, 'yyyy-MM-dd HH:mm');
+  }
+
+  // 1) OTA 예약이면 " 00:00" 만 제거
+  if (isOTA && typeof co === 'string') {
+    return co.replace(/\s00:00$/, '');
+  }
+
+  // 2) 빈 값 처리
+  if (!co || co === '') {
+    return '미정';
+  }
+
+  // 3) 파싱 실패 처리
+  if (!checkOutDate) {
+    return '정보 없음';
+  }
+
+  // 4) 기본 YYYY-MM-DD / HH:mm 분리
+  const [datePart, timePart] = co.split('T');
+  const time = timePart ? timePart.split('+')[0].substring(0, 5) : '00:00';
+
+  // 5) 대실 대기
+  if (time === '00:00' && normalizedReservation.type === 'dayUse') {
+    return `${datePart} (입실 대기)`;
+  }
+
+  // 6) 현장예약 기준 시간
+  if (
+    normalizedReservation.siteName === '현장예약' &&
+    normalizedReservation.type !== 'dayUse'
+  ) {
+    return `${datePart} ${checkOutTime}`;
+  }
+
+  // 7) 기본 출력
+  return `${datePart} ${time}`;
+}, [
+  isOTA,
+  normalizedReservation.checkOut,
+  normalizedReservation.siteName,
+  normalizedReservation.type,
+  checkOutDate,
+  checkOutTime,
+]);
+
 
   const displayReservationDate = useMemo(() => {
     if (!normalizedReservation.reservationDate) return '정보 없음';
@@ -1210,7 +1252,7 @@ const DraggableReservationCard = ({
               </>
             )}
           </p>
-          
+
           {/* 수정된 코드: specialRequests(고객요청)가 비어있지 않을 때만 렌더링 */}
           {normalizedReservation.specialRequests?.trim() && (
             <p>고객요청: {normalizedReservation.specialRequests}</p>
